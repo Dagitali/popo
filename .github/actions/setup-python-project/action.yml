@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+#
+# action.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Composite GitHub Action for consistent Python project setup.
+#
+# Responsibilities
+# - Install and cache the requested supported Python version.
+# - Optionally install this project with selected dependency extras.
+# - Support editable and non-editable project installations.
+# - Verify installed dependency compatibility and report tool versions.
+#
+# Maintainer Notes
+# - External GitHub Actions must remain pinned to full commit SHAs.
+# - Boolean-like inputs are strings and must be compared explicitly.
+# - Callers must check out the repository before invoking this local action.
+#
+# References
+# - actions/setup-python documentation:
+#   https://github.com/actions/setup-python
+# - GitHub composite actions documentation:
+#   https://docs.github.com/en/actions/sharing-automations/
+#   creating-actions/creating-a-composite-action
+# - GitHub Actions metadata syntax:
+#   https://docs.github.com/en/actions/sharing-automations/
+#   creating-actions/metadata-syntax-for-github-actions
+
+---
+name: Set up Python project
+description: Set up cached Python and optionally install this project
+
+inputs:
+  python-version:
+    description: Supported Python version to install
+    required: true
+  extras:
+    description: Comma-separated project extras to install
+    required: false
+    default: ''
+  editable:
+    description: Install the project in editable mode
+    required: false
+    default: 'true'
+  install:
+    description: Install the project after setting up Python
+    required: false
+    default: 'true'
+  cache-dependency-path:
+    description: Dependency metadata used for the pip cache key
+    required: false
+    default: |
+      pyproject.toml
+      requirements/lowest.txt
+
+runs:
+  using: composite
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        EDITABLE_INSTALL: ${{ inputs.editable }}
+        INSTALL_PROJECT: ${{ inputs.install }}
+      run: |
+        set -euo pipefail
+
+        if [[ "$EDITABLE_INSTALL" != 'true' && "$EDITABLE_INSTALL" != 'false' ]]; then
+          echo "editable must be 'true' or 'false'; received '$EDITABLE_INSTALL'" >&2
+          exit 2
+        fi
+        if [[ "$INSTALL_PROJECT" != 'true' && "$INSTALL_PROJECT" != 'false' ]]; then
+          echo "install must be 'true' or 'false'; received '$INSTALL_PROJECT'" >&2
+          exit 2
+        fi
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # Pinned v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: Install project
+      if: inputs.install == 'true'
+      shell: bash
+      env:
+        EDITABLE_INSTALL: ${{ inputs.editable }}
+        PROJECT_EXTRAS: ${{ inputs.extras }}
+      run: |
+        set -euo pipefail
+
+        target='.'
+        if [[ -n "$PROJECT_EXTRAS" ]]; then
+          target=".[${PROJECT_EXTRAS}]"
+        fi
+
+        install_args=(--disable-pip-version-check)
+        if [[ "$EDITABLE_INSTALL" == 'true' ]]; then
+          install_args+=(-e)
+        fi
+
+        python -m pip install "${install_args[@]}" "$target"
+        python -m pip check
+
+    - name: Report Python environment
+      shell: bash
+      run: |
+        python --version
+        python -m pip --version
