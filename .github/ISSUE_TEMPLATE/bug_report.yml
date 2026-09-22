@@ -1,0 +1,119 @@
+# bug_report.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub issue form for reporting reproducible bugs.
+#
+# Responsibilities
+# - Gather the information needed to reproduce and triage defects.
+#
+# Maintainer Notes
+# - Keep prompts product-neutral unless a project-specific question materially
+#   improves triage.
+#
+# References
+# - GitHub issue templates:
+#   https://docs.github.com/en/repositories/
+#   managing-your-repositorys-settings-and-features/
+#   customizing-your-repository/configuring-issue-templates-for-your-repository
+# - GitHub issue forms syntax:
+#   https://docs.github.com/en/repositories/
+#   managing-your-repositorys-settings-and-features/
+#   customizing-your-repository/syntax-for-issue-forms
+
+---
+name: Bug Report
+description: Report a reproducible problem or defect.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thanks for reporting a bug. Do not include credentials or private data
+        in a public issue. Do not disclose suspected vulnerabilities in public issues.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the problem and its impact.
+      placeholder: What is broken, and how does it affect you?
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Explain what happened and include relevant output and exit codes.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Explain what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: >-
+        Provide exact steps, commands, configuration, and sample input needed
+        to reproduce the problem.
+      placeholder: |
+        1. Install or check out ...
+        2. Configure ...
+        3. Run ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Paste relevant errors, tracebacks, logs, or failing assertions.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Identify the release, tag, package version, or commit tested.
+      placeholder: 1.2.3 or a full Git commit SHA
+    validations:
+      required: true
+  - type: input
+    id: installation
+    attributes:
+      label: Installation method
+      description: Explain how the software was installed or invoked.
+      placeholder: Package manager, editable install, source checkout, or other
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >-
+        Include the operating system and relevant language, runtime, tool,
+        browser, or service versions, and whether execution was local or in CI.
+      placeholder: Operating system, runtime versions, and other relevant context
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: >-
+            I reproduced this with a supported release or the current default
+            branch, or explained why that was not possible.
+          required: true
+        - label: I removed credentials, private data, and other secrets.
+          required: true
+        - label: >-
+            I included enough detail for maintainers to reproduce or
+            investigate the issue.
+          required: true
