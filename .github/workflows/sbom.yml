@@ -1,0 +1,133 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# sbom.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Actions workflow for Software Bill of Materials (SBOM) generation.
+#
+# Responsibilities
+# - Generate a CycloneDX SBOM for the installed Python dependency surface.
+# - Validate and upload the document as a short-lived workflow artifact.
+#
+# Maintainer Notes
+# - Each job declares the minimum permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+# - Pull requests intentionally do not trigger this supplementary workflow;
+#   required CI already validates dependency changes before merge.
+# - The dynamic run name identifies the event trigger for operational clarity.
+# - Keep the generator separate from the environment being inventoried.
+# - This supplements CI and does not publish a release or deploy resources.
+# - The inventory includes the project, runtime dependencies, and environment
+#   bootstrap tools, but excludes development extras and the SBOM generator.
+#
+# References
+# - CycloneDX Python tooling:
+#   https://cyclonedx.org/tool-center/python/
+# - CycloneDX Python command usage:
+#   https://cyclonedx-bom-tool.readthedocs.io/en/latest/usage.html
+# - Software Bill of Materials documentation:
+#   https://cyclonedx.org/use-cases/software-bill-of-materials/
+# - GitHub Actions expressions reference:
+#   https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions security hardening guide:
+#   https://docs.github.com/en/actions/security-guides/
+#   security-hardening-for-github-actions
+# - GitHub Actions artifact documentation:
+#   https://docs.github.com/en/actions/using-workflows/
+#   storing-workflow-data-as-artifacts
+# - GitHub Actions workflow syntax reference:
+#   https://docs.github.com/en/actions/using-workflows/
+#   workflow-syntax-for-github-actions
+
+---
+name: Software Bill of Materials (SBOM)
+
+run-name: >-
+  ${{
+    github.event_name == 'push' &&
+    format('SBOM: push on {0}', github.ref_name) ||
+    'SBOM: manual dispatch'
+  }}
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - pyproject.toml
+      - requirements/**
+      - src/**
+      - .github/actions/setup-python-project/**
+      - .github/workflows/sbom.yml
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  ARTIFACT_RETENTION_DAYS: '14'
+  CYCLONEDX_BOM_VERSION: '7.2.2'
+  DEFAULT_PYTHON_VERSION: '3.13'
+  PYTHON_SBOM_FILENAME: python-sbom.json
+  SBOM_ARTIFACT_NAME: python-sbom
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: ./.github/actions/setup-python-project
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+          install: 'false'
+
+      - name: Prepare isolated runtime and generator
+        run: |
+          python -m venv "$RUNNER_TEMP/sbom-runtime"
+          "$RUNNER_TEMP/sbom-runtime/bin/python" -m pip install .
+          "$RUNNER_TEMP/sbom-runtime/bin/python" -m pip check
+          python -m venv "$RUNNER_TEMP/sbom-tools"
+          "$RUNNER_TEMP/sbom-tools/bin/python" -m pip install "cyclonedx-bom==$CYCLONEDX_BOM_VERSION"
+
+      - name: Generate Python SBOM
+        run: |
+          "$RUNNER_TEMP/sbom-tools/bin/python" -m cyclonedx_py environment \
+            "$RUNNER_TEMP/sbom-runtime/bin/python" \
+            --pyproject pyproject.toml --output-format JSON --validate \
+            --output-file "$PYTHON_SBOM_FILENAME"
+
+      - name: Validate Python SBOM
+        run: |
+          jq -e '
+            .bomFormat == "CycloneDX" and
+            ((.specVersion | type) == "string") and
+            ((.components | type) == "array")
+          ' "$PYTHON_SBOM_FILENAME" > /dev/null
+
+      - name: Upload Python SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # Pinned v7.0.1
+        with:
+          name: ${{ env.SBOM_ARTIFACT_NAME }}
+          path: ${{ env.PYTHON_SBOM_FILENAME }}
+          if-no-files-found: error
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
