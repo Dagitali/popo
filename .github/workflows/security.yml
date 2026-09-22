@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# security.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Manually run optional runtime-dependency vulnerability checks.
+#
+# Responsibilities
+# - Audit resolved runtime dependencies against public vulnerability advisories.
+# - Retain machine-readable findings without suppressing a failing audit.
+#
+# Maintainer Notes
+# - Each job declares the minimum permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+# - This is dependency auditing, not source review or infrastructure analysis.
+# - Keep audit tooling separate from the environment being inspected.
+# - Exclude the unpublished project itself and pip from the dependency list.
+# - Advisory queries send dependency names and versions to PyPI; no credentials
+#   are required. Never use automatic fixes in this workflow.
+#
+# References
+# - pip-audit usage and security model:
+#   https://github.com/pypa/pip-audit
+# - GitHub Actions workflow syntax reference:
+#   https://docs.github.com/en/actions/using-workflows/
+#   workflow-syntax-for-github-actions
+
+---
+name: Security checks
+
+run-name: Security checks from ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  ARTIFACT_RETENTION_DAYS: '14'
+  AUDIT_ARTIFACT_NAME: runtime-dependency-audit
+  AUDIT_FILENAME: audit.json
+  DEFAULT_PYTHON_VERSION: '3.13'
+  PIP_AUDIT_VERSION: '2.10.1'
+  PACKAGE_DISTRIBUTION_NAME: popo
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit runtime dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: ./.github/actions/setup-python-project
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+          install: 'false'
+
+      - name: Resolve runtime dependencies and install isolated auditor
+        run: |
+          python -m venv "$RUNNER_TEMP/audit-runtime"
+          "$RUNNER_TEMP/audit-runtime/bin/python" -m pip install .
+          "$RUNNER_TEMP/audit-runtime/bin/python" -m pip check
+          "$RUNNER_TEMP/audit-runtime/bin/python" -m pip freeze \
+            --exclude "$PACKAGE_DISTRIBUTION_NAME" --exclude pip > "$RUNNER_TEMP/runtime-requirements.txt"
+          python -m venv "$RUNNER_TEMP/audit-tools"
+          "$RUNNER_TEMP/audit-tools/bin/python" -m pip install "pip-audit==$PIP_AUDIT_VERSION"
+
+      - name: Audit resolved runtime dependencies
+        run: |
+          "$RUNNER_TEMP/audit-tools/bin/python" -m pip_audit \
+            --requirement "$RUNNER_TEMP/runtime-requirements.txt" \
+            --no-deps --disable-pip --strict --format json --output "$AUDIT_FILENAME"
+
+      - name: Upload findings even when vulnerabilities are found
+        if: ${{ always() && hashFiles(env.AUDIT_FILENAME) != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # Pinned v7.0.1
+        with:
+          name: ${{ env.AUDIT_ARTIFACT_NAME }}
+          path: ${{ env.AUDIT_FILENAME }}
+          if-no-files-found: error
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
