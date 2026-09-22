@@ -1,0 +1,92 @@
+# dependabot.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Dependabot configuration for automated dependency-update pull
+# requests.
+#
+# Responsibilities
+# - Keep GitHub Actions, Python package metadata, and pre-commit hooks current
+#   through reviewable pull requests.
+# - Route routine dependency maintenance through review on the default branch.
+# - Reduce supply-chain exposure from stale dependencies while preserving
+#   review, CI, and package-build gates.
+#
+# Maintainer Notes
+# - `pyproject.toml` is the canonical Python dependency metadata source.
+# - Omit `target-branch` to follow the repository default branch without
+#   imposing a particular branching model.
+# - Use UTC for predictable schedules independent of maintainer location or
+#   daylight-saving changes; keep ecosystem update times staggered.
+# - Omit `labels` to retain Dependabot's automatically created dependency and
+#   ecosystem labels rather than require a repository-specific label setup.
+# - Keep external GitHub Actions pinned to full commit SHAs after accepting
+#   Dependabot updates.
+#
+# References
+# - GitHub Advisory Database: https://github.com/advisories
+# - GitHub Dependabot documentation:
+#   https://docs.github.com/en/code-security/dependabot
+# - Dependabot configuration reference:
+#   https://docs.github.com/en/code-security/dependabot/
+#   dependabot-version-updates/
+#   configuration-options-for-the-dependabot.yml-file
+# - Dependabot pull-request customization and default labels:
+#   https://docs.github.com/en/code-security/tutorials/
+#   secure-your-dependencies/customizing-dependabot-prs
+# - Dependabot quickstart guide:
+#   https://docs.github.com/en/code-security/tutorials/
+#   secure-your-dependencies/dependabot-quickstart-guide
+# - Python packaging documentation:
+#   https://packaging.python.org/
+
+---
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:30"
+      timezone: Etc/UTC
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Etc/UTC
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      python-runtime-dependencies:
+        dependency-type: production
+      python-maintenance-dependencies:
+        dependency-type: development
+
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: Etc/UTC
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
