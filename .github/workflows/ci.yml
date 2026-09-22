@@ -1,0 +1,207 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# ci.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Actions workflow for continuous integration (CI).
+#
+# Responsibilities
+# - Validate source, workflow policy, tests, coverage, and repository
+#   documentation before changes merge.
+# - Exercise every explicitly supported Python version.
+# - Build and validate source and wheel distributions.
+# - Smoke-test each distribution in a clean environment outside the checkout.
+# - Test the lowest and newest runtime dependencies allowed by package metadata.
+# - Smoke-test installation on each supported operating-system family.
+#
+# Maintainer Notes
+# - Each job declares the minimum permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+# - The dynamic run name identifies the source and target context for review.
+# - The dependency matrix covers every supported Python version at both
+#   dependency boundaries.
+# - Preserve job identifiers when changing workflow structure; required checks
+#   may depend on their names.
+# - Keep normal CI credential-free, deployment-free, and publication-free.
+# - Reuse the local setup action for installation and dependency diagnostics.
+#
+# References
+# - GitHub Actions Python guide:
+#   https://docs.github.com/en/actions/automating-builds-and-tests/
+#   building-and-testing-python
+# - GitHub Actions expressions reference:
+#   https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions security hardening guide:
+#   https://docs.github.com/en/actions/security-guides/
+#   security-hardening-for-github-actions
+# - GitHub Actions workflow syntax reference:
+#   https://docs.github.com/en/actions/using-workflows/
+#   workflow-syntax-for-github-actions
+# - GitHub pull request documentation:
+#   https://docs.github.com/en/pull-requests
+# - GitHub merge queue documentation:
+#   https://docs.github.com/en/repositories/
+#   configuring-branches-and-merges-in-your-repository/configuring-merge-queues
+# - Python packaging documentation:
+#   https://packaging.python.org/
+# - Python wheel format specification:
+#   https://packaging.python.org/en/latest/specifications/
+#   binary-distribution-format/#file-contents
+
+---
+name: Continuous Integration (CI)
+
+run-name: >-
+  ${{
+    github.event_name == 'pull_request' &&
+    format('CI: {0} -> {1}', github.head_ref, github.base_ref) ||
+    github.event_name == 'merge_group' &&
+    format('CI: merge queue for {0}', github.ref_name) ||
+    github.event_name == 'push' &&
+    format('CI: push on {0}', github.ref_name) ||
+    'CI: manual dispatch'
+  }}
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  DEFAULT_PYTHON_VERSION: '3.13'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.13'
+          - '3.14'
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up project
+        uses: ./.github/actions/setup-python-project
+        with:
+          python-version: ${{ matrix.python-version }}
+          extras: dev
+
+      - name: Run the repository quality gate
+        run: make check
+
+      - name: Report branch coverage
+        run: python -m pytest --cov=src --cov-report=term-missing
+
+      - name: Build and validate distributions
+        run: make dist
+
+      - name: Test built artifacts and clean installations
+        run: python -m pytest tests/distribution --artifact-dir dist
+
+  test-dependency-boundaries:
+    name: >-
+      Test Python ${{ matrix.python-version }} with
+      ${{ matrix.dependency-boundary }} dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.13'
+          - '3.14'
+        dependency-boundary:
+          - lowest
+          - newest
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: ./.github/actions/setup-python-project
+        with:
+          python-version: ${{ matrix.python-version }}
+          install: 'false'
+          cache-dependency-path: |
+            pyproject.toml
+            requirements/lowest.txt
+
+      - name: Install dependency boundary
+        shell: bash
+        env:
+          DEPENDENCY_BOUNDARY: ${{ matrix.dependency-boundary }}
+        run: |
+          set -euo pipefail
+          if [[ "$DEPENDENCY_BOUNDARY" == 'lowest' ]]; then
+            python -m pip install --disable-pip-version-check \
+              --constraint requirements/lowest.txt -e '.[dev]'
+          else
+            python -m pip install --disable-pip-version-check \
+              --upgrade --upgrade-strategy eager -e '.[dev]'
+          fi
+
+      - name: Verify installed dependencies
+        run: python -m pip check
+
+      - name: Report resolved dependency versions
+        run: python -m pip list
+
+      - name: Run tests
+        run: python -m pytest
+
+  smoke-cross-platform:
+    name: Smoke install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up project
+        uses: ./.github/actions/setup-python-project
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+          extras: dev
+
+      - name: Test source and wheel installations outside the checkout
+        run: python -m pytest tests/distribution
