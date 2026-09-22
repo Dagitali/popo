@@ -1,0 +1,98 @@
+# feature_request.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub issue form for proposing user-facing improvements.
+#
+# Responsibilities
+# - Gather the information needed to evaluate a concrete problem, proposed
+#   outcome, alternatives, and compatibility considerations.
+#
+# Maintainer Notes
+# - Keep prompts product-neutral unless a project-specific question materially
+#   improves evaluation.
+#
+# References
+# - GitHub issue templates:
+#   https://docs.github.com/en/repositories/
+#   managing-your-repositorys-settings-and-features/
+#   customizing-your-repository/configuring-issue-templates-for-your-repository
+# - GitHub issue forms syntax:
+#   https://docs.github.com/en/
+#   repositories/managing-your-repositorys-settings-and-features/
+#   customizing-your-repository/syntax-for-issue-forms
+
+---
+name: Feature Request
+description: Propose a user-facing capability or workflow improvement.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for a concrete improvement. Describe the need before prescribing an implementation.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What workflow is blocked, confusing, or unnecessarily difficult?
+      placeholder: Describe the current need or pain point.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Describe the behavior or result you would like to see.
+      placeholder: Describe the requested improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: >-
+        Describe relevant workarounds or alternatives and why they are
+        insufficient.
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example
+      description: Include example configuration, commands, code, or output.
+      render: text
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Documentation
+        - Public API
+        - Runtime or generated output
+        - Developer or contributor workflow
+        - Integration
+        - Automation, CI, or packaging
+        - Security or support policy
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility, security, and cost considerations
+      description: >-
+        Note migration, backward-compatibility, security, operational, or cost
+        implications.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for related requests.
+          required: true
+        - label: >-
+            This request describes a concrete, user-facing need rather than a
+            broad brainstorming topic.
+          required: true
