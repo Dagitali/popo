@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# pr.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Actions workflow for pull-request policy.
+#
+# Responsibilities
+# - Validate and enforce optional repository-configured target-branch rules.
+# - Keep source and package validation in ci.yml.
+#
+# Maintainer Notes
+# - No checkout or token permissions are needed for metadata-only checks.
+# - PR_TARGET_RULES is a JSON object keyed by exact target branch name.
+# - An unset variable means no branch-routing restrictions, not GitFlow.
+# - Merge groups inherit routing checks from their constituent pull requests.
+#
+# References
+# - GitHub Actions workflow syntax:
+#   https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+
+---
+name: Pull Request (PR) Gates
+
+run-name: >-
+  ${{ github.event_name == 'pull_request' &&
+      format('PR Gates: {0} -> {1}', github.head_ref, github.base_ref) ||
+      format('PR Gates: merge queue for {0}', github.ref_name) }}
+
+on:
+  pull_request:
+  merge_group:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Guard pull request target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Validate and enforce configured routing rules
+        shell: python
+        env:
+          RULES: ${{ vars.PR_TARGET_RULES || '{}' }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          import json
+          import os
+          import re
+
+          rules = json.loads(os.environ['RULES'])
+          if not isinstance(rules, dict):
+              raise SystemExit('PR_TARGET_RULES must be a JSON object')
+          for branch, rule in rules.items():
+              if not branch or not isinstance(rule, dict):
+                  raise SystemExit('Each target must have a rule object')
+              if set(rule) - {'head_pattern', 'same_repository'}:
+                  raise SystemExit('Unknown routing rule field')
+              if not isinstance(rule.get('head_pattern'), str):
+                  raise SystemExit('Each rule requires a head_pattern string')
+              re.compile(rule['head_pattern'])
+              if not isinstance(rule.get('same_repository', False), bool):
+                  raise SystemExit('same_repository must be a boolean')
+          if os.environ['EVENT_NAME'] == 'merge_group':
+              print('Merge group inherits routing validation from queued PRs.')
+          else:
+              rule = rules.get(os.environ['BASE_REF'])
+              if rule is not None:
+                  if re.fullmatch(rule['head_pattern'], os.environ['HEAD_REF']) is None:
+                      raise SystemExit('Source branch is not permitted for this target')
+                  if rule.get('same_repository', False) and (
+                      os.environ['HEAD_REPOSITORY'] != os.environ['REPOSITORY']
+                  ):
+                      raise SystemExit('Source branch must belong to this repository')
+              print('Pull request target policy passed.')
