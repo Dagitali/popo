@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+#
+# deployment-test.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Manually test disposable package installations, not cloud deployment.
+#
+# Responsibilities
+# - Build the selected checkout and test its wheel and source distribution.
+# - Exercise installed commands outside the checkout on supported platforms.
+#
+# Maintainer Notes
+# - Manual only; no publishing, PyPI-name ownership assumption, or AWS access.
+# - Tests create temporary virtual environments; hosted runners dispose of them.
+# - This is the CLI equivalent of a disposable deployment test, not a test of
+#   an already-published package or a production service.
+#
+# References
+# - GitHub manual workflows:
+#   https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-running-a-workflow
+
+---
+name: Test disposable package installation
+
+run-name: Test disposable package installation from ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install-test:
+    name: Install on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.13', '3.14']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up project
+        uses: ./.github/actions/setup-python-project
+        with:
+          python-version: ${{ matrix.python-version }}
+          extras: dev
+
+      - name: Build and test disposable installations
+        run: python -m pytest tests/distribution
