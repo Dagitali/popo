@@ -198,7 +198,7 @@ repos:
         types_or: [python, pyi]
       - id: popo-self-check
         name: Run popo repository checks
-        entry: python -m project_check check-all
+        entry: python -m popo check-all
         language: system
         pass_filenames: false
         always_run: true
