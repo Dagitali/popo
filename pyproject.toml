@@ -121,9 +121,16 @@ addopts = [
   "--strict-config",
   "--strict-markers",
 ]
-testpaths = ["tests"]
+testpaths = ["tests/unit", "tests/integration"]
 # Distribution tests build artifacts and may install dependencies from the network.
-norecursedirs = ["distribution"]
+# Select tests/meta and tests/e2e explicitly; support contains only shared fixtures.
+norecursedirs = ["support"]
+markers = [
+  "unit: isolated checker and automation contracts",
+  "integration: interactions across CLI and checker boundaries",
+  "meta: package artifact and metadata contracts",
+  "e2e: installed package workflows through the public CLI",
+]
 
 [tool.ruff]
 target-version = "py313"
