@@ -62,6 +62,7 @@ class ProjectConfig:
     dependencies: DependencyConfig
     python_policy: PythonPolicyConfig
 
+
 # !SECTION
 
 
@@ -203,5 +204,6 @@ def load_config(root: Path) -> ProjectConfig:
         ),
     )
     return ProjectConfig(root, dependencies, python_policy)
+
 
 # !SECTION
