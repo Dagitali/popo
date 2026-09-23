@@ -107,7 +107,7 @@ jobs:
         run: |
           python -m build
           python -m twine check dist/*
-          python -m pytest tests/distribution --artifact-dir dist
+          python -m pytest tests/meta tests/e2e --artifact-dir dist
 
       - name: Verify built version matches tag
         run: |
