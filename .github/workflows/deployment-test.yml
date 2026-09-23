@@ -61,4 +61,4 @@ jobs:
           extras: dev
 
       - name: Build and test disposable installations
-        run: python -m pytest tests/distribution
+        run: python -m pytest tests/meta tests/e2e
