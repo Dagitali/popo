@@ -29,6 +29,7 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
 - [At a Glance](#at-a-glance)
 - [Release Status](#release-status)
 - [Features](#features)
+- [Architecture](#architecture)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quickstart](#quickstart)
@@ -40,9 +41,12 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
 - [Contributing](#contributing)
 - [Documentation](#documentation)
   - [User Documentation](#user-documentation)
-  - [Contributor and Maintainer Docs](#contributor-and-maintainer-docs)
+  - [Community Health](#community-health)
+  - [Maintainer Docs](#maintainer-docs)
 
 ## Getting Started
+
+To get started:
 
 - Review the supported toolchain in [Requirements](#requirements).
 - Install a selected tag or local checkout as described in [Installation](#installation).
@@ -73,6 +77,17 @@ publishing is not configured; see the [release policy].
 - Dependency metadata synchronized with requirements or constraints files;
 - Python-version policy across package metadata, tool configuration, and workflows; and
 - Dated semantic-version entries in a changelog.
+
+## Architecture
+
+Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
+configuration for checks that need it, and dispatches to the relevant checker. Checkers inspect
+repository files and return findings; shared reporting prints `PASS` or `FAIL` messages and returns
+an exit status of `0` for a successful check or `1` for reported failures. Invalid command-line
+arguments are handled separately by the argument parser.
+
+Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
+without embedding a consumer's build or deployment process.
 
 ## Requirements
 
@@ -207,33 +222,55 @@ This project is licensed under the [MIT License].
 
 ## Contributing
 
-Code and documentation contributions are welcome. Follow the [contributing guide] for development,
-testing, hooks, and pull-request expectations.
+Code and codeless contributions are welcome. Follow the [contributing guide] for development,
+testing, documentation, hooks, and pull-request expectations. Reproducible bug reports, usage
+feedback, and documentation corrections are useful contributions alongside code changes.
 
 ## Documentation
 
 ### User Documentation
 
+- [Documentation index]: Guides, scope, and local documentation validation.
+- [Configuration reference]: All consumer settings, defaults, and command boundaries.
 - [Configuration](#configuration): Consumer repository settings and dependency modes.
-- [Changelog]: Project change history.
-- [Release archive]: Release-aligned scope, compatibility, and validation records.
 
-### Contributor and Maintainer Docs
+### Community Health
 
 - [Contributing guide]: Development workflow, quality gates, and GitHub automation.
+- [Issue forms]: Structured bug reports, feature requests, and documentation corrections.
+
+Do not include credentials, private repository data, or vulnerability details in public issues.
+
+<a id="contributor-and-maintainer-docs"></a>
+
+### Maintainer Docs
+
 - [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
+- [Testing guide]: Focused checks, dependency boundaries, and installation validation.
 - [Agent instructions]: Repository rules for automated coding agents.
+- [Branch protection]: Configurable PR routing, required checks, and hosted-setting boundaries.
+- [Changelog]: Project change history.
+- [Release archive]: Release-aligned scope, compatibility, and validation records.
 - [Release policy]: Artifact validation and publication safeguards.
+- [Release checklist]: Preparation, validation, and separately authorized tagging and publication.
+- [Release playbook]: Evidence and closeout checklist for maintainers.
 
 Release validation, opt-in GitHub publication, and disposable installation tests are documented in
 the [release policy].
 
 [Python support]: #requirements
+[Branch protection]: .github/BRANCH-PROTECTION.md
+[Issue forms]: .github/ISSUE_TEMPLATE/
 [agent instructions]: AGENTS.md
 [changelog]: CHANGELOG.md
 [contributing guide]: CONTRIBUTING.md
+[Release checklist]: CONTRIBUTING.md#release-preparation
 [MIT License]: LICENSE
 [release policy]: RELEASE-POLICY.md
+[Configuration reference]: docs/CONFIGURATION.md
+[Documentation index]: docs/README.md
+[Testing guide]: docs/TESTING.md
+[Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
