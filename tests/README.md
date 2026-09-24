@@ -21,6 +21,7 @@ pytest marker from each test module's top-level directory.
 - [Dependency Prerequisites](#dependency-prerequisites)
 - [Shared Fixtures](#shared-fixtures)
 - [Suite Design](#suite-design)
+- [Common Commands](#common-commands)
 
 ## Current Layout
 
@@ -36,16 +37,6 @@ pytest marker from each test module's top-level directory.
 
 `make test` and plain pytest collect unit and integration tests only. Artifact tests remain opt-in
 because building and installing distributions may access package indexes.
-
-```console
-make test-unit
-make test-integration
-make test-distribution
-make test-installation
-make test-full
-python -m pytest -m integration
-python -m pytest tests/meta tests/e2e --artifact-dir dist
-```
 
 Selecting `tests/` explicitly collects all test layers. Marker filters operate only on the selected
 paths; use `python -m pytest tests/meta -m meta` for the artifact layer. No CDK synthesis,
@@ -80,9 +71,23 @@ fixtures exclude inherited tool configuration where it can change the result.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
-point for each artifact. Run coverage with `python -m pytest --cov=popo --cov-branch
---cov-report=term-missing` after installing development dependencies. Coverage is diagnostic; no
-reduced threshold masks regressions.
+point for each artifact. Coverage is diagnostic; no reduced threshold masks regressions.
+
+## Common Commands
+
+After installing development dependencies:
+
+```console
+make test
+make test-unit
+make test-integration
+make test-distribution
+make test-installation
+make test-full
+python -m pytest -m integration
+python -m pytest tests/meta tests/e2e --artifact-dir dist
+python -m pytest --cov=popo --cov-branch --cov-report=term-missing
+```
 
 See the [contributing guide] for setup and dependency prerequisites.
 
