@@ -50,6 +50,7 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
 
 - Python 3.13 or 3.14 (`.python-version` selects Python 3.13 for compatible local
   version managers).
+- `packaging>=26.3,<27`, installed automatically with Popo; older versions are not supported.
 - Make and a POSIX-compatible shell for the development targets; see the
   [contributing guide] for Windows setup.
 - No cloud account or credentials are required to run repository checks.
