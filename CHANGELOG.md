@@ -64,6 +64,6 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Complete the Python module rename to `popo` in packaging, development tooling, documentation, and
   clean-distribution tests.
 
+[release notes archive]: docs/releases/README.md
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[release notes archive]: release/README.md
