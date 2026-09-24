@@ -23,7 +23,7 @@ class TestPackageArtifacts:
                 for filename in ('__init__.py', '__main__.py', 'cli.py', 'py.typed'):
                     assert f'popo/{filename}' in names
                 metadata = archive.read(
-                    next(n for n in names if n.endswith('/METADATA'))
+                    next(n for n in names if n.endswith('/METADATA')),
                 )
                 entries = archive.read(
                     next(n for n in names if n.endswith('/entry_points.txt')),
