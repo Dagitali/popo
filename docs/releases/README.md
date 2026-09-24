@@ -17,8 +17,8 @@ This archive indexes Popo's release-aligned records, newest first. These documen
 scope, compatibility, validation, publication, rollback, and follow-up details where applicable. A
 committed record or local tag does not establish that a GitHub Release or PyPI package exists.
 
-Use the [changelog] for concise change history and the [release policy] for validation and
-publication safeguards.
+Use the [changelog] for concise change history, the [release playbook] for preparation, and the
+[release policy] for validation and publication safeguards.
 
 - [0.1 Series](#01-series)
 - [Initial Scaffold](#initial-scaffold)
@@ -27,7 +27,7 @@ publication safeguards.
 ## 0.1 Series
 
 - [v0.1.5]: Display the root README on the repository homepage.
-- [v0.1.4] — 2026-09-24:: Correct dated release history and restore the changelog gate for the new
+- [v0.1.4] — 2026-09-24: Correct dated release history and restore the changelog gate for the new
   tag.
 - [v0.1.3 changelog] — 2026-09-24: Update Commitizen and Ruff hooks; tagged CD validation failed
   because the dated entry was missing. The entry is backfilled in 0.1.4.
@@ -63,6 +63,7 @@ The changelog includes a dated `0.1.5` candidate section. Changes outside that c
 [changelog]: ../../CHANGELOG.md
 [v0.1.3 changelog]: ../../CHANGELOG.md#013---2026-09-24
 [release policy]: ../../RELEASE-POLICY.md
+[release playbook]: ../playbooks/release.md
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
 [v0.1.1]: v0.1.1.md
