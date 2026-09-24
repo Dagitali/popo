@@ -146,6 +146,12 @@ manually with `python -m pre_commit run --all-files`.
 
 ### GitHub Automation
 
+`requirements/lowest.txt` is a minimum-version test fixture, not a lockfile to keep current.
+Dependabot version updates exclude this file while continuing to scan package metadata. When
+intentionally raising a supported minimum, update the corresponding `pyproject.toml` lower bound and
+fixture pin together, then run `make dependency-policy` and the lowest-dependency tests. Review
+security-driven minimum changes explicitly rather than updating the fixture alone.
+
 The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
 optional publication. CI uses the [Python setup action] and validates dependency integrity before
 checks. Workflow changes should pass `actionlint` as well as `make check`.
