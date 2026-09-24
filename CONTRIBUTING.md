@@ -20,7 +20,8 @@ are distributed under the project's [MIT License].
 - [Development Workflow](#development-workflow)
 - [Development Setup](#development-setup)
 - [Public API and Type Checking](#public-api-and-type-checking)
-- [Local Checks And Hooks](#local-checks-and-hooks)
+- [Local Quality Gates](#local-quality-gates)
+- [Testing](#testing)
 - [Distribution Validation](#distribution-validation)
 - [Documentation](#documentation)
   - [Documentation Synchronization](#documentation-synchronization)
@@ -30,7 +31,8 @@ are distributed under the project's [MIT License].
 
 Useful contributions include reproducible bug reports, focused feature proposals, compatibility
 tests, documentation corrections, and packaging or automation improvements. Discuss substantial
-changes before implementing them. Do not include credentials or private repository data in issues.
+changes before implementing them. Include version and environment details in bug reports. Do not
+include credentials, private repository data, or vulnerability details in public issues.
 
 ## Development Workflow
 
@@ -38,12 +40,15 @@ changes before implementing them. Do not include credentials or private reposito
 2. Install development dependencies and optionally install hooks with `make hooks`.
 3. Implement one cohesive change with relevant tests and documentation.
 4. Run `make check` and address failures rather than weakening validation.
-5. Update the [changelog] for user-visible behavior and open a pull request.
-6. Follow the repository's configured review, branch-protection, and PR-routing requirements.
+5. Update the [changelog] for user-visible behavior.
+6. Open a pull request using the [pull request template].
+7. Merge through GitHub after the configured checks and reviews pass.
 
 Versions come from Git tags through `setuptools-scm`; do not introduce another version source.
 Review the [release policy] for packaging or release changes. Popo's routing is configurable: the
-[branch-protection guide] describes optional policies, not proof of active hosted settings.
+[branch-protection guide] describes optional policies, not proof of active hosted settings. Local
+merge or branch-finishing commands are not substitutes for hosted review. Do not assume GitFlow
+branch names are enforced when no routing policy has been configured.
 
 ## Development Setup
 
@@ -81,17 +86,19 @@ cloud platform. Review commands, flags, configuration, diagnostics, and exit cod
 public behavior. Add regression tests for compatibility and error handling, and retain read-only
 operation. Keep type annotations explicit and validate them with `make typecheck`.
 
-## Local Checks And Hooks
+The package ships `py.typed` and uses strict mypy checking. Use syntax supported by the minimum
+Python version in `pyproject.toml`, prefer precise types over `Any`, and retain runtime validation
+for rules that static types cannot enforce. Keep package-level exports in `__all__` intentional; do
+not treat internal checker modules as a promised consumer API. Include migration guidance for
+intentional breaking changes.
+
+<a id="local-checks-and-hooks"></a>
+
+## Local Quality Gates
 
 `make check` runs Ruff, mypy, the default regression suite, and popo's own repository checks. `make
 self-check` runs just the repository checks. The default suite does not build distributions or
 install dependencies from the network.
-
-Tests follow the [test layout]: `unit/` covers isolated checks and automation contracts,
-`integration/` covers CLI dispatch and reporting, `meta/` covers built artifacts, and `e2e/` covers
-clean installations. Shared artifact fixtures live in `support/`. Default discovery includes only
-unit and integration tests. Use `make test-unit` or `make test-integration` for a focused layer;
-root conftest assigns matching pytest markers.
 
 Run `make help` to list available targets. Plain `make` still runs `check`. Focused policy targets
 are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markdown`. Use
@@ -114,6 +121,19 @@ Make's interpreter selection and source-path handling. The Ruff hooks use a pre-
 Python environment and retain filename-based checks. Their dependency range matches the development
 extra in `pyproject.toml`. The first hook run downloads the upstream hook environment. Run all hooks
 manually with `python -m pre_commit run --all-files`.
+
+## Testing
+
+Add tests for observable behavior and validation failures. Prefer public CLI behavior and stable
+diagnostics over incidental implementation details. Unit tests must not require cloud credentials or
+network access. Keep artifact installations and optional network-dependent checks separate from the
+default deterministic suite.
+
+Tests follow the [test layout]: `unit/` covers isolated checks and automation contracts,
+`integration/` covers CLI dispatch and reporting, `meta/` covers built artifacts, and `e2e/` covers
+clean installations. Shared artifact fixtures live in `support/`. Default discovery includes only
+unit and integration tests. Use `make test-unit` or `make test-integration` for a focused layer;
+root conftest assigns matching pytest markers.
 
 ## Distribution Validation
 
@@ -156,6 +176,10 @@ Update public usage, configuration, tests, and release notes when their source o
 Keep documentation language- and platform-neutral where the behavior is reusable. Use reference
 links for shared destinations, and run `make docs-markdown` to validate local targets and anchors.
 Do not link public guidance to private notes, local-only files, or generated build output.
+
+Maintain release-aligned records under `release/` using the [release archive] and [release notes
+template]. Keep planned candidates distinct from tagged versions and publication results; update the
+archive index when adding a record.
 
 Keep reference-link definitions together at the bottom of each document. Sort them
 lexicographically by destination URL or path exactly as written (case-sensitive), then by label
@@ -214,6 +238,7 @@ or cloud deployment is configured.
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
 [release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
+[pull request template]: .github/pull_request_template.md
 [CI workflow]: .github/workflows/ci.yml
 [SBOM workflow]: .github/workflows/sbom.yml
 [security workflow]: .github/workflows/security.yml
@@ -222,4 +247,5 @@ or cloud deployment is configured.
 [MIT License]: LICENSE
 [README]: README.md
 [release policy]: RELEASE-POLICY.md
+[release archive]: release/README.md
 [test layout]: tests/README.md
