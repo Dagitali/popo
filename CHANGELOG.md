@@ -19,9 +19,19 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.1.1\] - 2026-09-24](#011---2026-09-24)
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.1.1] - 2026-09-24
+
+- Raise the minimum supported `packaging` version to 26.3 and synchronize the lowest-dependency
+  test pin. Versions below 26.3 are no longer supported; the upper bound remains below 27.
+- Exclude the minimum-dependency test fixture from routine Dependabot version updates so
+  automated upgrades do not move its pins independently of declared lower bounds.
+- Add regression coverage for synchronized minimums, older and newer mismatched pins, and the
+  Dependabot fixture exclusion; document how to update minimum versions together.
 
 ## [0.1.0] - 2026-09-24
 
