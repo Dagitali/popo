@@ -125,4 +125,5 @@ class TestCommandLine:
         captured = capsys.readouterr()
         assert message in (captured.out if status == 0 else captured.err)
 
+
 # !SECTION
