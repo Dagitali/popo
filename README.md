@@ -162,6 +162,7 @@ testing, hooks, and pull-request expectations.
 - [Agent instructions]: Repository rules for automated coding agents.
 - [Changelog]: Project change history.
 - [Release policy]: Artifact validation and publication safeguards.
+- [Release archive]: Release-aligned scope, compatibility, and validation records.
 
 Release validation, opt-in GitHub publication, and disposable installation tests are documented in
 the [release policy].
@@ -175,4 +176,5 @@ This project is licensed under the [MIT License].
 [contributing guide]: CONTRIBUTING.md
 [MIT License]: LICENSE
 [release policy]: RELEASE-POLICY.md
+[release archive]: release/README.md
 [test layout]: tests/README.md
