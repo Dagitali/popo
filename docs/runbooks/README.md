@@ -19,6 +19,8 @@ Current procedures and supporting guidance:
 - [Incident response]: Dependency drift, test/configuration mismatches, missing changelog entries,
   environment failures, and publication problems.
 - [Branch protection]: Required-check selection and hosted-policy configuration guidance.
+- [Update required checks]: Coordinate job-name transitions, diagnose missing results, and verify
+  authorized hosted-rule changes.
 - [Release playbook]: Candidate preparation and authorized release operations.
 
 Popo's checks and installation workflows do not deploy cloud resources. Do not import a cloud
@@ -28,3 +30,4 @@ exact tags and artifact identity when investigating failures.
 [Branch protection]: ../../.github/BRANCH-PROTECTION.md
 [Release playbook]: ../playbooks/release.md
 [Incident response]: incident-response.md
+[Update required checks]: update-required-checks.md
