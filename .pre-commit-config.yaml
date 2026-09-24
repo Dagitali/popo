@@ -1,0 +1,206 @@
+# .pre-commit-config.yaml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Pre-commit configuration for local Git hook automation.
+#
+# Pre-commit is a multi-language package manager and hook orchestrator that
+# runs configured checks before code is committed or pushed. This configuration
+# defines the hooks that are installed and run locally to catch issues. It
+# enables code reviews to focus on design and implementation quality by
+# automating checks for formatting, syntax, metadata, and repository hygiene
+# issues.
+#
+# Responsibilities
+# - Install and run local commit-message, pre-commit, and pre-push hooks.
+# - Catch formatting, syntax, metadata, and repository-hygiene issues before
+#   code review.
+# - Keep local checks aligned with the repository's CI quality gates where
+#   practical.
+#
+# Maintainer Notes
+# - Keep hook revisions compatible with the Python versions supported by
+#   `pyproject.toml`.
+# - Keep the development virtual environment active for local system hooks,
+#   as documented in `CONTRIBUTING.md`.
+# - Keep branch and commit-message hooks aligned with the GitFlow rules
+#   documented in `.github/BRANCH-PROTECTION.md`.
+# - Prefer targeted hook exclusions over broad disables when generated or
+#   nonstandard files need special handling.
+#
+# References
+# - Pre-commit documentation:
+#   https://pre-commit.com
+# - Pre-commit supported hooks reference:
+#   https://pre-commit.com/hooks.html
+# - Pre-commit plugin reference:
+#   https://pre-commit.com/index.html#plugins
+
+---
+# Install the default commit, commit-message, and push hook types.
+default_install_hook_types:
+  - commit-msg
+  - pre-commit
+  - pre-push
+
+default_language_version:
+  python: python3
+
+default_stages:
+  - pre-commit
+
+# Some configs are only available after v4.0.0.
+minimum_pre_commit_version: '4.0.0'
+
+# Check for issues or automatically fix issues.
+repos:
+
+  ### Pre-commit ###
+
+  # Internal meta checks
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+
+  ### Git ###
+
+  # Conventional commits / branch naming
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.18.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  ### Git, Polyglot ###
+
+  # General hygiene checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      # - id: check-executables-have-shebangs
+      #   exclude_types: [batch]
+      # - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      # - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      # - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+      - id: destroyed-symlinks
+      - id: detect-aws-credentials
+      - id: detect-private-key
+      - id: double-quote-string-fixer
+      - id: end-of-file-fixer
+      # - id: file-contents-sorter
+      - id: fix-byte-order-marker
+      # - id: forbid-new-submodules
+      - id: mixed-line-ending
+      - id: name-tests-test
+        args: [--pytest-test-first]
+        files: ^tests/(unit|integration|e2e|meta)/.*\.py$
+      - id: no-commit-to-branch
+        args: [--branch, develop, --branch, main]
+      # - id: pretty-format-json
+      #   args: [--autofix, --no-sort-keys]
+      # - id: requirements-txt-fixer
+      # - id: sort-simple-yaml
+      - id: trailing-whitespace
+
+  ### Markdown ###
+
+  # Markdown: Table of Contents updates
+  - repo: https://github.com/frnmst/md-toc
+    rev: 9.0.0
+    hooks:
+      - id: md-toc
+
+  ### Python ###
+
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v4.0.0
+    hooks:
+      - id: add-trailing-comma
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+        args: [--py313-plus]
+
+  # - repo: https://github.com/asottile/reorder_python_imports
+  #   rev: v3.16.0
+  #   hooks:
+  #     - id: reorder-python-imports
+  #       args: [--py3-plus]
+  # - repo: https://github.com/asottile/setup-cfg-fmt
+  #   rev: v2.8.0
+  #   hooks:
+  #     - id: setup-cfg-fmt
+
+  # Python: authoritative linting, import ordering, and pyupgrade-style rules
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.7
+    hooks:
+      # Run the linter
+      - id: ruff-check
+        # Ruff will:
+        # - enforce E/F/W/B/I/UP as configured in pyproject.toml
+        # - sort imports (isort-like)
+        # - apply pyupgrade-like rules for the configured Python target
+        args: [--fix, --exit-non-zero-on-fix]
+
+      # Run the formatter.
+      # - id: ruff-format
+
+  # Python: compatibility formatting; align with pyproject.toml.
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.2
+    hooks:
+      - id: autopep8
+        args:
+          - --in-place
+          - --max-line-length=88
+
+  # Python: type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.3.1
+    hooks:
+      - id: mypy
+        stages: [manual]
+        args:
+          - --cache-dir=.mypy_cache/pre-commit
+          - --ignore-missing-imports
+          - --install-types
+          - --non-interactive
+
+  ### Local Project Gates ###
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: python -m ruff check
+        language: python
+        additional_dependencies: ['ruff>=0.16,<0.17']
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: Ruff format check
+        entry: python -m ruff format --check
+        language: python
+        additional_dependencies: ['ruff>=0.16,<0.17']
+        types_or: [python, pyi]
+      - id: popo-self-check
+        name: Run popo repository checks
+        entry: make self-check
+        language: system
+        pass_filenames: false
+        always_run: true

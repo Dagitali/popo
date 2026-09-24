@@ -1,0 +1,54 @@
+# release.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub configuration for automatically generated release notes.
+#
+# Responsibilities
+# - Group merged pull requests into consistent release-note categories.
+# - Exclude changes that should not appear in user-facing notes.
+#
+# Maintainer Notes
+# - GitHub applies exclusions before categories.
+# - Categories are evaluated in order; unmatched changes appear under
+#   "Other Changes" through the catch-all category.
+# - Keep labels synchronized with issue forms and pull-request conventions.
+#
+# References
+# - GitHub automatically generated release notes:
+#   https://docs.github.com/en/repositories/releasing-projects-on-github/
+#   automatically-generated-release-notes
+
+---
+changelog:
+  exclude:
+    labels:
+      - internal
+      - skip-release-notes
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking
+        - breaking-change
+    - title: Features
+      labels:
+        - enhancement
+        - feature
+    - title: Fixes
+      labels:
+        - bug
+        - bugfix
+        - fix
+    - title: Documentation
+      labels:
+        - docs
+        - documentation
+    - title: Maintenance
+      labels:
+        - chore
+        - ci
+        - dependencies
+    - title: Other Changes
+      labels:
+        - "*"

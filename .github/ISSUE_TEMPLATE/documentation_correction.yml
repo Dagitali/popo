@@ -1,0 +1,79 @@
+# documentation_correction.yml
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub issue form for proposing public-documentation corrections.
+#
+# Responsibilities
+# - Gather the location, concern, and supporting evidence needed to review a
+#   public documentation issue.
+#
+# Maintainer Notes
+# - Keep this form focused on actionable accuracy, evidence, and accessibility
+#   corrections rather than general support or feature requests.
+#
+# References
+# - GitHub issue forms syntax:
+#   https://docs.github.com/en/repositories/
+#   managing-your-repositorys-settings-and-features/
+#   customizing-your-repository/syntax-for-issue-forms
+
+---
+name: Documentation Correction
+description: Report unclear, outdated, unsupported, or inaccessible documentation.
+title: "docs: "
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Identify a public documentation problem without including credentials,
+        private data, confidential evidence, or vulnerability details.
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      description: Provide the public URL, repository path, heading, or line reference.
+      placeholder: README.md#configuration
+    validations:
+      required: true
+  - type: textarea
+    id: concern
+    attributes:
+      label: Concern
+      description: Identify the unclear, outdated, unsupported, or inaccessible content.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction and evidence
+      description: >-
+        Suggest corrected wording and link public implementation, test, release,
+        or primary-source evidence when available.
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Primary impact
+      options:
+        - Accuracy or completeness
+        - Accessibility or clarity
+        - Compatibility or migration
+        - Security or privacy guidance
+        - Stale link or reference
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I removed credentials, private data, and confidential evidence.
+          required: true
+        - label: This report does not disclose a suspected vulnerability.
+          required: true
