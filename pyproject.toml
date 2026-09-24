@@ -122,6 +122,8 @@ addopts = [
   "--strict-markers",
 ]
 testpaths = ["tests/unit", "tests/integration"]
+# Source tests do not depend on an editable-install .pth file being processed.
+pythonpath = ["src"]
 # Distribution tests build artifacts and may install dependencies from the network.
 # Select tests/meta and tests/e2e explicitly; support contains only shared fixtures.
 norecursedirs = ["support"]
