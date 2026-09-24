@@ -13,11 +13,13 @@ Maintainer Notes
 
 # Contributing Guidelines
 
-Contributions to code, tests, documentation, and repository automation are welcome. Contributions
-are distributed under the project's [MIT License].
+Contributions to source code, tests, documentation, and repository automation are welcome through
+GitHub issues and pull requests. By submitting a contribution, you agree that it may be distributed
+under this project's [MIT License].
 
 - [Ways to Contribute](#ways-to-contribute)
 - [Development Workflow](#development-workflow)
+- [Protected Branches and PR Routing](#protected-branches-and-pr-routing)
 - [Development Setup](#development-setup)
 - [Public API and Type Checking](#public-api-and-type-checking)
 - [Local Quality Gates](#local-quality-gates)
@@ -29,26 +31,42 @@ are distributed under the project's [MIT License].
 
 ## Ways to Contribute
 
-Useful contributions include reproducible bug reports, focused feature proposals, compatibility
-tests, documentation corrections, and packaging or automation improvements. Discuss substantial
-changes before implementing them. Include version and environment details in bug reports. Do not
-include credentials, private repository data, or vulnerability details in public issues.
+Useful contributions include:
+
+- reproducible bug reports with version and environment details;
+- focused feature proposals that explain the underlying need;
+- tests for public behavior and compatibility contracts;
+- documentation corrections, examples, and accessibility improvements; and
+- code, packaging, security, or automation improvements.
+
+Discuss substantial changes in an issue before investing in an implementation. Use the public
+[issue forms] for bugs, feature requests, and documentation corrections. Do not include credentials,
+private data, or vulnerability details in public issues.
 
 ## Development Workflow
 
 1. Create a focused topic branch from the appropriate integration branch.
 2. Install development dependencies and optionally install hooks with `make hooks`.
-3. Implement one cohesive change with relevant tests and documentation.
-4. Run `make check` and address failures rather than weakening validation.
+3. Implement one cohesive change, including tests and documentation when applicable.
+4. Run `make check` and address failures rather than weakening the checks.
 5. Update the [changelog] for user-visible behavior.
-6. Open a pull request using the [pull request template].
+6. Push the branch and open a pull request using the [pull request template].
 7. Merge through GitHub after the configured checks and reviews pass.
 
-Versions come from Git tags through `setuptools-scm`; do not introduce another version source.
-Review the [release policy] for packaging or release changes. Popo's routing is configurable: the
-[branch-protection guide] describes optional policies, not proof of active hosted settings. Local
-merge or branch-finishing commands are not substitutes for hosted review. Do not assume GitFlow
-branch names are enforced when no routing policy has been configured.
+Package versions are derived from Git tags by `setuptools-scm`; do not add or hand-edit a second
+version source. See the [release policy] and [release archive] for release-affecting changes.
+
+## Protected Branches and PR Routing
+
+Popo's routing is configurable rather than tied to GitFlow. With `PR_TARGET_RULES` unset, the PR
+gate imposes no target-branch restrictions. Follow the configured branch roles and required checks
+described in the [branch-protection guide]; that guide is a proposed baseline, not proof that hosted
+protections are active.
+
+Do not treat local merge or branch-finishing commands, including `git flow ... finish`, as the
+authoritative integration step: they bypass the pull-request review surface. Synchronize maintained
+branches through reviewed pull requests. Do not assume `develop`, fixed source-branch prefixes, or a
+support-branch strategy are required when no such policy has been configured.
 
 ## Development Setup
 
@@ -84,13 +102,18 @@ shell and Make, such as Git Bash.
 Keep reusable checks independent of any one consumer's repository layout, programming language, or
 cloud platform. Review commands, flags, configuration, diagnostics, and exit codes when changing
 public behavior. Add regression tests for compatibility and error handling, and retain read-only
-operation. Keep type annotations explicit and validate them with `make typecheck`.
+operation. Names exported through the package root's `__all__` form its intentional package-level
+public API; do not treat internal checker modules as a promised consumer API.
 
-The package ships `py.typed` and uses strict mypy checking. Use syntax supported by the minimum
-Python version in `pyproject.toml`, prefer precise types over `Any`, and retain runtime validation
-for rules that static types cannot enforce. Keep package-level exports in `__all__` intentional; do
-not treat internal checker modules as a promised consumer API. Include migration guidance for
-intentional breaking changes.
+The package ships a `py.typed` marker and runs mypy in strict mode. When contributing Python code:
+
+- Use syntax supported by the minimum Python version declared in `pyproject.toml`;
+- Prefer precise boundary types over `Any` and explain unavoidable dynamic boundaries;
+- Keep runtime validation for configuration rules that type checking cannot enforce;
+- Avoid importing internal modules in examples when the public CLI is sufficient; and
+- Add contract tests when changing public commands or configuration.
+
+Run `make typecheck` locally and include migration guidance for intentional breaking changes.
 
 <a id="local-checks-and-hooks"></a>
 
@@ -168,9 +191,14 @@ creates a release.
 
 ## Documentation
 
+Keep prose concise, use descriptive link text, and wrap code, file names, commands, and identifiers
+in backticks. Update nearby examples and cross-references when behavior or public interfaces change.
+Prefer repository-relative links for local documents and authoritative primary sources for external
+technical references.
+
 Document public behavior and decision-relevant constraints rather than restating implementation line
-by line. Use descriptive link text, repository-relative links for local documents, and backticks for
-commands, paths, and identifiers. Keep headings and table-of-contents entries synchronized.
+by line. Keep headings in title case, preserve the official capitalization of tools and products,
+and keep table-of-contents labels synchronized with their headings.
 
 Update public usage, configuration, tests, and release notes when their source of truth changes.
 Keep documentation language- and platform-neutral where the behavior is reusable. Use reference
@@ -230,12 +258,12 @@ python -m pytest --cov=popo --cov-branch --cov-report=term-missing
 The [SBOM workflow] and [security workflow] define supplementary inventory generation and manual
 dependency auditing. They require network access and do not publish releases.
 
-PR routing is configurable rather than tied to GitFlow. See the [branch-protection guide].
 For tagged artifact validation, optional GitHub publication,
 and manual disposable installations, see the [release policy]. No PyPI publishing
 or cloud deployment is configured.
 
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
+[issue forms]: .github/ISSUE_TEMPLATE/
 [release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
 [pull request template]: .github/pull_request_template.md
