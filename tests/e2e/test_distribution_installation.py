@@ -72,7 +72,11 @@ def installation_fixture(
         ([str(python), '-m', 'pip', 'check'], 60),
     ):
         subprocess.run(
-            command, cwd=directory, env=environment, check=True, timeout=timeout
+            command,
+            cwd=directory,
+            env=environment,
+            check=True,
+            timeout=timeout,
         )
     return Installation(
         python,
