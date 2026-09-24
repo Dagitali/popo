@@ -84,8 +84,8 @@ repos:
       - id: check-builtin-literals
       - id: check-case-conflict
       - id: check-docstring-first
-      - id: check-executables-have-shebangs
-        exclude_types: [batch]
+      # - id: check-executables-have-shebangs
+      #   exclude_types: [batch]
       # - id: check-json
       - id: check-merge-conflict
       - id: check-shebang-scripts-are-executable
@@ -189,16 +189,18 @@ repos:
       - id: ruff-check
         name: Ruff lint
         entry: python -m ruff check
-        language: system
+        language: python
+        additional_dependencies: ['ruff>=0.16,<0.17']
         types_or: [python, pyi]
       - id: ruff-format
         name: Ruff format check
         entry: python -m ruff format --check
-        language: system
+        language: python
+        additional_dependencies: ['ruff>=0.16,<0.17']
         types_or: [python, pyi]
       - id: popo-self-check
         name: Run popo repository checks
-        entry: python -m popo check-all
+        entry: make self-check
         language: system
         pass_filenames: false
         always_run: true

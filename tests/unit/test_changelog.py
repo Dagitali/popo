@@ -31,7 +31,11 @@ class TestChangelog:
     )
     @pytest.mark.parametrize('release', ['1.2.3', 'v1.2.3'])
     def test_dated_release(
-        self, write_file: FileWriter, content: str, expected: list[str], release: str
+        self,
+        write_file: FileWriter,
+        content: str,
+        expected: list[str],
+        release: str,
     ) -> None:
         assert validate(write_file('CHANGELOG.md', content), release) == expected
 

@@ -94,7 +94,8 @@ class TestDependencyPolicy:
         message: str | None,
     ) -> None:
         metadata = write_file(
-            'pyproject.toml', f'[project]\ndependencies = [{dependencies}]'
+            'pyproject.toml',
+            f'[project]\ndependencies = [{dependencies}]',
         )
         requirements = write_file('requirements.txt', constraints)
         failures = validate(DependencyConfig(metadata, requirements, mode))
@@ -113,7 +114,10 @@ class TestDependencyPolicy:
         ],
     )
     def test_malformed_metadata(
-        self, write_file: FileWriter, content: str, message: str
+        self,
+        write_file: FileWriter,
+        content: str,
+        message: str,
     ) -> None:
         config = DependencyConfig(
             write_file('pyproject.toml', content),

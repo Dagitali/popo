@@ -80,7 +80,10 @@ class TestPythonPolicy:
         ['metadata', 'ruff_config', 'python_version_file', 'workflow_directory'],
     )
     def test_missing_inputs(
-        self, policy: PythonPolicyConfig, tmp_path: Path, field: str
+        self,
+        policy: PythonPolicyConfig,
+        tmp_path: Path,
+        field: str,
     ) -> None:
         config = replace(policy, **{field: tmp_path / 'missing'})
         assert any(
@@ -124,7 +127,7 @@ class TestPythonPolicy:
             f'uses: actions/setup-python@{'a' * 40}\n{declaration}',
         )
         assert validate(policy, running_version='3.13') == [
-            f'{path}: setup-python requires an explicit version'
+            f'{path}: setup-python requires an explicit version',
         ]
 
     @pytest.mark.parametrize(
@@ -171,5 +174,5 @@ class TestPythonPolicy:
     ) -> None:
         path = write_file('.github/workflows/ci.yml', f'python-version: "{version}"\n')
         assert validate(policy, running_version='3.13') == [
-            f'{path}: unsupported Python version {version!r}'
+            f'{path}: unsupported Python version {version!r}',
         ]

@@ -25,7 +25,11 @@ class TestMarkdownLinks:
         ],
     )
     def test_broken_links(
-        self, tmp_path: Path, write_file: FileWriter, link: str, message: str
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        link: str,
+        message: str,
     ) -> None:
         readme = write_file('README.md', f'[Missing]({link})\n')
         assert validate(tmp_path) == [f'{readme}:1: {message}: {link}']
@@ -39,7 +43,7 @@ class TestMarkdownLinks:
             write_file(f'{directory}/README.md', '[Missing](missing.md)\n')
         path = tmp_path / '.github/README.md'
         assert validate(tmp_path) == [
-            f'{path}:1: local target does not exist: missing.md'
+            f'{path}:1: local target does not exist: missing.md',
         ]
 
     @pytest.mark.parametrize(
