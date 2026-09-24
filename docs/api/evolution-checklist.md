@@ -23,6 +23,7 @@ codes, and intentional package-root exports. Even a stricter check can break a c
 
 ## Establish the Contract
 
+- Use the [change-impact map] to identify source, test, and documentation owners before editing.
 - Identify the demonstrated consumer need or correctness defect.
 - Classify the change as additive, behavior-changing, deprecating, or breaking; review the [release
   policy] and state any required migration without inventing compatibility guarantees.
@@ -61,4 +62,5 @@ weaken tests merely to preserve a passing result after changing the intended con
 [release policy]: ../../RELEASE-POLICY.md
 [configuration reference]: ../CONFIGURATION.md
 [testing guide]: ../TESTING.md
+[change-impact map]: ../architecture/change-impact-map.md
 [release playbook]: ../playbooks/release.md
