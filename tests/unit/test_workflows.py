@@ -53,6 +53,23 @@ def workflow_fixture(
 class TestWorkflows:
     """Verify workflows contracts."""
 
+    def test_dependabot_preserves_minimum_dependency_fixture(
+        self,
+        repository_root: Path,
+    ) -> None:
+        """Keep minimum-version fixtures out of routine dependency upgrades."""
+
+        path = repository_root / '.github' / 'dependabot.yml'
+        document = yaml.safe_load(path.read_text(encoding='utf-8'))
+        pip_updates = [
+            update
+            for update in document['updates']
+            if update['package-ecosystem'] == 'pip'
+        ]
+        assert len(pip_updates) == 1
+        assert pip_updates[0]['directory'] == '/'
+        assert pip_updates[0]['exclude-paths'] == ['requirements/lowest.txt']
+
     def test_disposable_installation_is_manual_and_read_only(
         self,
         workflow: WorkflowLoader,
