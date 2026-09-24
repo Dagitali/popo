@@ -42,7 +42,7 @@ current source, tests, workflows, and maintained guides establish present behavi
 | Choose tests and quality gates | [Testing guide] |
 | Prepare a release | [Release playbook] and [release policy] |
 | Inspect versioned changes | [Changelog] and [release archive] |
-| Work with an automated agent | [Agent instructions] |
+| Work with an automated agent | [Agent instructions], [agent workflow], and [task templates] |
 | Diagnose CI or release failures | [Incident response] |
 
 ## Validate Documentation
@@ -103,7 +103,9 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Architecture notes]: architecture/README.md
 [Change-impact map]: architecture/change-impact-map.md
 [Development documentation]: development/README.md
+[agent workflow]: development/agent-workflow.md
 [Developer onboarding]: development/onboarding.md
+[task templates]: development/task-templates.md
 [Playbooks]: playbooks/README.md
 [Release playbook]: playbooks/release.md
 [release archive]: releases/README.md
