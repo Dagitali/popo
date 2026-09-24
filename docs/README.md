@@ -44,6 +44,7 @@ current source, tests, workflows, and maintained guides establish present behavi
 | Inspect versioned changes | [Changelog] and [release archive] |
 | Work with an automated agent | [Agent instructions], [agent workflow], and [task templates] |
 | Diagnose CI or release failures | [Incident response] |
+| Coordinate required-check changes | [Update required checks] |
 
 ## Validate Documentation
 
@@ -66,6 +67,7 @@ maintained documentation format; do not copy generated output from another proje
 - [Testing guide]: Selecting deterministic checks and opt-in artifact validation.
 - [Developer onboarding]: First local session, source orientation, and safe consumer checks.
 - [Incident response]: Triage and recovery for policy, environment, artifact, and release failures.
+- [Update required checks]: Safe transitions and verification of hosted check requirements.
 - [Release playbook]: Candidate preparation, validation, authorized publication, and closeout.
 - [Release archive]: Detailed records for versioned changes.
 
@@ -111,5 +113,6 @@ Use reference links sorted by destination and keep file headers and tables of co
 [release archive]: releases/README.md
 [Runbooks]: runbooks/README.md
 [Incident response]: runbooks/incident-response.md
+[Update required checks]: runbooks/update-required-checks.md
 [Tutorials]: tutorials/README.md
 [First repository tutorial]: tutorials/check-first-repository.md
