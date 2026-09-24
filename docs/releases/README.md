@@ -26,6 +26,7 @@ publication safeguards.
 
 ## 0.1 Series
 
+- [v0.1.1] (planned): Align the `packaging` minimum at 26.3 and prevent independent fixture upgrades.
 - [v0.1.0] — 2026-09-24: Initial repository-policy CLI and validation workflows.
 
 ## Initial Scaffold
@@ -48,11 +49,12 @@ The current CD workflow generates GitHub Release notes; it does not automaticall
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog records `0.1.0` under its dated release section. Changes after `0.1.0` belong in
-`Unreleased` until the next release is prepared.
+The changelog includes a dated `0.1.1` candidate section. Changes outside that candidate belong in
+`Unreleased`; the candidate date does not establish publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
 [release policy]: ../../RELEASE-POLICY.md
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
+[v0.1.1]: v0.1.1.md
