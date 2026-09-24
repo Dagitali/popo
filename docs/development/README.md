@@ -17,6 +17,8 @@ Use this directory for contributor explanations beyond the root [contributing gu
 instructions]. Start with onboarding, then choose the guide for the area being changed.
 
 - [Developer onboarding]: First local session, repository orientation, and safe CLI use.
+- [Agent workflow]: Evidence-backed handoff from design discussion to repository execution.
+- [Task templates]: Bounded implementation, review, documentation, automation, and diagnosis briefs.
 - [Interface evolution]: Review changes to commands, configuration, and compatibility.
 - [Testing guide]: Focused checks, dependency boundaries, and artifact validation.
 - [Documentation synchronization]: Sources of truth and maintained documentation to review.
@@ -33,4 +35,6 @@ tests deterministic and preserve unrelated working-tree changes.
 [Testing guide]: ../TESTING.md
 [Interface evolution]: ../api/evolution-checklist.md
 [Release playbook]: ../playbooks/release.md
+[Agent workflow]: agent-workflow.md
 [Developer onboarding]: onboarding.md
+[Task templates]: task-templates.md
