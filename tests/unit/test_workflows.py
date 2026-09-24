@@ -176,7 +176,8 @@ class TestWorkflows:
         reason='Tag gate requires Bash and Git',
     )
     @pytest.mark.parametrize(
-        'case', ['valid', 'lightweight', 'missing', 'invalid', 'off-branch']
+        'case',
+        ['valid', 'lightweight', 'missing', 'invalid', 'off-branch'],
     )
     def test_release_tag_gate(
         self,

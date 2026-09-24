@@ -28,7 +28,10 @@ class TestActions:
         ids=['lowercase-sha', 'uppercase-sha', 'local-action', 'container'],
     )
     def test_accepts_pinned_or_local_references(
-        self, tmp_path: Path, write_file: FileWriter, reference: str
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        reference: str,
     ) -> None:
         write_file('.github/ci.yaml', f'uses: {reference}\n')
         assert validate(tmp_path / '.github') == []
@@ -46,23 +49,29 @@ class TestActions:
         )
         assert validate(tmp_path) == [
             f'{action}:5: remote action must use a full '
-            '40-character commit SHA: owner/action@v1'
+            '40-character commit SHA: owner/action@v1',
         ]
 
     @pytest.mark.parametrize(
-        'reference', ['owner/action', 'owner/action@main', 'owner/action@abc123']
+        'reference',
+        ['owner/action', 'owner/action@main', 'owner/action@abc123'],
     )
     def test_rejects_missing_or_short_revision(
-        self, tmp_path: Path, write_file: FileWriter, reference: str
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        reference: str,
     ) -> None:
         action = write_file('action.yml', f'uses: {reference}\n')
         assert validate(tmp_path) == [
             f'{action}:1: remote action must use a full '
-            f'40-character commit SHA: {reference}'
+            f'40-character commit SHA: {reference}',
         ]
 
     def test_rejects_mutable_remote_action(
-        self, tmp_path: Path, write_file: FileWriter
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
     ) -> None:
         workflow = write_file(
             '.github/workflows/ci.yml',
@@ -74,9 +83,12 @@ class TestActions:
             '40-character commit SHA: actions/checkout@v4',
         ]
 
-    def test_reports_missing_automation_directory(self, tmp_path: Path) -> None:
+    def test_reports_missing_automation_directory(
+        self,
+        tmp_path: Path,
+    ) -> None:
         assert validate(tmp_path / 'missing') == [
-            f'automation directory does not exist: {tmp_path / 'missing'}'
+            f'automation directory does not exist: {tmp_path / 'missing'}',
         ]
 
 

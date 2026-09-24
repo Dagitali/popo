@@ -119,7 +119,10 @@ class TestMakefile:
         [('fmt', 'format'), ('build', 'dist'), ('check-pre-push', 'check')],
     )
     def test_aliases_preserve_commands(
-        self, make: Make, alias: str, target: str
+        self,
+        make: Make,
+        alias: str,
+        target: str,
     ) -> None:
         aliased = make('-n', alias)
         direct = make('-n', target)
@@ -203,10 +206,16 @@ class TestMakefile:
         ],
     )
     def test_policy_targets_use_overridable_commands(
-        self, make: Make, target: str, command: str
+        self,
+        make: Make,
+        target: str,
+        command: str,
     ) -> None:
         result = make(
-            '-n', target, 'PYTHON=custom-python', 'PROJECT_TOOLS_MODULE=tooling'
+            '-n',
+            target,
+            'PYTHON=custom-python',
+            'PROJECT_TOOLS_MODULE=tooling',
         )
         assert result.returncode == 0, result.stderr
         assert f'custom-python -m tooling {command}' in result.stdout
@@ -246,7 +255,8 @@ class TestMakefile:
         assert 'must-not-install' not in result.stdout
 
     def test_standalone_distribution_tests_keep_temporary_builds(
-        self, make: Make
+        self,
+        make: Make,
     ) -> None:
         result = make('-n', 'test-distribution', 'test-installation', 'TEST_ARGS=-x')
         assert result.returncode == 0, result.stderr
@@ -258,7 +268,9 @@ class TestMakefile:
         assert ' -m build' not in result.stdout
 
     def test_unsupported_bootstrap_is_rejected_before_creation(
-        self, make: Make, tmp_path: Path
+        self,
+        make: Make,
+        tmp_path: Path,
     ) -> None:
         environment = tmp_path / 'not-created'
         result = make(
