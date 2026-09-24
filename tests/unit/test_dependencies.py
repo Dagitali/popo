@@ -22,17 +22,29 @@ class TestDependencyPolicy:
         ('dependencies', 'constraints', 'mode', 'message'),
         [
             (
-                '"packaging>=25.0,<27"',
-                '# pins\n\npackaging==25.0',
+                '"demo>=2,<4"',
+                '# pins\n\ndemo==2',
                 'minimum-constraints',
                 None,
             ),
-            ('"packaging==25.0"', 'packaging==25.0', 'exact', None),
             (
-                '"packaging==25.0"',
-                'packaging==25.1',
+                '"demo>=2,<4"',
+                'demo==1',
+                'minimum-constraints',
+                "expected {'demo': '2'}; received {'demo': '1'}",
+            ),
+            (
+                '"demo>=2,<4"',
+                'demo==3',
+                'minimum-constraints',
+                "expected {'demo': '2'}; received {'demo': '3'}",
+            ),
+            ('"demo==2"', 'demo==2', 'exact', None),
+            (
+                '"demo==2"',
+                'demo==3',
                 'exact',
-                "'packaging': 'packaging==25.0'",
+                "expected {'demo': 'demo==2'}; received {'demo': 'demo==3'}",
             ),
             (
                 '"demo_pkg>=1,<2", "demo-pkg>=1,<2"',
