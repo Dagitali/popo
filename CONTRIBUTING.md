@@ -19,15 +19,16 @@ under this project's [MIT License].
 
 - [Ways to Contribute](#ways-to-contribute)
 - [Development Workflow](#development-workflow)
+  - [Development Setup](#development-setup)
 - [Protected Branches and PR Routing](#protected-branches-and-pr-routing)
-- [Development Setup](#development-setup)
 - [Public API and Type Checking](#public-api-and-type-checking)
 - [Local Quality Gates](#local-quality-gates)
+  - [GitHub Automation](#github-automation)
 - [Testing](#testing)
-- [Distribution Validation](#distribution-validation)
+  - [Distribution Validation](#distribution-validation)
 - [Documentation](#documentation)
   - [Documentation Synchronization](#documentation-synchronization)
-- [GitHub Automation](#github-automation)
+- [Community Standards](#community-standards)
 
 ## Ways to Contribute
 
@@ -39,9 +40,7 @@ Useful contributions include:
 - documentation corrections, examples, and accessibility improvements; and
 - code, packaging, security, or automation improvements.
 
-Discuss substantial changes in an issue before investing in an implementation. Use the public
-[issue forms] for bugs, feature requests, and documentation corrections. Do not include credentials,
-private data, or vulnerability details in public issues.
+Discuss substantial changes in an issue before investing in an implementation.
 
 ## Development Workflow
 
@@ -56,19 +55,7 @@ private data, or vulnerability details in public issues.
 Package versions are derived from Git tags by `setuptools-scm`; do not add or hand-edit a second
 version source. See the [release policy] and [release archive] for release-affecting changes.
 
-## Protected Branches and PR Routing
-
-Popo's routing is configurable rather than tied to GitFlow. With `PR_TARGET_RULES` unset, the PR
-gate imposes no target-branch restrictions. Follow the configured branch roles and required checks
-described in the [branch-protection guide]; that guide is a proposed baseline, not proof that hosted
-protections are active.
-
-Do not treat local merge or branch-finishing commands, including `git flow ... finish`, as the
-authoritative integration step: they bypass the pull-request review surface. Synchronize maintained
-branches through reviewed pull requests. Do not assume `develop`, fixed source-branch prefixes, or a
-support-branch strategy are required when no such policy has been configured.
-
-## Development Setup
+### Development Setup
 
 Create and activate a virtual environment with Python 3.13 or 3.14, then install the project in
 editable mode:
@@ -96,6 +83,18 @@ activation or `PYTHONPATH` overrides. Pytest includes `src` on its import path, 
 this checkout's `src` to `PYTHONPATH`. Distribution installation tests remove that override before
 testing installed packages outside the checkout. The Windows Make targets require a POSIX-compatible
 shell and Make, such as Git Bash.
+
+## Protected Branches and PR Routing
+
+Popo's routing is configurable rather than tied to GitFlow. With `PR_TARGET_RULES` unset, the PR
+gate imposes no target-branch restrictions. Follow the configured branch roles and required checks
+described in the [branch-protection guide]; that guide is a proposed baseline, not proof that hosted
+protections are active.
+
+Do not treat local merge or branch-finishing commands, including `git flow ... finish`, as the
+authoritative integration step: they bypass the pull-request review surface. Synchronize maintained
+branches through reviewed pull requests. Do not assume `develop`, fixed source-branch prefixes, or a
+support-branch strategy are required when no such policy has been configured.
 
 ## Public API and Type Checking
 
@@ -145,6 +144,30 @@ Python environment and retain filename-based checks. Their dependency range matc
 extra in `pyproject.toml`. The first hook run downloads the upstream hook environment. Run all hooks
 manually with `python -m pre_commit run --all-files`.
 
+### GitHub Automation
+
+The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
+optional publication. CI uses the [Python setup action] and validates dependency integrity before
+checks. Workflow changes should pass `actionlint` as well as `make check`.
+
+CI additionally tests lowest/newest runtime dependency boundaries on Python 3.13 and 3.14, reports
+branch coverage, and tests both distributions on macOS and Windows. To exercise dependency
+boundaries locally, use separate disposable virtual environments: install `-e '.[dev]'` with
+`--constraint requirements/lowest.txt` for lowest, or `--upgrade --upgrade-strategy eager` for
+newest, then run `python -m pip check` and `python -m pytest`. Report package line and branch
+coverage with:
+
+```console
+python -m pytest --cov=popo --cov-branch --cov-report=term-missing
+```
+
+The [SBOM workflow] and [security workflow] define supplementary inventory generation and manual
+dependency auditing. They require network access and do not publish releases.
+
+For tagged artifact validation, optional GitHub publication,
+and manual disposable installations, see the [release policy]. No PyPI publishing
+or cloud deployment is configured.
+
 ## Testing
 
 Add tests for observable behavior and validation failures. Prefer public CLI behavior and stable
@@ -158,7 +181,7 @@ clean installations. Shared artifact fixtures live in `support/`. Default discov
 unit and integration tests. Use `make test-unit` or `make test-integration` for a focused layer;
 root conftest assigns matching pytest markers.
 
-## Distribution Validation
+### Distribution Validation
 
 - `make dist` builds a wheel and source distribution and runs `twine check`.
 - `make test-distribution` builds fresh temporary artifacts and checks their contents.
@@ -238,29 +261,10 @@ behavior merely to make prose accurate. Report conflicting evidence and request 
 when resolving it requires implementation or external operations. Workflow files describe intended
 automation; they do not prove hosted protections or environments are configured.
 
-## GitHub Automation
+## Community Standards
 
-The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
-optional publication. CI uses the [Python setup action] and validates dependency integrity before
-checks. Workflow changes should pass `actionlint` as well as `make check`.
-
-CI additionally tests lowest/newest runtime dependency boundaries on Python 3.13 and 3.14, reports
-branch coverage, and tests both distributions on macOS and Windows. To exercise dependency
-boundaries locally, use separate disposable virtual environments: install `-e '.[dev]'` with
-`--constraint requirements/lowest.txt` for lowest, or `--upgrade --upgrade-strategy eager` for
-newest, then run `python -m pip check` and `python -m pytest`. Report package line and branch
-coverage with:
-
-```console
-python -m pytest --cov=popo --cov-branch --cov-report=term-missing
-```
-
-The [SBOM workflow] and [security workflow] define supplementary inventory generation and manual
-dependency auditing. They require network access and do not publish releases.
-
-For tagged artifact validation, optional GitHub publication,
-and manual disposable installations, see the [release policy]. No PyPI publishing
-or cloud deployment is configured.
+Use the public [issue forms] for bugs, feature requests, and documentation corrections. Do not
+include credentials, private data, or vulnerability details in public issues.
 
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
 [issue forms]: .github/ISSUE_TEMPLATE/
