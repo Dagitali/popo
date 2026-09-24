@@ -13,8 +13,17 @@ Maintainer Notes
 
 # Tests Overview
 
-Tests are organized by scope, following the same layer names as the reference project. The root
-conftest assigns markers from each test's directory.
+Tests are organized by scope rather than by feature. The root `conftest.py` assigns the matching
+pytest marker from each test module's top-level directory.
+
+- [Current Layout](#current-layout)
+- [Discovery and Selection](#discovery-and-selection)
+- [Dependency Prerequisites](#dependency-prerequisites)
+- [Shared Fixtures](#shared-fixtures)
+- [Suite Design](#suite-design)
+- [Common Commands](#common-commands)
+
+## Current Layout
 
 | Marker | Path | Purpose |
 | --- | --- | --- |
@@ -29,19 +38,16 @@ conftest assigns markers from each test's directory.
 `make test` and plain pytest collect unit and integration tests only. Artifact tests remain opt-in
 because building and installing distributions may access package indexes.
 
-```console
-make test-unit
-make test-integration
-make test-distribution
-make test-installation
-make test-full
-python -m pytest -m integration
-python -m pytest tests/meta tests/e2e --artifact-dir dist
-```
-
 Selecting `tests/` explicitly collects all test layers. Marker filters operate only on the selected
 paths; use `python -m pytest tests/meta -m meta` for the artifact layer. No CDK synthesis,
 deployment, or cloud credentials are involved.
+
+## Dependency Prerequisites
+
+Install the project and development tools with `make dev PY=python3.13` (or `PY=python3.14`), or
+install `-e '.[dev]'` in an active supported Python environment. Default tests do not require cloud
+credentials or package-index access. Artifact tests may download build and installation
+dependencies; see the [contributing guide] for isolated environments and dependency boundaries.
 
 ## Shared Fixtures
 
@@ -65,11 +71,25 @@ fixtures exclude inherited tool configuration where it can change the result.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
-point for each artifact. Run coverage with `python -m pytest --cov=popo --cov-branch
---cov-report=term-missing` after installing development dependencies. Coverage is diagnostic; no
-reduced threshold masks regressions.
+point for each artifact. Coverage is diagnostic; no reduced threshold masks regressions.
+
+## Common Commands
+
+After installing development dependencies:
+
+```console
+make test
+make test-unit
+make test-integration
+make test-distribution
+make test-installation
+make test-full
+python -m pytest -m integration
+python -m pytest tests/meta tests/e2e --artifact-dir dist
+python -m pytest --cov=popo --cov-branch --cov-report=term-missing
+```
 
 See the [contributing guide] for setup and dependency prerequisites.
 
-[artifact fixtures]: support/artifacts.py
 [contributing guide]: ../CONTRIBUTING.md
+[artifact fixtures]: support/artifacts.py

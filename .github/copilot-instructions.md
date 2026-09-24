@@ -18,12 +18,16 @@ Maintainer Notes
 
 # Repository Instructions
 
-Follow [AGENTS.md](../AGENTS.md) and [CONTRIBUTING.md](../CONTRIBUTING.md).
+Follow the [agent instructions] and [contributing guide].
 Preserve read-only checks and keep consumer policy independent of language or cloud.
 
 <!-- mermaid-ai-skills:start -->
 ## Mermaid Diagrams
 
 When the user asks to create, edit, or visualize a diagram, follow the
-[Mermaid instructions](instructions/mermaid.instructions.md).
+[Mermaid instructions].
 <!-- mermaid-ai-skills:end -->
+
+[agent instructions]: ../AGENTS.md
+[contributing guide]: ../CONTRIBUTING.md
+[Mermaid instructions]: instructions/mermaid.instructions.md
