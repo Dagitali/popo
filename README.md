@@ -1,3 +1,16 @@
+<!--
+README.md
+popo
+
+Copyright © 2026 Dagitali LLC. All rights reserved.
+
+Project overview, supported checks, setup, and documentation entry points.
+
+Maintainer Notes
+- Keep examples aligned with the CLI and configurable consumer policy.
+- Keep local links and documented behavior consistent with repository sources.
+-->
+
 # popo
 
 Your project’s rules. Enforced.
