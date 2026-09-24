@@ -20,6 +20,7 @@ root or under `.github/` so contributors and GitHub can discover its conventiona
 - [Start Here](#start-here)
 - [Validate Documentation](#validate-documentation)
 - [Guides](#guides)
+- [Topic Indexes](#topic-indexes)
 - [Related Repository Documents](#related-repository-documents)
 
 ## Document Scope
@@ -34,6 +35,7 @@ current source, tests, workflows, and maintained guides establish present behavi
 | --- | --- |
 | Install and run the CLI | [Project overview] |
 | Configure a consumer repository | [Configuration reference] |
+| Change a public interface | [Interface evolution] |
 | Set up development | [Developer onboarding] and [development setup] |
 | Choose tests and quality gates | [Testing guide] |
 | Prepare a release | [Release playbook] and [release policy] |
@@ -62,6 +64,13 @@ documentation format; do not copy generated output from another project.
 - [Release playbook]: Candidate preparation, validation, authorized publication, and closeout.
 - [Release archive]: Detailed records for versioned changes.
 
+## Topic Indexes
+
+- [API notes]: Public-interface boundaries and evolution checklist.
+- [Development documentation]: Onboarding, testing, and contributor reference links.
+- [Playbooks]: Repeatable maintainer workflows.
+- [Runbooks]: Bounded operational diagnosis and recovery.
+
 ## Related Repository Documents
 
 - [Contributing]: Workflow, tool setup, dependency updates, and review expectations.
@@ -82,7 +91,12 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Tests overview]: ../tests/README.md
 [Configuration reference]: CONFIGURATION.md
 [Testing guide]: TESTING.md
+[API notes]: api/README.md
+[Interface evolution]: api/evolution-checklist.md
+[Development documentation]: development/README.md
 [Developer onboarding]: development/onboarding.md
+[Playbooks]: playbooks/README.md
 [Release playbook]: playbooks/release.md
 [release archive]: releases/README.md
+[Runbooks]: runbooks/README.md
 [Incident response]: runbooks/incident-response.md
