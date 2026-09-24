@@ -53,6 +53,11 @@ validation. For this CLI, compatibility includes commands, flags, configuration,
 codes. Identify breaking changes and required consumer actions rather than assuming that a passing
 build establishes compatibility. Keep notes consistent with the [changelog] and tested artifacts.
 
+Maintain release-aligned records in the [release archive]. Mark untagged candidates as planned and
+record validation against the exact candidate, not another checkout. CD currently generates GitHub
+Release notes rather than reading these records automatically; review published notes for
+consistency with the maintained record.
+
 ## Opt-in GitHub Publication
 
 Publication is disabled by default. To enable it, a maintainer must:
@@ -86,3 +91,4 @@ AWS.
 [CD workflow]: .github/workflows/cd.yml
 [deployment-test.yml]: .github/workflows/deployment-test.yml
 [changelog]: CHANGELOG.md
+[release archive]: release/README.md
