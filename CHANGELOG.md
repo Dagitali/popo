@@ -19,19 +19,27 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.1.2\] - 2026-09-24](#012---2026-09-24)
 - [\[0.1.1\] - 2026-09-24](#011---2026-09-24)
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
 
+## [0.1.2] - 2026-09-24
+
+- Remove the obsolete Dependabot fixture-exclusion test that failed with `KeyError:
+  'exclude-paths'`.
+- Correct contributor and release guidance to allow Dependabot fixture updates while requiring
+  matching metadata lower bounds before merging; retain the dependency-consistency check.
+- Document release preparation and distinguish candidate validation from tagged artifact evidence.
+
 ## [0.1.1] - 2026-09-24
 
 - Raise the minimum supported `packaging` version to 26.3 and synchronize the lowest-dependency
   test pin. Versions below 26.3 are no longer supported; the upper bound remains below 27.
-- Exclude the minimum-dependency test fixture from routine Dependabot version updates so
-  automated upgrades do not move its pins independently of declared lower bounds.
-- Add regression coverage for synchronized minimums, older and newer mismatched pins, and the
-  Dependabot fixture exclusion; document how to update minimum versions together.
+- Add regression coverage for synchronized minimums, older and newer mismatched pins, and an
+  intended Dependabot fixture exclusion. The missing configuration and obsolete exclusion test are
+  addressed by 0.1.2.
 
 ## [0.1.0] - 2026-09-24
 
