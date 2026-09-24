@@ -49,7 +49,7 @@ class Installation:
 
 
 @pytest.fixture(
-    name='installation_fixture',
+    name='installation',
     scope='module',
 )
 def installation_fixture(
