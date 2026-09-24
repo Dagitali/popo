@@ -26,6 +26,7 @@ under this project's [MIT License].
   - [GitHub Automation](#github-automation)
 - [Testing](#testing)
   - [Distribution Validation](#distribution-validation)
+  - [Release Preparation](#release-preparation)
 - [Documentation](#documentation)
   - [Documentation Synchronization](#documentation-synchronization)
 - [Community Standards](#community-standards)
@@ -146,11 +147,12 @@ manually with `python -m pre_commit run --all-files`.
 
 ### GitHub Automation
 
-`requirements/lowest.txt` is a minimum-version test fixture, not a lockfile to keep current.
-Dependabot version updates exclude this file while continuing to scan package metadata. When
-intentionally raising a supported minimum, update the corresponding `pyproject.toml` lower bound and
-fixture pin together, then run `make dependency-policy` and the lowest-dependency tests. Review
-security-driven minimum changes explicitly rather than updating the fixture alone.
+Dependabot may propose updates to `requirements/lowest.txt`, the minimum-version test fixture.
+Before merging an accepted pin increase, raise the corresponding `pyproject.toml` lower bound to
+match and document the dropped support for older versions. Dependabot may not update both files
+together; complete that alignment in the same pull request. Run `make dependency-policy` and the
+lowest-dependency tests. CI must continue rejecting mismatched pins and metadata; do not weaken the
+consistency check to accept an update.
 
 The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
 optional publication. CI uses the [Python setup action] and validates dependency integrity before
@@ -217,6 +219,22 @@ python -m pytest tests/meta tests/e2e --artifact-dir dist
 Move stale artifacts out of `dist/` before building a new version. CI builds once and tests those
 same artifacts on each supported Python version. None of these commands publishes a package or
 creates a release.
+
+### Release Preparation
+
+1. Review changes since the previous tag, including pending changes intended for the candidate. Keep
+   dependency pins and metadata lower bounds synchronized; do not disable their CI check.
+2. Move candidate changes from `Unreleased` into a dated `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD`
+   changelog section, leaving `Unreleased` available for subsequent changes.
+3. Create `docs/releases/vMAJOR.MINOR.PATCH.md` from the [release notes template] and update the
+   [release archive]. Mark the record planned until the release is finalized, and identify any
+   compatibility changes and outstanding validation.
+4. Run `make release-changelog RELEASE_VERSION=vMAJOR.MINOR.PATCH`, `make docs-markdown`, and `make
+   check-release`. Use a fresh `PYTHON_DIST_DIR` if existing artifacts belong to another build.
+5. Review the final diff and record validation against the exact candidate commit. Development
+   builds do not prove the eventual tag's version or artifacts; complete hosted checks separately.
+6. Follow the [release policy] for separately authorized tagging and optional publication. Never
+   move a released tag or treat documentation preparation as authorization to publish.
 
 ## Documentation
 
