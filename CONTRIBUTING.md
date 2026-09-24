@@ -19,6 +19,7 @@ are distributed under the project's [MIT License].
 - [Ways to Contribute](#ways-to-contribute)
 - [Development Workflow](#development-workflow)
 - [Development Setup](#development-setup)
+- [Public API and Type Checking](#public-api-and-type-checking)
 - [Local Checks And Hooks](#local-checks-and-hooks)
 - [Distribution Validation](#distribution-validation)
 - [Documentation](#documentation)
@@ -72,6 +73,13 @@ this checkout's `src` to `PYTHONPATH`. Distribution installation tests remove th
 testing installed packages outside the checkout. The Windows Make targets require a POSIX-compatible
 shell and Make, such as Git Bash.
 
+## Public API and Type Checking
+
+Keep reusable checks independent of any one consumer's repository layout, programming language, or
+cloud platform. Review commands, flags, configuration, diagnostics, and exit codes when changing
+public behavior. Add regression tests for compatibility and error handling, and retain read-only
+operation. Keep type annotations explicit and validate them with `make typecheck`.
+
 ## Local Checks And Hooks
 
 `make check` runs Ruff, mypy, the default regression suite, and popo's own repository checks. `make
@@ -91,9 +99,14 @@ are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markd
 check both lint and formatting.
 
 Override `PYTHON` to select an interpreter; tool commands such as `RUFF` and `PYTEST` are also
-overridable. Pass focused pytest options with `TEST_ARGS`, for example `make test TEST_ARGS='-k
-changelog'`. Ordinary checks do not create environments or implicitly install development
-dependencies; only explicit setup targets do so.
+overridable. Pass focused pytest options with `TEST_ARGS`, for example:
+
+```console
+make test TEST_ARGS='-k changelog'
+```
+
+Ordinary checks do not create environments or implicitly install development dependencies; only
+explicit setup targets do so.
 
 Run `make hooks` to opt into pre-commit hooks. The Popo hook uses `make self-check`, including
 Make's interpreter selection and source-path handling. The Ruff hooks use a pre-commit-managed
@@ -122,10 +135,15 @@ the intended test path. The release gate still tests both artifact layers agains
 artifacts.
 
 Distribution checks require network access for build and installation dependencies. When reusing
-artifacts, provide a directory containing exactly one wheel and one source distribution: `python -m
-pytest tests/meta tests/e2e --artifact-dir dist`. Move stale artifacts out of `dist/` before
-building a new version. CI builds once and tests those same artifacts on each supported Python
-version. None of these commands publishes a package or creates a release.
+artifacts, provide a directory containing exactly one wheel and one source distribution:
+
+```console
+python -m pytest tests/meta tests/e2e --artifact-dir dist
+```
+
+Move stale artifacts out of `dist/` before building a new version. CI builds once and tests those
+same artifacts on each supported Python version. None of these commands publishes a package or
+creates a release.
 
 ## Documentation
 
@@ -144,8 +162,12 @@ CI additionally tests lowest/newest runtime dependency boundaries on Python 3.13
 branch coverage, and tests both distributions on macOS and Windows. To exercise dependency
 boundaries locally, use separate disposable virtual environments: install `-e '.[dev]'` with
 `--constraint requirements/lowest.txt` for lowest, or `--upgrade --upgrade-strategy eager` for
-newest, then run `python -m pip check` and `python -m pytest`. Coverage reporting uses `python -m
-pytest --cov=src`.
+newest, then run `python -m pip check` and `python -m pytest`. Report package line and branch
+coverage with:
+
+```console
+python -m pytest --cov=popo --cov-branch --cov-report=term-missing
+```
 
 The [SBOM workflow] and [security workflow] define supplementary inventory generation and manual
 dependency auditing. They require network access and do not publish releases.
