@@ -91,5 +91,5 @@ python -m pytest --cov=popo --cov-branch --cov-report=term-missing
 
 See the [contributing guide] for setup and dependency prerequisites.
 
-[artifact fixtures]: support/artifacts.py
 [contributing guide]: ../CONTRIBUTING.md
+[artifact fixtures]: support/artifacts.py

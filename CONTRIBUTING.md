@@ -152,6 +152,12 @@ Keep documentation language- and platform-neutral where the behavior is reusable
 links for shared destinations, and run `make docs-markdown` to validate local targets and anchors.
 Do not link public guidance to private notes, local-only files, or generated build output.
 
+Keep reference-link definitions together at the bottom of each document. Sort them
+lexicographically by destination URL or path exactly as written (case-sensitive), then by label
+as a tie-breaker. Preserve destination casing, fragments, and encoding; do not normalize URLs
+or rewrite labels merely to sort them. This convention applies to anchors, relative paths,
+and external URLs alike.
+
 ## GitHub Automation
 
 The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
@@ -177,12 +183,12 @@ For tagged artifact validation, optional GitHub publication,
 and manual disposable installations, see the [release policy]. No PyPI publishing
 or cloud deployment is configured.
 
-[test layout]: tests/README.md
-[MIT License]: LICENSE
-[changelog]: CHANGELOG.md
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
-[release policy]: RELEASE-POLICY.md
-[CI workflow]: .github/workflows/ci.yml
 [Python setup action]: .github/actions/setup-python-project/action.yml
+[CI workflow]: .github/workflows/ci.yml
 [SBOM workflow]: .github/workflows/sbom.yml
 [security workflow]: .github/workflows/security.yml
+[changelog]: CHANGELOG.md
+[MIT License]: LICENSE
+[release policy]: RELEASE-POLICY.md
+[test layout]: tests/README.md

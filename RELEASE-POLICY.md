@@ -82,7 +82,7 @@ successful checks, and failing checks outside the checkout. Hosted runners dispo
 environments. It does not test a published PyPI package, mutate a consumer repository, or deploy
 AWS.
 
+[release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [CD workflow]: .github/workflows/cd.yml
 [deployment-test.yml]: .github/workflows/deployment-test.yml
 [changelog]: CHANGELOG.md
-[release notes template]: .github/RELEASE-NOTES-TEMPLATE.md

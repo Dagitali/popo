@@ -59,5 +59,5 @@ Never claim success from edits alone or weaken a check to hide a failure.
 See the [contributing guide], [test layout], and [release policy] for command and artifact details.
 
 [contributing guide]: CONTRIBUTING.md
-[test layout]: tests/README.md
 [release policy]: RELEASE-POLICY.md
+[test layout]: tests/README.md

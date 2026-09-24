@@ -172,19 +172,19 @@ transition.
 - Treat language, platform, and tool versions as implementation details, not permanent policy.
 - Review bypass access periodically and verify protection after material changes.
 
-[Purpose]: #purpose
 [Branch Roles]: #branch-roles
-[Shared Protection Baseline]: #shared-protection-baseline
-[Required Checks]: #required-checks
-[Selection Principles]: #selection-principles
-[Repository-Specific Checks]: #repository-specific-checks
 [Configurable PR Routing]: #configurable-pr-routing
 [Disallowing Direct Updates]: #disallowing-direct-updates
-[Merge Queue]: #merge-queue
-[Updating Required Checks]: #updating-required-checks
 [Maintenance Notes]: #maintenance-notes
+[Merge Queue]: #merge-queue
+[Purpose]: #purpose
+[Repository-Specific Checks]: #repository-specific-checks
+[Required Checks]: #required-checks
+[Selection Principles]: #selection-principles
+[Shared Protection Baseline]: #shared-protection-baseline
+[Updating Required Checks]: #updating-required-checks
+[contributing guidelines]: ../CONTRIBUTING.md
+[release policy]: ../RELEASE-POLICY.md
+[release workflow]: workflows/cd.yml
 [CI workflow]: workflows/ci.yml
 [PR gates]: workflows/pr.yml
-[release workflow]: workflows/cd.yml
-[release policy]: ../RELEASE-POLICY.md
-[contributing guidelines]: ../CONTRIBUTING.md

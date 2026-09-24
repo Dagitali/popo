@@ -136,5 +136,5 @@ and diff actions remain in the extension UI.
 See the [Mermaid syntax reference] and [Mermaid Chart extension documentation].
 The extension reference is optional; it does not establish a repository dependency.
 
-[Mermaid syntax reference]: https://mermaid.js.org/intro/syntax-reference.html
 [Mermaid Chart extension documentation]: https://marketplace.visualstudio.com/items?itemName=MermaidChart.vscode-mermaid-chart
+[Mermaid syntax reference]: https://mermaid.js.org/intro/syntax-reference.html
