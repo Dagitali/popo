@@ -40,7 +40,17 @@ def make_fixture(
     environment = {
         key: value
         for key, value in os.environ.items()
-        if key not in {'MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES', 'MAKEFILES'}
+        if key
+        not in {
+            'MAKEFLAGS',
+            'MFLAGS',
+            'MAKELEVEL',
+            'MAKEOVERRIDES',
+            'MAKEFILES',
+            'PYTHON',
+            'PYTEST',
+            'VIRTUAL_ENV',
+        }
     }
 
     def run(
@@ -67,6 +77,42 @@ def make_fixture(
 
 class TestMakefile:
     """Verify Make command contracts and non-destructive environment management."""
+
+    def test_checks_use_checkout_source_path(self, make: Make, tmp_path: Path) -> None:
+        result = make('-s', 'test', 'PYTEST=printf \'%s\' "$$PYTHONPATH"')
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.split(os.pathsep)[0] == str(tmp_path / 'checkout/src')
+
+    @pytest.mark.parametrize(
+        ('managed', 'overrides', 'expected'),
+        [
+            (False, (), 'python3'),
+            (True, (), '".venv/bin/python"'),
+            (True, ('VIRTUAL_ENV=active-env',), 'python3'),
+            (True, ('PYTHON=custom-python',), 'custom-python'),
+            (True, ('VENV_DIR=custom env',), '"custom env/bin/python"'),
+            (True, ('OS=Windows_NT',), '".venv/Scripts/python.exe"'),
+        ],
+        ids=['path', 'managed', 'active', 'explicit', 'spaces', 'windows'],
+    )
+    def test_interpreter_selection(
+        self,
+        make: Make,
+        tmp_path: Path,
+        managed: bool,
+        overrides: tuple[str, ...],
+        expected: str,
+    ) -> None:
+        if managed:
+            interpreter = tmp_path / 'checkout' / expected.strip('"')
+            if expected in {'python3', 'custom-python'}:
+                interpreter = tmp_path / 'checkout/.venv/bin/python'
+            interpreter.parent.mkdir(parents=True)
+            interpreter.write_text('', encoding='utf-8')
+            interpreter.chmod(0o755)
+        result = make('-n', 'test', *overrides)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == f'{expected} -m pytest'
 
     @pytest.mark.parametrize(
         ('alias', 'target'),
