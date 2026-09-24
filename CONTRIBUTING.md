@@ -228,9 +228,9 @@ Keep documentation language- and platform-neutral where the behavior is reusable
 links for shared destinations, and run `make docs-markdown` to validate local targets and anchors.
 Do not link public guidance to private notes, local-only files, or generated build output.
 
-Maintain release-aligned records under `release/` using the [release archive] and [release notes
-template]. Keep planned candidates distinct from tagged versions and publication results; update the
-archive index when adding a record.
+Maintain release-aligned records under `docs/releases/` using the [release archive] and [release
+notes template]. Keep planned candidates distinct from tagged versions and publication results;
+update the archive index when adding a record.
 
 Keep reference-link definitions together at the bottom of each document. Sort them
 lexicographically by destination URL or path exactly as written (case-sensitive), then by label
@@ -279,5 +279,5 @@ include credentials, private data, or vulnerability details in public issues.
 [MIT License]: LICENSE
 [README]: README.md
 [release policy]: RELEASE-POLICY.md
-[release archive]: release/README.md
+[release archive]: docs/releases/README.md
 [test layout]: tests/README.md

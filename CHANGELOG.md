@@ -1,0 +1,69 @@
+<!--
+CHANGELOG.md
+popo
+
+Copyright © 2026 Dagitali LLC. All rights reserved.
+
+Public history of user-visible changes and compatibility corrections.
+
+Maintainer Notes
+- Preserve released entries and group pending changes under Unreleased.
+- Keep local links and documented behavior consistent with repository sources.
+-->
+
+# Changelog
+
+All notable changes to this project will be documented in this file. Detailed release-candidate
+records are indexed in the [release notes archive].
+
+The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
+
+- [Unreleased](#unreleased)
+- [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
+
+## Unreleased
+
+## [0.1.0] - 2026-09-24
+
+- Class-based pytest suites with reusable fixtures, independent installed-CLI scenarios, and
+  expanded negative-path coverage for configuration, policy, and command dispatch.
+- Scope-based test layers, shared artifact fixtures, automatic layer markers, and focused
+  unit/integration Make targets; distribution validation remains opt-in.
+- Explicit package discovery boundaries and shared pytest, Ruff, and coverage configuration
+  conventions, including importlib-based test imports, retaining CLI-specific dependencies and test
+  scope.
+- Explicit virtual-environment creation, runtime/development installation, setup alias, and
+  environment inspection targets that refuse to replace existing environments.
+- Discoverable Make help, focused policy checks, common formatting/build/test aliases, and
+  overridable tool, packaging, and distribution-test commands while preserving the existing local
+  quality gate.
+- Configurable PR routing, tagged release validation with opt-in GitHub publication, and manual
+  cross-platform disposable installation workflows.
+- Lowest/newest dependency CI, cross-platform distribution tests, and branch-coverage reporting.
+- Standalone CycloneDX SBOM generation and manual runtime-dependency vulnerability auditing, with
+  isolated tools, bounded permissions, and short-lived report artifacts.
+- Explicit workflow schema comments and updated workflow responsibilities and boundaries.
+- Generalized GitHub issue and pull request templates, file headers, dependency-update
+  configuration, release-note templates, and portable contributor guidance.
+- Shared Python setup action, bounded CI jobs, merge-group/manual validation, and full-history
+  checkouts for Git-derived package versions.
+- Editor and Git text conventions, issue and pull request templates, and opt-in pre-commit hooks
+  adapted from `aws-cdk-static-site`.
+- Checker regression cases and wheel/source-distribution contract and clean-install tests.
+- Repository self-check and distribution validation Make targets, with artifact tests in CI.
+- Initial `popo` command-line interface.
+- Checks for Markdown links, GitHub Actions pins, dependency boundaries, Python-version policy, and
+  release changelog entries.
+- Declarative configuration through `[tool.popo]` in `pyproject.toml`.
+- Pre-commit no longer requires a bare `python` on PATH: Popo checks use Make and filename-scoped
+  Ruff hooks use a managed Python environment.
+- Make selects the managed Python environment when no virtual environment is active, so local tests
+  find the editable package without a `PYTHONPATH` workaround.
+- Source tests and Make checks resolve the local `src` tree explicitly, including on macOS when
+  hidden `.pth` files prevent editable-install path discovery.
+- Complete the Python module rename to `popo` in packaging, development tooling, documentation, and
+  clean-distribution tests.
+
+[release notes archive]: docs/releases/README.md
+[Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
+[Semantic Versioning]: https://semver.org/spec/v2.0.0.html

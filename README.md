@@ -176,5 +176,5 @@ This project is licensed under the [MIT License].
 [contributing guide]: CONTRIBUTING.md
 [MIT License]: LICENSE
 [release policy]: RELEASE-POLICY.md
-[release archive]: release/README.md
+[release archive]: docs/releases/README.md
 [test layout]: tests/README.md

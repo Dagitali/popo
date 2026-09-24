@@ -91,4 +91,4 @@ AWS.
 [CD workflow]: .github/workflows/cd.yml
 [deployment-test.yml]: .github/workflows/deployment-test.yml
 [changelog]: CHANGELOG.md
-[release archive]: release/README.md
+[release archive]: docs/releases/README.md
