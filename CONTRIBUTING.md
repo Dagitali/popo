@@ -1,4 +1,49 @@
-# Contributing
+<!--
+CONTRIBUTING.md
+popo
+
+Copyright © 2026 Dagitali LLC. All rights reserved.
+
+Contributor setup, validation, packaging, and review workflow.
+
+Maintainer Notes
+- Keep commands synchronized with Make and avoid private or local-only references.
+- Keep local links and documented behavior consistent with repository sources.
+-->
+
+# Contributing Guidelines
+
+Contributions to code, tests, documentation, and repository automation are welcome. Contributions
+are distributed under the project's [MIT License].
+
+- [Ways to Contribute](#ways-to-contribute)
+- [Development Workflow](#development-workflow)
+- [Development Setup](#development-setup)
+- [Local Checks And Hooks](#local-checks-and-hooks)
+- [Distribution Validation](#distribution-validation)
+- [Documentation](#documentation)
+- [GitHub Automation](#github-automation)
+
+## Ways to Contribute
+
+Useful contributions include reproducible bug reports, focused feature proposals, compatibility
+tests, documentation corrections, and packaging or automation improvements. Discuss substantial
+changes before implementing them. Do not include credentials or private repository data in issues.
+
+## Development Workflow
+
+1. Create a focused topic branch from the appropriate integration branch.
+2. Install development dependencies and optionally install hooks with `make hooks`.
+3. Implement one cohesive change with relevant tests and documentation.
+4. Run `make check` and address failures rather than weakening validation.
+5. Update the [changelog] for user-visible behavior and open a pull request.
+6. Follow the repository's configured review, branch-protection, and PR-routing requirements.
+
+Versions come from Git tags through `setuptools-scm`; do not introduce another version source.
+Review the [release policy] for packaging or release changes. Popo's routing is configurable: the
+[branch-protection guide] describes optional policies, not proof of active hosted settings.
+
+## Development Setup
 
 Create and activate a virtual environment with Python 3.13 or 3.14, then install the project in
 editable mode:
@@ -26,10 +71,6 @@ activation or `PYTHONPATH` overrides. Pytest includes `src` on its import path, 
 this checkout's `src` to `PYTHONPATH`. Distribution installation tests remove that override before
 testing installed packages outside the checkout. The Windows Make targets require a POSIX-compatible
 shell and Make, such as Git Bash.
-
-- [Local Checks And Hooks](#local-checks-and-hooks)
-- [Distribution Validation](#distribution-validation)
-- [GitHub Automation](#github-automation)
 
 ## Local Checks And Hooks
 
@@ -86,12 +127,18 @@ pytest tests/meta tests/e2e --artifact-dir dist`. Move stale artifacts out of `d
 building a new version. CI builds once and tests those same artifacts on each supported Python
 version. None of these commands publishes a package or creates a release.
 
+## Documentation
+
+Update public usage, configuration, tests, and release notes when their source of truth changes.
+Keep documentation language- and platform-neutral where the behavior is reusable. Use reference
+links for shared destinations, and run `make docs-markdown` to validate local targets and anchors.
+Do not link public guidance to private notes, local-only files, or generated build output.
+
 ## GitHub Automation
 
-See the [GitHub configuration map](.github/README.md) for workflow responsibilities, shared
-conventions, and intentional differences from the source repository. CI uses the local Python setup
-action and validates dependency integrity before checks. Workflow changes should pass `actionlint`
-as well as `make check`.
+The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
+optional publication. CI uses the [Python setup action] and validates dependency integrity before
+checks. Workflow changes should pass `actionlint` as well as `make check`.
 
 CI additionally tests lowest/newest runtime dependency boundaries on Python 3.13 and 3.14, reports
 branch coverage, and tests both distributions on macOS and Windows. To exercise dependency
@@ -100,12 +147,20 @@ boundaries locally, use separate disposable virtual environments: install `-e '.
 newest, then run `python -m pip check` and `python -m pytest`. Coverage reporting uses `python -m
 pytest --cov=src`.
 
-Supplementary SBOM generation and manual dependency auditing are described in the GitHub
-configuration map. They require network access and do not publish releases.
+The [SBOM workflow] and [security workflow] define supplementary inventory generation and manual
+dependency auditing. They require network access and do not publish releases.
 
-PR routing is configurable rather than tied to GitFlow. See the [branch-protection
-guide](.github/BRANCH-PROTECTION.md). For tagged artifact validation, optional GitHub publication,
-and manual disposable installations, see the [release policy](RELEASE-POLICY.md). No PyPI publishing
+PR routing is configurable rather than tied to GitFlow. See the [branch-protection guide].
+For tagged artifact validation, optional GitHub publication,
+and manual disposable installations, see the [release policy]. No PyPI publishing
 or cloud deployment is configured.
 
 [test layout]: tests/README.md
+[MIT License]: LICENSE
+[changelog]: CHANGELOG.md
+[branch-protection guide]: .github/BRANCH-PROTECTION.md
+[release policy]: RELEASE-POLICY.md
+[CI workflow]: .github/workflows/ci.yml
+[Python setup action]: .github/actions/setup-python-project/action.yml
+[SBOM workflow]: .github/workflows/sbom.yml
+[security workflow]: .github/workflows/security.yml
