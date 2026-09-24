@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.1.5\] - 2026-09-24](#015---2026-09-24)
 - [\[0.1.4\] - 2026-09-24](#014---2026-09-24)
 - [\[0.1.3\] - 2026-09-24](#013---2026-09-24)
 - [\[0.1.2\] - 2026-09-24](#012---2026-09-24)
@@ -26,6 +27,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.1.5] - 2026-09-24
+
+- Remove `.github/README.md` so GitHub displays the root `README.md` as the repository homepage
+  overview rather than the automation notes.
+- Add the 0.1.5 release record and update the release archive.
 
 ## [0.1.4] - 2026-09-24
 
