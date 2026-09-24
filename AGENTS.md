@@ -18,6 +18,7 @@ These instructions apply to automated coding agents working in this repository.
 - [Repository Boundaries](#repository-boundaries)
 - [Agent Operating Model](#agent-operating-model)
 - [Development Policy](#development-policy)
+- [Documentation Obligations](#documentation-obligations)
 - [Validation and Completion](#validation-and-completion)
 
 ## Repository Boundaries
@@ -45,9 +46,22 @@ These instructions apply to automated coding agents working in this repository.
 - Keep supported Python versions aligned with `project.requires-python` and the repository's
   Python-policy checks; do not couple consumer checks to Popo's own development configuration.
 
+## Documentation Obligations
+
+- Follow the [documentation synchronization guide] to identify canonical sources and affected
+  documents; prefer links over duplicating detailed guidance.
+- Preserve purposeful consumer-policy differences instead of copying another project's tooling,
+  cloud assumptions, or release commitments.
+- Keep file header comments accurate and use bottom-of-document reference links sorted by
+  destination, as specified in the contributing guide.
+- Documentation work does not authorize changing implementation, workflow permissions, hosted
+  settings, or release behavior. Report discrepancies that require a separate implementation task.
+
 ## Validation and Completion
 
 - Run `make check` before completion when practical.
+- For Markdown changes, run `make docs-markdown` to check local targets and heading anchors;
+  separately verify factual claims against their source files.
 - Update `README.md` and `CHANGELOG.md` for user-visible changes.
 - Do not publish packages, create release tags, or mutate external repositories without explicit
   authorization.
@@ -59,5 +73,6 @@ Never claim success from edits alone or weaken a check to hide a failure.
 See the [contributing guide], [test layout], and [release policy] for command and artifact details.
 
 [contributing guide]: CONTRIBUTING.md
+[documentation synchronization guide]: CONTRIBUTING.md#documentation-synchronization
 [release policy]: RELEASE-POLICY.md
 [test layout]: tests/README.md
