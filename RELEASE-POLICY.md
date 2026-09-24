@@ -1,7 +1,33 @@
+<!--
+RELEASE-POLICY.md
+popo
+
+Copyright © 2026 Dagitali LLC. All rights reserved.
+
+Release validation, artifact integrity, and optional publication safeguards.
+
+Maintainer Notes
+- Describe configured automation without claiming hosted protections are enabled.
+- Keep local links and documented behavior consistent with repository sources.
+-->
+
 # Release Policy
 
 `popo` separates validation from publication. No workflow publishes to PyPI or deploys cloud
 resources. Package versions come from Git tags through `setuptools-scm`.
+
+- [Scope](#scope)
+- [Candidate validation](#candidate-validation)
+- [Release Artifacts](#release-artifacts)
+- [Release Notes](#release-notes)
+- [Opt-in GitHub publication](#opt-in-github-publication)
+- [Disposable installation test](#disposable-installation-test)
+
+## Scope
+
+This public policy describes the configured validation and publication boundaries. It excludes
+credentials, private recovery procedures, and account-specific controls. Documented gates do not
+establish that hosted environment protections or repository settings have been enabled.
 
 ## Candidate validation
 
@@ -11,14 +37,21 @@ repository's default branch. Tags must not be moved. The tagged checkout must co
 packaging, tests, and setup action; older incompatible tags fail validation rather than bypassing
 it.
 
-Validation requires a dated changelog entry, `make check`, both built distributions, `twine check`,
-clean-install tests, and a wheel version matching the tag. The workflow builds distributions once
+Validation requires a dated [changelog] entry, `make check`, both built distributions, `twine check`,
+clean-install tests, and a wheel version matching the tag.
+
+## Release Artifacts
+
+The workflow builds distributions once
 and generates a validated runtime SBOM and SHA-256 checksums for those artifacts. Downloads remain
 available as workflow artifacts for 14 days.
 
-- [Candidate validation](#candidate-validation)
-- [Opt-in GitHub publication](#opt-in-github-publication)
-- [Disposable installation test](#disposable-installation-test)
+## Release Notes
+
+Use the [release notes template] to describe public changes, compatibility, and completed
+validation. For this CLI, compatibility includes commands, flags, configuration, output, and exit
+codes. Identify breaking changes and required consumer actions rather than assuming that a passing
+build establishes compatibility. Keep notes consistent with the [changelog] and tested artifacts.
 
 ## Opt-in GitHub publication
 
@@ -51,3 +84,5 @@ AWS.
 
 [CD workflow]: .github/workflows/cd.yml
 [deployment-test.yml]: .github/workflows/deployment-test.yml
+[changelog]: CHANGELOG.md
+[release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
