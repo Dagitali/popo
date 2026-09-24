@@ -36,6 +36,7 @@ current source, tests, workflows, and maintained guides establish present behavi
 | Install and run the CLI | [Project overview] |
 | Configure a consumer repository | [Configuration reference] |
 | Change a public interface | [Interface evolution] |
+| Scope implementation and review work | [Change-impact map] |
 | Set up development | [Developer onboarding] and [development setup] |
 | Choose tests and quality gates | [Testing guide] |
 | Prepare a release | [Release playbook] and [release policy] |
@@ -58,6 +59,7 @@ documentation format; do not copy generated output from another project.
 ## Guides
 
 - [Configuration reference]: Input paths, dependency modes, Python-policy defaults, and CLI scope.
+- [Change-impact map]: Source ownership, verification, and documentation affected by a change.
 - [Testing guide]: Selecting deterministic checks and opt-in artifact validation.
 - [Developer onboarding]: First local session, source orientation, and safe consumer checks.
 - [Incident response]: Triage and recovery for policy, environment, artifact, and release failures.
@@ -67,6 +69,7 @@ documentation format; do not copy generated output from another project.
 ## Topic Indexes
 
 - [API notes]: Public-interface boundaries and evolution checklist.
+- [Architecture notes]: Component boundaries and change-impact review.
 - [Development documentation]: Onboarding, testing, and contributor reference links.
 - [Playbooks]: Repeatable maintainer workflows.
 - [Runbooks]: Bounded operational diagnosis and recovery.
@@ -93,6 +96,8 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Testing guide]: TESTING.md
 [API notes]: api/README.md
 [Interface evolution]: api/evolution-checklist.md
+[Architecture notes]: architecture/README.md
+[Change-impact map]: architecture/change-impact-map.md
 [Development documentation]: development/README.md
 [Developer onboarding]: development/onboarding.md
 [Playbooks]: playbooks/README.md
