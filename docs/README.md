@@ -34,6 +34,7 @@ current source, tests, workflows, and maintained guides establish present behavi
 | Need | Document |
 | --- | --- |
 | Install and run the CLI | [Project overview] |
+| Try a check and diagnose a failure | [First repository tutorial] |
 | Configure a consumer repository | [Configuration reference] |
 | Change a public interface | [Interface evolution] |
 | Scope implementation and review work | [Change-impact map] |
@@ -52,12 +53,14 @@ After installing development dependencies, run from the repository root:
 make docs-markdown
 ```
 
-This checks local paths and heading anchors, not external URL availability or factual accuracy. Popo
-does not currently configure a Sphinx site or HTML/EPUB build targets. Markdown is the maintained
-documentation format; do not copy generated output from another project.
+This checks inline-link local paths and heading anchors, not reference-link definitions, image
+links, external URL availability, or factual accuracy. Review reference-link targets separately.
+Popo does not currently configure a Sphinx site or HTML/EPUB build targets. Markdown is the
+maintained documentation format; do not copy generated output from another project.
 
 ## Guides
 
+- [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
 - [Configuration reference]: Input paths, dependency modes, Python-policy defaults, and CLI scope.
 - [Change-impact map]: Source ownership, verification, and documentation affected by a change.
 - [Testing guide]: Selecting deterministic checks and opt-in artifact validation.
@@ -73,6 +76,7 @@ documentation format; do not copy generated output from another project.
 - [Development documentation]: Onboarding, testing, and contributor reference links.
 - [Playbooks]: Repeatable maintainer workflows.
 - [Runbooks]: Bounded operational diagnosis and recovery.
+- [Tutorials]: End-to-end consumer learning paths.
 
 ## Related Repository Documents
 
@@ -105,3 +109,5 @@ Use reference links sorted by destination and keep file headers and tables of co
 [release archive]: releases/README.md
 [Runbooks]: runbooks/README.md
 [Incident response]: runbooks/incident-response.md
+[Tutorials]: tutorials/README.md
+[First repository tutorial]: tutorials/check-first-repository.md
