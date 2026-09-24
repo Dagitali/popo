@@ -118,7 +118,7 @@ jobs:
         run: make dist
 
       - name: Test built artifacts and clean installations
-        run: python -m pytest tests/distribution --artifact-dir dist
+        run: python -m pytest tests/meta tests/e2e --artifact-dir dist
 
   test-dependency-boundaries:
     name: >-
@@ -204,4 +204,4 @@ jobs:
           extras: dev
 
       - name: Test source and wheel installations outside the checkout
-        run: python -m pytest tests/distribution
+        run: python -m pytest tests/meta tests/e2e
