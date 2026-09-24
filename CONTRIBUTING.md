@@ -23,6 +23,7 @@ are distributed under the project's [MIT License].
 - [Local Checks And Hooks](#local-checks-and-hooks)
 - [Distribution Validation](#distribution-validation)
 - [Documentation](#documentation)
+  - [Documentation Synchronization](#documentation-synchronization)
 - [GitHub Automation](#github-automation)
 
 ## Ways to Contribute
@@ -147,6 +148,10 @@ creates a release.
 
 ## Documentation
 
+Document public behavior and decision-relevant constraints rather than restating implementation line
+by line. Use descriptive link text, repository-relative links for local documents, and backticks for
+commands, paths, and identifiers. Keep headings and table-of-contents entries synchronized.
+
 Update public usage, configuration, tests, and release notes when their source of truth changes.
 Keep documentation language- and platform-neutral where the behavior is reusable. Use reference
 links for shared destinations, and run `make docs-markdown` to validate local targets and anchors.
@@ -157,6 +162,29 @@ lexicographically by destination URL or path exactly as written (case-sensitive)
 as a tie-breaker. Preserve destination casing, fragments, and encoding; do not normalize URLs
 or rewrite labels merely to sort them. This convention applies to anchors, relative paths,
 and external URLs alike.
+
+### Documentation Synchronization
+
+Verify claims against executable sources before updating the maintained guides:
+
+| Claim | Source of truth | Documentation to review |
+| --- | --- | --- |
+| Package metadata, dependencies, Python support | `pyproject.toml` | [README], this guide, [test layout] |
+| Contributor commands and environment selection | `Makefile` | [README], this guide, [agent instructions], [test layout] |
+| CLI behavior, configuration, diagnostics, exit codes | `src/popo/cli.py`, `src/popo/config.py`, check implementations and tests | [README], [changelog] |
+| Test layers, fixtures, and selection | `tests/conftest.py`, `tests/support/`, pytest configuration | [test layout], this guide, [agent instructions] |
+| Workflow triggers, checks, permissions, artifacts | `.github/workflows/`, setup action | [branch-protection guide], this guide, [release policy] |
+| Versioning and release validation | `pyproject.toml`, `Makefile`, CD workflow | [release policy], [release notes template], [changelog] |
+
+Search for references to a changed command or behavior, then update the smallest set of affected
+guides. Link to existing explanations instead of creating competing copies. Run `make docs-markdown`
+and inspect the diff for stale project names, private data, and unsupported claims. This validates
+local links and anchors, not external URL availability or factual accuracy.
+
+Documentation-only work must not change code, workflow permissions, repository settings, or release
+behavior merely to make prose accurate. Report conflicting evidence and request a separate change
+when resolving it requires implementation or external operations. Workflow files describe intended
+automation; they do not prove hosted protections or environments are configured.
 
 ## GitHub Automation
 
@@ -184,11 +212,14 @@ and manual disposable installations, see the [release policy]. No PyPI publishin
 or cloud deployment is configured.
 
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
+[release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
 [CI workflow]: .github/workflows/ci.yml
 [SBOM workflow]: .github/workflows/sbom.yml
 [security workflow]: .github/workflows/security.yml
+[agent instructions]: AGENTS.md
 [changelog]: CHANGELOG.md
 [MIT License]: LICENSE
+[README]: README.md
 [release policy]: RELEASE-POLICY.md
 [test layout]: tests/README.md
