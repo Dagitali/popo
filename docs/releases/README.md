@@ -26,6 +26,10 @@ publication safeguards.
 
 ## 0.1 Series
 
+- [v0.1.4] — 2026-09-24:: Correct dated release history and restore the changelog gate for the new
+  tag.
+- [v0.1.3] — 2026-09-24: Update Commitizen and Ruff hooks; tagged CD validation failed
+  because the dated entry was missing. The entry is backfilled in 0.1.4.
 - [v0.1.2] - 2026-09-24: Remove the obsolete Dependabot exclusion test and correct dependency
   guidance.
 - [v0.1.1] — 2026-09-24: Align the `packaging` minimum at 26.3.
@@ -51,13 +55,15 @@ The current CD workflow generates GitHub Release notes; it does not automaticall
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog includes a dated `0.1.2` candidate section. Changes outside that candidate belong in
+The changelog includes a dated `0.1.4` candidate section. Changes outside that candidate belong in
 `Unreleased`; the candidate date does not establish publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
+[v0.1.3 changelog]: ../../CHANGELOG.md#013---2026-09-24
 [release policy]: ../../RELEASE-POLICY.md
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
 [v0.1.1]: v0.1.1.md
 [v0.1.2]: v0.1.2.md
+[v0.1.4]: v0.1.4.md

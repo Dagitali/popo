@@ -19,11 +19,26 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.1.4\] - 2026-09-24](#014---2026-09-24)
+- [\[0.1.3\] - 2026-09-24](#013---2026-09-24)
 - [\[0.1.2\] - 2026-09-24](#012---2026-09-24)
 - [\[0.1.1\] - 2026-09-24](#011---2026-09-24)
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.1.4] - 2026-09-24
+
+- Add the missing dated 0.1.3 changelog entry and prepare the 0.1.4 entry required by CD's
+  release-changelog gate, without moving or reusing the existing 0.1.3 tag.
+- Add the 0.1.4 release record and synchronize the release archive with the corrected history.
+
+## [0.1.3] - 2026-09-24
+
+- Update the Commitizen pre-commit hook from v4.18.0 to v4.18.1 and Ruff hooks from v0.16.7 to
+  v0.16.8.
+- This entry was added retrospectively in 0.1.4. The original 0.1.3 tagged tree lacked a dated
+  changelog section, causing CD validation to fail; this correction does not change that tag.
 
 ## [0.1.2] - 2026-09-24
 
