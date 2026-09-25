@@ -192,6 +192,9 @@ Use `PY=python3.14` instead when developing with Python 3.14. Make selects the m
 when no virtual environment is active; activation is not required for `make test` or `make check`.
 An explicit `PYTHON` override takes precedence.
 
+When optional hooks are installed, the pre-push stage runs `make check-pre-push` (the full local
+quality gate). It does not install dependencies, build distributions, or publish artifacts.
+
 Alternatively, activate your own supported Python environment and install in editable mode:
 
 ```console
