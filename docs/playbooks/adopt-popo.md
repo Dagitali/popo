@@ -55,8 +55,9 @@ Include small positive and deliberately failing fixtures for each policy being r
 
 Compare Popo against those same inputs. Classify each mismatch as a configuration difference,
 intentional policy change, unsupported behavior, or defect. For example, the current Markdown check
-does not validate reference-link definitions, image links, or external URLs. Keep existing coverage
-for requirements it does not implement; a passing Popo check is not proof of behavioral equivalence.
+does not detect undefined reference labels or validate inline image links or external URLs. Keep
+existing coverage for requirements it does not implement; a passing Popo check is not proof of
+behavioral equivalence.
 
 Separate adopting the tool from changing the consumer's policy wherever possible. Do not weaken
 existing checks or copy Popo's own version constraints merely to make the migration pass.
