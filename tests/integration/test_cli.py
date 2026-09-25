@@ -23,6 +23,8 @@ class TestCommandLine:
         ('arguments', 'path', 'content', 'status', 'message'),
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
+            (['check-docs'], 'README.md', '[missing]: absent.md\n', 1, 'FAIL:'),
+            (['check-docs'], 'README.md', '# Project\n[self]: #project\n', 0, 'PASS:'),
             (
                 ['check-release-changelog', 'v1.0.0'],
                 'CHANGELOG.md',
