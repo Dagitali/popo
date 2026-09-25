@@ -46,6 +46,7 @@ branch-protection and release policies.
 | Change a public interface | [Interface evolution] |
 | Scope implementation and review work | [Change-impact map] |
 | Coordinate a change through validation | [Change management] |
+| Substantiate a public technical claim | [Evidence inventory template] |
 | Set up development | [Developer onboarding] and [development setup] |
 | Choose tests and quality gates | [Testing guide] |
 | Prepare a release | [Release playbook] and [release policy] |
@@ -73,6 +74,7 @@ maintained documentation format; do not copy generated output from another proje
 - [Configuration reference]: Input paths, dependency modes, Python-policy defaults, and CLI scope.
 - [Change-impact map]: Source ownership, verification, and documentation affected by a change.
 - [Change management]: Classify work and connect implementation, documentation, and release evidence.
+- [Evidence inventory template]: Optional record of sources, limitations, and disclosure decisions.
 - [Testing guide]: Selecting deterministic checks and opt-in artifact validation.
 - [Developer onboarding]: First local session, source orientation, and safe consumer checks.
 - [Incident response]: Triage and recovery for policy, environment, artifact, and release failures.
@@ -108,6 +110,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [release policy]: ../RELEASE-POLICY.md
 [Tests overview]: ../tests/README.md
 [Configuration reference]: CONFIGURATION.md
+[Evidence inventory template]: EVIDENCE_INVENTORY_TEMPLATE.md
 [Testing guide]: TESTING.md
 [API notes]: api/README.md
 [Interface evolution]: api/evolution-checklist.md
