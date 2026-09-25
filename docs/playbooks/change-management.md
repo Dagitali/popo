@@ -62,6 +62,10 @@ reference links sorted by destination. Run `make docs-markdown`, separately chec
 targets, and verify factual claims against their sources. The checker does not validate reference
 definitions, external availability, or factual accuracy.
 
+When a public claim needs non-obvious test, artifact, or consumer evidence, use the optional
+[evidence inventory template] to record its sources and limitations. Keep sensitive completed
+records outside the repository; ordinary source-backed edits do not need a separate inventory.
+
 For changed required job names or event coverage, follow the [required-check runbook]. Local
 workflow validation is not proof of hosted enforcement. Do not change implementation, hosted
 settings, or release behavior merely to make prose true; report conflicting evidence instead.
@@ -85,6 +89,7 @@ were skipped or failed. Keep confidential evidence in an appropriate private rec
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [contributing guide]: ../../CONTRIBUTING.md
 [documentation synchronization guide]: ../../CONTRIBUTING.md#documentation-synchronization
+[evidence inventory template]: ../EVIDENCE_INVENTORY_TEMPLATE.md
 [testing guide]: ../TESTING.md
 [interface checklist]: ../api/evolution-checklist.md
 [change-impact map]: ../architecture/change-impact-map.md
