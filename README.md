@@ -75,7 +75,7 @@ publishing is not configured; see the [release policy].
 - Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
   excluding fenced code examples;
 - Named remote GitHub Actions references pinned to full commit SHAs;
-- Dependency metadata synchronized with requirements or constraints files;
+- Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows; and
 - Dated semantic-version entries in a changelog.
 
