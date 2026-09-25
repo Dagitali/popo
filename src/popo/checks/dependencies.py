@@ -103,7 +103,26 @@ def _requirements(
 
 
 def validate(config: DependencyConfig) -> list[str]:
-    """Return dependency-boundary policy violations."""
+    """
+    Return dependency-boundary policy violations.
+
+    Parameters
+    ----------
+    config : popo.config.DependencyConfig
+        Metadata and requirements paths, plus the selected comparison mode.
+
+    Returns
+    -------
+    list[str]
+        Missing-input, parsing, requirement, or consistency failures; empty
+        when the declarations satisfy the configured policy.
+
+    Notes
+    -----
+    Exact mode compares normalized requirement declarations. Minimum-constraints
+    mode compares declared lower bounds with exact fixture pins. Neither mode
+    installs packages or verifies the currently installed dependency versions.
+    """
 
     missing = [
         path for path in (config.metadata, config.requirements) if not path.is_file()

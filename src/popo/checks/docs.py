@@ -111,7 +111,27 @@ def _slugify(
 def validate(
     root: Path,
 ) -> list[str]:
-    """Return broken repository-local Markdown link failures."""
+    """
+    Return broken repository-local Markdown link failures.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Repository tree to inspect, excluding known generated directories.
+
+    Returns
+    -------
+    list[str]
+        Missing-root, missing-target, or missing-anchor diagnostics. Link
+        diagnostics retain the source path and original line number.
+
+    Notes
+    -----
+    Inspect inline links and single-line reference definitions outside fenced
+    code blocks. Accept heading and explicit HTML anchors. External URLs are
+    skipped without network requests; undefined reference labels and inline
+    image links are not checked. Files are never modified.
+    """
 
     if not root.is_dir():
         return [f'repository root does not exist: {root}']
