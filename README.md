@@ -72,7 +72,8 @@ publishing is not configured; see the [release policy].
 
 ## Features
 
-- Local Markdown links and heading anchors, excluding fenced code examples;
+- Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
+  excluding fenced code examples;
 - Immutable GitHub Actions references;
 - Dependency metadata synchronized with requirements or constraints files;
 - Python-version policy across package metadata, tool configuration, and workflows; and
