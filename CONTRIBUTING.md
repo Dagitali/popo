@@ -145,6 +145,12 @@ Python environment and retain filename-based checks. Their dependency range matc
 extra in `pyproject.toml`. The first hook run downloads the upstream hook environment. Run all hooks
 manually with `python -m pre_commit run --all-files`.
 
+The pre-push stage runs `make check-pre-push`, which delegates to the full local `make check` gate
+without building distributions or installing tools. Run it directly, or exercise the hook with
+`python -m pre_commit run make-check-pre-push --hook-stage pre-push --all-files`. The default manual
+hook command above selects pre-commit hooks, not the pre-push stage. Local hooks provide early
+feedback and do not replace hosted required checks.
+
 ### GitHub Automation
 
 Dependabot may propose updates to `requirements/lowest.txt`, the minimum-version test fixture.
