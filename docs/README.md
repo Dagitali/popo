@@ -29,6 +29,13 @@ Guides describe Popo's actual CLI and repository policy. Consumer configuration 
 Popo's development conventions. Historical release records preserve their preparation context;
 current source, tests, workflows, and maintained guides establish present behavior.
 
+The scope intentionally differs from infrastructure projects: consumer cloud operations, deployment
+cost estimates, and construct-specific architecture records do not belong here. API notes describe
+Popo's supported interfaces without duplicating generated reference material. Release records cover
+Popo's own history, not another package's versions. Documentation synchronization remains in
+[Contributing] rather than a competing policy file; operational guidance links to the existing
+branch-protection and release policies.
+
 ## Start Here
 
 | Need | Document |
@@ -38,6 +45,7 @@ current source, tests, workflows, and maintained guides establish present behavi
 | Configure a consumer repository | [Configuration reference] |
 | Change a public interface | [Interface evolution] |
 | Scope implementation and review work | [Change-impact map] |
+| Coordinate a change through validation | [Change management] |
 | Set up development | [Developer onboarding] and [development setup] |
 | Choose tests and quality gates | [Testing guide] |
 | Prepare a release | [Release playbook] and [release policy] |
@@ -64,6 +72,7 @@ maintained documentation format; do not copy generated output from another proje
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
 - [Configuration reference]: Input paths, dependency modes, Python-policy defaults, and CLI scope.
 - [Change-impact map]: Source ownership, verification, and documentation affected by a change.
+- [Change management]: Classify work and connect implementation, documentation, and release evidence.
 - [Testing guide]: Selecting deterministic checks and opt-in artifact validation.
 - [Developer onboarding]: First local session, source orientation, and safe consumer checks.
 - [Incident response]: Triage and recovery for policy, environment, artifact, and release failures.
@@ -109,6 +118,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Developer onboarding]: development/onboarding.md
 [task templates]: development/task-templates.md
 [Playbooks]: playbooks/README.md
+[Change management]: playbooks/change-management.md
 [Release playbook]: playbooks/release.md
 [release archive]: releases/README.md
 [Runbooks]: runbooks/README.md
