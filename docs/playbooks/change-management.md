@@ -58,9 +58,9 @@ ownership table rather than maintaining another copy here. Search for affected c
 claims, then update the smallest complete set of maintained explanations and examples.
 
 Preserve file headers, useful anchors, and historical release context. Use bottom-of-document
-reference links sorted by destination. Run `make docs-markdown`, separately check reference-link
-targets, and verify factual claims against their sources. The checker does not validate reference
-definitions, external availability, or factual accuracy.
+reference links sorted by destination. Run `make docs-markdown`, separately review undefined
+reference labels and inline image links, and verify factual claims against their sources. The
+checker does not validate external availability or factual accuracy.
 
 When a public claim needs non-obvious test, artifact, or consumer evidence, use the optional
 [evidence inventory template] to record its sources and limitations. Keep sensitive completed
