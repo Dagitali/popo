@@ -43,6 +43,7 @@ branch-protection and release policies.
 | Install and run the CLI | [Project overview] |
 | Try a check and diagnose a failure | [First repository tutorial] |
 | Configure a consumer repository | [Configuration reference] |
+| Adopt checks or replace local scripts | [Adoption playbook] |
 | Change a public interface | [Interface evolution] |
 | Scope implementation and review work | [Change-impact map] |
 | Coordinate a change through validation | [Change management] |
@@ -72,6 +73,7 @@ maintained documentation format; do not copy generated output from another proje
 
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
 - [Configuration reference]: Input paths, dependency modes, Python-policy defaults, and CLI scope.
+- [Adoption playbook]: Consumer setup, behavioral comparison, CI integration, and migration safeguards.
 - [Change-impact map]: Source ownership, verification, and documentation affected by a change.
 - [Change management]: Classify work and connect implementation, documentation, and release evidence.
 - [Evidence inventory template]: Optional record of sources, limitations, and disclosure decisions.
@@ -121,6 +123,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Developer onboarding]: development/onboarding.md
 [task templates]: development/task-templates.md
 [Playbooks]: playbooks/README.md
+[Adoption playbook]: playbooks/adopt-popo.md
 [Change management]: playbooks/change-management.md
 [Release playbook]: playbooks/release.md
 [release archive]: releases/README.md

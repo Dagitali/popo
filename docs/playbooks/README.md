@@ -16,6 +16,7 @@ Maintainer Notes
 Playbooks describe goal-oriented workflows involving several decisions or validation steps. Current
 procedures and related guidance:
 
+- [Adopt Popo]: Introduce selected checks or migrate repository-local scripts without losing policy.
 - [Change management]: Classify work, preserve boundaries, and assemble validation and release
   evidence.
 - [Release checklist]: Prepare, validate, obtain authorization, and close out a release.
@@ -31,5 +32,6 @@ mirror an unrelated project's directory count.
 [Testing guide]: ../TESTING.md
 [Interface evolution]: ../api/evolution-checklist.md
 [Incident response]: ../runbooks/incident-response.md
+[Adopt Popo]: adopt-popo.md
 [Change management]: change-management.md
 [Release checklist]: release.md
