@@ -62,7 +62,8 @@ Keep Popo's own Python and dependency policy separate from policies it validates
 4. Run focused checks from the [testing guide], then `make check` when practical. Use artifact gates
    for packaging changes rather than treating source tests as installation evidence.
 5. Synchronize affected documentation using the [documentation synchronization guide]. For Markdown,
-   run `make docs-markdown` and separately inspect reference-link targets and factual claims.
+   run `make docs-markdown` and separately inspect undefined reference labels, images, and factual
+   claims.
 6. Review the diff for unrelated changes, generated files, private data, and documentation drift.
 7. Report changed files, evidence, completed and skipped checks, failures, and remaining risks.
 
