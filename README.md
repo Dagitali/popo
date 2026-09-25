@@ -76,7 +76,8 @@ publishing is not configured; see the [release policy].
   excluding fenced code examples and limiting fragment validation to Markdown targets;
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
-- Python-version policy across package metadata, tool configuration, and workflows; and
+- Python-version policy across package metadata, tool configuration, and workflows, including
+  inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
 
 ## Architecture
