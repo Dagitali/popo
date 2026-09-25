@@ -23,6 +23,13 @@ class TestCommandLine:
         ('arguments', 'path', 'content', 'status', 'message'),
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
+            (
+                ['check-github-actions-pins'],
+                '.github/ci.yml',
+                f'uses: @{'a' * 40}\n',
+                1,
+                'FAIL:',
+            ),
             (['check-docs'], 'README.md', '[missing]: absent.md\n', 1, 'FAIL:'),
             (['check-docs'], 'README.md', '# Project\n[self]: #project\n', 0, 'PASS:'),
             (
