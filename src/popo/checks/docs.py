@@ -13,8 +13,13 @@ from urllib.parse import unquote, urlsplit
 
 
 FENCE_PATTERN = re.compile(r'^ {0,3}(?P<marker>`{3,}|~{3,})')
+EXPLICIT_ANCHOR_PATTERN = re.compile(
+    r'<a\s+(?:name|id)=["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
 HEADING_PATTERN = re.compile(r'^#{1,6}\s+(?P<heading>.+?)\s*#*\s*$')
 LINK_PATTERN = re.compile(r'(?<!!)\[[^\]]+\]\((?P<target>[^)]+)\)')
+REFERENCE_PATTERN = re.compile(r'^ {0,3}\[[^\]]+\]:[ \t]*(<[^>]*>|\S+)')
 
 IGNORED_PARTS = {
     '.git',
@@ -35,10 +40,13 @@ IGNORED_PARTS = {
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _anchors(path: Path) -> set[str]:
+def _anchors(
+    path: Path,
+) -> set[str]:
     anchors: set[str] = set()
     counts: dict[str, int] = {}
     for _, line in _content_lines(path):
+        anchors.update(value.lower() for value in EXPLICIT_ANCHOR_PATTERN.findall(line))
         match = HEADING_PATTERN.match(line)
         if match is None:
             continue
@@ -49,7 +57,9 @@ def _anchors(path: Path) -> set[str]:
     return anchors
 
 
-def _content_lines(path: Path) -> Iterator[tuple[int, str]]:
+def _content_lines(
+    path: Path,
+) -> Iterator[tuple[int, str]]:
     """Yield original line numbers and text outside fenced code examples."""
     fence: str | None = None
     for line_number, line in enumerate(
@@ -73,7 +83,9 @@ def _content_lines(path: Path) -> Iterator[tuple[int, str]]:
             yield line_number, line
 
 
-def _markdown_paths(root: Path) -> list[Path]:
+def _markdown_paths(
+    root: Path,
+) -> list[Path]:
     return sorted(
         path
         for path in root.rglob('*.md')
@@ -82,7 +94,9 @@ def _markdown_paths(root: Path) -> list[Path]:
     )
 
 
-def _slugify(heading: str) -> str:
+def _slugify(
+    heading: str,
+) -> str:
     heading = re.sub(r'<[^>]+>', '', heading).strip().lower()
     heading = re.sub(r'[^\w\- ]', '', heading)
     return re.sub(r'[\s]+', '-', heading)
@@ -94,7 +108,9 @@ def _slugify(heading: str) -> str:
 # SECTION: FUNCTIONS
 
 
-def validate(root: Path) -> list[str]:
+def validate(
+    root: Path,
+) -> list[str]:
     """Return broken repository-local Markdown link failures."""
 
     if not root.is_dir():
@@ -102,8 +118,14 @@ def validate(root: Path) -> list[str]:
     failures: list[str] = []
     for source in _markdown_paths(root):
         for line_number, line in _content_lines(source):
-            for match in LINK_PATTERN.finditer(line):
-                raw_target = match.group('target').strip().strip('<>')
+            reference = REFERENCE_PATTERN.match(line)
+            targets = (
+                [reference.group(1)]
+                if reference is not None
+                else LINK_PATTERN.findall(line)
+            )
+            for target in targets:
+                raw_target = target.strip().strip('<>')
                 if ' "' in raw_target:
                     raw_target = raw_target.split(' "', maxsplit=1)[0]
                 parsed = urlsplit(raw_target)
@@ -113,6 +135,8 @@ def validate(root: Path) -> list[str]:
                     source if not parsed.path else source.parent / unquote(parsed.path)
                 )
                 if target_path.is_dir():
+                    if not parsed.fragment:
+                        continue
                     target_path = target_path / 'README.md'
                 if not target_path.is_file():
                     failures.append(
