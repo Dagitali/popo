@@ -73,6 +73,11 @@ interpreter supported by both Popo and the consumer policy.
 
 ## Command Boundaries
 
+Python-policy workflow inspection resolves literal versions, simple environment references, and
+matrix references backed by inline lists or contiguous block lists. Block-list entries may be quoted
+and have inline comments. This is static inspection, not evaluation of arbitrary workflow
+expressions or full YAML semantics.
+
 - `check-docs` reads repository-local Markdown; it does not require Python-policy configuration. It
   validates inline links and single-line reference definitions, including unused definitions, with
   heading and explicit HTML `<a id="...">` or `<a name="...">` anchors. It does not detect undefined
