@@ -4,6 +4,7 @@
 Validate dependency metadata against installer or constraint inputs.
 """
 
+import re
 import tomllib
 from pathlib import Path
 
@@ -60,13 +61,14 @@ def _minimum_versions(
 
 
 def _requirement_lines(path: Path) -> tuple[list[str], list[str]]:
+    """Read requirement lines, preserving URL fragments when removing comments."""
     values: list[str] = []
     failures: list[str] = []
     for line_number, raw_line in enumerate(
         path.read_text(encoding='utf-8').splitlines(),
         start=1,
     ):
-        value = raw_line.strip()
+        value = re.split(r'\s+#', raw_line, maxsplit=1)[0].strip()
         if not value or value.startswith('#'):
             continue
         if value.startswith('-'):
