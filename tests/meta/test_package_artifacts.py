@@ -48,6 +48,11 @@ class TestPackageArtifacts:
             assert any(n.endswith('/' + filename) for n in names)
         parsed = BytesParser().parsebytes(metadata)
         assert parsed['Name'] == 'popo'
+        assert parsed['Summary'] == 'Reusable repository policy and consistency checks'
+        assert (
+            'Documentation, https://github.com/Dagitali/popo/tree/main/docs'
+            in parsed.get_all('Project-URL', [])
+        )
         assert parsed['License-Expression'] == 'MIT'
         assert set(parsed['Requires-Python'].split(',')) == {'>=3.13', '<3.15'}
         assert any(
