@@ -35,7 +35,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "popo"
 dynamic = ["version"]
-description = "Extensible repository policy and consistency checks for Python projects"
+description = "Reusable repository policy and consistency checks"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.13,<3.15"
 license = "MIT"
@@ -78,6 +78,7 @@ popo = "popo.cli:main"
 
 [project.urls]
 Changelog = "https://github.com/Dagitali/popo/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/Dagitali/popo/tree/main/docs"
 Homepage = "https://github.com/Dagitali/popo"
 Issues = "https://github.com/Dagitali/popo/issues"
 Repository = "https://github.com/Dagitali/popo"
