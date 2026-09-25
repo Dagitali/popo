@@ -22,10 +22,10 @@
 # Maintainer Notes
 # - Keep hook revisions compatible with the Python versions supported by
 #   `pyproject.toml`.
-# - Keep the development virtual environment active for local system hooks,
-#   as documented in `CONTRIBUTING.md`.
-# - Keep branch and commit-message hooks aligned with the GitFlow rules
-#   documented in `.github/BRANCH-PROTECTION.md`.
+# - Local system hooks delegate interpreter selection to Make; install
+#   development tools before using them, as documented in CONTRIBUTING.md.
+# - Keep branch and commit-message hooks aligned with repository policy;
+#   hosted PR routing is configurable rather than implicitly GitFlow.
 # - Prefer targeted hook exclusions over broad disables when generated or
 #   nonstandard files need special handling.
 #
@@ -204,3 +204,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: make-check-pre-push
+        name: Run pre-push checks
+        entry: make check-pre-push
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
