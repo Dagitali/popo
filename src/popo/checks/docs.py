@@ -5,12 +5,14 @@ Validate repository-local Markdown links and heading anchors.
 """
 
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 # SECTION: CONSTANTS
 
 
+FENCE_PATTERN = re.compile(r'^ {0,3}(?P<marker>`{3,}|~{3,})')
 HEADING_PATTERN = re.compile(r'^#{1,6}\s+(?P<heading>.+?)\s*#*\s*$')
 LINK_PATTERN = re.compile(r'(?<!!)\[[^\]]+\]\((?P<target>[^)]+)\)')
 
@@ -36,13 +38,7 @@ IGNORED_PARTS = {
 def _anchors(path: Path) -> set[str]:
     anchors: set[str] = set()
     counts: dict[str, int] = {}
-    in_fence = False
-    for line in path.read_text(encoding='utf-8').splitlines():
-        if line.lstrip().startswith(('```', '~~~')):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
+    for _, line in _content_lines(path):
         match = HEADING_PATTERN.match(line)
         if match is None:
             continue
@@ -51,6 +47,30 @@ def _anchors(path: Path) -> set[str]:
         counts[base] = count + 1
         anchors.add(base if count == 0 else f'{base}-{count}')
     return anchors
+
+
+def _content_lines(path: Path) -> Iterator[tuple[int, str]]:
+    """Yield original line numbers and text outside fenced code examples."""
+    fence: str | None = None
+    for line_number, line in enumerate(
+        path.read_text(encoding='utf-8').splitlines(),
+        start=1,
+    ):
+        marker = FENCE_PATTERN.match(line)
+        if marker is not None:
+            candidate = marker.group('marker')
+            if fence is None:
+                fence = candidate
+                continue
+            if (
+                candidate[0] == fence[0]
+                and len(candidate) >= len(fence)
+                and not line.removeprefix(marker.group()).strip()
+            ):
+                fence = None
+                continue
+        if fence is None:
+            yield line_number, line
 
 
 def _markdown_paths(root: Path) -> list[Path]:
@@ -81,10 +101,7 @@ def validate(root: Path) -> list[str]:
         return [f'repository root does not exist: {root}']
     failures: list[str] = []
     for source in _markdown_paths(root):
-        for line_number, line in enumerate(
-            source.read_text(encoding='utf-8').splitlines(),
-            start=1,
-        ):
+        for line_number, line in _content_lines(source):
             for match in LINK_PATTERN.finditer(line):
                 raw_target = match.group('target').strip().strip('<>')
                 if ' "' in raw_target:
