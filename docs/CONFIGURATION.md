@@ -69,7 +69,9 @@ interpreter supported by both Popo and the consumer policy.
 ## Command Boundaries
 
 - `check-docs` reads repository-local Markdown; it does not require Python-policy configuration. It
-  validates inline links, not reference-link definitions, image links, or external URLs.
+  validates inline links, not reference-link definitions, image links, or external URLs. Fenced code
+  examples are excluded from link scanning and heading-anchor discovery. Closing fences must use the
+  same marker character and be at least as long as the opening fence.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
   `--automation-directory`.
 - `check-dependency-boundaries` and `check-python-policy` load the consumer configuration.
