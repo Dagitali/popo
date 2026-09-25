@@ -34,6 +34,24 @@ class TestMarkdownLinks:
         readme = write_file('README.md', f'[Missing]({link})\n')
         assert validate(tmp_path) == [f'{readme}:1: {message}: {link}']
 
+    @pytest.mark.parametrize(
+        ('target', 'message'),
+        [
+            ('missing.md', 'local target does not exist'),
+            ('#missing', 'anchor does not exist'),
+        ],
+    )
+    def test_broken_reference_definitions(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        target: str,
+        message: str,
+    ) -> None:
+        """Check even unused definitions and retain their source line numbers."""
+        readme = write_file('README.md', f'# Project\n\n[unused]: {target}\n')
+        assert validate(tmp_path) == [f'{readme}:3: {message}: {target}']
+
     def test_checks_github_but_ignores_generated_files(
         self,
         tmp_path: Path,
@@ -45,6 +63,44 @@ class TestMarkdownLinks:
         assert validate(tmp_path) == [
             f'{path}:1: local target does not exist: missing.md',
         ]
+
+    @pytest.mark.parametrize(
+        'link',
+        ['[templates](templates/)', '[templates]: templates/'],
+    )
+    def test_directory_links_without_a_readme(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        link: str,
+    ) -> None:
+        write_file('templates/bug.yml', 'name: Bug\n')
+        write_file('README.md', link)
+        assert validate(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        'anchor',
+        ['<a id="legacy"></a>', "<a name='legacy'></a>"],
+    )
+    def test_explicit_anchors(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        anchor: str,
+    ) -> None:
+        write_file('README.md', f'{anchor}\n[Old](#legacy)\n[old]: #legacy\n')
+        assert validate(tmp_path) == []
+
+    def test_fenced_explicit_anchors_are_not_targets(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        readme = write_file(
+            'README.md',
+            '```html\n<a id="hidden"></a>\n```\n[x]: #hidden\n',
+        )
+        assert validate(tmp_path) == [f'{readme}:4: anchor does not exist: #hidden']
 
     def test_fenced_headings_do_not_create_or_number_anchors(
         self,
@@ -64,12 +120,21 @@ class TestMarkdownLinks:
             f'{readme}:2: anchor does not exist: guide.md#hidden',
         ]
 
+    def test_fenced_reference_definitions_are_examples(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        write_file('README.md', '```markdown\n[example]: missing.md\n```\n')
+        assert validate(tmp_path) == []
+
     @pytest.mark.parametrize(
         ('link', 'target', 'content'),
         [
             ('docs/guide.md#getting-started', 'docs/guide.md', '# Getting Started\n'),
             ('my%20guide.md#intro-1', 'my guide.md', '# Intro\n# Intro\n'),
             ('docs', 'docs/README.md', '# Guide'),
+            ('docs/#guide', 'docs/README.md', '# Guide'),
             ('<guide.md>', 'guide.md', '# Guide'),
             ('guide.md "Guide title"', 'guide.md', '# Guide'),
             (
@@ -97,6 +162,33 @@ class TestMarkdownLinks:
     ) -> None:
         root = tmp_path / 'missing'
         assert validate(root) == [f'repository root does not exist: {root}']
+
+    @pytest.mark.parametrize(
+        'destination',
+        ['guide.md#intro', '<guide.md#intro>', 'guide.md#intro "Guide title"'],
+    )
+    def test_reference_destinations(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        destination: str,
+    ) -> None:
+        """Validate definitions and optional titles without a network request."""
+        write_file(
+            'README.md',
+            f'[Guide]\n\n[Guide]: {destination}\n[web]: HTTPS://example.com',
+        )
+        write_file('guide.md', '# Intro\n')
+        assert validate(tmp_path) == []
+
+    def test_reference_destination_with_spaces(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        write_file('README.md', '[guide]: <my guide.md#intro> "Title"\n')
+        write_file('my guide.md', '# Intro\n')
+        assert validate(tmp_path) == []
 
     @pytest.mark.parametrize(
         'block',
