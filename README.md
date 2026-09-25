@@ -73,7 +73,7 @@ publishing is not configured; see the [release policy].
 ## Features
 
 - Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
-  excluding fenced code examples;
+  excluding fenced code examples and limiting fragment validation to Markdown targets;
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows; and
