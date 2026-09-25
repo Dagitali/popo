@@ -9,9 +9,16 @@ Project overview, supported checks, setup, and documentation entry points.
 Maintainer Notes
 - Keep examples aligned with the CLI and configurable consumer policy.
 - Keep local links and documented behavior consistent with repository sources.
+- Keep badge targets aligned with package metadata and workflow filenames.
 -->
 
 # popo
+
+[![Release][release badge]][GitHub releases]
+[![Python][Python badge]][Python support]
+[![License][license badge]][MIT License]
+[![CI][CI badge]][CI workflow]
+[![PR Gates][PR gates badge]][PR gates workflow]
 
 Your project’s rules. Enforced.
 
@@ -19,32 +26,68 @@ Your project’s rules. Enforced.
 development, pre-commit hooks, and continuous integration (CI) the same commands and exit codes.
 
 - [Getting Started](#getting-started)
-- [Checks](#checks)
+- [At a Glance](#at-a-glance)
+- [Release Status](#release-status)
+- [Features](#features)
+- [Architecture](#architecture)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [Configuration](#configuration)
-- [Safety](#safety)
+- [Design Boundaries](#design-boundaries)
 - [Development](#development)
+- [PyPI Publication](#pypi-publication)
+- [License](#license)
 - [Contributing](#contributing)
 - [Documentation](#documentation)
-- [License](#license)
+  - [User Documentation](#user-documentation)
+  - [Community Health](#community-health)
+  - [Maintainer Docs](#maintainer-docs)
 
 ## Getting Started
 
+To get started:
+
 - Review the supported toolchain in [Requirements](#requirements).
-- Install from a local checkout as described in [Installation](#installation).
+- Install a selected tag or local checkout as described in [Installation](#installation).
 - Run a repository check with the [Quickstart](#quickstart).
 - Adapt [Configuration](#configuration) to the repository being checked.
 - Follow [Development](#development) to work on Popo itself.
 
-## Checks
+## At a Glance
+
+- Run the same checks locally, in pre-commit hooks, and in CI.
+- Inspect the current repository or select another with `--root`.
+- Configure consumer policy independently of Popo's own development settings.
+- Validate repository files without modifying them or requiring cloud credentials.
+
+## Release Status
+
+Popo is a pre-1.0 package with alpha development status. Review the [changelog] and [release
+archive] for compatibility changes and candidate status. The release badge reports Git tags; it does
+not establish successful artifact publication. GitHub Release publication is opt-in, and PyPI
+publishing is not configured; see the [release policy].
+
+<a id="checks"></a>
+
+## Features
 
 - Local Markdown links and heading anchors;
 - Immutable GitHub Actions references;
 - Dependency metadata synchronized with requirements or constraints files;
 - Python-version policy across package metadata, tool configuration, and workflows; and
 - Dated semantic-version entries in a changelog.
+
+## Architecture
+
+Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
+configuration for checks that need it, and dispatches to the relevant checker. Checkers inspect
+repository files and return findings; shared reporting prints `PASS` or `FAIL` messages and returns
+an exit status of `0` for a successful check or `1` for reported failures. Invalid command-line
+arguments are handled separately by the argument parser.
+
+Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
+without embedding a consumer's build or deployment process.
 
 ## Requirements
 
@@ -57,16 +100,17 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
 
 ## Installation
 
+Choose an existing tag from [GitHub tags] and replace `vMAJOR.MINOR.PATCH` below with that tag.
+Installing directly from Git requires Git on PATH:
+
+```console
+python -m pip install "popo @ git+https://github.com/Dagitali/popo.git@vMAJOR.MINOR.PATCH"
+```
+
 Install from a local checkout into your chosen Python environment:
 
 ```console
 python -m pip install .
-```
-
-After the first PyPI release:
-
-```console
-python -m pip install popo
 ```
 
 For an editable installation with development tools, see [Development](#development).
@@ -86,6 +130,9 @@ popo check-all
 
 Every command accepts `--root`. The equivalent module entry point is
 `python -m popo`.
+
+`check-all` runs the documentation, action-pin, dependency, and Python-policy checks. Release
+changelog validation is separate and requires the release version to check.
 
 ## Configuration
 
@@ -119,10 +166,17 @@ When dependency configuration is absent, `popo` detects the layouts
 `pyproject.toml` plus `requirements/lowest.txt`, root `requirements.txt`, or
 `infra/pyproject.toml` plus `infra/requirements.txt`.
 
-## Safety
+<a id="safety"></a>
+
+## Design Boundaries
 
 All checks are read-only. `popo` does not deploy infrastructure, modify repositories, or contact
 GitHub. The Markdown checker validates repository-local links only.
+
+Consumer projects own their policy choices, branching model, and deployment lifecycle. Python- and
+GitHub-specific checks are available, but the tool does not require a particular cloud platform.
+Passing repository checks does not establish that hosted branch protections are enabled or that a
+release has been published.
 
 ## Development
 
@@ -150,32 +204,81 @@ to install optional pre-commit hooks and `make check-release` to also build and 
 source distribution in clean environments. See the [contributing guide] for Windows paths,
 environment overrides, network requirements, and other setup and focused-check targets.
 
-## Contributing
+## PyPI Publication
 
-Code and documentation contributions are welcome. Follow the [contributing guide] for development,
-testing, hooks, and pull-request expectations.
+No workflow currently publishes Popo to PyPI. Until publication is configured and a release is
+available there, use the Git-tag or local-checkout installation paths above. After the first PyPI
+release, the intended installation command is:
 
-## Documentation
+```console
+python -m pip install popo
+```
 
-- [Configuration](#configuration): Consumer repository settings and dependency modes.
-- [Contributing guide]: Development workflow, quality gates, and GitHub automation.
-- [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
-- [Agent instructions]: Repository rules for automated coding agents.
-- [Changelog]: Project change history.
-- [Release policy]: Artifact validation and publication safeguards.
-- [Release archive]: Release-aligned scope, compatibility, and validation records.
-
-Release validation, opt-in GitHub publication, and disposable installation tests are documented in
-the [release policy].
+Publication requires a separately authorized release process; see the [release policy].
 
 ## License
 
 This project is licensed under the [MIT License].
 
+## Contributing
+
+Code and codeless contributions are welcome. Follow the [contributing guide] for development,
+testing, documentation, hooks, and pull-request expectations. Reproducible bug reports, usage
+feedback, and documentation corrections are useful contributions alongside code changes.
+
+## Documentation
+
+### User Documentation
+
+- [Documentation index]: Guides, scope, and local documentation validation.
+- [Configuration reference]: All consumer settings, defaults, and command boundaries.
+- [Configuration](#configuration): Consumer repository settings and dependency modes.
+
+### Community Health
+
+- [Contributing guide]: Development workflow, quality gates, and GitHub automation.
+- [Issue forms]: Structured bug reports, feature requests, and documentation corrections.
+
+Do not include credentials, private repository data, or vulnerability details in public issues.
+
+<a id="contributor-and-maintainer-docs"></a>
+
+### Maintainer Docs
+
+- [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
+- [Testing guide]: Focused checks, dependency boundaries, and installation validation.
+- [Agent instructions]: Repository rules for automated coding agents.
+- [Branch protection]: Configurable PR routing, required checks, and hosted-setting boundaries.
+- [Changelog]: Project change history.
+- [Release archive]: Release-aligned scope, compatibility, and validation records.
+- [Release policy]: Artifact validation and publication safeguards.
+- [Release checklist]: Preparation, validation, and separately authorized tagging and publication.
+- [Release playbook]: Evidence and closeout checklist for maintainers.
+
+Release validation, opt-in GitHub publication, and disposable installation tests are documented in
+the [release policy].
+
+[Python support]: #requirements
+[Branch protection]: .github/BRANCH-PROTECTION.md
+[Issue forms]: .github/ISSUE_TEMPLATE/
 [agent instructions]: AGENTS.md
 [changelog]: CHANGELOG.md
 [contributing guide]: CONTRIBUTING.md
+[Release checklist]: CONTRIBUTING.md#release-preparation
 [MIT License]: LICENSE
 [release policy]: RELEASE-POLICY.md
+[Configuration reference]: docs/CONFIGURATION.md
+[Documentation index]: docs/README.md
+[Testing guide]: docs/TESTING.md
+[Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
+[CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
+[CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
+[PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml
+[PR gates badge]: https://github.com/Dagitali/popo/actions/workflows/pr.yml/badge.svg?branch=main
+[GitHub releases]: https://github.com/Dagitali/popo/releases
+[GitHub tags]: https://github.com/Dagitali/popo/tags
+[Python badge]: https://img.shields.io/badge/python-3.13%20%7C%203.14-blue.svg
+[license badge]: https://img.shields.io/github/license/Dagitali/popo.svg
+[release badge]: https://img.shields.io/github/v/tag/Dagitali/popo?label=release
 [test layout]: tests/README.md
