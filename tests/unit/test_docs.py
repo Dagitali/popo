@@ -5,9 +5,11 @@ Test local Markdown targets, heading anchors, and ignored build output.
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
+from popo.checks import docs
 from popo.checks.docs import validate
 from tests.support.files import FileWriter
 
@@ -16,6 +18,27 @@ from tests.support.files import FileWriter
 
 class TestMarkdownLinks:
     """Cover local link resolution without accessing external sites."""
+
+    def test_anchor_cache_is_shared_within_but_not_between_checks(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """Reuse resolved targets during a run, then reread them after edits."""
+        readme = write_file(
+            'README.md',
+            '[One](guide.md#intro)\n[Two](./guide.md#intro)\n',
+        )
+        guide = write_file('guide.md', '# Intro\n')
+        with patch.object(docs, '_anchors', wraps=docs._anchors) as anchors:
+            assert validate(tmp_path) == []
+            anchors.assert_called_once_with(guide.resolve())
+            write_file('guide.md', '# Renamed\n')
+            assert validate(tmp_path) == [
+                f'{readme}:1: anchor does not exist: guide.md#intro',
+                f'{readme}:2: anchor does not exist: ./guide.md#intro',
+            ]
+            assert anchors.call_count == 2
 
     @pytest.mark.parametrize(
         ('link', 'message'),
@@ -164,6 +187,31 @@ class TestMarkdownLinks:
         assert validate(root) == [f'repository root does not exist: {root}']
 
     @pytest.mark.parametrize(
+        'filename',
+        ['manual.pdf', 'page.html', 'image.png'],
+    )
+    def test_non_markdown_fragments_do_not_decode_targets(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        filename: str,
+    ) -> None:
+        """Check existence without treating arbitrary file formats as Markdown."""
+        (tmp_path / filename).write_bytes(b'\xff\xfe\x00')
+        write_file('README.md', f'[Target]({filename}#section)\n')
+        assert validate(tmp_path) == []
+
+    def test_non_markdown_fragments_still_require_existing_files(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        readme = write_file('README.md', '[Manual](missing.pdf#page=2)\n')
+        assert validate(tmp_path) == [
+            f'{readme}:1: local target does not exist: missing.pdf#page=2',
+        ]
+
+    @pytest.mark.parametrize(
         'destination',
         ['guide.md#intro', '<guide.md#intro>', 'guide.md#intro "Guide title"'],
     )
@@ -225,3 +273,14 @@ class TestMarkdownLinks:
         """Do not interpret unfinished code examples as active links."""
         write_file('README.md', f'{fence}\n[Example](missing.md)\n')
         assert validate(tmp_path) == []
+
+    def test_uppercase_markdown_extension_keeps_fragment_validation(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        readme = write_file('README.md', '[Guide](guide.MD#missing)\n')
+        write_file('guide.MD', '# Intro\n')
+        assert validate(tmp_path) == [
+            f'{readme}:1: anchor does not exist: guide.MD#missing',
+        ]
