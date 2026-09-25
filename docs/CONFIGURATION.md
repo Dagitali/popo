@@ -79,7 +79,9 @@ interpreter supported by both Popo and the consumer policy.
   reference labels, validate inline image links, or check external URLs. Fenced code examples are
   excluded from link scanning and heading-anchor discovery. Closing fences must use the same marker
   character and be at least as long as the opening fence. Plain directory links need no README;
-  directory links with fragments resolve to that directory's `README.md`.
+  directory links with fragments resolve to that directory's `README.md`. Fragments are checked only
+  on Markdown targets (`.md`, case-insensitive); other local files are checked for existence without
+  parsing their format. Markdown anchors are cached within a check, not between checks.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
   `--automation-directory`. Remote references must contain a non-empty action name and a full
   40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
