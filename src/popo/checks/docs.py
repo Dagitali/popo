@@ -130,12 +130,15 @@ def validate(
     Inspect inline links and single-line reference definitions outside fenced
     code blocks. Accept heading and explicit HTML anchors. External URLs are
     skipped without network requests; undefined reference labels and inline
-    image links are not checked. Files are never modified.
+    image links are not checked. Fragments are validated only for Markdown
+    targets; other local targets are checked for existence. Files are never
+    modified.
     """
 
     if not root.is_dir():
         return [f'repository root does not exist: {root}']
     failures: list[str] = []
+    anchor_cache: dict[Path, set[str]] = {}
     for source in _markdown_paths(root):
         for line_number, line in _content_lines(source):
             reference = REFERENCE_PATTERN.match(line)
@@ -164,12 +167,16 @@ def validate(
                         f'{raw_target}',
                     )
                     continue
-                if parsed.fragment and unquote(parsed.fragment).lower() not in _anchors(
-                    target_path,
-                ):
-                    failures.append(
-                        f'{source}:{line_number}: anchor does not exist: {raw_target}',
-                    )
+                if parsed.fragment and target_path.suffix.lower() == '.md':
+                    anchor_path = target_path.resolve()
+                    anchors = anchor_cache.get(anchor_path)
+                    if anchors is None:
+                        anchors = anchor_cache[anchor_path] = _anchors(anchor_path)
+                    if unquote(parsed.fragment).lower() not in anchors:
+                        failures.append(
+                            f'{source}:{line_number}: anchor does not exist: '
+                            f'{raw_target}',
+                        )
     return failures
 
 
