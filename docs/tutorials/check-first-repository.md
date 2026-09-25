@@ -44,9 +44,9 @@ Create a new disposable folder using your editor or file manager. Add these two 
   `guide.md#overview` (the usual bracketed label followed by a parenthesized destination).
 - `guide.md`: A Markdown heading `# Overview` followed by a short paragraph.
 
-Use an inline link for this exercise: the current checker does not validate reference-link
-definitions or image links. A successful check also does not establish external URL availability or
-the factual accuracy of the text.
+Use an inline link for this exercise; reference-definition destinations are also checked. The
+checker does not detect undefined reference labels or validate inline image links. A successful
+check does not establish external URL availability or the factual accuracy of the text.
 
 ## Run the Check
 
