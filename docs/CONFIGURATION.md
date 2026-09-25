@@ -76,7 +76,9 @@ interpreter supported by both Popo and the consumer policy.
   character and be at least as long as the opening fence. Plain directory links need no README;
   directory links with fragments resolve to that directory's `README.md`.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
-  `--automation-directory`.
+  `--automation-directory`. Remote references must contain a non-empty action name and a full
+  40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
+  exempt; the check does not verify repository existence or container-image immutability.
 - `check-dependency-boundaries` and `check-python-policy` load the consumer configuration.
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
   `--changelog` to select another file.
