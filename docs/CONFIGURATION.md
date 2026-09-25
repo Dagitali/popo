@@ -46,6 +46,11 @@ upper bound. Its corresponding constraint must be a single `name==version` pin e
 bound. A newer allowed version is still a mismatch for this fixture. In `exact` mode, normalized
 dependency declarations must match the requirements. Neither mode installs dependencies.
 
+Requirements inputs accept blank lines, full-line comments, and inline comments introduced by
+whitespace followed by `#`. URL fragments without preceding whitespace remain part of the
+requirement. Installer directives such as `-r` are still rejected; comment support does not make
+Popo a complete installer requirements-file parser.
+
 ## Python-Policy Settings
 
 `[tool.popo.python-policy]` supports the following non-empty strings:
