@@ -78,11 +78,25 @@ def _resolve_versions(
             content,
             re.MULTILINE,
         )
+        if declaration is not None:
+            return tuple(
+                _normalize_scalar(item)
+                for item in declaration.group('values').split(',')
+            )
+        declaration = re.search(
+            rf'^[ \t]+{name}:[ \t]*$'
+            rf'(?P<items>(?:\n[ \t]+-[ \t]+[^\n]+)+)',
+            content,
+            re.MULTILINE,
+        )
         if declaration is None:
             return ()
-        return tuple(
-            _normalize_scalar(item) for item in declaration.group('values').split(',')
+        values = re.findall(
+            r'^[ \t]+-[ \t]+(.+?)[ \t]*$',
+            declaration.group('items'),
+            re.MULTILINE,
         )
+        return tuple(_normalize_scalar(item) for item in values)
     return (value,)
 
 
