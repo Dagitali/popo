@@ -46,6 +46,39 @@ class TestPythonPolicy:
     """Validate policy consistency and supported workflow version declarations."""
 
     @pytest.mark.parametrize(
+        'dimension',
+        ['python-version', 'python'],
+    )
+    @pytest.mark.parametrize(
+        'version',
+        ['3.14', '3.12', 'banana'],
+    )
+    def test_block_matrix_versions(
+        self,
+        policy: PythonPolicyConfig,
+        write_file: FileWriter,
+        dimension: str,
+        version: str,
+    ) -> None:
+        """Resolve every block-list item, including quoted values with comments."""
+        path = write_file(
+            '.github/workflows/ci.yml',
+            'jobs:\n  check:\n    strategy:\n      matrix:\n'
+            f'        {dimension}:\n'
+            '          - "3.13" # minimum\n'
+            f"          - '{version}' # candidate\n"
+            '    steps:\n'
+            f'      - uses: actions/setup-python@{'a' * 40}\n'
+            '        with:\n'
+            f'          python-version: ${{{{ matrix.{dimension} }}}}\n',
+        )
+        assert validate(policy, running_version='3.13') == (
+            []
+            if version == '3.14'
+            else [f'{path}: unsupported Python version {version!r}']
+        )
+
+    @pytest.mark.parametrize(
         ('path', 'content', 'message'),
         [
             ('pyproject.toml', '[', 'invalid TOML'),
