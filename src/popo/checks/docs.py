@@ -31,6 +31,7 @@ IGNORED_PARTS = {
     'build',
     'dist',
     'htmlcov',
+    'node_modules',
 }
 
 
@@ -90,7 +91,6 @@ def _markdown_paths(
         path
         for path in root.rglob('*.md')
         if not any(part in IGNORED_PARTS for part in path.relative_to(root).parts)
-        and 'docs/build' not in path.relative_to(root).as_posix()
     )
 
 
