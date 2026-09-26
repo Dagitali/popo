@@ -80,7 +80,14 @@ class TestMarkdownLinks:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        for directory in ('.github', 'dist', '.venv', 'docs/build'):
+        for directory in (
+            '.github',
+            'dist',
+            '.venv',
+            'docs/build',
+            'node_modules',
+            'frontend/node_modules/vendor',
+        ):
             write_file(f'{directory}/README.md', '[Missing](missing.md)\n')
         path = tmp_path / '.github/README.md'
         assert validate(tmp_path) == [
@@ -100,6 +107,22 @@ class TestMarkdownLinks:
         write_file('templates/bug.yml', 'name: Bug\n')
         write_file('README.md', link)
         assert validate(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        'name',
+        ['docs/building.md', 'docs/build-guide/README.md', 'node_modules-guide.md'],
+    )
+    def test_exclusions_match_path_components_not_substrings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        name: str,
+    ) -> None:
+        """Keep maintained documentation whose name resembles build output."""
+        source = write_file(name, '[Missing](missing.md)\n')
+        assert validate(tmp_path) == [
+            f'{source}:1: local target does not exist: missing.md',
+        ]
 
     @pytest.mark.parametrize(
         'anchor',
@@ -150,6 +173,21 @@ class TestMarkdownLinks:
     ) -> None:
         write_file('README.md', '```markdown\n[example]: missing.md\n```\n')
         assert validate(tmp_path) == []
+
+    def test_linked_targets_in_excluded_directories(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """Discovery exclusions do not disable validation of explicit links."""
+        write_file('node_modules/demo/README.md', '# Package\n')
+        source = write_file(
+            'README.md',
+            '[Package](node_modules/demo/README.md#missing)\n',
+        )
+        assert validate(tmp_path) == [
+            f'{source}:1: anchor does not exist: node_modules/demo/README.md#missing',
+        ]
 
     @pytest.mark.parametrize(
         ('link', 'target', 'content'),
