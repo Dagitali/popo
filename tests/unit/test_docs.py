@@ -239,6 +239,67 @@ class TestMarkdownLinks:
         assert validate(tmp_path) == []
 
     @pytest.mark.parametrize(
+        'target',
+        ['../outside.md', '%2e%2e/outside.md', '../absent.md'],
+    )
+    @pytest.mark.parametrize(
+        'reference',
+        [False, True],
+    )
+    def test_rejects_repository_escapes(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        target: str,
+        reference: bool,
+    ) -> None:
+        """Reject traversal before checking existence or reading target anchors."""
+        write_file('outside.md', '# Outside\n')
+        link = f'[outside]: {target}' if reference else f'[Outside]({target})'
+        source = write_file('repo/README.md', link)
+        assert validate(tmp_path / 'repo') == [
+            f'{source}:1: link escapes repository: {target}',
+        ]
+
+    @pytest.mark.parametrize(
+        'target',
+        ['external#secret', 'directory/', 'docs/#secret'],
+    )
+    def test_rejects_symlinked_targets_outside_root(
+        self,
+        write_file: FileWriter,
+        target: str,
+    ) -> None:
+        """Resolve links and directory README targets before anchor inspection."""
+        outside = write_file('outside/private.md', '# Secret\n')
+        source = write_file('repo/README.md', f'[Outside]({target})\n')
+        root = source.parent
+        (root / 'docs').mkdir()
+        try:
+            (root / 'external').symlink_to(outside)
+            (root / 'directory').symlink_to(outside.parent, target_is_directory=True)
+            (root / 'docs/README.md').symlink_to(outside)
+        except OSError as error:
+            pytest.skip(f'Symlinks are unavailable: {error}')
+        with patch.object(docs, '_anchors') as anchors:
+            assert validate(root) == [
+                f'{source}:1: link escapes repository: {target}',
+            ]
+            anchors.assert_not_called()
+
+    def test_relative_root_allows_parent_links_within_repository(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Reject escapes rather than every use of a parent-directory component."""
+        write_file('repo/README.md', '# Home\n')
+        write_file('repo/docs/guide.md', '[Home](../README.md#home)\n')
+        monkeypatch.chdir(tmp_path)
+        assert validate(Path('repo')) == []
+
+    @pytest.mark.parametrize(
         'block',
         [
             '```markdown\n[Example](missing.md)\n```',
