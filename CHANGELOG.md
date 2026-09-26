@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.2.1\] - 2026-09-26](#021---2026-09-26)
 - [\[0.2.0\] - 2026-09-26](#020---2026-09-26)
 - [\[0.1.5\] - 2026-09-24](#015---2026-09-24)
 - [\[0.1.4\] - 2026-09-24](#014---2026-09-24)
@@ -28,6 +29,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.2.1] - 2026-09-26
+
+Planned release; this preparation date does not establish tagging or publication.
+
+- Fix the artifact fixture's build option from `--out-dir` to `--outdir`, restoring
+  distribution and clean-installation tests that build their own wheel and source distribution.
 
 ## [0.2.0] - 2026-09-26
 
