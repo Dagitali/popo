@@ -190,7 +190,7 @@ repos:
         name: Ruff lint
         entry: python -m ruff check
         language: python
-        additional_dependencies: ['ruff>=0.16,<0.17']
+        additional_dependencies: ['ruff>=0.16.9,<0.17']
         types_or: [python, pyi]
       - id: ruff-format
         name: Ruff format check
