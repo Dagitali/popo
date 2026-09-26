@@ -74,7 +74,8 @@ publishing is not configured; see the [release policy].
 
 - Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
   excluding fenced code examples, rejecting repository-escaping targets, and limiting fragment
-  validation to Markdown targets;
+  validation to Markdown targets; generated and vendored sources such as `node_modules` are
+  excluded;
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows, including
