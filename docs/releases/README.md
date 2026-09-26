@@ -27,7 +27,8 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.2 Series
 
-- [v0.2.0] — planned: Expand repository checks, tighten validation, and align reusable contributor
+- [v0.2.1] — planned: Correct the build option used by distribution and clean-installation tests.
+- [v0.2.0] — tagged: Expand repository checks, tighten validation, and align reusable contributor
   tooling and documentation.
 
 ## 0.1 Series
@@ -62,7 +63,7 @@ The current CD workflow generates GitHub Release notes; it does not automaticall
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog includes a dated `0.2.0` candidate section. Changes outside that candidate belong in
+The changelog includes a dated `0.2.1` candidate section. Changes outside that candidate belong in
 `Unreleased`; the candidate date does not establish publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
@@ -77,3 +78,4 @@ The changelog includes a dated `0.2.0` candidate section. Changes outside that c
 [v0.1.4]: v0.1.4.md
 [v0.1.5]: v0.1.5.md
 [v0.2.0]: v0.2.0.md
+[v0.2.1]: v0.2.1.md
