@@ -53,8 +53,8 @@ Use the [interface checklist] for contract-specific review and the [change-impac
 Verify [claim/change] against canonical repository sources and update only affected maintained docs.
 Scope: [paths]. Preserve purposeful project differences, headers, and historical release context.
 Use reference links sorted by destination. Do not edit generated output or alter implementation
-to make a documentation claim true. Run make docs-markdown; separately inspect reference-link
-targets and factual accuracy. Report changes, evidence, skipped checks, and discrepancies requiring
+to make a documentation claim true. Run make docs-markdown; separately inspect undefined reference
+labels, inline images, and factual accuracy. Report evidence, skipped checks, and discrepancies requiring
 an implementation decision. Do not introduce build tooling merely to mirror another repository.
 ```
 

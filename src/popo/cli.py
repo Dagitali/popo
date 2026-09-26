@@ -86,7 +86,15 @@ def _python(args: argparse.Namespace) -> tuple[list[str], str]:
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create the complete command-line parser."""
+    """
+    Create the complete command-line parser.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Parser with supported subcommands, options, and dispatch handlers.
+        Constructing the parser does not run repository checks.
+    """
 
     parser = argparse.ArgumentParser(description='Command-line interface for popo.')
     parser.add_argument(
@@ -126,7 +134,26 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run a popo command."""
+    """
+    Run a popo command.
+
+    Parameters
+    ----------
+    argv : list[str] or None, optional
+        Arguments excluding the executable name. When omitted, argparse reads
+        the process arguments; an empty list is not treated as omission.
+
+    Returns
+    -------
+    int
+        Zero for a successful check or one for reported validation and
+        configuration failures. Results are printed through shared reporting.
+
+    Raises
+    ------
+    SystemExit
+        When argparse handles help, version output, or invalid arguments.
+    """
 
     args = create_parser().parse_args(argv)
     command = cast(Command, args.handler)

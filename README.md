@@ -72,10 +72,14 @@ publishing is not configured; see the [release policy].
 
 ## Features
 
-- Local Markdown links and heading anchors;
-- Immutable GitHub Actions references;
-- Dependency metadata synchronized with requirements or constraints files;
-- Python-version policy across package metadata, tool configuration, and workflows; and
+- Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
+  excluding fenced code examples, rejecting repository-escaping targets, and limiting fragment
+  validation to Markdown targets; generated and vendored sources such as `node_modules` are
+  excluded;
+- Named remote GitHub Actions references pinned to full commit SHAs;
+- Dependency metadata synchronized with requirements or constraints files, including commented pins;
+- Python-version policy across package metadata, tool configuration, and workflows, including
+  inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
 
 ## Architecture
@@ -191,6 +195,9 @@ make check
 Use `PY=python3.14` instead when developing with Python 3.14. Make selects the managed environment
 when no virtual environment is active; activation is not required for `make test` or `make check`.
 An explicit `PYTHON` override takes precedence.
+
+When optional hooks are installed, the pre-push stage runs `make check-pre-push` (the full local
+quality gate). It does not install dependencies, build distributions, or publish artifacts.
 
 Alternatively, activate your own supported Python environment and install in editable mode:
 

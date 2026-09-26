@@ -17,7 +17,27 @@ def validate(
     changelog: Path,
     release: str,
 ) -> list[str]:
-    """Return failures for a missing or invalid dated release heading."""
+    """
+    Return failures for a missing or invalid dated release heading.
+
+    Parameters
+    ----------
+    changelog : pathlib.Path
+        Changelog file to inspect without modifying it.
+    release : str
+        Three-component release version with an optional leading ``v``.
+
+    Returns
+    -------
+    list[str]
+        Human-readable failures for an invalid version, missing file or
+        heading, or impossible calendar date; empty when validation succeeds.
+
+    Notes
+    -----
+    The heading must use ``## [MAJOR.MINOR.PATCH] - YYYY-MM-DD``. Brackets
+    are intentional and differ from some consumer changelog conventions.
+    """
 
     try:
         version = normalize_release(release)

@@ -18,6 +18,20 @@ from tests.support.files import FileWriter
 class TestDependencyPolicy:
     """Exercise normalized comparisons and malformed dependency inputs."""
 
+    def test_commented_directive_retains_line_number(
+        self,
+        write_file: FileWriter,
+    ) -> None:
+        """Comments must not enable installer directives or hide their location."""
+        metadata = write_file('pyproject.toml', '[project]\ndependencies = []')
+        requirements = write_file(
+            'requirements.txt',
+            '# heading\n-r other.txt # include\n',
+        )
+        assert validate(DependencyConfig(metadata, requirements, 'exact')) == [
+            f"{requirements}:2: installer directives are not supported: '-r other.txt'",
+        ]
+
     @pytest.mark.parametrize(
         ('dependencies', 'constraints', 'mode', 'message'),
         [
@@ -118,6 +132,32 @@ class TestDependencyPolicy:
             assert message in failures[0]
 
     @pytest.mark.parametrize(
+        'suffix',
+        [' # minimum', '\t# minimum', '   # note # more'],
+    )
+    @pytest.mark.parametrize(
+        'mode',
+        ['exact', 'minimum-constraints'],
+    )
+    def test_inline_comments(
+        self,
+        write_file: FileWriter,
+        suffix: str,
+        mode: DependencyMode,
+    ) -> None:
+        """Accept trailing annotations without changing comparison policy."""
+        declaration = 'demo==1' if mode == 'exact' else 'demo>=1,<2'
+        metadata = write_file(
+            'pyproject.toml',
+            f'[project]\ndependencies = ["{declaration}"]',
+        )
+        requirements = write_file(
+            'requirements.txt',
+            f'  # heading\n\ndemo==1{suffix}\n',
+        )
+        assert validate(DependencyConfig(metadata, requirements, mode)) == []
+
+    @pytest.mark.parametrize(
         ('content', 'message'),
         [
             ('[', 'invalid TOML'),
@@ -146,6 +186,24 @@ class TestDependencyPolicy:
         assert validate(DependencyConfig(*paths, 'exact')) == [
             f'dependency-policy file does not exist: {path}' for path in paths
         ]
+
+    @pytest.mark.parametrize(
+        'suffix',
+        ['', ' # artifact'],
+    )
+    def test_url_fragments_remain_part_of_exact_requirements(
+        self,
+        write_file: FileWriter,
+        suffix: str,
+    ) -> None:
+        """Do not erase a URL hash when stripping a separate inline comment."""
+        requirement = 'demo @ https://example.com/demo.whl#sha256=abc123'
+        metadata = write_file(
+            'pyproject.toml',
+            f'[project]\ndependencies = ["{requirement}"]',
+        )
+        requirements = write_file('requirements.txt', requirement + suffix)
+        assert validate(DependencyConfig(metadata, requirements, 'exact')) == []
 
 
 # !SECTION

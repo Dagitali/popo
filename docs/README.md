@@ -64,10 +64,11 @@ After installing development dependencies, run from the repository root:
 make docs-markdown
 ```
 
-This checks inline-link local paths and heading anchors, not reference-link definitions, image
-links, external URL availability, or factual accuracy. Review reference-link targets separately.
-Popo does not currently configure a Sphinx site or HTML/EPUB build targets. Markdown is the
-maintained documentation format; do not copy generated output from another project.
+This checks local inline-link and reference-definition destinations, heading anchors, and explicit
+HTML anchors. It does not detect undefined reference labels or validate inline image links, external
+URL availability, or factual accuracy. Review those separately. Popo does not currently configure a
+Sphinx site or HTML/EPUB build targets. Markdown is the maintained documentation format; do not copy
+generated output from another project.
 
 ## Guides
 

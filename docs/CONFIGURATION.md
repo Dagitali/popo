@@ -46,6 +46,11 @@ upper bound. Its corresponding constraint must be a single `name==version` pin e
 bound. A newer allowed version is still a mismatch for this fixture. In `exact` mode, normalized
 dependency declarations must match the requirements. Neither mode installs dependencies.
 
+Requirements inputs accept blank lines, full-line comments, and inline comments introduced by
+whitespace followed by `#`. URL fragments without preceding whitespace remain part of the
+requirement. Installer directives such as `-r` are still rejected; comment support does not make
+Popo a complete installer requirements-file parser.
+
 ## Python-Policy Settings
 
 `[tool.popo.python-policy]` supports the following non-empty strings:
@@ -68,10 +73,31 @@ interpreter supported by both Popo and the consumer policy.
 
 ## Command Boundaries
 
+Python-policy workflow inspection resolves literal versions, simple environment references, and
+matrix references backed by inline lists or contiguous block lists. Block-list entries may be quoted
+and have inline comments. This is static inspection, not evaluation of arbitrary workflow
+expressions or full YAML semantics.
+
 - `check-docs` reads repository-local Markdown; it does not require Python-policy configuration. It
-  validates inline links, not reference-link definitions, image links, or external URLs.
+  validates inline links and single-line reference definitions, including unused definitions, with
+  heading and explicit HTML `<a id="...">` or `<a name="...">` anchors. It does not detect undefined
+  reference labels, validate inline image links, or check external URLs. Fenced code examples are
+  excluded from link scanning and heading-anchor discovery. Closing fences must use the same marker
+  character and be at least as long as the opening fence. Plain directory links need no README;
+  directory links with fragments resolve to that directory's `README.md`. Fragments are checked only
+  on Markdown targets (`.md`, case-insensitive); other local files are checked for existence without
+  parsing their format. Markdown anchors are cached within a check, not between checks. Local
+  destinations must resolve within `--root`, including through symlinks and directory README
+  targets. Parent-directory links within the root remain valid; escaping links fail even if the
+  outside target exists. External URLs remain outside this local check. Source discovery excludes
+  exact path components `.git`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.venv`,
+  `__pycache__`, `build`, `dist`, `htmlcov`, and `node_modules`. Similar names such as
+  `docs/building.md` remain checked, as does `.github`. These exclusions affect discovery only;
+  explicit links into excluded directories still have their targets checked.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
-  `--automation-directory`.
+  `--automation-directory`. Remote references must contain a non-empty action name and a full
+  40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
+  exempt; the check does not verify repository existence or container-image immutability.
 - `check-dependency-boundaries` and `check-python-policy` load the consumer configuration.
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
   `--changelog` to select another file.

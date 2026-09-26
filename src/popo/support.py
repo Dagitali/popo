@@ -26,7 +26,20 @@ def automation_paths(
     directory: Path,
     /,
 ) -> list[Path]:
-    """Return sorted YAML automation files below *directory*."""
+    """
+    Return sorted YAML automation files below *directory*.
+
+    Parameters
+    ----------
+    directory : pathlib.Path
+        Directory tree containing workflow or action files.
+
+    Returns
+    -------
+    list[pathlib.Path]
+        Recursively sorted ``.yml`` and ``.yaml`` paths, or an empty list
+        when the directory does not exist.
+    """
 
     if not directory.is_dir():
         return []
@@ -37,7 +50,25 @@ def normalize_release(
     release: str,
     /,
 ) -> str:
-    """Return a semantic release without an optional leading ``v``."""
+    """
+    Return a semantic release without an optional leading ``v``.
+
+    Parameters
+    ----------
+    release : str
+        Three-component release version with an optional leading ``v``.
+
+    Returns
+    -------
+    str
+        Version in ``MAJOR.MINOR.PATCH`` form.
+
+    Raises
+    ------
+    ValueError
+        If the input is not a three-component release version. Leading
+        zeroes, prerelease suffixes, and build metadata are not accepted.
+    """
 
     if match := RELEASE_PATTERN.fullmatch(release):
         return match.group('version')
@@ -53,7 +84,21 @@ def report(
     *,
     success: str,
 ) -> int:
-    """Print check results and return a conventional process status."""
+    """
+    Print check results and return a conventional process status.
+
+    Parameters
+    ----------
+    failures : collections.abc.Sequence[str]
+        Validation failures to print to standard output with ``FAIL:`` prefixes.
+    success : str
+        Message to print with a ``PASS:`` prefix when there are no failures.
+
+    Returns
+    -------
+    int
+        One when failures exist; otherwise, zero.
+    """
 
     if failures:
         for failure in failures:

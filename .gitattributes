@@ -25,4 +25,5 @@
 # - Git attributes reference:
 #   https://git-scm.com/docs/gitattributes
 
+# Auto detect text files and perform LF normalization
 * text=auto eol=lf
