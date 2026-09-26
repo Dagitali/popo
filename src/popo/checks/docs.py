@@ -44,6 +44,33 @@ IGNORED_PARTS = {
 def _anchors(
     path: Path,
 ) -> set[str]:
+    """
+    Collect supported heading and explicit HTML anchors outside fenced code.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        UTF-8 Markdown target to inspect.
+
+    Returns
+    -------
+    set[str]
+        Lowercase heading slugs and recognized HTML anchor names or IDs.
+        Repeated heading slugs receive ``-1``, ``-2``, and later suffixes;
+        explicit anchors do not increment heading-duplicate counters.
+
+    Raises
+    ------
+    OSError
+        If the Markdown file cannot be read.
+    UnicodeError
+        If the file cannot be decoded as UTF-8.
+
+    Notes
+    -----
+    Only the supported ATX headings and HTML anchor patterns are recognized.
+    This is not a complete renderer-specific Markdown anchor implementation.
+    """
     anchors: set[str] = set()
     counts: dict[str, int] = {}
     for _, line in _content_lines(path):
@@ -61,7 +88,34 @@ def _anchors(
 def _content_lines(
     path: Path,
 ) -> Iterator[tuple[int, str]]:
-    """Yield original line numbers and text outside fenced code examples."""
+    """
+    Yield source lines outside recognized backtick or tilde code fences.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        UTF-8 Markdown file; the complete file is read when iteration begins.
+
+    Yields
+    ------
+    tuple[int, str]
+        Original one-based line number and line text without its newline.
+
+    Raises
+    ------
+    OSError
+        If the file cannot be read when iteration begins.
+    UnicodeError
+        If the file cannot be decoded as UTF-8 when iteration begins.
+
+    Notes
+    -----
+    Fences start with at least three matching markers after at most three
+    spaces. Closing fences must use the same marker, be at least as long,
+    and have only whitespace after the markers. Fence lines are excluded;
+    an unclosed fence suppresses all remaining lines. Inline code and indented
+    code blocks are not filtered.
+    """
     fence: str | None = None
     for line_number, line in enumerate(
         path.read_text(encoding='utf-8').splitlines(),
@@ -87,6 +141,28 @@ def _content_lines(
 def _markdown_paths(
     root: Path,
 ) -> list[Path]:
+    """
+    Return sorted paths matching ``*.md`` beneath the repository root.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Directory from which recursive source discovery begins.
+
+    Returns
+    -------
+    list[pathlib.Path]
+        Sorted glob matches outside ignored root-relative path components.
+        Matches are not separately filtered to regular files.
+
+    Notes
+    -----
+    Ignore a path when any root-relative component exactly matches a name
+    in IGNORED_PARTS; substring matches such as docs/building.md remain.
+    Filtering applies to discovered sources, not explicitly linked targets.
+    Glob matching follows the host filesystem's case rules. Discovery does
+    not enforce the resolved-target boundary used during link validation.
+    """
     return sorted(
         path
         for path in root.rglob('*.md')
@@ -97,6 +173,26 @@ def _markdown_paths(
 def _slugify(
     heading: str,
 ) -> str:
+    """
+    Convert heading text to the checker's simplified lowercase anchor slug.
+
+    Parameters
+    ----------
+    heading : str
+        Heading text after removal of the Markdown heading markers.
+
+    Returns
+    -------
+    str
+        Normalized anchor base, possibly empty, without a duplicate suffix.
+
+    Notes
+    -----
+    Strip HTML tags and surrounding whitespace, retain word characters,
+    hyphens, and spaces, then replace surviving space runs with hyphens.
+    Underscores are retained. Duplicate suffixes are added by _anchors, not
+    here; full Markdown rendering and entity decoding are not performed.
+    """
     heading = re.sub(r'<[^>]+>', '', heading).strip().lower()
     heading = re.sub(r'[^\w\- ]', '', heading)
     return re.sub(r'[\s]+', '-', heading)
@@ -126,6 +222,13 @@ def validate(
         diagnostics, retaining the source path and original line number for
         links.
 
+    Raises
+    ------
+    OSError
+        If a discovered source or inspected Markdown target cannot be read.
+    UnicodeError
+        If inspected Markdown cannot be decoded as UTF-8.
+
     Notes
     -----
     Inspect inline links and single-line reference definitions outside fenced
@@ -134,6 +237,12 @@ def validate(
     image links are not checked. Fragments are validated only for Markdown
     targets; other local targets are checked for existence. Files are never
     modified.
+    Check reference definitions even when unused. Accept existing directory
+    links without fragments; resolve directory fragments through README.md.
+    Decode local URL paths and reject destinations whose resolved paths fall
+    outside the resolved root, including symlinked targets. This boundary is
+    a link-target policy, not a filesystem sandbox for source discovery.
+    Cache Markdown anchors only within this invocation, keyed by resolved path.
     """
 
     if not root.is_dir():

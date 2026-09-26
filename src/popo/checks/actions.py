@@ -28,7 +28,7 @@ def validate(
     automation_directory: Path,
 ) -> list[str]:
     """
-    Return every mutable or malformed remote action reference.
+    Return pinning failures for remote references in recognized uses lines.
 
     Parameters
     ----------
@@ -41,6 +41,22 @@ def validate(
         Human-readable failures; empty when every checked remote reference has
         a non-empty action name and a full commit SHA. Local and container
         references are exempt from this check.
+
+    Raises
+    ------
+    OSError
+        If a discovered YAML path cannot be read.
+    UnicodeError
+        If YAML text cannot be decoded as UTF-8.
+
+    Notes
+    -----
+    Scan YAML files recursively using a line-based pattern, not a YAML parser.
+    Require a nonempty action name and a 40-character hexadecimal revision;
+    do not verify action existence, commit authenticity, or complete reference
+    syntax. References beginning with ``./`` or ``docker://`` are exempt,
+    so success does not establish container-image immutability. No network
+    requests are made.
     """
 
     if not automation_directory.is_dir():
