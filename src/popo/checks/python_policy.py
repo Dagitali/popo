@@ -38,6 +38,21 @@ WORKFLOW_VERSION_PATTERN = re.compile(
 def _normalize_scalar(
     value: str,
 ) -> str:
+    """
+    Strip a space-prefixed comment and matching outer quotes from a scalar.
+
+    Parameters
+    ----------
+    value : str
+        Textual workflow value; this is not parsed as a YAML scalar.
+
+    Returns
+    -------
+    str
+        Text before the first literal space-plus-# sequence, trimmed, with
+        matching single or double outer quotes removed. Comment stripping
+        is not quote-aware and escape sequences are not interpreted.
+    """
     value = value.split(' #', maxsplit=1)[0].strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
         return value[1:-1]
@@ -47,6 +62,27 @@ def _normalize_scalar(
 def _read_toml(
     path: Path,
 ) -> tuple[dict[str, object] | None, list[str]]:
+    """
+    Read TOML, returning a document and no failures on success.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        UTF-8 TOML input to read without modification.
+
+    Returns
+    -------
+    tuple[dict[str, object] or None, list[str]]
+        Parsed document and an empty failure list, or None and a diagnostic
+        when the path is not a file or TOML parsing fails.
+
+    Raises
+    ------
+    OSError
+        If the existing file cannot be read.
+    UnicodeError
+        If the input cannot be decoded as UTF-8.
+    """
     if not path.is_file():
         return None, [f'Python-policy file does not exist: {path}']
     try:
@@ -59,6 +95,30 @@ def _resolve_versions(
     value: str,
     content: str,
 ) -> tuple[str, ...]:
+    """
+    Resolve supported textual version declarations without evaluating YAML.
+
+    Parameters
+    ----------
+    value : str
+        Normalized scalar, inline list, or env/matrix reference to resolve.
+    content : str
+        Complete workflow text searched for a referenced declaration.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Inline-list values, a referenced environment value, or values from
+        an inline or contiguous block-list matrix. An unresolved recognized
+        reference returns an empty tuple; other values are returned unchanged
+        as a single item for subsequent version validation.
+
+    Notes
+    -----
+    Searches select the first matching declaration in the text, without
+    modeling YAML scope, job boundaries, matrix include/exclude rules, or
+    general expression evaluation. Resolved values are not recursively expanded.
+    """
     if value.startswith('[') and value.endswith(']'):
         return tuple(_normalize_scalar(item) for item in value[1:-1].split(','))
     env_match = ENV_REFERENCE_PATTERN.fullmatch(value)
@@ -100,7 +160,23 @@ def _resolve_versions(
     return (value,)
 
 
-def _table(value: object) -> dict[str, object]:
+def _table(
+    value: object,
+) -> dict[str, object]:
+    """
+    Return a dictionary unchanged, or an empty mapping for other values.
+
+    Parameters
+    ----------
+    value : object
+        Candidate nested configuration table.
+
+    Returns
+    -------
+    dict[str, object]
+        Original dictionary without entry validation, or a new empty mapping.
+        Non-dictionary values do not raise ConfigurationError here.
+    """
     return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
 
@@ -130,10 +206,26 @@ def validate(
         Policy, input, runtime, tool, and workflow inconsistencies; empty
         when the inspected declarations satisfy the configured policy.
 
+    Raises
+    ------
+    packaging.version.InvalidVersion
+        If an explicitly supplied, nonempty running_version is not a valid
+        version. Invalid workflow versions instead produce diagnostics.
+    OSError
+        If an existing input cannot be read.
+    UnicodeError
+        If an input cannot be decoded as UTF-8.
+
     Notes
     -----
     Consumer policy is supplied by the configuration, not inferred from Popo's
     own supported-version range. This check does not install interpreters.
+    Metadata specifier text, mypy and Ruff settings, and the stripped version
+    file are compared exactly with configured expectations. Runtime and resolved
+    workflow versions are tested for membership in the configured specifier set.
+    Workflow resolution is text-based and supports literals, inline lists,
+    environment references, and inline or contiguous block-list matrices; it
+    does not evaluate arbitrary expressions or model job-local YAML scope.
     """
 
     try:

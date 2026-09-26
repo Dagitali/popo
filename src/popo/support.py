@@ -38,7 +38,14 @@ def automation_paths(
     -------
     list[pathlib.Path]
         Recursively sorted ``.yml`` and ``.yaml`` paths, or an empty list
-        when the directory does not exist.
+        when the input is not a directory.
+
+    Notes
+    -----
+    Discover matching paths without reading or parsing YAML, checking that
+    matches are regular files, or restricting them to recognized workflows.
+    Hidden and generated directories are not explicitly excluded. Glob case
+    sensitivity follows the host filesystem's rules.
     """
 
     if not directory.is_dir():

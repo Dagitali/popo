@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.2.2\] - 2026-09-26](#022---2026-09-26)
 - [\[0.2.1\] - 2026-09-26](#021---2026-09-26)
 - [\[0.2.0\] - 2026-09-26](#020---2026-09-26)
 - [\[0.1.5\] - 2026-09-24](#015---2026-09-24)
@@ -29,6 +30,16 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.2.2] - 2026-09-26
+
+Planned release; this preparation date does not establish tagging or publication.
+
+- Expand Python docstrings for configuration models and loading, CLI dispatch and exit statuses,
+  dependency parsing, Markdown anchors and fences, Python-policy resolution, action pinning,
+  changelog validation, automation discovery, and package version lookup.
+- Clarify defaults, path resolution, return values, propagated exceptions, and parser limitations
+  without changing executable behavior, consumer configuration, or dependency requirements.
 
 ## [0.2.1] - 2026-09-26
 
