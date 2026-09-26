@@ -20,6 +20,28 @@ def _constraint_versions(
     constraints: dict[str, Requirement],
     source: Path,
 ) -> tuple[dict[str, str], list[str]]:
+    """
+    Extract version text from constraints containing one equality specifier.
+
+    Parameters
+    ----------
+    constraints : dict[str, packaging.requirements.Requirement]
+        Parsed requirements keyed by normalized package name.
+    source : pathlib.Path
+        Input path used to label diagnostics; not read by this helper.
+
+    Returns
+    -------
+    tuple[dict[str, str], list[str]]
+        Accepted names mapped to their ``==`` version text and diagnostics
+        for URL requirements, multiple specifiers, or other operators.
+        Partial results are retained when some constraints are rejected.
+
+    Notes
+    -----
+    This helper extracts text, not installed versions. It does not evaluate
+    environment markers or extras, or separately reject wildcard equality text.
+    """
     versions: dict[str, str] = {}
     failures: list[str] = []
     for name, requirement in constraints.items():
@@ -43,6 +65,28 @@ def _minimum_versions(
     dependencies: dict[str, Requirement],
     source: Path,
 ) -> tuple[dict[str, str], list[str]]:
+    """
+    Extract declared lower-bound text while enforcing bounded dependencies.
+
+    Parameters
+    ----------
+    dependencies : dict[str, packaging.requirements.Requirement]
+        Parsed runtime requirements keyed by normalized package name.
+    source : pathlib.Path
+        Input path used to label diagnostics; not read by this helper.
+
+    Returns
+    -------
+    tuple[dict[str, str], list[str]]
+        Accepted names mapped to their single ``>=`` bound and diagnostics
+        for requirements with URLs, no unique lower bound, or no ``<``/``<=``
+        upper bound. Valid entries remain in the result when others fail.
+
+    Notes
+    -----
+    Bounds are inspected structurally, not solved for satisfiability. Markers
+    and extras are not evaluated, and other specifier operators may coexist.
+    """
     versions: dict[str, str] = {}
     failures: list[str] = []
     for name, requirement in dependencies.items():
@@ -60,8 +104,37 @@ def _minimum_versions(
     return versions, failures
 
 
-def _requirement_lines(path: Path) -> tuple[list[str], list[str]]:
-    """Read requirement lines, preserving URL fragments when removing comments."""
+def _requirement_lines(
+    path: Path,
+) -> tuple[list[str], list[str]]:
+    """
+    Read requirement declarations and collect unsupported installer directives.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        UTF-8 requirements or constraints file.
+
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        Stripped nonempty declarations and diagnostics for lines beginning
+        with ``-``. Diagnostics retain the original one-based line numbers.
+
+    Raises
+    ------
+    OSError
+        If the requirements file cannot be read.
+    UnicodeError
+        If requirements text cannot be decoded as UTF-8.
+
+    Notes
+    -----
+    Blank lines and full-line comments are ignored. Inline comments begin
+    with whitespace followed by ``#``; adjacent URL fragments are preserved.
+    Includes, installer options, and line continuations are not expanded.
+    Requirement syntax is validated separately by _requirements.
+    """
     values: list[str] = []
     failures: list[str] = []
     for line_number, raw_line in enumerate(
@@ -85,6 +158,28 @@ def _requirements(
     values: list[str],
     source: Path,
 ) -> tuple[dict[str, Requirement], list[str]]:
+    """
+    Parse declarations and reject duplicate normalized package names.
+
+    Parameters
+    ----------
+    values : list[str]
+        Requirement declarations after comment and directive processing.
+    source : pathlib.Path
+        Input path used to label diagnostics; not read by this helper.
+
+    Returns
+    -------
+    tuple[dict[str, packaging.requirements.Requirement], list[str]]
+        Parsed requirements indexed by canonicalized name, plus diagnostics
+        for invalid declarations or duplicate names. The first valid entry
+        wins when spelling, extras, or markers produce the same package key.
+
+    Notes
+    -----
+    Partial results accompany failures. Environment markers are retained,
+    not evaluated against the checker runtime.
+    """
     parsed: dict[str, Requirement] = {}
     failures: list[str] = []
     for value in values:
@@ -104,7 +199,9 @@ def _requirements(
 # !SECTION
 
 
-def validate(config: DependencyConfig) -> list[str]:
+def validate(
+    config: DependencyConfig,
+) -> list[str]:
     """
     Return dependency-boundary policy violations.
 
@@ -119,11 +216,25 @@ def validate(config: DependencyConfig) -> list[str]:
         Missing-input, parsing, requirement, or consistency failures; empty
         when the declarations satisfy the configured policy.
 
+    Raises
+    ------
+    OSError
+        If an existing metadata or requirements file cannot be read.
+    UnicodeError
+        If either input cannot be decoded as UTF-8.
+
     Notes
     -----
     Exact mode compares normalized requirement declarations. Minimum-constraints
     mode compares declared lower bounds with exact fixture pins. Neither mode
     installs packages or verifies the currently installed dependency versions.
+
+    Only project.dependencies is inspected, not optional dependencies or
+    dependency groups. Environment markers are not evaluated: exact mode
+    retains them in declaration comparisons, while minimum-constraints mode
+    compares extracted bounds without using markers or extras to select entries.
+    Missing inputs, invalid TOML, and parsing or bound-extraction failures
+    return before the final mapping comparison.
     """
 
     missing = [

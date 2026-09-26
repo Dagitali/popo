@@ -33,10 +33,21 @@ def validate(
         Human-readable failures for an invalid version, missing file or
         heading, or impossible calendar date; empty when validation succeeds.
 
+    Raises
+    ------
+    OSError
+        If the existing changelog cannot be read.
+    UnicodeError
+        If the changelog cannot be decoded as UTF-8.
+
     Notes
     -----
     The heading must use ``## [MAJOR.MINOR.PATCH] - YYYY-MM-DD``. Brackets
     are intentional and differ from some consumer changelog conventions.
+    Inspect the first matching heading and require a real calendar date.
+    Do not validate section content, reject duplicate headings, enforce release
+    chronology, or establish publication status. Future dates are accepted.
+    Matching is textual, so a heading inside a code fence can also match.
     """
 
     try:

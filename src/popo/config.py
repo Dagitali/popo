@@ -33,7 +33,23 @@ class ConfigurationError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class DependencyConfig:
-    """Dependency-boundary input paths and comparison mode."""
+    """
+    Store immutable dependency-boundary inputs without validating their contents.
+
+    Attributes
+    ----------
+    metadata : pathlib.Path
+        Project metadata containing the runtime dependency declarations.
+    requirements : pathlib.Path
+        Requirements or minimum-version constraints to compare with metadata.
+    mode : {'minimum-constraints', 'exact'}
+        Compare lower bounds with fixture pins, or normalized declarations.
+
+    Notes
+    -----
+    ``load_config`` bases relative configured paths on the repository root.
+    Direct construction performs no path resolution or runtime validation.
+    """
 
     metadata: Path
     requirements: Path
@@ -42,7 +58,34 @@ class DependencyConfig:
 
 @dataclass(frozen=True, slots=True)
 class PythonPolicyConfig:
-    """Expected Python policy and the files that declare it."""
+    """
+    Store immutable expected Python policy and its declaration locations.
+
+    Attributes
+    ----------
+    metadata : pathlib.Path
+        TOML file containing project.requires-python and mypy settings.
+    requires_python : str
+        Expected specifier text; also bounds runtime and workflow versions.
+    python_version : str
+        Exact expected content of the version file after stripping whitespace.
+    python_version_file : pathlib.Path
+        File declaring the preferred local interpreter version.
+    ruff_config : pathlib.Path
+        Metadata file with tool.ruff settings, or a separate Ruff TOML file
+        with top-level settings.
+    ruff_target_version : str
+        Exact expected Ruff target, such as ``py313``.
+    mypy_python_version : str
+        Exact expected mypy Python-version setting.
+    workflow_directory : pathlib.Path
+        Directory searched recursively for YAML version declarations.
+
+    Notes
+    -----
+    ``load_config`` bases relative configured paths on the repository root.
+    Construction does not read files or validate versions and policy syntax.
+    """
 
     metadata: Path
     requires_python: str
@@ -56,7 +99,22 @@ class PythonPolicyConfig:
 
 @dataclass(frozen=True, slots=True)
 class ProjectConfig:
-    """Complete popo configuration."""
+    """
+    Group immutable consumer configuration for the policy validators.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Consumer repository root, resolved to an absolute path by load_config.
+    dependencies : DependencyConfig
+        Dependency inputs and comparison mode.
+    python_policy : PythonPolicyConfig
+        Expected interpreter policy and associated input paths.
+
+    Notes
+    -----
+    Direct construction does not resolve paths or validate the nested settings.
+    """
 
     root: Path
     dependencies: DependencyConfig
@@ -69,7 +127,29 @@ class ProjectConfig:
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _detect_dependencies(root: Path) -> DependencyConfig:
+def _detect_dependencies(
+    root: Path,
+) -> DependencyConfig:
+    """
+    Select dependency inputs using the first existing metadata/requirements pair.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Consumer root against which candidate paths are joined.
+
+    Returns
+    -------
+    DependencyConfig
+        Prefer root pyproject.toml with requirements/lowest.txt in minimum mode,
+        then root pyproject.toml with requirements.txt in exact mode, then the
+        corresponding pyproject.toml and requirements.txt pair under infra/.
+        If none exists, return the first layout without creating its files.
+
+    Notes
+    -----
+    Detection checks file existence only, not contents or policy validity.
+    """
     candidates: tuple[tuple[str, str, DependencyMode], ...] = (
         ('pyproject.toml', 'requirements/lowest.txt', 'minimum-constraints'),
         ('pyproject.toml', 'requirements.txt', 'exact'),
@@ -85,14 +165,65 @@ def _detect_dependencies(root: Path) -> DependencyConfig:
     )
 
 
-def _string(table: dict[str, object], key: str, *, default: str) -> str:
+def _string(
+    table: dict[str, object],
+    key: str,
+    *,
+    default: str,
+) -> str:
+    """
+    Read a nonempty string, using the default only when the key is absent.
+
+    Parameters
+    ----------
+    table : dict[str, object]
+        Configuration table to inspect without mutation.
+    key : str
+        Setting name, also used in failure diagnostics.
+    default : str
+        Value to validate and return if the key is absent.
+
+    Returns
+    -------
+    str
+        Nonempty setting or default, without stripping whitespace.
+
+    Raises
+    ------
+    ConfigurationError
+        If the selected value is not a string or is empty.
+    """
     value = table.get(key, default)
     if not isinstance(value, str) or not value:
         raise ConfigurationError(f'{key} must be a non-empty string')
     return value
 
 
-def _table(value: object, *, name: str) -> dict[str, object]:
+def _table(
+    value: object,
+    *,
+    name: str,
+) -> dict[str, object]:
+    """
+    Require a configuration table without copying or validating its entries.
+
+    Parameters
+    ----------
+    value : object
+        Candidate TOML table.
+    name : str
+        Table name used to label failure diagnostics.
+
+    Returns
+    -------
+    dict[str, object]
+        The original dictionary, with its type narrowed for callers.
+
+    Raises
+    ------
+    ConfigurationError
+        If value is not a dictionary.
+    """
     if not isinstance(value, dict):
         raise ConfigurationError(f'{name} must be a TOML table')
     return cast(dict[str, object], value)
@@ -125,11 +256,29 @@ def load_config(root: Path) -> ProjectConfig:
     ConfigurationError
         If root metadata contains invalid TOML, a required table or string has
         an invalid type or value, or the dependency comparison mode is unsupported.
+    OSError
+        If an existing metadata file cannot be read.
+    UnicodeError
+        If metadata cannot be decoded as UTF-8.
 
     Notes
     -----
     Unknown configuration keys are ignored. Individual validators check the
     referenced files; successful loading alone does not establish policy validity.
+
+    Missing root metadata behaves as empty configuration. Dependency-layout
+    detection supplies defaults before explicit overrides are applied. The
+    default requires-python text comes from the selected dependency metadata,
+    falling back to ``>=3.13`` when absent or not a string. Invalid TOML in
+    separately selected dependency metadata also falls back at this stage;
+    invalid root TOML raises ConfigurationError instead.
+
+    Preferred Python defaults to ``3.13``; mypy defaults to that preference
+    and Ruff to ``py`` plus its digits. Version-file and workflow paths default
+    to .python-version and .github/workflows under root. Python-policy metadata
+    and Ruff configuration default to the selected dependency metadata.
+    Overriding only Python-policy metadata does not rederive requires-python
+    or the Ruff configuration path from that alternate file.
     """
 
     root = root.resolve()
