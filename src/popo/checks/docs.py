@@ -122,8 +122,9 @@ def validate(
     Returns
     -------
     list[str]
-        Missing-root, missing-target, or missing-anchor diagnostics. Link
-        diagnostics retain the source path and original line number.
+        Missing-root, missing-target, missing-anchor, or repository-escape
+        diagnostics, retaining the source path and original line number for
+        links.
 
     Notes
     -----
@@ -137,6 +138,7 @@ def validate(
 
     if not root.is_dir():
         return [f'repository root does not exist: {root}']
+    resolved_root = root.resolve()
     failures: list[str] = []
     anchor_cache: dict[Path, set[str]] = {}
     for source in _markdown_paths(root):
@@ -157,10 +159,17 @@ def validate(
                 target_path = (
                     source if not parsed.path else source.parent / unquote(parsed.path)
                 )
-                if target_path.is_dir():
-                    if not parsed.fragment:
-                        continue
+                if target_path.is_dir() and parsed.fragment:
                     target_path = target_path / 'README.md'
+                resolved_target = target_path.resolve()
+                if not resolved_target.is_relative_to(resolved_root):
+                    failures.append(
+                        f'{source}:{line_number}: link escapes repository: '
+                        f'{raw_target}',
+                    )
+                    continue
+                if target_path.is_dir() and not parsed.fragment:
+                    continue
                 if not target_path.is_file():
                     failures.append(
                         f'{source}:{line_number}: local target does not exist: '
@@ -168,7 +177,7 @@ def validate(
                     )
                     continue
                 if parsed.fragment and target_path.suffix.lower() == '.md':
-                    anchor_path = target_path.resolve()
+                    anchor_path = resolved_target
                     anchors = anchor_cache.get(anchor_path)
                     if anchors is None:
                         anchors = anchor_cache[anchor_path] = _anchors(anchor_path)
