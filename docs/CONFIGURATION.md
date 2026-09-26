@@ -86,7 +86,10 @@ expressions or full YAML semantics.
   character and be at least as long as the opening fence. Plain directory links need no README;
   directory links with fragments resolve to that directory's `README.md`. Fragments are checked only
   on Markdown targets (`.md`, case-insensitive); other local files are checked for existence without
-  parsing their format. Markdown anchors are cached within a check, not between checks.
+  parsing their format. Markdown anchors are cached within a check, not between checks. Local
+  destinations must resolve within `--root`, including through symlinks and directory README
+  targets. Parent-directory links within the root remain valid; escaping links fail even if the
+  outside target exists. External URLs remain outside this local check.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
   `--automation-directory`. Remote references must contain a non-empty action name and a full
   40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
