@@ -105,7 +105,32 @@ def _table(value: object, *, name: str) -> dict[str, object]:
 
 
 def load_config(root: Path) -> ProjectConfig:
-    """Load configuration for *root*, applying portable layout defaults."""
+    """
+    Load configuration for *root*, applying portable layout defaults.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Consumer repository containing optional ``[tool.popo]`` configuration
+        in ``pyproject.toml``. Relative configured paths are based on this root.
+
+    Returns
+    -------
+    ProjectConfig
+        Dependency and Python-policy settings with explicit overrides applied
+        to detected layout defaults. Loading does not create missing inputs.
+
+    Raises
+    ------
+    ConfigurationError
+        If root metadata contains invalid TOML, a required table or string has
+        an invalid type or value, or the dependency comparison mode is unsupported.
+
+    Notes
+    -----
+    Unknown configuration keys are ignored. Individual validators check the
+    referenced files; successful loading alone does not establish policy validity.
+    """
 
     root = root.resolve()
     root_metadata = root / 'pyproject.toml'

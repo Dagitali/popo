@@ -27,7 +27,21 @@ USES_PATTERN = re.compile(
 def validate(
     automation_directory: Path,
 ) -> list[str]:
-    """Return mutable or malformed remote action references."""
+    """
+    Return every mutable or malformed remote action reference.
+
+    Parameters
+    ----------
+    automation_directory : pathlib.Path
+        Directory tree containing GitHub Actions workflow and action YAML.
+
+    Returns
+    -------
+    list[str]
+        Human-readable failures; empty when every checked remote reference has
+        a non-empty action name and a full commit SHA. Local and container
+        references are exempt from this check.
+    """
 
     if not automation_directory.is_dir():
         return [f'automation directory does not exist: {automation_directory}']
@@ -43,8 +57,12 @@ def validate(
             reference = match.group(1)
             if reference.startswith(('./', 'docker://')):
                 continue
-            _, separator, revision = reference.rpartition('@')
-            if not separator or FULL_COMMIT_PATTERN.fullmatch(revision) is None:
+            action, separator, revision = reference.rpartition('@')
+            if (
+                not separator
+                or not action
+                or FULL_COMMIT_PATTERN.fullmatch(revision) is None
+            ):
                 failures.append(
                     f'{path}:{line_number}: remote action must use a full '
                     f'40-character commit SHA: {reference}',

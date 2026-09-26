@@ -17,17 +17,23 @@ This archive indexes Popo's release-aligned records, newest first. These documen
 scope, compatibility, validation, publication, rollback, and follow-up details where applicable. A
 committed record or local tag does not establish that a GitHub Release or PyPI package exists.
 
-Use the [changelog] for concise change history and the [release policy] for validation and
-publication safeguards.
+Use the [changelog] for concise change history, the [release playbook] for preparation, and the
+[release policy] for validation and publication safeguards.
 
+- [0.2 Series](#02-series)
 - [0.1 Series](#01-series)
 - [Initial Scaffold](#initial-scaffold)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.2 Series
+
+- [v0.2.0] — planned: Expand repository checks, tighten validation, and align reusable contributor
+  tooling and documentation.
+
 ## 0.1 Series
 
 - [v0.1.5]: Display the root README on the repository homepage.
-- [v0.1.4] — 2026-09-24:: Correct dated release history and restore the changelog gate for the new
+- [v0.1.4] — 2026-09-24: Correct dated release history and restore the changelog gate for the new
   tag.
 - [v0.1.3 changelog] — 2026-09-24: Update Commitizen and Ruff hooks; tagged CD validation failed
   because the dated entry was missing. The entry is backfilled in 0.1.4.
@@ -56,16 +62,18 @@ The current CD workflow generates GitHub Release notes; it does not automaticall
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog includes a dated `0.1.5` candidate section. Changes outside that candidate belong in
+The changelog includes a dated `0.2.0` candidate section. Changes outside that candidate belong in
 `Unreleased`; the candidate date does not establish publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
 [v0.1.3 changelog]: ../../CHANGELOG.md#013---2026-09-24
 [release policy]: ../../RELEASE-POLICY.md
+[release playbook]: ../playbooks/release.md
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
 [v0.1.1]: v0.1.1.md
 [v0.1.2]: v0.1.2.md
 [v0.1.4]: v0.1.4.md
 [v0.1.5]: v0.1.5.md
+[v0.2.0]: v0.2.0.md

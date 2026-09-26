@@ -43,7 +43,7 @@ def artifact_directory_fixture(
     else:
         directory = tmp_path_factory.mktemp('artifacts')
         subprocess.run(
-            [sys.executable, '-m', 'build', '--outdir', str(directory)],
+            [sys.executable, '-m', 'build', '--out-dir', str(directory)],
             cwd=repository_root,
             check=True,
             timeout=300,

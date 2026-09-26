@@ -54,9 +54,16 @@ class TestActions:
 
     @pytest.mark.parametrize(
         'reference',
-        ['owner/action', 'owner/action@main', 'owner/action@abc123'],
+        [
+            'owner/action',
+            'owner/action@main',
+            'owner/action@abc123',
+            f'@{'a' * 40}',
+            'owner/action@',
+            f'owner/action@{'g' * 40}',
+        ],
     )
-    def test_rejects_missing_or_short_revision(
+    def test_rejects_malformed_remote_reference(
         self,
         tmp_path: Path,
         write_file: FileWriter,

@@ -1,1 +1,24 @@
+# lowest.txt
+# popo
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Lowest supported versions of runtime dependencies.
+#
+# Responsibilities
+# - Pin each direct runtime dependency to the lower bound declared in
+#   pyproject.toml.
+# - Provide deterministic constraints for lowest-dependency CI testing.
+# - Keep minimum-version support decisions visible and reviewable.
+#
+# Maintainer Notes
+# - Treat pyproject.toml as the authoritative published dependency contract;
+#   this file mirrors its lower bounds.
+# - Update both files together and run `make dependency-policy` to verify that
+#   they agree.
+# - Raise a lower bound only after testing it and recording the rationale in
+#   CHANGELOG.md.
+# - Pass this file to pip with `--constraint`; it is not a standalone list of
+#   packages to install.
+
 packaging==26.3

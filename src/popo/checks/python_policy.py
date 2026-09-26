@@ -78,11 +78,25 @@ def _resolve_versions(
             content,
             re.MULTILINE,
         )
+        if declaration is not None:
+            return tuple(
+                _normalize_scalar(item)
+                for item in declaration.group('values').split(',')
+            )
+        declaration = re.search(
+            rf'^[ \t]+{name}:[ \t]*$'
+            rf'(?P<items>(?:\n[ \t]+-[ \t]+[^\n]+)+)',
+            content,
+            re.MULTILINE,
+        )
         if declaration is None:
             return ()
-        return tuple(
-            _normalize_scalar(item) for item in declaration.group('values').split(',')
+        values = re.findall(
+            r'^[ \t]+-[ \t]+(.+?)[ \t]*$',
+            declaration.group('items'),
+            re.MULTILINE,
         )
+        return tuple(_normalize_scalar(item) for item in values)
     return (value,)
 
 
@@ -98,7 +112,29 @@ def validate(
     *,
     running_version: str | None = None,
 ) -> list[str]:
-    """Return Python-policy inconsistencies."""
+    """
+    Return Python-policy inconsistencies.
+
+    Parameters
+    ----------
+    config : popo.config.PythonPolicyConfig
+        Expected consumer policy and paths to metadata, tool configuration,
+        the version file, and automation files.
+    running_version : str or None, optional
+        Runtime version to check. When absent or empty, use the running
+        interpreter's major and minor version.
+
+    Returns
+    -------
+    list[str]
+        Policy, input, runtime, tool, and workflow inconsistencies; empty
+        when the inspected declarations satisfy the configured policy.
+
+    Notes
+    -----
+    Consumer policy is supplied by the configuration, not inferred from Popo's
+    own supported-version range. This check does not install interpreters.
+    """
 
     try:
         supported = SpecifierSet(config.requires_python)

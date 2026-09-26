@@ -18,7 +18,7 @@ class TestLocalHooks:
 
     @pytest.mark.parametrize(
         'hook_id',
-        ['popo-self-check', 'ruff-check', 'ruff-format'],
+        ['popo-self-check', 'make-check-pre-push', 'ruff-check', 'ruff-format'],
     )
     def test_interpreter_and_scope(self, repository_root: Path, hook_id: str) -> None:
         config = yaml.safe_load(
@@ -31,11 +31,18 @@ class TestLocalHooks:
             for hook in repo['hooks']
             if hook['id'] == hook_id
         )
-        if hook_id == 'popo-self-check':
-            assert hook['entry'] == 'make self-check'
+        if hook_id in {'popo-self-check', 'make-check-pre-push'}:
+            is_push = hook_id == 'make-check-pre-push'
+            assert hook['entry'] == (
+                'make check-pre-push' if is_push else 'make self-check'
+            )
             assert hook['language'] == 'system'
             assert hook['pass_filenames'] is False
             assert hook['always_run'] is True
+            assert hook.get('stages', config['default_stages']) == (
+                ['pre-push'] if is_push else ['pre-commit']
+            )
+            assert 'pre-push' in config['default_install_hook_types']
         else:
             metadata = tomllib.loads(
                 (repository_root / 'pyproject.toml').read_text(encoding='utf-8'),

@@ -24,6 +24,15 @@ class TestCommandLine:
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
             (
+                ['check-github-actions-pins'],
+                '.github/ci.yml',
+                f'uses: @{'a' * 40}\n',
+                1,
+                'FAIL:',
+            ),
+            (['check-docs'], 'README.md', '[missing]: absent.md\n', 1, 'FAIL:'),
+            (['check-docs'], 'README.md', '# Project\n[self]: #project\n', 0, 'PASS:'),
+            (
                 ['check-release-changelog', 'v1.0.0'],
                 'CHANGELOG.md',
                 '# Changelog',
@@ -81,14 +90,16 @@ class TestCommandLine:
         assert message in captured.out
         assert not captured.err
 
+    @pytest.mark.parametrize('constraint', ['demo==1', 'demo==1 # minimum'])
     def test_dependency_command(
         self,
         write_file: FileWriter,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        constraint: str,
     ) -> None:
         write_file('pyproject.toml', '[project]\ndependencies = ["demo>=1,<2"]')
-        write_file('requirements/lowest.txt', 'demo==1')
+        write_file('requirements/lowest.txt', constraint)
         assert main(['check-dependency-boundaries', '--root', str(tmp_path)]) == 0
         assert 'PASS:' in capsys.readouterr().out
 

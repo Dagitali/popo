@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.2.0\] - 2026-09-26](#020---2026-09-26)
 - [\[0.1.5\] - 2026-09-24](#015---2026-09-24)
 - [\[0.1.4\] - 2026-09-24](#014---2026-09-24)
 - [\[0.1.3\] - 2026-09-24](#013---2026-09-24)
@@ -27,6 +28,43 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.2.0] - 2026-09-26
+
+Planned release; this preparation date does not establish tagging or publication.
+
+- Exclude vendored `node_modules` Markdown from source discovery and match build exclusions by path
+  component so maintained paths such as `docs/building.md` are no longer silently skipped.
+- Reject local Markdown destinations that resolve outside the selected repository, including
+  encoded parent paths and symlinked targets, while retaining valid in-repository parent links.
+- Resolve block-list Python-version matrices in workflow policy checks alongside inline lists,
+  validating each resolved version against the consumer's configured support range.
+- Validate link fragments only for Markdown targets, avoiding decoding failures on binary files;
+  reuse Markdown anchors within each check without retaining stale results between runs.
+- Accept whitespace-delimited inline comments in dependency requirements and constraint files while
+  preserving URL fragments and rejecting installer directives.
+- Reject remote action references with a missing action name even when their revision is a full
+  commit SHA; preserve local-action and container-reference exemptions.
+- Validate Markdown reference-link destinations and explicit HTML anchors, including unused
+  definitions; broken reference destinations now fail repository checks instead of being ignored.
+- Accept plain links to existing directories without requiring a README; retain README anchor
+  resolution for directory links with fragments.
+- Ignore links and headings inside fenced Markdown code examples, including mixed or shorter
+  embedded fence markers, while preserving source line numbers in real-link diagnostics.
+- Run the existing local quality gate at the installed pre-push hook stage, using Make's interpreter
+  selection rather than requiring a bare `python` executable.
+- Describe the package without restricting consumer projects to Python and expose the maintained
+  documentation URL in distribution metadata.
+- Document the minimum-dependency fixture and shared formatting rules; ignore common
+  operating-system metadata and additional coverage outputs without importing cloud-specific
+  configuration.
+- Expand the public README and documentation with configuration and testing references, onboarding
+  and adoption tutorials, API and architecture guidance, release and change-management playbooks,
+  incident and required-check runbooks, and reusable evidence and task templates.
+- Raise development-tool minimum versions and align managed Ruff hooks with `ruff>=0.16.9,<0.17`;
+  retain Python `>=3.13,<3.15` and the runtime dependency `packaging>=26.3,<27`.
+- Expand checker regression coverage and public docstrings, and clarify the MIT terms in `NOTICE`
+  without changing the license.
 
 ## [0.1.5] - 2026-09-24
 
