@@ -89,7 +89,11 @@ expressions or full YAML semantics.
   parsing their format. Markdown anchors are cached within a check, not between checks. Local
   destinations must resolve within `--root`, including through symlinks and directory README
   targets. Parent-directory links within the root remain valid; escaping links fail even if the
-  outside target exists. External URLs remain outside this local check.
+  outside target exists. External URLs remain outside this local check. Source discovery excludes
+  exact path components `.git`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.venv`,
+  `__pycache__`, `build`, `dist`, `htmlcov`, and `node_modules`. Similar names such as
+  `docs/building.md` remain checked, as does `.github`. These exclusions affect discovery only;
+  explicit links into excluded directories still have their targets checked.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
   `--automation-directory`. Remote references must contain a non-empty action name and a full
   40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
