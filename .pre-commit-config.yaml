@@ -196,7 +196,7 @@ repos:
         name: Ruff format check
         entry: python -m ruff format --check
         language: python
-        additional_dependencies: ['ruff>=0.16,<0.17']
+        additional_dependencies: ['ruff>=0.16.9,<0.17']
         types_or: [python, pyi]
       - id: popo-self-check
         name: Run popo repository checks
