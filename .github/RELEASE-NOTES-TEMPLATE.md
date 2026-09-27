@@ -67,7 +67,8 @@ operational evidence.
 ## Validation
 
 - List checks completed against the exact release candidate.
-- Identify the candidate tag and commit, and link available artifact-integrity evidence.
+- Identify the candidate tag without embedding a commit SHA, and link available artifact-integrity
+  evidence.
 - Include relevant automated tests, static checks, build results, artifact inspection, CLI output
   and exit-code checks, and representative manual verification.
 - Distinguish completed evidence from checks that must still pass during release or deployment.
