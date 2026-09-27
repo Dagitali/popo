@@ -27,6 +27,7 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.2 Series
 
+- [v0.2.4] — 2026-09-27: Standardize historical release records and evidence boundaries.
 - [v0.2.3] — 2026-09-27: Align contributor validation guidance, release records,
   and test-fixture documentation.
 - [v0.2.2] — 2026-09-26: Expand source docstrings and clarify checker contracts without behavior
@@ -58,8 +59,8 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
    development build or a fallback version.
 2. Reconcile scope with the candidate's changes and changelog. Preserve the template's applicable
    compatibility, support, validation, publication, rollback, and follow-up sections.
-3. Record the exact candidate commit and distinguish completed checks from pending checks. Never
-   transfer current-checkout validation results to a historical tag.
+3. Record the candidate tag without embedding a commit SHA, and distinguish completed checks from
+   pending checks. Never transfer current-checkout validation results to a historical tag.
 4. Add the record to this index, newest first, using `version — YYYY-MM-DD: summary` with the date
    from the changelog or verified release record. For untagged candidates, use `version — planned,
    prepared YYYY-MM-DD: summary`; if no date is established, use `undated` rather than inventing
@@ -70,7 +71,7 @@ The current CD workflow generates GitHub Release notes; it does not automaticall
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog includes a dated `0.2.3` candidate section. Changes outside that candidate belong in
+The changelog includes a dated `0.2.4` candidate section. Changes outside that candidate belong in
 `Unreleased`; the candidate date does not establish publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
@@ -88,3 +89,4 @@ The changelog includes a dated `0.2.3` candidate section. Changes outside that c
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md
 [v0.2.3]: v0.2.3.md
+[v0.2.4]: v0.2.4.md

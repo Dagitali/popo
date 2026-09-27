@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.2.4\] - 2026-09-27](#024---2026-09-27)
 - [\[0.2.3\] - 2026-09-27](#023---2026-09-27)
 - [\[0.2.2\] - 2026-09-26](#022---2026-09-26)
 - [\[0.2.1\] - 2026-09-26](#021---2026-09-26)
@@ -32,9 +33,14 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
-## [0.2.3] - 2026-09-27
+## [0.2.4] - 2026-09-27
 
-Planned release; this preparation date does not establish tagging or publication.
+- Standardize historical release records with consistent scope descriptions, tagged dates, and
+  verified tag status while preserving their preparation-time validation evidence.
+- Link versioned notes to dated changelog entries and the release archive without changing runtime,
+  CLI, dependency, workflow, or publication behavior.
+
+## [0.2.3] - 2026-09-27
 
 - Align agent guidance with existing versioning, public API, docstring, deterministic-test, and
   action-pinning conventions, and map change types to focused validation commands.
