@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.2.3\] - 2026-09-27](#023---2026-09-27)
 - [\[0.2.2\] - 2026-09-26](#022---2026-09-26)
 - [\[0.2.1\] - 2026-09-26](#021---2026-09-26)
 - [\[0.2.0\] - 2026-09-26](#020---2026-09-26)
@@ -31,9 +32,20 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
-## [0.2.2] - 2026-09-26
+## [0.2.3] - 2026-09-27
 
 Planned release; this preparation date does not establish tagging or publication.
+
+- Align agent guidance with existing versioning, public API, docstring, deterministic-test, and
+  action-pinning conventions, and map change types to focused validation commands.
+- Distinguish default source checks from artifact creation and clean-installation gates, including
+  the need to exercise build-on-demand fixtures rather than only prebuilt artifacts.
+- Link the release-note template to the release archive and distinguish candidate evidence from
+  tagging and publication.
+- Expand shared pytest fixture and hook docstrings with inputs, results, exceptions, side effects,
+  and isolation boundaries without changing test or runtime behavior.
+
+## [0.2.2] - 2026-09-26
 
 - Expand Python docstrings for configuration models and loading, CLI dispatch and exit statuses,
   dependency parsing, Markdown anchors and fences, Python-policy resolution, action pinning,
@@ -43,19 +55,15 @@ Planned release; this preparation date does not establish tagging or publication
 
 ## [0.2.1] - 2026-09-26
 
-Planned release; this preparation date does not establish tagging or publication.
-
-- Fix the artifact fixture's build option from `--out-dir` to `--outdir`, restoring
-  distribution and clean-installation tests that build their own wheel and source distribution.
+- Fix the artifact fixture's build option from `--out-dir` to `--outdir`, restoring distribution and
+  clean-installation tests that build their own wheel and source distribution.
 
 ## [0.2.0] - 2026-09-26
 
-Planned release; this preparation date does not establish tagging or publication.
-
 - Exclude vendored `node_modules` Markdown from source discovery and match build exclusions by path
   component so maintained paths such as `docs/building.md` are no longer silently skipped.
-- Reject local Markdown destinations that resolve outside the selected repository, including
-  encoded parent paths and symlinked targets, while retaining valid in-repository parent links.
+- Reject local Markdown destinations that resolve outside the selected repository, including encoded
+  parent paths and symlinked targets, while retaining valid in-repository parent links.
 - Resolve block-list Python-version matrices in workflow policy checks alongside inline lists,
   validating each resolved version against the consumer's configured support range.
 - Validate link fragments only for Markdown targets, avoiding decoding failures on binary files;
@@ -114,8 +122,8 @@ Planned release; this preparation date does not establish tagging or publication
 
 ## [0.1.1] - 2026-09-24
 
-- Raise the minimum supported `packaging` version to 26.3 and synchronize the lowest-dependency
-  test pin. Versions below 26.3 are no longer supported; the upper bound remains below 27.
+- Raise the minimum supported `packaging` version to 26.3 and synchronize the lowest-dependency test
+  pin. Versions below 26.3 are no longer supported; the upper bound remains below 27.
 - Add regression coverage for synchronized minimums, older and newer mismatched pins, and an
   intended Dependabot fixture exclusion. The missing configuration and obsolete exclusion test are
   addressed by 0.1.2.
