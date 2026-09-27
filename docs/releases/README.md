@@ -27,7 +27,7 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.2 Series
 
-- [v0.2.3] — planned, prepared 2026-09-27: Align contributor validation guidance, release records,
+- [v0.2.3] — 2026-09-27: Align contributor validation guidance, release records,
   and test-fixture documentation.
 - [v0.2.2] — 2026-09-26: Expand source docstrings and clarify checker contracts without behavior
   changes.
@@ -75,13 +75,13 @@ The changelog includes a dated `0.2.3` candidate section. Changes outside that c
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
-[v0.1.3 changelog]: ../../CHANGELOG.md#013---2026-09-24
 [release policy]: ../../RELEASE-POLICY.md
 [release playbook]: ../playbooks/release.md
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
 [v0.1.1]: v0.1.1.md
 [v0.1.2]: v0.1.2.md
+[v0.1.3]: v0.1.3.md
 [v0.1.4]: v0.1.4.md
 [v0.1.5]: v0.1.5.md
 [v0.2.0]: v0.2.0.md
