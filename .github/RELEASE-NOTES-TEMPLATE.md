@@ -17,9 +17,12 @@ Maintainer Notes
 
 # Release Notes Template
 
-Use this template when preparing reviewed release notes. Reconcile the notes with the [changelog]
-and [release policy], keep the sections that apply, and add more focused sections when needed.
-Release notes should explain released behavior without depending on private operational evidence.
+Use this template when preparing a versioned document for the [release notes archive] and reviewed
+notes for any corresponding GitHub Release. The committed record preserves the candidate's detailed
+scope and validation evidence; it does not establish tagging or publication. Reconcile the notes
+with the [changelog] and [release policy], keep the sections that apply, and add more focused
+sections when needed. Release notes should explain released behavior without depending on private
+operational evidence.
 
 - [Highlights](#highlights)
 - [Change Scope](#change-scope)
@@ -89,3 +92,4 @@ and ensure credentials, private identifiers, and confidential evidence are absen
 
 [changelog]: ../CHANGELOG.md
 [release policy]: ../RELEASE-POLICY.md
+[release notes archive]: ../docs/releases/README.md
