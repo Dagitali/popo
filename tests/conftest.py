@@ -29,7 +29,14 @@ pytest_plugins = ('tests.support.artifacts',)
     scope='session',
 )
 def repository_root_fixture() -> Path:
-    """Return the checkout root for project-level tests."""
+    """
+    Return the repository root for tests of project-level contracts.
+
+    Returns
+    -------
+    pathlib.Path
+        Resolved absolute path containing the repository metadata and source.
+    """
     return TESTS_ROOT.parent.resolve()
 
 
@@ -37,7 +44,28 @@ def repository_root_fixture() -> Path:
 def write_file_fixture(
     tmp_path: Path,
 ) -> FileWriter:
-    """Write UTF-8 fixture content, creating parents inside a temporary repository."""
+    """
+    Provide a writer for files in a test's temporary repository.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory supplied by pytest.
+
+    Returns
+    -------
+    FileWriter
+        Callable accepting a relative path and text, creating parent
+        directories, writing UTF-8 content, and returning the resulting Path.
+        Existing files are overwritten; filesystem errors propagate when the
+        writer is called.
+
+    Notes
+    -----
+    Callers must supply trusted paths within tmp_path. The helper joins paths
+    but does not enforce containment or reject absolute paths and parent
+    traversal.
+    """
 
     def write(relative_path: str, content: str) -> Path:
         path = tmp_path / relative_path
@@ -57,7 +85,16 @@ def write_file_fixture(
 def pytest_addoption(
     parser: pytest.Parser,
 ) -> None:
-    """Add command-line options for pytest."""
+    """
+    Register options shared by artifact-oriented test layers.
+
+    Parameters
+    ----------
+    parser : pytest.Parser
+        Parser receiving --artifact-dir for an existing wheel/sdist directory.
+        Artifact fixtures interpret the option; registering it does not build
+        or inspect distributions.
+    """
     parser.addoption(
         '--artifact-dir',
         help='Directory containing a wheel and sdist',
@@ -67,7 +104,20 @@ def pytest_addoption(
 def pytest_collection_modifyitems(
     items: list[pytest.Item],
 ) -> None:
-    """Assign layer markers and reject tests outside the recognized layout."""
+    """
+    Apply each test directory's architectural-layer marker during collection.
+
+    Parameters
+    ----------
+    items : list[pytest.Item]
+        Collected items, marked in place using the first tests-relative path
+        component. This hook classifies items; it does not select test paths.
+
+    Raises
+    ------
+    pytest.UsageError
+        If an item lies outside the tests directory or a recognized test layer.
+    """
     for item in items:
         try:
             layer = item.path.relative_to(TESTS_ROOT).parts[0]
