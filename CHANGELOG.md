@@ -35,8 +35,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.2.4] - 2026-09-27
 
-- Standardize historical release records with consistent scope descriptions, tagged dates, and exact
-  tag commits while preserving their preparation-time validation evidence.
+- Standardize historical release records with consistent scope descriptions, tagged dates, and
+  verified tag status while preserving their preparation-time validation evidence.
 - Link versioned notes to dated changelog entries and the release archive without changing runtime,
   CLI, dependency, workflow, or publication behavior.
 
