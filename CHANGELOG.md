@@ -42,6 +42,8 @@ Planned release; this preparation date does not establish tagging or publication
   the need to exercise build-on-demand fixtures rather than only prebuilt artifacts.
 - Link the release-note template to the release archive and distinguish candidate evidence from
   tagging and publication.
+- Standardize release-archive entries with evidence-backed dates and consistent separators; label
+  planned preparation dates explicitly and document the convention for future entries.
 - Expand shared pytest fixture and hook docstrings with inputs, results, exceptions, side effects,
   and isolation boundaries without changing test or runtime behavior.
 
