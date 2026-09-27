@@ -37,7 +37,8 @@ The [contributor checklist] explains the local preparation workflow.
 - [ ] Run `make docs-markdown` and `make check-release` from the candidate checkout.
 - [ ] Use a fresh `PYTHON_DIST_DIR` when old artifacts would mix versions; never delete unrelated
       build output merely to pass a gate.
-- [ ] Record the exact candidate commit, commands, results, and outstanding hosted checks.
+- [ ] Record the candidate tag, commands, results, and outstanding hosted checks without embedding a
+  commit SHA in Markdown.
 - [ ] Revalidate after changes; a passing working tree is not proof about a different tagged tree.
 
 The release gate builds both distributions, checks metadata, and tests those same artifacts in
