@@ -27,26 +27,29 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.2 Series
 
-- [v0.2.2] — planned: Expand source docstrings and clarify checker contracts without behavior changes.
-- [v0.2.1] — tagged: Correct the build option used by distribution and clean-installation tests.
-- [v0.2.0] — tagged: Expand repository checks, tighten validation, and align reusable contributor
-  tooling and documentation.
+- [v0.2.3] — planned, prepared 2026-09-27: Align contributor validation guidance, release records,
+  and test-fixture documentation.
+- [v0.2.2] — 2026-09-26: Expand source docstrings and clarify checker contracts without behavior
+  changes.
+- [v0.2.1] — 2026-09-26: Correct the build option used by distribution and clean-installation tests.
+- [v0.2.0] — 2026-09-26: Expand repository checks, tighten validation, and align reusable
+  contributor tooling and documentation.
 
 ## 0.1 Series
 
-- [v0.1.5]: Display the root README on the repository homepage.
+- [v0.1.5] — 2026-09-24: Display the root README on the repository homepage.
 - [v0.1.4] — 2026-09-24: Correct dated release history and restore the changelog gate for the new
   tag.
-- [v0.1.3 changelog] — 2026-09-24: Update Commitizen and Ruff hooks; tagged CD validation failed
-  because the dated entry was missing. The entry is backfilled in 0.1.4.
-- [v0.1.2] - 2026-09-24: Remove the obsolete Dependabot exclusion test and correct dependency
+- [v0.1.3] — 2026-09-24: Update Commitizen and Ruff hooks; tagged CD validation failed because the
+  dated entry was missing. The entry is backfilled in 0.1.4.
+- [v0.1.2] — 2026-09-24: Remove the obsolete Dependabot exclusion test and correct dependency
   guidance.
 - [v0.1.1] — 2026-09-24: Align the `packaging` minimum at 26.3.
 - [v0.1.0] — 2026-09-24: Initial repository-policy CLI and validation workflows.
 
 ## Initial Scaffold
 
-- [v0.0.0]: Initial repository shell; not an installable CLI package.
+- [v0.0.0] — 2026-09-21: Initial repository shell; not an installable CLI package.
 
 ## Maintaining the Archive
 
@@ -57,14 +60,17 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
    compatibility, support, validation, publication, rollback, and follow-up sections.
 3. Record the exact candidate commit and distinguish completed checks from pending checks. Never
    transfer current-checkout validation results to a historical tag.
-4. Add the record to this index, newest first. Keep reference definitions sorted by destination.
+4. Add the record to this index, newest first, using `version — YYYY-MM-DD: summary` with the date
+   from the changelog or verified release record. For untagged candidates, use `version — planned,
+   prepared YYYY-MM-DD: summary`; if no date is established, use `undated` rather than inventing
+   one. Keep reference definitions sorted by destination.
 5. Run `make docs-markdown`. Before release, complete the separate gates in the [release policy].
 
 The current CD workflow generates GitHub Release notes; it does not automatically consume these
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog includes a dated `0.2.2` candidate section. Changes outside that candidate belong in
+The changelog includes a dated `0.2.3` candidate section. Changes outside that candidate belong in
 `Unreleased`; the candidate date does not establish publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
@@ -81,3 +87,4 @@ The changelog includes a dated `0.2.2` candidate section. Changes outside that c
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md
+[v0.2.3]: v0.2.3.md
