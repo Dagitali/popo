@@ -237,8 +237,9 @@ creates a release.
    compatibility changes and outstanding validation.
 4. Run `make release-changelog RELEASE_VERSION=vMAJOR.MINOR.PATCH`, `make docs-markdown`, and `make
    check-release`. Use a fresh `PYTHON_DIST_DIR` if existing artifacts belong to another build.
-5. Review the final diff and record validation against the exact candidate commit. Development
-   builds do not prove the eventual tag's version or artifacts; complete hosted checks separately.
+5. Review the final diff and record validation against the exact candidate checkout without
+   embedding its commit SHA in Markdown. Development builds do not prove the eventual tag's version
+   or artifacts; complete hosted checks separately.
 6. Follow the [release policy] for separately authorized tagging and optional publication. Never
    move a released tag or treat documentation preparation as authorization to publish.
 
