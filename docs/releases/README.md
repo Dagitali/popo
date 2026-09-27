@@ -59,8 +59,8 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
    development build or a fallback version.
 2. Reconcile scope with the candidate's changes and changelog. Preserve the template's applicable
    compatibility, support, validation, publication, rollback, and follow-up sections.
-3. Record the exact candidate commit and distinguish completed checks from pending checks. Never
-   transfer current-checkout validation results to a historical tag.
+3. Record the candidate tag without embedding a commit SHA, and distinguish completed checks from
+   pending checks. Never transfer current-checkout validation results to a historical tag.
 4. Add the record to this index, newest first, using `version — YYYY-MM-DD: summary` with the date
    from the changelog or verified release record. For untagged candidates, use `version — planned,
    prepared YYYY-MM-DD: summary`; if no date is established, use `undated` rather than inventing
