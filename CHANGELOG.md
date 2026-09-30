@@ -33,6 +33,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Add `check-automation-contracts` and its `--pins-only` mode, with optional consumer-owned
+  `[tool.popo.automation]` configuration and opt-in `check-all` integration. Validate local
+  workflow/action inputs, composite steps, YAML, template metadata, and reference pins without
+  executing automation or fetching remote code. Scope configured placeholders to self-targeting
+  templates; preserve the existing action-pin command.
+- Add PyYAML as a runtime dependency and its matching minimum constraint.
+
 ## [0.2.4] - 2026-09-27
 
 - Standardize historical release records with consistent scope descriptions, tagged dates, and
