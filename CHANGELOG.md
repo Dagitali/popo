@@ -19,6 +19,8 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.3.2 - 2026-09-30](#032---2026-09-30)
+- [0.3.1 - 2026-09-30](#031---2026-09-30)
 - [0.3.0 - 2026-09-30](#030---2026-09-30)
 - [0.2.4 - 2026-09-27](#024---2026-09-27)
 - [0.2.3 - 2026-09-27](#023---2026-09-27)
@@ -33,6 +35,15 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.3.2] - 2026-09-30
+
+- Backfill the dated 0.3.1 changelog entry and release document, add the 0.3.2 candidate record, and
+  index both versions in the release archive. Preserve the existing 0.3.1 tag and distinguish its
+  missing release entry from validation of this correction.
+- No runtime, configuration, dependency, workflow, or publication behavior changes.
+
+## [0.3.1] - 2026-09-30
 
 - Link onboarding and consumer-adoption guidance directly from the README, expand upstream format
   and automation references, and clarify design, roadmap, and installation-validation guidance
@@ -222,5 +233,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.2.3]: docs/releases/v0.2.3.md
 [0.2.4]: docs/releases/v0.2.4.md
 [0.3.0]: docs/releases/v0.3.0.md
+[0.3.1]: docs/releases/v0.3.1.md
+[0.3.2]: docs/releases/v0.3.2.md
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
