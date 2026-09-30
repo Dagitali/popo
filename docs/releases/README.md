@@ -28,6 +28,8 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.3 Series
 
+- [v0.3.3] — 2026-09-30: Reorganize checker and configuration unit tests, correct shared-helper
+  imports, and synchronize test-layout guidance.
 - [v0.3.2] — 2026-09-30: Correct omitted release records and dated changelog history while
   preserving the existing 0.3.1 tag.
 - [v0.3.1] — 2026-09-30: Align and generalize root documentation; retrospective record added in
@@ -103,3 +105,4 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.3.0]: v0.3.0.md
 [v0.3.1]: v0.3.1.md
 [v0.3.2]: v0.3.2.md
+[v0.3.3]: v0.3.3.md
