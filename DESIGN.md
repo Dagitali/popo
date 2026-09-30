@@ -53,6 +53,16 @@ opt-in for aggregate checking, while dependency and Python-policy settings retai
 defaults and unknown-key handling. Path resolution is command-specific; consult the [configuration
 reference] rather than assuming every relative path uses the same base.
 
+When extending configuration:
+
+1. Establish a consumer requirement and define accepted inputs, defaults, and failure behavior.
+2. Implement parsing in the owning domain and preserve its existing compatibility rules.
+3. Keep repository-file checks in the owning validator and expose only the interfaces needed.
+4. Cover valid, invalid, missing, and boundary inputs, including standalone and aggregate dispatch.
+5. Update the configuration reference, adoption examples, and changelog as applicable.
+
+Use the [interface checklist] for the full review, including migration and release classification.
+
 ## Testing and Change Safety
 
 Keep unit and integration tests independent of credentials and network access. Exercise malformed
