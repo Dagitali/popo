@@ -28,6 +28,10 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.3 Series
 
+- [v0.3.2] — 2026-09-30: Correct omitted release records and dated changelog history while
+  preserving the existing 0.3.1 tag.
+- [v0.3.1] — 2026-09-30: Align and generalize root documentation; retrospective record added in
+  0.3.2 because the original tag lacked its dated changelog entry and release document.
 - [v0.3.0] — 2026-09-30: Add automation-contract validation, reorganize configuration, expand
   regression coverage, and repair documentation references.
 
@@ -97,3 +101,5 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.2.3]: v0.2.3.md
 [v0.2.4]: v0.2.4.md
 [v0.3.0]: v0.3.0.md
+[v0.3.1]: v0.3.1.md
+[v0.3.2]: v0.3.2.md
