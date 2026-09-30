@@ -17,6 +17,7 @@ Use executable sources for current behavior and maintained guides for interpreta
 release records describe their own revisions, not the current checkout.
 
 - [Package and Contributor Tooling](#package-and-contributor-tooling)
+  - [Python Packaging and Testing](#python-packaging-and-testing)
 - [Interfaces and Architecture](#interfaces-and-architecture)
 - [Automation and Delivery](#automation-and-delivery)
 - [Collaboration and Governance](#collaboration-and-governance)
@@ -28,6 +29,21 @@ release records describe their own revisions, not the current checkout.
 - [Makefile]: Contributor commands and environment selection.
 - [Contributing]: Setup, code style, checks, and documentation synchronization.
 - [Test layout]: Test discovery, fixtures, and artifact boundaries.
+
+### Python Packaging and Testing
+
+The repository selects tool versions and settings in [Package configuration]. Consult upstream
+documentation for tool behavior, then verify examples against the versions used here:
+
+- [Python packaging guide]: `pyproject.toml` metadata and build configuration.
+- [setuptools-scm]: Git-derived package versions.
+- [pytest]: Test discovery, fixtures, and selection.
+- [Ruff]: Linting and formatting.
+- [mypy]: Static typing.
+- [pre-commit]: Managed hooks and stages.
+
+These references supplement the local Make interface; they do not add mandatory commands,
+dependencies, or external services.
 
 ## Interfaces and Architecture
 
@@ -75,12 +91,17 @@ implemented subset and known limits.
 [Roadmap]: ROADMAP.md
 [Security]: SECURITY.md
 [Support]: SUPPORT.md
+[Package configuration]: pyproject.toml
 [Configuration]: docs/CONFIGURATION.md
 [API guidance]: docs/api/README.md
 [Release archive]: docs/releases/README.md
+[Test layout]: tests/README.md
+[Ruff]: https://docs.astral.sh/ruff/
+[CommonMark]: https://spec.commonmark.org/
 [GitHub Flavored Markdown]: https://github.github.com/gfm/
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
+[mypy]: https://mypy.readthedocs.io/
+[Python packaging guide]: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+[pre-commit]: https://pre-commit.com/
+[setuptools-scm]: https://setuptools-scm.readthedocs.io/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[CommonMark]: https://spec.commonmark.org/
-[Package configuration]: pyproject.toml
-[Test layout]: tests/README.md
