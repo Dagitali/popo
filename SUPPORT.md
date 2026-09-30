@@ -14,19 +14,27 @@ Maintainer Notes
 # Support
 
 - [Support Boundary](#support-boundary)
+  - [Supported Surface](#supported-surface)
+  - [Supported Versions](#supported-versions)
 - [Where to Get Help](#where-to-get-help)
 - [What to Include](#what-to-include)
 - [Maintenance Expectations](#maintenance-expectations)
 
 ## Support Boundary
 
+### Supported Surface
+
 Popo's consumer interface is the documented CLI and configuration. The package root intentionally
 exports only `__version__`; internal checker modules are not a stable consumer API. Consult the
 [configuration reference] for supported input formats and limitations.
 
+### Supported Versions
+
 `pyproject.toml` declares supported Python versions and dependency ranges; CI supplies validation
 evidence. A passing local check does not establish compatibility with every platform or consumer
-policy. Review the [release archive] for version-specific changes.
+policy. Review the [release archive] for version-specific changes. Runtime compatibility is separate
+from a promise to maintain an older release; see [maintenance
+expectations](#maintenance-expectations).
 
 ## Where to Get Help
 
@@ -51,8 +59,9 @@ The package is alpha/pre-1.0. Review compatibility changes before updating a con
 revision. Documentation does not promise a response deadline, backport window, or stable-release
 support period; those commitments require an explicit maintainer decision.
 
-The [release policy] distinguishes candidate validation, tagging, and optional publication. Consumer
-CI, deployment, remediation, and hosted settings remain consumer responsibilities.
+The [release policy] owns release classification and deprecation guidance and distinguishes
+candidate validation, tagging, and optional publication. Consumer CI, deployment, remediation, and
+hosted settings remain consumer responsibilities.
 
 [issue forms]: .github/ISSUE_TEMPLATE/
 [Code of Conduct]: CODE_OF_CONDUCT.md
