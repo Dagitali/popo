@@ -1,4 +1,8 @@
-"""Exercise portable, read-only automation contracts and consumer configuration."""
+"""
+:mod:`tests.unit.checks.test_automation` module.
+
+Exercise portable, read-only automation contracts.
+"""
 
 from dataclasses import replace
 from pathlib import Path
@@ -6,7 +10,6 @@ from pathlib import Path
 import pytest
 
 from popo.checks.automation import validate
-from popo.config import ConfigurationError
 from popo.config.automation import AutomationConfig, load_automation_config
 from tests.support.files import FileWriter
 
@@ -90,28 +93,6 @@ def test_composite_structure(
         action_globs=('actions/*/action.yaml',),
     )
     assert (validate(config) == []) is ok
-
-
-@pytest.mark.parametrize(
-    'setting',
-    [
-        'unknown = []',
-        'workflow-globs = "x"',
-        'action-globs = [1]',
-        'yaml-globs = ["../x"]',
-        'template-globs = ["/absolute"]',
-        'local-repositories = ["owner"]',
-        'template-placeholder-refs = ["a/b"]',
-    ],
-)
-def test_invalid_configuration(
-    tmp_path: Path,
-    write_file: FileWriter,
-    setting: str,
-) -> None:
-    write_file('pyproject.toml', '[tool.popo.automation]\n' + setting)
-    with pytest.raises(ConfigurationError):
-        load_automation_config(tmp_path)
 
 
 @pytest.mark.parametrize(

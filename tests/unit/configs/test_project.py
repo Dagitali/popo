@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.test_config` module.
+:mod:`tests.unit.configs.test_project` module.
 
-Test configuration discovery for infrastructure project layouts.
+Test project configuration discovery and shared loader contracts.
 """
 
 from pathlib import Path

@@ -1,5 +1,5 @@
 """
 :mod:`tests.unit` package.
 
-Isolated checker and automation contract tests.
+Isolated checker, configuration, support, and repository automation tests.
 """
