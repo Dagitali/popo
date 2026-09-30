@@ -38,7 +38,6 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   release-classification criteria, upstream tooling references, and action-pin/version
   troubleshooting. Preserve existing anchors, configurable routing, publication safeguards, and
   support boundaries.
-
 - Align root documentation coverage with reusable project guidance: add architecture, design,
   workflow, security, support, conduct, learnings, references, and roadmap guides. Expand agent
   orientation and documentation ownership while preserving read-only checking, configurable routing,
