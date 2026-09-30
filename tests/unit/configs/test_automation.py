@@ -9,8 +9,7 @@ from pathlib import Path
 import pytest
 
 from popo.config import ConfigurationError, load_automation_config
-
-from .support.files import FileWriter
+from tests.support.files import FileWriter
 
 # SECTION: TESTS
 
