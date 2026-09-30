@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_python_policy` module.
+:mod:`tests.unit.checks.test_python_policy` module.
 
 Test Python-version consistency and workflow matrix resolution.
 """
