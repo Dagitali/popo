@@ -9,9 +9,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
-from popo import __version__
-from popo.automation_config import load_automation_config
-from popo.checks import (
+from . import __version__
+from .checks import (
     actions,
     automation,
     changelog,
@@ -19,8 +18,9 @@ from popo.checks import (
     docs,
     python_policy,
 )
-from popo.config import ConfigurationError, load_config
-from popo.support import report
+from .config import ConfigurationError, load_config
+from .config.automation import load_automation_config
+from .support import report
 
 # SECTION: TYPE ALIASES
 
