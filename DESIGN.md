@@ -29,7 +29,7 @@ consumer policy explicit and independent of Popo's own development setup.
 
 Automatic repairs, deployment, hosted-rule administration, remote code execution, and a universal
 workflow or Markdown interpreter are outside the current checker boundary. New capabilities need a
-demonstrated requirement and a documented scope; similarity to another project is not sufficient.
+demonstrated consumer requirement and a documented scope.
 
 ## Public Interface
 
@@ -70,15 +70,17 @@ inputs and read-only behavior alongside successful cases. Artifact tests separat
 contents and installed entry points outside the checkout.
 
 Use focused Make targets while iterating, then `make check`. Packaging changes additionally need
-distribution and installation checks. Coverage is diagnostic; Popo does not inherit another
-project's coverage threshold, infrastructure tests, or documentation build system.
+distribution and installation checks. Coverage is diagnostic, with no configured minimum threshold.
+Documentation uses maintained Markdown and local link/anchor validation through `make
+docs-markdown`. The [testing guide] owns test selection and validation procedures.
 
 ## Decision Recording and Evolution
 
 Record accepted interface decisions in the relevant maintained guide and changelog. Capture reusable
 troubleshooting outcomes in [learnings] and detailed operational recovery in runbooks. A separate
-decision record is useful when alternatives or lasting tradeoffs need independent history; do not
-create empty records solely to match another repository.
+decision record is useful when alternatives or lasting tradeoffs need independent history. Record
+its status and any superseding decision so readers can distinguish current guidance from historical
+rationale.
 
 Prefer additive, optional settings when they satisfy the requirement. Preserve read-only operation,
 consumer ownership, immutable action pins, and least-privilege automation. Follow the [release
@@ -88,4 +90,5 @@ policy] for versioned changes, and document intentional compatibility breaks exp
 [learnings]: LEARNINGS.md
 [release policy]: RELEASE-POLICY.md
 [configuration reference]: docs/CONFIGURATION.md
+[testing guide]: docs/TESTING.md
 [interface checklist]: docs/api/evolution-checklist.md
