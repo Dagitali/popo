@@ -297,7 +297,7 @@ feedback, and documentation corrections are useful contributions alongside code 
 - [Documentation index]: Guides, scope, and local documentation validation.
 - [Configuration reference]: All consumer settings, defaults, and command boundaries.
 - [API guidance]: Public interface boundaries and compatibility review.
-- [Architecture] and [Design]: Components, ownership, and change constraints.
+- [Architecture] and [Design]: Components, integration boundaries, and configuration-change review.
 - [References]: Canonical sources, upstream tooling documentation, and format references.
 - [Configuration](#configuration): Consumer repository settings and dependency modes.
 
@@ -307,7 +307,7 @@ feedback, and documentation corrections are useful contributions alongside code 
 - [Issue forms]: Structured bug reports, feature requests, and documentation corrections.
 - [Code of Conduct]: Participation and moderation.
 - [Security policy]: Sensitive reporting and validation limits.
-- [Support guide]: Help channels and useful report contents.
+- [Support guide]: Supported interfaces and versions, help channels, and useful report contents.
 
 Do not include credentials, private repository data, or vulnerability details in public issues.
 
