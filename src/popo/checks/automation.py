@@ -1,4 +1,8 @@
-"""Validate configured automation contracts without execution or network access."""
+"""
+:mod:`popo.checks.automation` module.
+
+Validate configured automation contracts without execution or network access.
+"""
 
 import json
 import re
@@ -8,8 +12,8 @@ from typing import cast
 
 import yaml
 
-from popo.automation_config import AutomationConfig
-from popo.checks.actions import is_pinned
+from ..config.automation import AutomationConfig
+from .actions import is_pinned
 
 # SECTION: PROTECTED CLASSES
 
