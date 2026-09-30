@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.3.3 - 2026-09-30](#033---2026-09-30)
 - [0.3.2 - 2026-09-30](#032---2026-09-30)
 - [0.3.1 - 2026-09-30](#031---2026-09-30)
 - [0.3.0 - 2026-09-30](#030---2026-09-30)
@@ -36,8 +37,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+## [0.3.3] - 2026-09-30
+
 - Group unit tests under `checks/` and `configs/` to align with `popo.checks` and `popo.config`,
   preserving test coverage, shared fixtures, and default discovery.
+- Separate automation configuration validation from checker tests, correct its shared-helper import,
+  and update test-selection guidance and source-to-test references.
 
 ## [0.3.2] - 2026-09-30
 
@@ -238,5 +243,6 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.3.0]: docs/releases/v0.3.0.md
 [0.3.1]: docs/releases/v0.3.1.md
 [0.3.2]: docs/releases/v0.3.2.md
+[0.3.3]: docs/releases/v0.3.3.md
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
