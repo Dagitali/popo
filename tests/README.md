@@ -13,8 +13,9 @@ Maintainer Notes
 
 # Tests Overview
 
-Tests are organized by scope rather than by feature. The [test configuration] in `tests/conftest.py`
-assigns the matching pytest marker from each test module's top-level directory.
+Tests are organized by scope, with unit tests grouped by source-package responsibility. The [test
+configuration] in `tests/conftest.py` assigns the matching pytest marker from each test module's
+top-level directory.
 
 - [Current Layout](#current-layout)
 - [Discovery and Selection](#discovery-and-selection)
@@ -32,6 +33,16 @@ assigns the matching pytest marker from each test module's top-level directory.
 | `meta` | `tests/meta/` | Built wheel and source-distribution contracts |
 | `e2e` | `tests/e2e/` | Clean installations and installed CLI behavior |
 | None | `tests/support/` | Shared fixtures; not collected as tests |
+
+Within `tests/unit/`:
+
+- `checks/` mirrors `popo.checks`, with one test module per checker.
+- `configs/` covers `popo.config`: project loading and shared loader contracts in `test_project.py`,
+  and automation configuration validation in `test_automation.py`.
+- Tests for shared support, Make, hooks, and repository workflows remain at the unit-layer root.
+
+Both subdirectories inherit the `unit` marker and shared fixtures. Checker tests may construct or
+load configuration to exercise a validator; configuration-only validation belongs in `configs/`.
 
 ## Discovery and Selection
 
@@ -80,6 +91,8 @@ After installing development dependencies:
 ```console
 make test
 make test-unit
+make test-unit UNIT_TEST_ARGS="tests/unit/checks"
+make test-unit UNIT_TEST_ARGS="tests/unit/configs"
 make test-integration
 make test-distribution
 make test-installation
