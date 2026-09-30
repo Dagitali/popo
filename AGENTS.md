@@ -22,6 +22,8 @@ system-level instructions take precedence.
 - [Development Policy](#development-policy)
 - [Documentation Obligations](#documentation-obligations)
 - [Validation Commands](#validation-commands)
+- [Git and Automation](#git-and-automation)
+- [Release Readiness](#release-readiness)
 - [Validation and Completion](#validation-and-completion)
 - [Completion Report](#completion-report)
 
@@ -110,6 +112,28 @@ release validation, use a fresh `PYTHON_DIST_DIR` rather than deleting unrelated
 follow the [release playbook]. Local results do not establish hosted cross-platform success. See the
 [testing guide] for test selection and the [test layout] for fixture conventions.
 
+## Git and Automation
+
+- Follow the configured routing described in the [branch-protection guide]; do not infer fixed
+  integration branches or branch prefixes from another project's GitFlow conventions.
+- Use reviewed pull requests for integration. Local branch-finishing commands do not replace hosted
+  review or required checks.
+- Use Conventional Commits and preserve immutable action pins and job-scoped permissions.
+- Keep routine checks independent of deployment credentials. Network-dependent artifact and
+  advisory workflows retain their documented boundaries in the [workflow map].
+- Do not dispatch hosted workflows or change repository rules, secrets, or publication settings
+  without explicit authorization.
+
+## Release Readiness
+
+Use the [release policy] and [release playbook] for packaging, compatibility, or delivery work.
+Validate the full candidate scope, its dated changelog entry, both distribution formats, and clean
+installations. A passing development build does not prove the eventual tag's version or hosted
+release results.
+
+Keep tags immutable and publication opt-in. Describe unresolved support, deprecation, or delivery
+decisions as unresolved; do not turn another project's commitments into Popo policy.
+
 ## Validation and Completion
 
 - Run `make check` before completion when practical.
@@ -133,6 +157,7 @@ Record reusable findings in [learnings] or the relevant runbook without exposing
 
 See the [contributing guide], [test layout], and [release policy] for command and artifact details.
 
+[branch-protection guide]: .github/BRANCH-PROTECTION.md
 [architecture]: ARCHITECTURE.md
 [workflow map]: CI-CD-WORKFLOWS.md
 [contributing guide]: CONTRIBUTING.md
