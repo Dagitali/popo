@@ -18,6 +18,8 @@ resources. Package versions come from Git tags through `setuptools-scm`.
 
 - [Scope](#scope)
 - [Versioning and Compatibility](#versioning-and-compatibility)
+  - [Release Classification](#release-classification)
+  - [Deprecation and Support](#deprecation-and-support)
 - [Candidate Validation](#candidate-validation)
 - [Release Artifacts](#release-artifacts)
 - [Release Notes](#release-notes)
@@ -40,6 +42,22 @@ Popo is alpha/pre-1.0. Review commands, flags, configuration defaults, accepted 
 and exit codes when assessing compatibility. A stricter validator can require consumer migration
 even if its command name is unchanged. Identify breaking changes and migration steps in the
 versioned notes; distinguish backward-compatible maintenance from public-contract changes.
+
+### Release Classification
+
+Assess the complete change set, including behavior affected by stricter validation:
+
+| Change | Versioning consideration |
+| --- | --- |
+| Compatible bug fix, documentation repair, or packaging correction | Patch candidate |
+| New command, optional setting, or other user-facing capability | Minor candidate |
+| Required migration or intentionally incompatible public behavior | Explicit compatibility review and release notes; after 1.0, a major release |
+
+During pre-1.0 development, a minor release can refine the public interface. Do not assume every
+dependency update is patch-safe: dropped runtime support or changed accepted inputs can affect
+consumers. Classify by the resulting behavior, not the number of changed files.
+
+### Deprecation and Support
 
 No fixed deprecation window or stable-line backport commitment is currently documented. Establish
 those commitments explicitly before advertising stable support. Consult the [support guide] for the
