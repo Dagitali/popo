@@ -18,7 +18,7 @@ try:
 except PackageNotFoundError:
     __version__ = '0.1.0'
 
-# SECTION: PACKAGE API / EXPORTS
+# SECTION: EXPORTS / PACKAGE API
 
 
 __all__ = ['__version__']

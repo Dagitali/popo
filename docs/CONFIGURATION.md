@@ -7,7 +7,7 @@ Copyright © 2026 Dagitali LLC. All rights reserved.
 Consumer configuration fields, defaults, and command boundaries.
 
 Maintainer Notes
-- Verify defaults against src/popo/config.py and command flags against src/popo/cli.py.
+- Verify defaults against src/popo/config/ and command flags against src/popo/cli.py.
 - Keep consumer policy separate from Popo's supported runtime and development settings.
 -->
 
@@ -19,6 +19,7 @@ are resolved against that root. See the [configuration example] for a complete s
 
 - [Dependency Settings](#dependency-settings)
 - [Python-Policy Settings](#python-policy-settings)
+- [Automation Settings](#automation-settings)
 - [Command Boundaries](#command-boundaries)
 - [Validation Rules](#validation-rules)
 
@@ -71,6 +72,20 @@ path is overridden. Set it explicitly when using a different policy. Popo checks
 interpreter against that policy as well as checking repository declarations; run it with an
 interpreter supported by both Popo and the consumer policy.
 
+## Automation Settings
+
+`[tool.popo.automation]` configures workflow, action, template, and generic YAML discovery, local
+repository aliases, and template placeholder references. See the [automation contracts guide] for
+all six settings, their defaults, an example, and the checker limitations.
+
+These settings are arrays of nonempty strings; unknown keys are rejected. Discovery patterns are
+relative to the inspected root, cannot be absolute or contain `..` path components, and must match
+files. Empty arrays disable discovery categories. Resolved paths must remain within the repository.
+
+The standalone `check-automation-contracts` command uses default workflow discovery when the table
+is absent. `check-all` includes automation contracts only when the table is present, even if empty.
+Automation loading is independent of dependency and Python-policy settings.
+
 ## Command Boundaries
 
 Python-policy workflow inspection resolves literal versions, simple environment references, and
@@ -98,24 +113,32 @@ expressions or full YAML semantics.
   `--automation-directory`. Remote references must contain a non-empty action name and a full
   40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
   exempt; the check does not verify repository existence or container-image immutability.
-- `check-dependency-boundaries` and `check-python-policy` load the consumer configuration.
+- `check-automation-contracts` loads automation settings and validates parsed YAML, local input
+  contracts, composite steps, template metadata, and reference pins. `--pins-only` skips input,
+  composite, and metadata checks; YAML parsing and local target resolution still run. See the
+  [automation contracts guide] for exemptions and limits.
+- `check-dependency-boundaries` and `check-python-policy` load dependency and Python-policy
+  configuration together; they do not load automation settings.
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
   `--changelog` to select another file.
-- `check-all` combines documentation, action-pin, dependency, and Python-policy checks. It does not
-  include release-changelog validation or accept the individual checks' path overrides.
+- `check-all` combines documentation, action-pin, dependency, and Python-policy checks, plus
+  automation contracts when `[tool.popo.automation]` is present. It does not include
+  release-changelog validation or accept individual checks' path overrides or `--pins-only`.
 
 Relative `--automation-directory` and `--changelog` values resolve against the working directory,
 not `--root`. This differs from relative paths inside `[tool.popo]`.
 
 ## Validation Rules
 
-Configuration sections must be TOML tables, supplied settings must be non-empty strings, and the
-dependency mode must be supported. Unknown keys are currently ignored; check spelling against this
-reference. Dependency and Python-policy commands load the complete configuration, so a malformed
-section can fail either command.
+Configuration sections must be TOML tables. Dependency and Python-policy settings must be non-empty
+strings, and the dependency mode must be supported. Unknown keys in those sections are ignored;
+check spelling against this reference. Both commands load those two sections, so a malformed
+dependency or Python-policy section can fail either command. Automation settings instead require
+arrays of nonempty strings and reject unknown keys; see [Automation Settings](#automation-settings).
 
 Reported check or configuration failures return exit status `1`; successful checks return `0`.
 Invalid command-line arguments are handled separately by the argument parser. Checks remain
 read-only and do not repair files or change consumer policy automatically.
 
+[automation contracts guide]: ../README.md#automation-contracts
 [configuration example]: ../README.md#configuration

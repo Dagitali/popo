@@ -13,8 +13,8 @@ Maintainer Notes
 
 # Tests Overview
 
-Tests are organized by scope rather than by feature. The root `conftest.py` assigns the matching
-pytest marker from each test module's top-level directory.
+Tests are organized by scope rather than by feature. The [test configuration] in `tests/conftest.py`
+assigns the matching pytest marker from each test module's top-level directory.
 
 - [Current Layout](#current-layout)
 - [Discovery and Selection](#discovery-and-selection)
@@ -51,7 +51,7 @@ dependencies; see the [contributing guide] for isolated environments and depende
 
 ## Shared Fixtures
 
-The root conftest registers [artifact fixtures] as a pytest plugin. Both artifact layers reuse one
+The [test configuration] registers [artifact fixtures] as a pytest plugin. Both artifact layers reuse one
 wheel and one sdist per session, either from `--artifact-dir` or an isolated temporary build.
 Artifacts pass `twine check` before their tests. Installation tests remove source-path overrides and
 exercise the installed CLI outside the checkout.
@@ -92,4 +92,5 @@ python -m pytest --cov=popo --cov-branch --cov-report=term-missing
 See the [contributing guide] for setup and dependency prerequisites.
 
 [contributing guide]: ../CONTRIBUTING.md
+[test configuration]: conftest.py
 [artifact fixtures]: support/artifacts.py

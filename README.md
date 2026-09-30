@@ -34,6 +34,7 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [Configuration](#configuration)
+  - [Automation Contracts](#automation-contracts)
 - [Design Boundaries](#design-boundaries)
 - [Development](#development)
 - [PyPI Publication](#pypi-publication)
@@ -68,8 +69,6 @@ archive] for compatibility changes and candidate status. The release badge repor
 not establish successful artifact publication. GitHub Release publication is opt-in, and PyPI
 publishing is not configured; see the [release policy].
 
-<a id="checks"></a>
-
 ## Features
 
 - Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
@@ -77,6 +76,7 @@ publishing is not configured; see the [release policy].
   validation to Markdown targets; generated and vendored sources such as `node_modules` are
   excluded;
 - Named remote GitHub Actions references pinned to full commit SHAs;
+- Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows, including
   inline and block-list version matrices; and
@@ -90,6 +90,10 @@ repository files and return findings; shared reporting prints `PASS` or `FAIL` m
 an exit status of `0` for a successful check or `1` for reported failures. Invalid command-line
 arguments are handled separately by the argument parser.
 
+Configuration models and loaders live in the `popo.config` subpackage, organized by dependency,
+Python-policy, and automation settings. Existing `popo.config` imports remain available through
+explicit package exports.
+
 Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
 without embedding a consumer's build or deployment process.
 
@@ -98,6 +102,7 @@ without embedding a consumer's build or deployment process.
 - Python 3.13 or 3.14 (`.python-version` selects Python 3.13 for compatible local
   version managers).
 - `packaging>=26.3,<27`, installed automatically with Popo; older versions are not supported.
+- `PyYAML>=6.0.3,<7`, installed automatically for automation-contract parsing.
 - Make and a POSIX-compatible shell for the development targets; see the
   [contributing guide] for Windows setup.
 - No cloud account or credentials are required to run repository checks.
@@ -126,6 +131,7 @@ Run a check from the repository it should inspect:
 ```console
 popo check-docs
 popo check-github-actions-pins
+popo check-automation-contracts
 popo check-dependency-boundaries
 popo check-python-policy
 popo check-release-changelog v1.2.3
@@ -136,7 +142,8 @@ Every command accepts `--root`. The equivalent module entry point is
 `python -m popo`.
 
 `check-all` runs the documentation, action-pin, dependency, and Python-policy checks. Release
-changelog validation is separate and requires the release version to check.
+changelog validation is separate and requires the release version to check. Automation contracts are
+included when the consumer explicitly configures `[tool.popo.automation]`.
 
 ## Configuration
 
@@ -170,7 +177,45 @@ When dependency configuration is absent, `popo` detects the layouts
 `pyproject.toml` plus `requirements/lowest.txt`, root `requirements.txt`, or
 `infra/pyproject.toml` plus `infra/requirements.txt`.
 
-<a id="safety"></a>
+### Automation Contracts
+
+`popo check-automation-contracts --root .` validates parsed YAML, duplicate keys, local
+workflow/action input contracts, composite-step structure, template metadata, and immutable remote
+references. Use `--pins-only` to skip input, composite, and metadata checks; parsing and local
+target resolution still run. The older `check-github-actions-pins` command is unchanged.
+
+See the [automation settings reference] for command boundaries and validation rules. Configure
+discovery and policy in the consuming repository, without importing Popo internals:
+
+```toml
+[tool.popo.automation]
+workflow-globs = [".github/workflows/*.yml"]
+action-globs = ["actions/*/action.yml"]
+template-globs = ["workflow-templates/*.yml"]
+yaml-globs = [".github/ISSUE_TEMPLATE/*.yml"]
+local-repositories = ["example/automation"]
+template-placeholder-refs = ["REPLACE_WITH_RELEASE_SHA"]
+```
+
+All settings are arrays of strings. Only `workflow-globs` has a nonempty default, as shown above;
+other settings default to `[]`. Patterns are root-relative and must each match a file. Use `[]` to
+disable a category. Add `.yaml` patterns if used by your repository. `yaml-globs` validates syntax
+only. Invalid settings, unreadable files, and escaping paths fail validation.
+
+Local `./` references and configured `owner/repository` aliases resolve against the current
+checkout, never against historical or remote commits. Calls reject unknown/missing required inputs
+and literal workflow input type mismatches; expression values are not evaluated. Composite actions
+require names, descriptions, and nonempty steps with exactly one of `run` or `uses`; `run` steps
+require shells. Templates require matching `.properties.json` files with names/descriptions and
+valid optional categories/filePatterns; orphan metadata is reported.
+
+Placeholder exemptions apply only to configured template files referencing existing targets through
+a configured local alias. They never exempt ordinary workflows or third-party actions. Like the
+existing pin checker, local and `docker://` references are exempt from SHA pinning. No commands are
+executed, sources rewritten, or network requests made. Commit existence, container immutability,
+expression evaluation, secrets, outputs, and the complete GitHub schema are outside this check;
+retain actionlint and hosted tests. YAML mapping keys must be strings; `on` remains a string, while
+only `true` and `false` are interpreted as booleans.
 
 ## Design Boundaries
 
@@ -248,8 +293,6 @@ feedback, and documentation corrections are useful contributions alongside code 
 
 Do not include credentials, private repository data, or vulnerability details in public issues.
 
-<a id="contributor-and-maintainer-docs"></a>
-
 ### Maintainer Docs
 
 - [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
@@ -275,6 +318,7 @@ the [release policy].
 [MIT License]: LICENSE
 [release policy]: RELEASE-POLICY.md
 [Configuration reference]: docs/CONFIGURATION.md
+[automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
 [Testing guide]: docs/TESTING.md
 [Release playbook]: docs/playbooks/release.md
@@ -282,7 +326,7 @@ the [release policy].
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml
-[PR gates badge]: https://github.com/Dagitali/popo/actions/workflows/pr.yml/badge.svg?branch=main
+[PR gates badge]: https://github.com/Dagitali/popo/actions/workflows/pr.yml/badge.svg
 [GitHub releases]: https://github.com/Dagitali/popo/releases
 [GitHub tags]: https://github.com/Dagitali/popo/tags
 [Python badge]: https://img.shields.io/badge/python-3.13%20%7C%203.14-blue.svg

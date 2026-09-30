@@ -8,7 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from popo.config import ConfigurationError, load_config
+from popo.config import (
+    AutomationConfig,
+    ConfigurationError,
+    DependencyConfig,
+    DependencyMode,
+    ProjectConfig,
+    PythonPolicyConfig,
+    load_automation_config,
+    load_config,
+)
 from tests.support.files import FileWriter
 
 # SECTION: TESTS
@@ -69,6 +78,18 @@ class TestConfiguration:
         assert config.python_policy.ruff_config == tmp_path / 'ruff.toml'
         assert config.python_policy.workflow_directory == tmp_path / 'automation'
 
+    def test_exported_models(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        config = load_config(tmp_path)
+        mode: DependencyMode = 'minimum-constraints'
+        assert isinstance(config, ProjectConfig)
+        assert isinstance(config.dependencies, DependencyConfig)
+        assert isinstance(config.python_policy, PythonPolicyConfig)
+        assert config.dependencies.mode == mode
+        assert isinstance(load_automation_config(tmp_path), AutomationConfig)
+
     @pytest.mark.parametrize('metadata', ['[', '[project]\nrequires-python = 313'])
     def test_invalid_consumer_metadata_uses_policy_default(
         self,
@@ -79,6 +100,50 @@ class TestConfiguration:
         write_file('infra/pyproject.toml', metadata)
         write_file('infra/requirements.txt', '')
         assert load_config(tmp_path).python_policy.requires_python == '>=3.13'
+
+    @pytest.mark.parametrize(
+        ('content', 'message'),
+        [
+            ('[', 'invalid TOML'),
+            ('tool = 1', 'tool must be a TOML table'),
+            ('[tool]\npopo = []', 'tool.popo must be a TOML table'),
+        ],
+    )
+    def test_loaders_share_root_validation(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        content: str,
+        message: str,
+    ) -> None:
+        write_file('pyproject.toml', content)
+        for loader in (load_config, load_automation_config):
+            with pytest.raises(ConfigurationError, match=message):
+                loader(tmp_path)
+
+    def test_loaders_validate_only_their_domains(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        write_file(
+            'pyproject.toml',
+            '[tool.popo.dependencies]\nmode = "invalid"\n'
+            '[tool.popo.python-policy]\npython-version = 313\n'
+            '[tool.popo.automation]\n',
+        )
+        assert load_automation_config(tmp_path).configured
+        with pytest.raises(ConfigurationError, match='dependency mode'):
+            load_config(tmp_path)
+        write_file(
+            'pyproject.toml',
+            '[tool.popo.dependencies]\nunknown = true\n'
+            '[tool.popo.python-policy]\nunknown = true\n'
+            '[tool.popo.automation]\nunknown = true\n',
+        )
+        assert load_config(tmp_path).python_policy.python_version == '3.13'
+        with pytest.raises(ConfigurationError, match='unknown tool.popo.automation'):
+            load_automation_config(tmp_path)
 
     @pytest.mark.parametrize(
         ('content', 'message'),
@@ -112,6 +177,23 @@ class TestConfiguration:
         write_file('pyproject.toml', content)
         with pytest.raises(ConfigurationError, match=message):
             load_config(tmp_path)
+
+    def test_python_defaults_follow_dependency_metadata(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        write_file(
+            'pyproject.toml',
+            '[tool.popo.dependencies]\nmetadata = "dependencies.toml"\n'
+            '[tool.popo.python-policy]\nmetadata = "python.toml"\n',
+        )
+        write_file('dependencies.toml', '[project]\nrequires-python = ">=3.14"')
+        write_file('python.toml', '[project]\nrequires-python = ">=3.13"')
+        config = load_config(tmp_path)
+        assert config.python_policy.metadata == tmp_path / 'python.toml'
+        assert config.python_policy.ruff_config == tmp_path / 'dependencies.toml'
+        assert config.python_policy.requires_python == '>=3.14'
 
 
 # !SECTION
