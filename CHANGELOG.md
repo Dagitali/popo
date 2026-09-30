@@ -33,6 +33,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Organize configuration into the `popo.config` subpackage with shared TOML loading and separate
+  dependency, Python-policy, and automation modules. Preserve existing `popo.config` exports, policy
+  defaults, and opt-in automation checks.
 - Add `check-automation-contracts` and its `--pins-only` mode, with optional consumer-owned
   `[tool.popo.automation]` configuration and opt-in `check-all` integration. Validate local
   workflow/action inputs, composite steps, YAML, template metadata, and reference pins without
