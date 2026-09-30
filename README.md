@@ -37,6 +37,7 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
   - [Automation Contracts](#automation-contracts)
 - [Design Boundaries](#design-boundaries)
 - [Development](#development)
+- [Support Popo](#support-popo)
 - [PyPI Publication](#pypi-publication)
 - [License](#license)
 - [Contributing](#contributing)
@@ -53,7 +54,7 @@ To get started:
 - Install a selected tag or local checkout as described in [Installation](#installation).
 - Run a repository check with the [Quickstart](#quickstart).
 - Adapt [Configuration](#configuration) to the repository being checked.
-- Follow [Development](#development) to work on Popo itself.
+- Follow [Development](#development) and [Developer onboarding] to work on Popo itself.
 
 ## At a Glance
 
@@ -95,7 +96,8 @@ Python-policy, and automation settings. Existing `popo.config` imports remain av
 explicit package exports.
 
 Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
-without embedding a consumer's build or deployment process.
+without embedding a consumer's build or deployment process. See [Architecture] for component
+ownership and [Design] for compatibility and evolution rules.
 
 ## Requirements
 
@@ -256,6 +258,16 @@ to install optional pre-commit hooks and `make check-release` to also build and 
 source distribution in clean environments. See the [contributing guide] for Windows paths,
 environment overrides, network requirements, and other setup and focused-check targets.
 
+## Support Popo
+
+Help improve Popo through reproducible bug reports, small consumer examples, tests, documentation,
+and reviewed contributions. Use the [support guide] for help and reporting details, the [security
+policy] for vulnerabilities, and the [Code of Conduct] for participation standards.
+
+The [roadmap] describes readiness considerations without promising delivery dates or new features.
+Consumer adoption is useful evidence when it identifies reusable needs without exposing private
+repository data.
+
 ## PyPI Publication
 
 No workflow currently publishes Popo to PyPI. Until publication is configured and a release is
@@ -284,20 +296,31 @@ feedback, and documentation corrections are useful contributions alongside code 
 
 - [Documentation index]: Guides, scope, and local documentation validation.
 - [Configuration reference]: All consumer settings, defaults, and command boundaries.
+- [API guidance]: Public interface boundaries and compatibility review.
+- [Adoption playbook]: Introduce checks and migrate existing consumer policy with baseline evidence.
+- [Architecture] and [Design]: Components, integration boundaries, and configuration-change review.
+- [References]: Canonical sources, upstream tooling documentation, and format references.
 - [Configuration](#configuration): Consumer repository settings and dependency modes.
 
 ### Community Health
 
 - [Contributing guide]: Development workflow, quality gates, and GitHub automation.
 - [Issue forms]: Structured bug reports, feature requests, and documentation corrections.
+- [Code of Conduct]: Participation and moderation.
+- [Security policy]: Sensitive reporting and validation limits.
+- [Support guide]: Supported interfaces and versions, help channels, and useful report contents.
 
 Do not include credentials, private repository data, or vulnerability details in public issues.
 
 ### Maintainer Docs
 
+- [Developer onboarding]: First local checks, repository orientation, and CLI learning path.
 - [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
 - [Testing guide]: Focused checks, dependency boundaries, and installation validation.
 - [Agent instructions]: Repository rules for automated coding agents.
+- [Workflow map]: CI/CD roles, triggers, and publication boundaries.
+- [Learnings]: Test selection, dependency drift, action pins, package versions, and recovery.
+- [Roadmap]: Current foundations and evidence needed for future scope decisions.
 - [Branch protection]: Configurable PR routing, required checks, and hosted-setting boundaries.
 - [Changelog]: Project change history.
 - [Release archive]: Release-aligned scope, compatibility, and validation records.
@@ -312,15 +335,27 @@ the [release policy].
 [Branch protection]: .github/BRANCH-PROTECTION.md
 [Issue forms]: .github/ISSUE_TEMPLATE/
 [agent instructions]: AGENTS.md
+[Architecture]: ARCHITECTURE.md
 [changelog]: CHANGELOG.md
+[Workflow map]: CI-CD-WORKFLOWS.md
+[Code of Conduct]: CODE_OF_CONDUCT.md
 [contributing guide]: CONTRIBUTING.md
 [Release checklist]: CONTRIBUTING.md#release-preparation
+[Design]: DESIGN.md
+[Learnings]: LEARNINGS.md
 [MIT License]: LICENSE
+[References]: REFERENCES.md
 [release policy]: RELEASE-POLICY.md
+[roadmap]: ROADMAP.md
+[security policy]: SECURITY.md
+[support guide]: SUPPORT.md
 [Configuration reference]: docs/CONFIGURATION.md
 [automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
 [Testing guide]: docs/TESTING.md
+[API guidance]: docs/api/README.md
+[Developer onboarding]: docs/development/onboarding.md
+[Adoption playbook]: docs/playbooks/adopt-popo.md
 [Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
