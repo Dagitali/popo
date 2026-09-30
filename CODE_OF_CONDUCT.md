@@ -160,10 +160,10 @@ community guideline resources can be found at
 [https://www.contributor-covenant.org/resources][Resources]. The enforcement ladder was inspired by
 the work of [Mozilla’s code of conduct team][Mozilla].
 
+[CC BY-SA 4.0]: https://creativecommons.org/licenses/by-sa/4.0/
+[Mozilla]: https://github.com/mozilla/inclusion
 [Contributor Covenant]: https://www.contributor-covenant.org
 [FAQ]: https://www.contributor-covenant.org/faq
 [Resources]: https://www.contributor-covenant.org/resources
 [Translations]: https://www.contributor-covenant.org/translations
 [3.0]: https://www.contributor-covenant.org/version/3/0/
-[CC BY-SA 4.0]: https://creativecommons.org/licenses/by-sa/4.0/
-[Mozilla]: https://github.com/mozilla/inclusion

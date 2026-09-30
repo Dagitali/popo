@@ -96,23 +96,23 @@ implemented subset and known limits.
 [Roadmap]: ROADMAP.md
 [Security]: SECURITY.md
 [Support]: SUPPORT.md
-[Package configuration]: pyproject.toml
 [Configuration]: docs/CONFIGURATION.md
 [API guidance]: docs/api/README.md
 [Release archive]: docs/releases/README.md
-[Test layout]: tests/README.md
-[Ruff]: https://docs.astral.sh/ruff/
-[CommonMark]: https://spec.commonmark.org/
 [CycloneDX]: https://cyclonedx.org/specification/overview/
+[Ruff]: https://docs.astral.sh/ruff/
 [GitHub Actions security]: https://docs.github.com/en/actions/reference/security/secure-use
 [pytest]: https://docs.pytest.org/
 [GitHub Flavored Markdown]: https://github.github.com/gfm/
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
-[pre-commit]: https://pre-commit.com/
+[mypy]: https://mypy.readthedocs.io/
 [Python packaging guide]: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 [PEP 561]: https://peps.python.org/pep-0561/
-[mypy]: https://mypy.readthedocs.io/
+[pre-commit]: https://pre-commit.com/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 [setuptools-scm]: https://setuptools-scm.readthedocs.io/
+[CommonMark]: https://spec.commonmark.org/
 [TOML]: https://toml.io/en/v1.0.0
 [YAML]: https://yaml.org/spec/
+[Package configuration]: pyproject.toml
+[Test layout]: tests/README.md
