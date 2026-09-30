@@ -19,19 +19,22 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [\[0.2.4\] - 2026-09-27](#024---2026-09-27)
-- [\[0.2.3\] - 2026-09-27](#023---2026-09-27)
-- [\[0.2.2\] - 2026-09-26](#022---2026-09-26)
-- [\[0.2.1\] - 2026-09-26](#021---2026-09-26)
-- [\[0.2.0\] - 2026-09-26](#020---2026-09-26)
-- [\[0.1.5\] - 2026-09-24](#015---2026-09-24)
-- [\[0.1.4\] - 2026-09-24](#014---2026-09-24)
-- [\[0.1.3\] - 2026-09-24](#013---2026-09-24)
-- [\[0.1.2\] - 2026-09-24](#012---2026-09-24)
-- [\[0.1.1\] - 2026-09-24](#011---2026-09-24)
-- [\[0.1.0\] - 2026-09-24](#010---2026-09-24)
+- [0.3.0 - 2026-09-30](#030---2026-09-30)
+- [0.2.4 - 2026-09-27](#024---2026-09-27)
+- [0.2.3 - 2026-09-27](#023---2026-09-27)
+- [0.2.2 - 2026-09-26](#022---2026-09-26)
+- [0.2.1 - 2026-09-26](#021---2026-09-26)
+- [0.2.0 - 2026-09-26](#020---2026-09-26)
+- [0.1.5 - 2026-09-24](#015---2026-09-24)
+- [0.1.4 - 2026-09-24](#014---2026-09-24)
+- [0.1.3 - 2026-09-24](#013---2026-09-24)
+- [0.1.2 - 2026-09-24](#012---2026-09-24)
+- [0.1.1 - 2026-09-24](#011---2026-09-24)
+- [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.3.0] - 2026-09-30
 
 - Repair changelog version links, source references, and the PR status badge; synchronize
   configuration guidance with automation-contract settings and opt-in aggregate checks.
@@ -44,6 +47,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   executing automation or fetching remote code. Scope configured placeholders to self-targeting
   templates; preserve the existing action-pin command.
 - Add PyYAML as a runtime dependency and its matching minimum constraint.
+- Expand configuration, automation, CLI, distribution-content, and clean-install regression
+  coverage.
 
 ## [0.2.4] - 2026-09-27
 
@@ -201,5 +206,6 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.2.2]: docs/releases/v0.2.2.md
 [0.2.3]: docs/releases/v0.2.3.md
 [0.2.4]: docs/releases/v0.2.4.md
+[0.3.0]: docs/releases/v0.3.0.md
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
