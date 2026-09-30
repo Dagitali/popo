@@ -34,6 +34,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Clarify consumer integration and repository automation boundaries, configuration-change review,
+  and support-topic navigation. Repair Code of Conduct attribution links and the pytest reference
+  while retaining existing compatibility and publication policies.
 - Extend reusable root guidance with distinct workflow roles, agent Git/release responsibilities,
   release-classification criteria, upstream tooling references, and action-pin/version
   troubleshooting. Preserve existing anchors, configurable routing, publication safeguards, and
