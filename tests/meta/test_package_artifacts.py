@@ -25,7 +25,6 @@ class TestPackageArtifacts:
                     '__main__.py',
                     'cli.py',
                     'py.typed',
-                    'automation_config.py',
                     'checks/automation.py',
                 ):
                     assert f'popo/{filename}' in names
@@ -51,6 +50,22 @@ class TestPackageArtifacts:
                 assert stream is not None
                 with stream:
                     metadata = stream.read()
+        prefix = (
+            'popo/'
+            if artifact.suffix == '.whl'
+            else names[0].split('/')[0] + '/src/popo/'
+        )
+        for filename in (
+            '__init__.py',
+            '_common.py',
+            'project.py',
+            'dependencies.py',
+            'python_policy.py',
+            'automation.py',
+        ):
+            assert f'{prefix}config/{filename}' in names
+        assert f'{prefix}config.py' not in names
+        assert f'{prefix}automation_config.py' not in names
         for filename in ('LICENSE', 'NOTICE'):
             assert any(n.endswith('/' + filename) for n in names)
         parsed = BytesParser().parsebytes(metadata)
