@@ -19,10 +19,44 @@ from tests.support.files import FileWriter
 class TestCommandLine:
     """Exercise public command dispatch, diagnostics, and process exit contracts."""
 
+    def test_all_includes_opted_in_contracts(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        write_file(
+            'pyproject.toml',
+            '[tool.popo.automation]\nworkflow-globs = ["absent.yml"]',
+        )
+        assert main(['check-all', '--root', str(tmp_path)]) == 1
+        assert 'no automation files match: absent.yml' in capsys.readouterr().out
+
     @pytest.mark.parametrize(
         ('arguments', 'path', 'content', 'status', 'message'),
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
+            (
+                ['check-automation-contracts'],
+                '.github/workflows/ci.yml',
+                'on: {workflow_call: null}',
+                0,
+                'PASS:',
+            ),
+            (
+                ['check-automation-contracts', '--pins-only'],
+                '.github/workflows/ci.yml',
+                'uses: upstream/action@main',
+                1,
+                'FAIL:',
+            ),
+            (
+                ['check-automation-contracts'],
+                'pyproject.toml',
+                '[tool.popo.automation]\nunknown = true',
+                1,
+                'configuration:',
+            ),
             (
                 ['check-github-actions-pins'],
                 '.github/ci.yml',
