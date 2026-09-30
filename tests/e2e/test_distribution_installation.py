@@ -96,6 +96,37 @@ class TestInstalledCLI:
     """Exercise every artifact through independent public CLI scenarios."""
 
     @pytest.mark.parametrize(
+        'module',
+        [False, True],
+    )
+    def test_automation_contracts(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        module: bool,
+    ) -> None:
+        (tmp_path / 'pyproject.toml').write_text(
+            '[tool.popo.automation]\nworkflow-globs = ["ci.yml"]',
+            encoding='utf-8',
+        )
+        workflow = tmp_path / 'ci.yml'
+        for reference, status in [
+            ('upstream/action@main', 1),
+            ('upstream/action@' + 'a' * 40, 0),
+        ]:
+            source = f'jobs: {{test: {{steps: [{{uses: {reference}}}]}}}}'
+            workflow.write_text(source, encoding='utf-8')
+            result = installation.run(
+                'check-automation-contracts',
+                '--root',
+                str(tmp_path),
+                module=module,
+            )
+            assert result.returncode == status, result.stdout + result.stderr
+            assert not result.stderr
+            assert workflow.read_text(encoding='utf-8') == source
+
+    @pytest.mark.parametrize(
         'argument',
         ['--help', '--version'],
     )
