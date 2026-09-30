@@ -13,9 +13,10 @@ Maintainer Notes
 
 # Roadmap
 
-This is a planning and readiness guide, not a release schedule or a commitment to new features.
-Current implementation is described by the [README]; tagged history belongs in the [release
-archive].
+This is the canonical active roadmap for planning and readiness. Priorities depend on consumer
+evidence rather than a fixed release schedule or a commitment to new features. Current
+implementation is described by the [README]; version-specific scope and validation belong in the
+[release archive]. Keep completed work in those records and current priorities here.
 
 - [Current Foundations](#current-foundations)
 - [Near-Term Review](#near-term-review)
