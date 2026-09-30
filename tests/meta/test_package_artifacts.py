@@ -20,7 +20,14 @@ class TestPackageArtifacts:
         if artifact.suffix == '.whl':
             with ZipFile(artifact) as archive:
                 names = archive.namelist()
-                for filename in ('__init__.py', '__main__.py', 'cli.py', 'py.typed'):
+                for filename in (
+                    '__init__.py',
+                    '__main__.py',
+                    'cli.py',
+                    'py.typed',
+                    'automation_config.py',
+                    'checks/automation.py',
+                ):
                     assert f'popo/{filename}' in names
                 metadata = archive.read(
                     next(n for n in names if n.endswith('/METADATA')),
@@ -57,6 +64,10 @@ class TestPackageArtifacts:
         assert set(parsed['Requires-Python'].split(',')) == {'>=3.13', '<3.15'}
         assert any(
             r.startswith('packaging') for r in parsed.get_all('Requires-Dist', [])
+        )
+        assert any(
+            r.lower().startswith('pyyaml') and 'extra ==' not in r
+            for r in parsed.get_all('Requires-Dist', [])
         )
 
 
