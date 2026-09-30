@@ -115,8 +115,6 @@ The package ships a `py.typed` marker and runs mypy in strict mode. When contrib
 
 Run `make typecheck` locally and include migration guidance for intentional breaking changes.
 
-<a id="local-checks-and-hooks"></a>
-
 ## Local Quality Gates
 
 `make check` runs Ruff, mypy, the default regression suite, and popo's own repository checks. `make
@@ -193,7 +191,7 @@ Tests follow the [test layout]: `unit/` covers isolated checks and automation co
 `integration/` covers CLI dispatch and reporting, `meta/` covers built artifacts, and `e2e/` covers
 clean installations. Shared artifact fixtures live in `support/`. Default discovery includes only
 unit and integration tests. Use `make test-unit` or `make test-integration` for a focused layer;
-root conftest assigns matching pytest markers.
+`tests/conftest.py` assigns matching pytest markers.
 
 ### Distribution Validation
 
@@ -277,7 +275,7 @@ Verify claims against executable sources before updating the maintained guides:
 | --- | --- | --- |
 | Package metadata, dependencies, Python support | `pyproject.toml` | [README], this guide, [test layout] |
 | Contributor commands and environment selection | `Makefile` | [README], this guide, [agent instructions], [test layout] |
-| CLI behavior, configuration, diagnostics, exit codes | `src/popo/cli.py`, `src/popo/config.py`, check implementations and tests | [README], [changelog] |
+| CLI behavior, configuration, diagnostics, exit codes | `src/popo/cli.py`, `src/popo/config/`, check implementations and tests | [README], [changelog] |
 | Test layers, fixtures, and selection | `tests/conftest.py`, `tests/support/`, pytest configuration | [test layout], this guide, [agent instructions] |
 | Workflow triggers, checks, permissions, artifacts | `.github/workflows/`, setup action | [branch-protection guide], this guide, [release policy] |
 | Versioning and release validation | `pyproject.toml`, `Makefile`, CD workflow | [release policy], [release notes template], [changelog] |

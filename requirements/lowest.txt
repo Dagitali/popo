@@ -22,3 +22,4 @@
 #   packages to install.
 
 packaging==26.3
+PyYAML==6.0.3

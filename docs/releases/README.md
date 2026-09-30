@@ -71,8 +71,8 @@ The current CD workflow generates GitHub Release notes; it does not automaticall
 Markdown records. Keep published notes consistent with the reviewed record when publication is
 authorized. Creating documentation does not authorize tagging or publishing.
 
-The changelog includes a dated `0.2.4` candidate section. Changes outside that candidate belong in
-`Unreleased`; the candidate date does not establish publication.
+Keep changes after the latest dated changelog entry in `Unreleased` until the next candidate is
+prepared. A dated entry or tag does not establish artifact publication.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md

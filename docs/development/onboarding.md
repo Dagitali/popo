@@ -48,7 +48,7 @@ dependency installation. Use `make help` to discover focused targets.
 
 1. Read the [agent instructions] and [contributing guide] before changing files.
 2. Find the relevant maintained guide in the [documentation index].
-3. Follow CLI dispatch in `src/popo/cli.py`, configuration in `src/popo/config.py`, individual
+3. Follow CLI dispatch in `src/popo/cli.py`, configuration in `src/popo/config/`, individual
    validators in `src/popo/checks/`, and reporting in `src/popo/support.py`.
 4. Read the matching unit and CLI integration tests alongside the implementation; see the [tests
    overview] for layer and fixture ownership.
