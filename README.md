@@ -76,6 +76,7 @@ publishing is not configured; see the [release policy].
   validation to Markdown targets; generated and vendored sources such as `node_modules` are
   excluded;
 - Named remote GitHub Actions references pinned to full commit SHAs;
+- Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows, including
   inline and block-list version matrices; and
@@ -183,7 +184,8 @@ workflow/action input contracts, composite-step structure, template metadata, an
 references. Use `--pins-only` to skip input, composite, and metadata checks; parsing and local
 target resolution still run. The older `check-github-actions-pins` command is unchanged.
 
-Configure discovery and policy in the consuming repository, without importing Popo internals:
+See the [automation settings reference] for command boundaries and validation rules. Configure
+discovery and policy in the consuming repository, without importing Popo internals:
 
 ```toml
 [tool.popo.automation]
@@ -316,6 +318,7 @@ the [release policy].
 [MIT License]: LICENSE
 [release policy]: RELEASE-POLICY.md
 [Configuration reference]: docs/CONFIGURATION.md
+[automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
 [Testing guide]: docs/TESTING.md
 [Release playbook]: docs/playbooks/release.md
@@ -323,7 +326,7 @@ the [release policy].
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml
-[PR gates badge]: https://github.com/Dagitali/popo/actions/workflows/pr.yml/badge.svg?branch=main
+[PR gates badge]: https://github.com/Dagitali/popo/actions/workflows/pr.yml/badge.svg
 [GitHub releases]: https://github.com/Dagitali/popo/releases
 [GitHub tags]: https://github.com/Dagitali/popo/tags
 [Python badge]: https://img.shields.io/badge/python-3.13%20%7C%203.14-blue.svg

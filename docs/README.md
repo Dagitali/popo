@@ -73,7 +73,8 @@ generated output from another project.
 ## Guides
 
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
-- [Configuration reference]: Input paths, dependency modes, Python-policy defaults, and CLI scope.
+- [Configuration reference]: Input paths, dependency modes, Python-policy defaults, automation
+  settings, and CLI scope.
 - [Adoption playbook]: Consumer setup, behavioral comparison, CI integration, and migration safeguards.
 - [Change-impact map]: Source ownership, verification, and documentation affected by a change.
 - [Change management]: Classify work and connect implementation, documentation, and release evidence.

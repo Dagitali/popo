@@ -17,7 +17,7 @@ Tutorials introduce Popo through small, read-only checks against consumer-owned 
 
 - [Check a first repository]: Observe a successful check, diagnose a broken link, and verify a fix.
 - [Repository quickstart]: Select other CLI commands once the basic workflow is familiar.
-- [Configuration reference]: Configure dependency and Python-policy checks when applicable.
+- [Configuration reference]: Configure dependency, Python-policy, and automation checks.
 
 Future tutorials should identify their prerequisites and expected results, distinguish file edits
 made by the reader from Popo's read-only validation, and avoid assuming a programming language or
