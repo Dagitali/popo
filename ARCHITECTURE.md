@@ -19,6 +19,8 @@ findings; the consumer owns its files, policy values, CI integration, and any re
 - [System Context](#system-context)
 - [Repository Architecture](#repository-architecture)
 - [Execution Flow](#execution-flow)
+- [Optional Integrations](#optional-integrations)
+- [Automation Architecture](#automation-architecture)
 - [Trust Boundaries](#trust-boundaries)
 - [Change Impact and Sources of Truth](#change-impact-and-sources-of-truth)
 
@@ -28,6 +30,16 @@ Editors, terminals, hooks, and CI invoke the same installed `popo` command or `p
 point. Python is the implementation runtime; documentation and automation checks can inspect
 projects implemented in other languages. Dependency and Python-policy checks require their
 documented Python-specific inputs.
+
+```mermaid
+flowchart LR
+    caller[Terminal, editor, hook, or CI] --> cli[CLI dispatch]
+    settings[Consumer configuration] --> cli
+    cli --> checks[Read-only validators]
+    files[Repository files] --> checks
+    checks --> result[Diagnostics and exit status]
+    result --> caller
+```
 
 ## Repository Architecture
 
@@ -56,6 +68,23 @@ table is present. Release-changelog validation requires an explicit version and 
 Configuration failures are reported; some I/O and decoding exceptions propagate. The [configuration
 reference] and source docstrings describe individual command boundaries.
 
+## Optional Integrations
+
+Consumers can invoke individual checks from their existing hooks or CI and select their own roots
+and policy values. Automation contracts join `check-all` only when `[tool.popo.automation]` is
+present; standalone invocation remains available without that table. The [adoption playbook]
+explains how to evaluate a checker alongside existing controls before replacing them.
+
+Popo's contributor Make targets and hooks describe this repository's development environment.
+Consumers need not adopt its branch names, dependency ranges, coverage policy, or release process.
+
+## Automation Architecture
+
+Repository automation separates PR routing, source checks, artifact validation, dependency auditing,
+and publication. The [workflow map] owns triggers and job responsibilities; the [release policy]
+owns tagged-artifact validation and publication safeguards. A passing consumer check does not
+establish that repository automation ran or that hosted rules enforce its result.
+
 ## Trust Boundaries
 
 Checks inspect files without executing referenced automation or fetching remote code. This does not
@@ -78,4 +107,5 @@ specific versions.
 [security policy]: SECURITY.md
 [configuration reference]: docs/CONFIGURATION.md
 [change-impact map]: docs/architecture/change-impact-map.md
+[adoption playbook]: docs/playbooks/adopt-popo.md
 [test layout]: tests/README.md
