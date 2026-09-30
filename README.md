@@ -298,7 +298,7 @@ feedback, and documentation corrections are useful contributions alongside code 
 - [Configuration reference]: All consumer settings, defaults, and command boundaries.
 - [API guidance]: Public interface boundaries and compatibility review.
 - [Architecture] and [Design]: Components, ownership, and change constraints.
-- [References]: Canonical source and format references.
+- [References]: Canonical sources, upstream tooling documentation, and format references.
 - [Configuration](#configuration): Consumer repository settings and dependency modes.
 
 ### Community Health
@@ -317,7 +317,7 @@ Do not include credentials, private repository data, or vulnerability details in
 - [Testing guide]: Focused checks, dependency boundaries, and installation validation.
 - [Agent instructions]: Repository rules for automated coding agents.
 - [Workflow map]: CI/CD roles, triggers, and publication boundaries.
-- [Learnings]: Reusable failure patterns and verification paths.
+- [Learnings]: Test selection, dependency drift, action pins, package versions, and recovery.
 - [Roadmap]: Current foundations and evidence needed for future scope decisions.
 - [Branch protection]: Configurable PR routing, required checks, and hosted-setting boundaries.
 - [Changelog]: Project change history.
