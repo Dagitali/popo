@@ -100,8 +100,9 @@ implemented subset and known limits.
 [CommonMark]: https://spec.commonmark.org/
 [GitHub Flavored Markdown]: https://github.github.com/gfm/
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
-[mypy]: https://mypy.readthedocs.io/
 [Python packaging guide]: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 [pre-commit]: https://pre-commit.com/
-[setuptools-scm]: https://setuptools-scm.readthedocs.io/
+[pytest]: https://docs.pytest.org/
+[mypy]: https://mypy.readthedocs.io/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
+[setuptools-scm]: https://setuptools-scm.readthedocs.io/
