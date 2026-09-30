@@ -18,9 +18,14 @@ branch rules, environment reviewers, or publication settings are enabled.
 
 - [Workflow Overview](#workflow-overview)
 - [PR Gates and CI](#pr-gates-and-ci)
+  - [PR Gates](#pr-gates)
+  - [CI](#ci)
 - [Security and Inventory](#security-and-inventory)
+  - [Security Checks](#security-checks)
+  - [SBOM](#sbom)
 - [Disposable Installation Test](#disposable-installation-test)
 - [Release Validation and Publication](#release-validation-and-publication)
+- [How the Workflows Interact](#how-the-workflows-interact)
 - [Required Checks and Local Validation](#required-checks-and-local-validation)
 
 ## Workflow Overview
@@ -40,9 +45,13 @@ SHAs, and jobs declare their required token permissions.
 
 ## PR Gates and CI
 
+### PR Gates
+
 PR gates validate `PR_TARGET_RULES`; an unset value imposes no routing restrictions. Popo does not
 require GitFlow branch names. Merge groups validate configuration and rely on queued PRs for routing
 checks. The [branch-protection guide] defines the complete policy.
+
+### CI
 
 CI runs the default quality gate and artifact checks on Python 3.13 and 3.14, exercises both
 lowest/newest dependency boundaries, reports coverage, and tests installations on macOS and Windows.
@@ -51,9 +60,13 @@ does not establish hosted platform success.
 
 ## Security and Inventory
 
+### Security Checks
+
 The manual security job installs runtime dependencies and an isolated auditor, then runs `pip-audit`
 without automatic fixes. Advisory queries disclose dependency names and versions to the service used
 by the tool. Findings are uploaded when available, including after a failed audit.
+
+### SBOM
 
 The SBOM job inventories the installed project, runtime dependencies, and bootstrap tools while
 keeping development extras and the generator separate. It validates CycloneDX output and retains it
@@ -76,6 +89,16 @@ A tag push validates artifacts but does not publish a GitHub Release. Publicatio
 dispatch from the default branch, an explicit `publish` selection, the enabling repository variable,
 and the release environment. See the [release policy] for the complete safeguards. No workflow
 publishes to PyPI or creates release tags.
+
+## How the Workflows Interact
+
+PR routing and CI report independently; success in one does not replace the other. SBOM generation
+is supplementary and follows relevant pushes or manual dispatches. Dependency auditing and
+disposable installation are explicitly selected workflows rather than prerequisites for every PR.
+
+Release validation reads the selected tag instead of treating current-branch CI as evidence about
+that tag. The optional publication job consumes the artifacts from its successful validation job.
+Creating a workflow file does not enable hosted protection or authorize publication.
 
 ## Required Checks and Local Validation
 
