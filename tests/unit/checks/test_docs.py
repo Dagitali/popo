@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_docs` module.
+:mod:`tests.unit.checks.test_docs` module.
 
 Test local Markdown targets, heading anchors, and ignored build output.
 """
