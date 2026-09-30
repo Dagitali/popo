@@ -191,7 +191,7 @@ Tests follow the [test layout]: `unit/` covers isolated checks and automation co
 `integration/` covers CLI dispatch and reporting, `meta/` covers built artifacts, and `e2e/` covers
 clean installations. Shared artifact fixtures live in `support/`. Default discovery includes only
 unit and integration tests. Use `make test-unit` or `make test-integration` for a focused layer;
-root conftest assigns matching pytest markers.
+`tests/conftest.py` assigns matching pytest markers.
 
 ### Distribution Validation
 
