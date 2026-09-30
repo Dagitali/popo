@@ -36,6 +36,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Group unit tests under `checks/` and `configs/` to align with `popo.checks` and `popo.config`,
+  preserving test coverage, shared fixtures, and default discovery.
+
 ## [0.3.2] - 2026-09-30
 
 - Backfill the dated 0.3.1 changelog entry and release document, add the 0.3.2 candidate record, and
