@@ -18,6 +18,8 @@ Cause → Fix → Verification**. The [incident runbook] owns detailed recovery 
 - [Default Tests Omit Artifact Layers](#default-tests-omit-artifact-layers)
 - [Minimum Dependencies Drift](#minimum-dependencies-drift)
 - [A Passing Markdown Check Misses a Reference](#a-passing-markdown-check-misses-a-reference)
+- [A GitHub Actions Pin Check Fails](#a-github-actions-pin-check-fails)
+- [A Release Build Has the Wrong Version](#a-release-build-has-the-wrong-version)
 - [A Tagged Release Lacks Its Changelog Entry](#a-tagged-release-lacks-its-changelog-entry)
 - [Documentation Copies the Wrong Project Policy](#documentation-copies-the-wrong-project-policy)
 
@@ -57,6 +59,37 @@ needed. For badges, check whether branch/event filters match the workflow.
 **Verification:** Run `make docs-markdown` and separately inspect rendered references and external
 destinations. See the [configuration reference] for the checker's exact scope.
 
+## A GitHub Actions Pin Check Fails
+
+**Symptom:** A usable remote action reference fails `make github-actions-pins`.
+
+**Cause:** The policy requires a nonempty action name and a full 40-character hexadecimal commit
+SHA. A floating version tag or branch does not satisfy that requirement.
+
+**Fix:** Resolve the intended upstream version to a reviewed commit and pin that commit, keeping a
+human-readable version comment when useful. Do not replace the check with a weaker rule.
+
+**Verification:** Run `make github-actions-pins` and review the referenced source. The check
+verifies syntax, not remote existence or trust; local and container references retain their
+documented exemptions.
+
+## A Release Build Has the Wrong Version
+
+**Symptom:** A built artifact reports a development or fallback version rather than the intended
+release number.
+
+**Cause:** `setuptools-scm` derives the build version from Git metadata. Missing history, the wrong
+checkout, or uncommitted changes can affect that result. The source-import fallback in
+`popo.__version__` is a separate convenience and does not establish an artifact's release version.
+
+**Fix:** Inspect the checkout, tag, and available history. Build release artifacts from the reviewed
+annotated tag with the required history. Do not add a second version constant or move an existing
+tag to force a match.
+
+**Verification:** Inspect distribution metadata and run artifact/installation checks. The [release
+policy] additionally requires the wheel version to match the selected release tag; a passing
+development build is not that evidence.
+
 ## A Tagged Release Lacks Its Changelog Entry
 
 **Symptom:** CD rejects a tag even though a later checkout contains the release entry.
@@ -84,6 +117,7 @@ claims separately from syntax. Do not change implementation merely to make copie
 
 [documentation synchronization guide]: CONTRIBUTING.md#documentation-synchronization
 [contributing guide]: CONTRIBUTING.md#github-automation
+[release policy]: RELEASE-POLICY.md
 [configuration reference]: docs/CONFIGURATION.md
 [release playbook]: docs/playbooks/release.md
 [0.1.3 record]: docs/releases/v0.1.3.md
