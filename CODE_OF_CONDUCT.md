@@ -10,6 +10,7 @@ Maintainer Notes
 - Keep claims grounded in repository sources and preserve consumer-owned policy.
 - Link to detailed guidance rather than maintaining competing copies.
 -->
+
 # Code of Conduct
 
 All project contributors and participants are expected to follow this Code of Conduct.
