@@ -34,6 +34,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Align root documentation coverage with reusable project guidance: add architecture, design,
+  workflow, security, support, conduct, learnings, references, and roadmap guides. Expand agent
+  orientation and documentation ownership while preserving read-only checking, configurable routing,
+  existing validation gates, and opt-in publication.
+
 ## [0.3.0] - 2026-09-30
 
 - Repair changelog version links, source references, and the PR status badge; synchronize
