@@ -114,12 +114,11 @@ repository variables, branch protection, or PyPI credentials.
 
 ## Disposable Installation Test
 
-[deployment-test.yml] is the package-oriented equivalent of a disposable deployment test. Run it
-manually against the selected workflow ref to build and install its wheel and sdist in clean
-environments on Linux, macOS, and Windows with Python 3.13 and 3.14. It tests CLI help, version,
-successful checks, and failing checks outside the checkout. Hosted runners dispose of the temporary
-environments. It does not test a published package, mutate a consumer repository, or deploy external
-resources.
+[deployment-test.yml] validates disposable package installations. Run it manually against the
+selected workflow ref to build and install its wheel and sdist in clean environments on Linux,
+macOS, and Windows with Python 3.13 and 3.14. It tests CLI help, version, successful checks, and
+failing checks outside the checkout. Hosted runners dispose of the temporary environments. It does
+not test a published package, mutate a consumer repository, or deploy external resources.
 
 [release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [CD workflow]: .github/workflows/cd.yml
