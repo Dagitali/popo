@@ -24,6 +24,28 @@ USES_PATTERN = re.compile(
 # SECTION: FUNCTIONS
 
 
+def is_pinned(
+    reference: str,
+) -> bool:
+    """Return whether a reference satisfies the shared pin policy.
+
+    Parameters
+    ----------
+    reference : str
+        Uses value, without YAML quoting or comments.
+
+    Returns
+    -------
+    bool
+        True for a full hexadecimal commit or an exempt local/container reference.
+        This syntax check does not verify remote existence or container immutability.
+    """
+    if reference.startswith(('./', 'docker://')):
+        return True
+    action, separator, revision = reference.rpartition('@')
+    return bool(separator and action and FULL_COMMIT_PATTERN.fullmatch(revision))
+
+
 def validate(
     automation_directory: Path,
 ) -> list[str]:
@@ -71,14 +93,7 @@ def validate(
             if match is None:
                 continue
             reference = match.group(1)
-            if reference.startswith(('./', 'docker://')):
-                continue
-            action, separator, revision = reference.rpartition('@')
-            if (
-                not separator
-                or not action
-                or FULL_COMMIT_PATTERN.fullmatch(revision) is None
-            ):
+            if not is_pinned(reference):
                 failures.append(
                     f'{path}:{line_number}: remote action must use a full '
                     f'40-character commit SHA: {reference}',
