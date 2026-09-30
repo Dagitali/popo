@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from popo.automation_config import AutomationConfig, load_automation_config
 from popo.checks.automation import validate
 from popo.config import ConfigurationError
+from popo.config.automation import AutomationConfig, load_automation_config
 from tests.support.files import FileWriter
 
 # SECTION: TESTS
