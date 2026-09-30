@@ -34,6 +34,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Link onboarding and consumer-adoption guidance directly from the README, expand upstream format
+  and automation references, and clarify design, roadmap, and installation-validation guidance
+  without changing runtime behavior or project policies.
 - Clarify consumer integration and repository automation boundaries, configuration-change review,
   and support-topic navigation. Repair Code of Conduct attribution links and the pytest reference
   while retaining existing compatibility and publication policies.
