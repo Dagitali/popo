@@ -115,8 +115,6 @@ The package ships a `py.typed` marker and runs mypy in strict mode. When contrib
 
 Run `make typecheck` locally and include migration guidance for intentional breaking changes.
 
-<a id="local-checks-and-hooks"></a>
-
 ## Local Quality Gates
 
 `make check` runs Ruff, mypy, the default regression suite, and popo's own repository checks. `make
