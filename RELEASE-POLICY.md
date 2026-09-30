@@ -17,6 +17,9 @@ Maintainer Notes
 resources. Package versions come from Git tags through `setuptools-scm`.
 
 - [Scope](#scope)
+- [Versioning and Compatibility](#versioning-and-compatibility)
+  - [Release Classification](#release-classification)
+  - [Deprecation and Support](#deprecation-and-support)
 - [Candidate Validation](#candidate-validation)
 - [Release Artifacts](#release-artifacts)
 - [Release Notes](#release-notes)
@@ -28,6 +31,37 @@ resources. Package versions come from Git tags through `setuptools-scm`.
 This public policy describes the configured validation and publication boundaries. It excludes
 credentials, private recovery procedures, and account-specific controls. Documented gates do not
 establish that hosted environment protections or repository settings have been enabled.
+
+## Versioning and Compatibility
+
+The [changelog] follows Semantic Versioning and records public changes. Package versions come from
+Git metadata; a source-import fallback or a development build is not evidence of a release. Preserve
+annotated tag identities rather than moving a tag to repair a later-discovered defect.
+
+Popo is alpha/pre-1.0. Review commands, flags, configuration defaults, accepted inputs, diagnostics,
+and exit codes when assessing compatibility. A stricter validator can require consumer migration
+even if its command name is unchanged. Identify breaking changes and migration steps in the
+versioned notes; distinguish backward-compatible maintenance from public-contract changes.
+
+### Release Classification
+
+Assess the complete change set, including behavior affected by stricter validation:
+
+| Change | Versioning consideration |
+| --- | --- |
+| Compatible bug fix, documentation repair, or packaging correction | Patch candidate |
+| New command, optional setting, or other user-facing capability | Minor candidate |
+| Required migration or intentionally incompatible public behavior | Explicit compatibility review and release notes; after 1.0, a major release |
+
+During pre-1.0 development, a minor release can refine the public interface. Do not assume every
+dependency update is patch-safe: dropped runtime support or changed accepted inputs can affect
+consumers. Classify by the resulting behavior, not the number of changed files.
+
+### Deprecation and Support
+
+No fixed deprecation window or stable-line backport commitment is currently documented. Establish
+those commitments explicitly before advertising stable support. Consult the [support guide] for the
+current boundary and the [roadmap] for readiness considerations.
 
 ## Candidate Validation
 
@@ -80,15 +114,16 @@ repository variables, branch protection, or PyPI credentials.
 
 ## Disposable Installation Test
 
-[deployment-test.yml] is the package-oriented equivalent of a disposable deployment test. Run it
-manually against the selected workflow ref to build and install its wheel and sdist in clean
-environments on Linux, macOS, and Windows with Python 3.13 and 3.14. It tests CLI help, version,
-successful checks, and failing checks outside the checkout. Hosted runners dispose of the temporary
-environments. It does not test a published PyPI package, mutate a consumer repository, or deploy
-AWS.
+[deployment-test.yml] validates disposable package installations. Run it manually against the
+selected workflow ref to build and install its wheel and sdist in clean environments on Linux,
+macOS, and Windows with Python 3.13 and 3.14. It tests CLI help, version, successful checks, and
+failing checks outside the checkout. Hosted runners dispose of the temporary environments. It does
+not test a published package, mutate a consumer repository, or deploy external resources.
 
 [release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [CD workflow]: .github/workflows/cd.yml
 [deployment-test.yml]: .github/workflows/deployment-test.yml
 [changelog]: CHANGELOG.md
+[roadmap]: ROADMAP.md
+[support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md

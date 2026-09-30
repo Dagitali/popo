@@ -34,6 +34,21 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Link onboarding and consumer-adoption guidance directly from the README, expand upstream format
+  and automation references, and clarify design, roadmap, and installation-validation guidance
+  without changing runtime behavior or project policies.
+- Clarify consumer integration and repository automation boundaries, configuration-change review,
+  and support-topic navigation. Repair Code of Conduct attribution links and the pytest reference
+  while retaining existing compatibility and publication policies.
+- Extend reusable root guidance with distinct workflow roles, agent Git/release responsibilities,
+  release-classification criteria, upstream tooling references, and action-pin/version
+  troubleshooting. Preserve existing anchors, configurable routing, publication safeguards, and
+  support boundaries.
+- Align root documentation coverage with reusable project guidance: add architecture, design,
+  workflow, security, support, conduct, learnings, references, and roadmap guides. Expand agent
+  orientation and documentation ownership while preserving read-only checking, configurable routing,
+  existing validation gates, and opt-in publication.
+
 ## [0.3.0] - 2026-09-30
 
 - Repair changelog version links, source references, and the PR status badge; synchronize
