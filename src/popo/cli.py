@@ -10,7 +10,15 @@ from pathlib import Path
 from typing import cast
 
 from popo import __version__
-from popo.checks import actions, changelog, dependencies, docs, python_policy
+from popo.automation_config import load_automation_config
+from popo.checks import (
+    actions,
+    automation,
+    changelog,
+    dependencies,
+    docs,
+    python_policy,
+)
 from popo.config import ConfigurationError, load_config
 from popo.support import report
 
@@ -112,8 +120,9 @@ def _all(
 
     Notes
     -----
-    Load consumer configuration once, then run those checks in order without
-    stopping for returned failures. Exceptions still propagate. The release
+    Load consumer configuration, then run those checks in order without
+    stopping for returned failures. Include automation contracts only when their
+    configuration table is present. Exceptions still propagate. The release
     changelog check is excluded because it requires an explicit release
     version. Return the collected diagnostics and success message without
     printing.
@@ -126,7 +135,36 @@ def _all(
         *dependencies.validate(config.dependencies),
         *python_policy.validate(config.python_policy),
     ]
+    automation_config = load_automation_config(root)
+    if automation_config.configured:
+        failures.extend(automation.validate(automation_config))
     return failures, 'all configured repository checks passed'
+
+
+def _automation(args: argparse.Namespace) -> tuple[list[str], str]:
+    """
+    Dispatch configured automation validation through the public CLI.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed root and pins_only options.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Contract diagnostics and the success message.
+
+    Raises
+    ------
+    ConfigurationError
+        Invalid consumer configuration, reported by main.
+    """
+    config = load_automation_config(args.root)
+    return automation.validate(
+        config,
+        pins_only=args.pins_only,
+    ), 'automation contracts are valid'
 
 
 def _changelog(
@@ -292,6 +330,18 @@ def create_parser() -> argparse.ArgumentParser:
     _add_root(actions_parser)
     actions_parser.add_argument('--automation-directory', type=Path)
     actions_parser.set_defaults(handler=_actions)
+
+    automation_parser = commands.add_parser(
+        'check-automation-contracts',
+        help='Validate automation using consumer tool.popo.automation settings',
+    )
+    _add_root(automation_parser)
+    automation_parser.add_argument(
+        '--pins-only',
+        action='store_true',
+        help='Check parsed references without input, composite, or metadata checks',
+    )
+    automation_parser.set_defaults(handler=_automation)
 
     dependency_parser = commands.add_parser('check-dependency-boundaries')
     _add_root(dependency_parser)
