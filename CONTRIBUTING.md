@@ -158,9 +158,10 @@ together; complete that alignment in the same pull request. Run `make dependency
 lowest-dependency tests. CI must continue rejecting mismatched pins and metadata; do not weaken the
 consistency check to accept an update.
 
-The [CI workflow] defines routine validation; the [release policy] describes artifact validation and
-optional publication. CI uses the [Python setup action] and validates dependency integrity before
-checks. Workflow changes should pass `actionlint` as well as `make check`.
+The [workflow map] describes automation roles and triggers. The [CI workflow] defines routine
+validation; the [release policy] describes artifact validation and optional publication. CI uses the
+[Python setup action] and validates dependency integrity before checks. Workflow changes should pass
+`actionlint` as well as `make check`.
 
 CI additionally tests lowest/newest runtime dependency boundaries on Python 3.13 and 3.14, reports
 branch coverage, and tests both distributions on macOS and Windows. To exercise dependency
@@ -279,6 +280,9 @@ Verify claims against executable sources before updating the maintained guides:
 | Test layers, fixtures, and selection | `tests/conftest.py`, `tests/support/`, pytest configuration | [test layout], this guide, [agent instructions] |
 | Workflow triggers, checks, permissions, artifacts | `.github/workflows/`, setup action | [branch-protection guide], this guide, [release policy] |
 | Versioning and release validation | `pyproject.toml`, `Makefile`, CD workflow | [release policy], [release notes template], [changelog] |
+| Component ownership and design constraints | CLI, configuration, validators, tests | [architecture], [design guidance] |
+| Workflow roles and operational lessons | Workflow YAML, tests, incident evidence | [workflow map], [learnings] |
+| Help channels and compatibility expectations | Maintainer decisions and public interface contracts | [support guide], [security policy], [Code of Conduct] |
 
 Search for references to a changed command or behavior, then update the smallest set of affected
 guides. Link to existing explanations instead of creating competing copies. Run `make docs-markdown`
@@ -292,8 +296,10 @@ automation; they do not prove hosted protections or environments are configured.
 
 ## Community Standards
 
-Use the public [issue forms] for bugs, feature requests, and documentation corrections. Do not
-include credentials, private data, or vulnerability details in public issues.
+Follow the [Code of Conduct] in project spaces. Use the public [issue forms] for bugs, feature
+requests, and documentation corrections; the [support guide] explains what to include. Follow the
+[security policy] for sensitive vulnerability reports. Do not include credentials, private
+repository data, or vulnerability details in public issues.
 
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
 [issue forms]: .github/ISSUE_TEMPLATE/
@@ -304,9 +310,16 @@ include credentials, private data, or vulnerability details in public issues.
 [SBOM workflow]: .github/workflows/sbom.yml
 [security workflow]: .github/workflows/security.yml
 [agent instructions]: AGENTS.md
+[architecture]: ARCHITECTURE.md
 [changelog]: CHANGELOG.md
+[workflow map]: CI-CD-WORKFLOWS.md
+[Code of Conduct]: CODE_OF_CONDUCT.md
+[design guidance]: DESIGN.md
+[learnings]: LEARNINGS.md
 [MIT License]: LICENSE
 [README]: README.md
 [release policy]: RELEASE-POLICY.md
+[security policy]: SECURITY.md
+[support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
 [test layout]: tests/README.md
