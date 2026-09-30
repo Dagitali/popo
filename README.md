@@ -89,6 +89,10 @@ repository files and return findings; shared reporting prints `PASS` or `FAIL` m
 an exit status of `0` for a successful check or `1` for reported failures. Invalid command-line
 arguments are handled separately by the argument parser.
 
+Configuration models and loaders live in the `popo.config` subpackage, organized by dependency,
+Python-policy, and automation settings. Existing `popo.config` imports remain available through
+explicit package exports.
+
 Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
 without embedding a consumer's build or deployment process.
 
