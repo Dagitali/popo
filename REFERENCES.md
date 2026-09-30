@@ -40,6 +40,7 @@ documentation for tool behavior, then verify examples against the versions used 
 - [pytest]: Test discovery, fixtures, and selection.
 - [Ruff]: Linting and formatting.
 - [mypy]: Static typing.
+- [PEP 561]: Distributing type information and the `py.typed` marker.
 - [pre-commit]: Managed hooks and stages.
 
 These references supplement the local Make interface; they do not add mandatory commands,
@@ -59,6 +60,8 @@ dependencies, or external services.
 - [Branch protection]: Proposed hosted controls and configurable routing.
 - [Release policy]: Tag validation, artifact identity, and optional publication.
 - [Release archive]: Version-specific scope and recorded evidence.
+- [GitHub Actions security]: Upstream guidance for reviewing workflow permissions and dependencies.
+- [CycloneDX]: The dependency-inventory format used by SBOM automation.
 
 ## Collaboration and Governance
 
@@ -72,6 +75,8 @@ dependencies, or external services.
 
 - [CommonMark]: Baseline Markdown syntax.
 - [GitHub Flavored Markdown]: GitHub's Markdown extensions.
+- [TOML]: Syntax for package metadata and consumer configuration.
+- [YAML]: Format specifications relevant to automation files.
 - [Keep a Changelog]: Human-readable change history.
 - [Semantic Versioning]: Version terminology and compatibility rules.
 
@@ -98,11 +103,16 @@ implemented subset and known limits.
 [Test layout]: tests/README.md
 [Ruff]: https://docs.astral.sh/ruff/
 [CommonMark]: https://spec.commonmark.org/
+[CycloneDX]: https://cyclonedx.org/specification/overview/
+[GitHub Actions security]: https://docs.github.com/en/actions/reference/security/secure-use
+[pytest]: https://docs.pytest.org/
 [GitHub Flavored Markdown]: https://github.github.com/gfm/
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
-[Python packaging guide]: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 [pre-commit]: https://pre-commit.com/
-[pytest]: https://docs.pytest.org/
+[Python packaging guide]: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+[PEP 561]: https://peps.python.org/pep-0561/
 [mypy]: https://mypy.readthedocs.io/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 [setuptools-scm]: https://setuptools-scm.readthedocs.io/
+[TOML]: https://toml.io/en/v1.0.0
+[YAML]: https://yaml.org/spec/
