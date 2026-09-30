@@ -7,7 +7,7 @@ Copyright © 2026 Dagitali LLC. All rights reserved.
 Consumer configuration fields, defaults, and command boundaries.
 
 Maintainer Notes
-- Verify defaults against src/popo/config.py and command flags against src/popo/cli.py.
+- Verify defaults against src/popo/config/ and command flags against src/popo/cli.py.
 - Keep consumer policy separate from Popo's supported runtime and development settings.
 -->
 
