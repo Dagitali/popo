@@ -54,7 +54,7 @@ To get started:
 - Install a selected tag or local checkout as described in [Installation](#installation).
 - Run a repository check with the [Quickstart](#quickstart).
 - Adapt [Configuration](#configuration) to the repository being checked.
-- Follow [Development](#development) to work on Popo itself.
+- Follow [Development](#development) and [Developer onboarding] to work on Popo itself.
 
 ## At a Glance
 
@@ -297,6 +297,7 @@ feedback, and documentation corrections are useful contributions alongside code 
 - [Documentation index]: Guides, scope, and local documentation validation.
 - [Configuration reference]: All consumer settings, defaults, and command boundaries.
 - [API guidance]: Public interface boundaries and compatibility review.
+- [Adoption playbook]: Introduce checks and migrate existing consumer policy with baseline evidence.
 - [Architecture] and [Design]: Components, integration boundaries, and configuration-change review.
 - [References]: Canonical sources, upstream tooling documentation, and format references.
 - [Configuration](#configuration): Consumer repository settings and dependency modes.
@@ -313,6 +314,7 @@ Do not include credentials, private repository data, or vulnerability details in
 
 ### Maintainer Docs
 
+- [Developer onboarding]: First local checks, repository orientation, and CLI learning path.
 - [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
 - [Testing guide]: Focused checks, dependency boundaries, and installation validation.
 - [Agent instructions]: Repository rules for automated coding agents.
@@ -352,6 +354,8 @@ the [release policy].
 [Documentation index]: docs/README.md
 [Testing guide]: docs/TESTING.md
 [API guidance]: docs/api/README.md
+[Developer onboarding]: docs/development/onboarding.md
+[Adoption playbook]: docs/playbooks/adopt-popo.md
 [Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
