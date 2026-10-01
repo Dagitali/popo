@@ -251,7 +251,8 @@ when no virtual environment is active; activation is not required for `make test
 An explicit `PYTHON` override takes precedence.
 
 Unit tests group checker coverage under `tests/unit/checks/` and configuration coverage under
-`tests/unit/configs/`; see the [test layout] for selection and shared-fixture conventions.
+`tests/unit/configs/`. Independent parameterized scenarios and isolated subprocess fixtures keep
+failures reproducible; see the [test layout] for selection and shared-fixture conventions.
 
 When optional hooks are installed, the pre-push stage runs `make check-pre-push` (the full local
 quality gate). It does not install dependencies, build distributions, or publish artifacts.
