@@ -14,9 +14,28 @@ from zipfile import ZipFile
 
 
 class TestPackageArtifacts:
-    """Verify package artifacts contracts."""
+    """
+    Verify package artifacts contracts.
+
+    Notes
+    -----
+    Inspect wheel and sdist contents, metadata, licensing, configuration
+    modules, typing markers, and the wheel console entry point. Shared fixtures
+    select validated artifacts; archive inspection does not extract them into
+    the checkout.
+    """
 
     def test_distribution_contract(self, artifact: Path) -> None:
+        """
+        Verify wheel and sdist contents, metadata, typing, and entry-point
+        contracts.
+
+        Parameters
+        ----------
+        artifact : pathlib.Path
+            Built wheel or source distribution selected by the shared artifact
+            fixture.
+        """
         if artifact.suffix == '.whl':
             with ZipFile(artifact) as archive:
                 names = archive.namelist()

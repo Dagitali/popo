@@ -17,7 +17,15 @@ from tests.support.files import FileWriter
 
 
 class TestCommandLine:
-    """Exercise public command dispatch, diagnostics, and process exit contracts."""
+    """
+    Exercise public command dispatch, diagnostics, and process exit contracts.
+
+    Notes
+    -----
+    Call the public dispatcher in process with temporary consumer inputs.
+    Capture output and parser exits; monkeypatch restores entry-point arguments
+    and working-directory changes after each scenario.
+    """
 
     def test_all_includes_opted_in_contracts(
         self,
@@ -25,6 +33,22 @@ class TestCommandLine:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify aggregate dispatch includes explicitly configured automation
+        checks.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        capsys : pytest.CaptureFixture[str]
+            Fixture capturing standard output and error from in-process CLI
+            calls.
+        """
         write_file(
             'pyproject.toml',
             '[tool.popo.automation]\nworkflow-globs = ["absent.yml"]',
@@ -117,6 +141,35 @@ class TestCommandLine:
         status: int,
         message: str,
     ) -> None:
+        """
+        Verify CLI dispatch returns the expected status and standard-output diagnostic.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        monkeypatch : pytest.MonkeyPatch
+            Fixture restoring temporary environment, attribute, and working-
+            directory overrides.
+        capsys : pytest.CaptureFixture[str]
+            Fixture capturing standard output and error from in-process CLI calls.
+        arguments : list[str]
+            CLI argument sequence for the parameterized dispatch or parser scenario.
+        path : str
+            Repository-relative path whose contents are prepared for the scenario.
+        content : str
+            File contents selected for the parameterized success or failure
+            scenario.
+        status : int
+            Expected process or CLI exit status.
+        message : str
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        """
         write_file(path, content)
         monkeypatch.chdir(tmp_path)
         assert main([*arguments, '--root', str(tmp_path)]) == status
@@ -132,6 +185,22 @@ class TestCommandLine:
         capsys: pytest.CaptureFixture[str],
         constraint: str,
     ) -> None:
+        """
+        Verify CLI dependency checks accept minimum pins with optional comments.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        capsys : pytest.CaptureFixture[str]
+            Fixture capturing standard output and error from in-process CLI calls.
+        constraint : str
+            Minimum dependency pin, optionally followed by an inline annotation.
+        """
         write_file('pyproject.toml', '[project]\ndependencies = ["demo>=1,<2"]')
         write_file('requirements/lowest.txt', constraint)
         assert main(['check-dependency-boundaries', '--root', str(tmp_path)]) == 0
@@ -142,6 +211,17 @@ class TestCommandLine:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify module execution reports the installed version and exits successfully.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Fixture restoring temporary environment, attribute, and working-
+            directory overrides.
+        capsys : pytest.CaptureFixture[str]
+            Fixture capturing standard output and error from in-process CLI calls.
+        """
         monkeypatch.setattr('sys.argv', ['popo', '--version'])
         with pytest.raises(SystemExit) as error:
             runpy.run_module('popo', run_name='__main__')
@@ -164,6 +244,21 @@ class TestCommandLine:
         message: str,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify informational and invalid arguments use their documented exit channels.
+
+        Parameters
+        ----------
+        arguments : list[str]
+            CLI argument sequence for the parameterized dispatch or parser scenario.
+        status : int
+            Expected process or CLI exit status.
+        message : str
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        capsys : pytest.CaptureFixture[str]
+            Fixture capturing standard output and error from in-process CLI calls.
+        """
         with pytest.raises(SystemExit) as error:
             main(arguments)
         assert error.value.code == status

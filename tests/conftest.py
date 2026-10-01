@@ -68,6 +68,28 @@ def write_file_fixture(
     """
 
     def write(relative_path: str, content: str) -> Path:
+        """
+        Create a UTF-8 fixture file and return its path.
+
+        Parameters
+        ----------
+        relative_path : str
+            Path joined to the enclosing test's tmp_path. The caller is
+            responsible for supplying a trusted path; containment is not
+            enforced.
+        content : str
+            Text written to the file, replacing any existing contents.
+
+        Returns
+        -------
+        pathlib.Path
+            Written file path after creating its parent directories.
+
+        Raises
+        ------
+        OSError, UnicodeError
+            If directory creation or UTF-8 writing fails.
+        """
         path = tmp_path / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding='utf-8')

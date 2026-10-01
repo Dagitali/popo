@@ -24,7 +24,15 @@ from tests.support.files import FileWriter
 
 
 class TestConfiguration:
-    """Cover layout defaults, explicit overrides, and invalid project metadata."""
+    """
+    Cover layout defaults, explicit overrides, and invalid project metadata.
+
+    Notes
+    -----
+    Load configuration from temporary repositories to exercise layout
+    discovery, overrides, defaults, facade exports, and domain-specific error
+    handling. No consumer policy files are created outside the test fixtures.
+    """
 
     @pytest.mark.parametrize(
         ('metadata', 'requirements', 'mode'),
@@ -42,6 +50,26 @@ class TestConfiguration:
         requirements: str,
         mode: str,
     ) -> None:
+        """
+        Verify discovered dependency files and their comparison mode.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        metadata : str
+            Expected repository-relative metadata file discovered for the
+            layout.
+        requirements : str
+            Expected repository-relative requirements file discovered for the
+            layout.
+        mode : str
+            Dependency comparison policy selected for the scenario.
+        """
         write_file(metadata, '[project]\nrequires-python = ">=3.13"\ndependencies = []')
         write_file(requirements, '')
         config = load_config(tmp_path)
@@ -53,6 +81,15 @@ class TestConfiguration:
         self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify an empty repository receives resolved portable policy defaults.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        """
         config = load_config(tmp_path)
         assert config.root == tmp_path.resolve()
         assert config.dependencies.requirements == tmp_path / 'requirements/lowest.txt'
@@ -63,6 +100,19 @@ class TestConfiguration:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
+        """
+        Verify consumer settings override discovered paths and derived Python
+        defaults.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        """
         write_file(
             'pyproject.toml',
             '[tool.popo.dependencies]\n'
@@ -82,6 +132,15 @@ class TestConfiguration:
         self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify configuration facade exports preserve the expected model types.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        """
         config = load_config(tmp_path)
         mode: DependencyMode = 'minimum-constraints'
         assert isinstance(config, ProjectConfig)
@@ -97,6 +156,20 @@ class TestConfiguration:
         write_file: FileWriter,
         metadata: str,
     ) -> None:
+        """
+        Verify invalid selected metadata falls back to Python-policy defaults.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        metadata : str
+            Metadata text selected for the parsing or validation scenario.
+        """
         write_file('infra/pyproject.toml', metadata)
         write_file('infra/requirements.txt', '')
         assert load_config(tmp_path).python_policy.requires_python == '>=3.13'
@@ -116,6 +189,24 @@ class TestConfiguration:
         content: str,
         message: str,
     ) -> None:
+        """
+        Verify project and automation loaders reject malformed root settings alike.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        content : str
+            File contents selected for the parameterized success or failure
+            scenario.
+        message : str
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        """
         write_file('pyproject.toml', content)
         for loader in (load_config, load_automation_config):
             with pytest.raises(ConfigurationError, match=message):
@@ -126,6 +217,18 @@ class TestConfiguration:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
+        """
+        Verify loader validation and unknown-key handling stay domain-specific.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        """
         write_file(
             'pyproject.toml',
             '[tool.popo.dependencies]\nmode = "invalid"\n'
@@ -174,6 +277,24 @@ class TestConfiguration:
         content: str,
         message: str,
     ) -> None:
+        """
+        Verify project loading reports the expected invalid-configuration error.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        content : str
+            File contents selected for the parameterized success or failure
+            scenario.
+        message : str
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        """
         write_file('pyproject.toml', content)
         with pytest.raises(ConfigurationError, match=message):
             load_config(tmp_path)
@@ -183,6 +304,19 @@ class TestConfiguration:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
+        """
+        Verify default Python requirements and Ruff paths follow dependency
+        metadata.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        """
         write_file(
             'pyproject.toml',
             '[tool.popo.dependencies]\nmetadata = "dependencies.toml"\n'

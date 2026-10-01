@@ -12,7 +12,17 @@ from typing import cast
 
 
 class ConfigurationError(ValueError):
-    """Raised when popo configuration is invalid."""
+    """
+    Signal invalid consumer configuration as a ValueError subtype.
+
+    Notes
+    -----
+    Loaders use this exception for invalid TOML, table structure, setting types,
+    and policy values. The inherited ValueError constructor accepts the error
+    message. Configuration loading does not wrap filesystem or decoding errors
+    in this class; those propagate separately. CLI handlers catch this exception
+    and return a reported configuration failure.
+    """
 
 
 # !SECTION

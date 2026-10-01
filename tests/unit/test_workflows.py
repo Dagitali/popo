@@ -32,9 +32,54 @@ type WorkflowLoader = Callable[[str], dict[str, Any]]
 def workflow_fixture(
     repository_root: Path,
 ) -> WorkflowLoader:
-    """Load workflow documents without relying on a module's directory depth."""
+    """
+    Provide a loader for workflow documents in the checkout.
+
+    Parameters
+    ----------
+    repository_root : pathlib.Path
+        Checkout containing .github/workflows.
+
+    Returns
+    -------
+    WorkflowLoader
+        Callable reading a named workflow with yaml.BaseLoader, preserving
+        scalar values such as on and false as strings.
+
+    Notes
+    -----
+    The fixture itself does not read files. Loading happens when the returned
+    callable is invoked; read, decode, and YAML errors propagate from that
+    call. The loader performs no schema validation or workflow execution.
+    """
 
     def load(name: str) -> dict[str, Any]:
+        """
+        Read a checkout workflow with string-valued YAML scalars.
+
+        Parameters
+        ----------
+        name : str
+            Workflow filename joined to the fixture's .github/workflows directory.
+
+        Returns
+        -------
+        dict[str, typing.Any]
+            Parsed workflow document, narrowed to a dictionary for test assertions.
+
+        Raises
+        ------
+        OSError, UnicodeError
+            If reading or UTF-8 decoding fails.
+        yaml.YAMLError
+            If the workflow is not valid YAML.
+
+        Notes
+        -----
+        BaseLoader preserves all scalar values as strings. The cast does not validate
+        the parsed document's shape. Supply trusted fixture filenames; path
+        containment is not enforced by this helper.
+        """
         path = repository_root / '.github' / 'workflows' / name
         return cast(
             dict[str, Any],
@@ -51,12 +96,29 @@ def workflow_fixture(
 
 
 class TestWorkflows:
-    """Verify workflows contracts."""
+    """
+    Verify workflows contracts.
+
+    Notes
+    -----
+    Inspect checkout workflow documents and execute only extracted routing/tag
+    guards in controlled local fixtures. Do not dispatch hosted workflows or
+    publish releases; tag-gate Git operations stay in a temporary repository.
+    """
 
     def test_disposable_installation_is_manual_and_read_only(
         self,
         workflow: WorkflowLoader,
     ) -> None:
+        """
+        Verify installation automation triggers and read permissions.
+
+        Parameters
+        ----------
+        workflow : WorkflowLoader
+            Loader reading checkout workflow YAML with scalar values preserved
+            as strings.
+        """
         document = workflow('deployment-test.yml')
         assert set(document['on']) == {'workflow_dispatch'}
         assert document['permissions'] == {}
@@ -125,6 +187,28 @@ class TestWorkflows:
         event: str,
         success: bool,
     ) -> None:
+        """
+        Verify routing accepts or rejects each configured event and branch.
+
+        Parameters
+        ----------
+        workflow : WorkflowLoader
+            Loader reading checkout workflow YAML with scalar values preserved
+            as strings.
+        rules : object
+            Routing-policy object serialized into the workflow script
+            environment.
+        head : str
+            Source branch name supplied to the routing guard.
+        repository : str
+            Source repository name used to evaluate same-repository
+            restrictions.
+        event : str
+            GitHub event name determining pull-request or merge-group routing
+            behavior.
+        success : bool
+            Whether the routing guard should exit successfully.
+        """
         script = workflow('pr.yml')['jobs']['guard']['steps'][0]['run']
         environment = os.environ | {
             'RULES': json.dumps(rules),
@@ -147,6 +231,15 @@ class TestWorkflows:
         self,
         workflow: WorkflowLoader,
     ) -> None:
+        """
+        Verify publication gates and consumption of validated artifacts.
+
+        Parameters
+        ----------
+        workflow : WorkflowLoader
+            Loader reading checkout workflow YAML with scalar values preserved
+            as strings.
+        """
         document = workflow('cd.yml')
         assert (
             document['on']['workflow_dispatch']['inputs']['publish']['default']
@@ -185,6 +278,21 @@ class TestWorkflows:
         tmp_path: Path,
         case: str,
     ) -> None:
+        """
+        Verify the tag gate requires an annotated, integrated release.
+
+        Parameters
+        ----------
+        workflow : WorkflowLoader
+            Loader reading checkout workflow YAML with scalar values preserved
+            as strings.
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        case : str
+            Tag fixture variant: valid, lightweight, missing, invalid, or off-
+            branch.
+        """
         environment = {
             key: value
             for key, value in os.environ.items()
@@ -192,6 +300,38 @@ class TestWorkflows:
         } | {'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
 
         def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+            """
+            Run a Git fixture command with isolated identity and disabled
+            signing/hooks.
+
+            Parameters
+            ----------
+            *arguments : str
+                Git subcommand and arguments used to prepare the temporary
+                repository.
+
+            Returns
+            -------
+            subprocess.CompletedProcess[str]
+                Successful command result with captured stdout and stderr.
+
+            Raises
+            ------
+            subprocess.CalledProcessError
+                If Git exits unsuccessfully.
+            subprocess.TimeoutExpired
+                If the command exceeds 30 seconds.
+            OSError, UnicodeError
+                If startup or captured-output decoding fails.
+
+            Notes
+            -----
+            Commands operate in the enclosing test's tmp_path. Global/system
+            Git configuration and inherited GIT_ variables are excluded;
+            identity, signing, and hook overrides are supplied explicitly.
+            Repository mutations create local test fixtures rather than
+            changing the checkout.
+            """
             return subprocess.run(
                 [
                     'git',

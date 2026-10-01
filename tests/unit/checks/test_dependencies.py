@@ -16,13 +16,29 @@ from tests.support.files import FileWriter
 
 
 class TestDependencyPolicy:
-    """Exercise normalized comparisons and malformed dependency inputs."""
+    """
+    Exercise normalized comparisons and malformed dependency inputs.
+
+    Notes
+    -----
+    Compare temporary project metadata and constraint fixtures in exact and
+    minimum modes. Include malformed inputs and comment/URL-fragment boundaries
+    without installing or resolving dependencies.
+    """
 
     def test_commented_directive_retains_line_number(
         self,
         write_file: FileWriter,
     ) -> None:
-        """Comments must not enable installer directives or hide their location."""
+        """
+        Comments must not enable installer directives or hide their location.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        """
         metadata = write_file('pyproject.toml', '[project]\ndependencies = []')
         requirements = write_file(
             'requirements.txt',
@@ -119,6 +135,25 @@ class TestDependencyPolicy:
         mode: DependencyMode,
         message: str | None,
     ) -> None:
+        """
+        Verify dependency comparisons report the expected result for each
+        policy mode.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        dependencies : str
+            Project dependency declarations selected for comparison.
+        constraints : str
+            Requirements or constraint-file text selected for comparison.
+        mode : DependencyMode
+            Dependency comparison policy selected for the scenario.
+        message : str | None
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        """
         metadata = write_file(
             'pyproject.toml',
             f'[project]\ndependencies = [{dependencies}]',
@@ -145,7 +180,20 @@ class TestDependencyPolicy:
         suffix: str,
         mode: DependencyMode,
     ) -> None:
-        """Accept trailing annotations without changing comparison policy."""
+        """
+        Accept trailing annotations without changing comparison policy.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        suffix : str
+            Trailing requirement text exercising comment or URL-fragment
+            handling.
+        mode : DependencyMode
+            Dependency comparison policy selected for the scenario.
+        """
         declaration = 'demo==1' if mode == 'exact' else 'demo>=1,<2'
         metadata = write_file(
             'pyproject.toml',
@@ -171,6 +219,21 @@ class TestDependencyPolicy:
         content: str,
         message: str,
     ) -> None:
+        """
+        Verify invalid dependency metadata produces the expected diagnostic.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        content : str
+            File contents selected for the parameterized success or failure
+            scenario.
+        message : str
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        """
         config = DependencyConfig(
             write_file('pyproject.toml', content),
             write_file('requirements.txt', ''),
@@ -182,6 +245,16 @@ class TestDependencyPolicy:
         self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify absent dependency metadata and constraints each produce a
+        diagnostic.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        """
         paths = (tmp_path / 'pyproject.toml', tmp_path / 'requirements.txt')
         assert validate(DependencyConfig(*paths, 'exact')) == [
             f'dependency-policy file does not exist: {path}' for path in paths
@@ -196,7 +269,18 @@ class TestDependencyPolicy:
         write_file: FileWriter,
         suffix: str,
     ) -> None:
-        """Do not erase a URL hash when stripping a separate inline comment."""
+        """
+        Do not erase a URL hash when stripping a separate inline comment.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        suffix : str
+            Trailing requirement text exercising comment or URL-fragment
+            handling.
+        """
         requirement = 'demo @ https://example.com/demo.whl#sha256=abc123'
         metadata = write_file(
             'pyproject.toml',
