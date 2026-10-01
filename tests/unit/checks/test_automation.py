@@ -35,6 +35,23 @@ def test_bad_documents(
     source: str,
     message: str,
 ) -> None:
+    """
+    Verify invalid YAML, references, and targets produce one file diagnostic.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    source : str
+        YAML document text selected for the validation scenario.
+    message : str
+        Expected diagnostic substring; an empty string selects a successful
+        case.
+    """
     write_file('.github/workflows/ci.yml', source)
     failures = validate(AutomationConfig(tmp_path))
     assert len(failures) == 1
@@ -56,6 +73,21 @@ def test_bad_metadata(
     write_file: FileWriter,
     metadata: str,
 ) -> None:
+    """
+    Verify invalid template metadata fails full checking but passes pins-only
+    mode.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    metadata : str
+        Metadata text selected for the parsing or validation scenario.
+    """
     write_file('templates/ci.yml', 'name: CI')
     write_file('templates/ci.properties.json', metadata)
     config = AutomationConfig(
@@ -83,6 +115,23 @@ def test_composite_structure(
     step: str,
     ok: bool,
 ) -> None:
+    """
+    Verify composite step structure and shell requirements for each candidate.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    step : str
+        YAML composite step inserted into an otherwise valid action document.
+    ok : bool
+        Whether the parameterized scenario should return no validation
+        failures.
+    """
     write_file(
         'actions/test/action.yaml',
         f'name: Test\ndescription: Test\nruns:\n  using: composite\n  steps: [{step}]',
@@ -108,6 +157,20 @@ def test_invalid_workflow_target(
     write_file: FileWriter,
     source: str,
 ) -> None:
+    """
+    Verify local workflow calls reject missing or invalid input contracts.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    source : str
+        YAML document text selected for the validation scenario.
+    """
     write_file('target.yml', source)
     write_file('.github/workflows/ci.yml', 'jobs: {call: {uses: ./target.yml}}')
     assert validate(AutomationConfig(tmp_path))
@@ -123,6 +186,24 @@ def test_local_action_inputs(
     values: str,
     ok: bool,
 ) -> None:
+    """
+    Verify local action calls enforce required and declared input names.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    values : str
+        YAML with mapping supplied to the local action or reusable workflow
+        call.
+    ok : bool
+        Whether the parameterized scenario should return no validation
+        failures.
+    """
     write_file('actions/test/action.yml', 'inputs: {path: {required: true}}')
     write_file(
         '.github/workflows/ci.yml',
@@ -135,6 +216,18 @@ def test_optional_configuration(
     tmp_path: Path,
     write_file: FileWriter,
 ) -> None:
+    """
+    Verify automation opt-in and an explicit empty discovery list are honored.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    """
     assert not load_automation_config(tmp_path).configured
     write_file('pyproject.toml', '[tool.popo.automation]\nworkflow-globs = []')
     config = load_automation_config(tmp_path)
@@ -146,6 +239,18 @@ def test_orphan_missing_and_escaping_files(
     tmp_path: Path,
     write_file: FileWriter,
 ) -> None:
+    """
+    Verify missing templates, metadata, orphan companions, and symlink escapes.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    """
     config = AutomationConfig(
         tmp_path,
         workflow_globs=(),
@@ -169,6 +274,18 @@ def test_overlapping_categories_fail(
     tmp_path: Path,
     write_file: FileWriter,
 ) -> None:
+    """
+    Verify conflicting discovery categories produce a diagnostic.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    """
     write_file('ci.yml', 'uses: upstream/action@main')
     config = AutomationConfig(
         tmp_path,
@@ -196,6 +313,28 @@ def test_placeholder_scope(
     template: bool,
     ok: bool,
 ) -> None:
+    """
+    Verify placeholder exemptions depend on template scope and existing self
+    targets.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    reference : str
+        Automation uses value selected for the pin or target-resolution
+        scenario.
+    template : bool
+        Whether the caller is discovered as a template rather than an ordinary
+        workflow.
+    ok : bool
+        Whether the parameterized scenario should return no validation
+        failures.
+    """
     write_file('.github/workflows/target.yml', 'on: {workflow_call: null}')
     path = write_file('templates/ci.yml', f'jobs: {{call: {{uses: {reference}}}}}')
     write_file('templates/ci.properties.json', '{"name":"CI","description":"CI"}')
@@ -233,6 +372,24 @@ def test_workflow_inputs(
     values: str,
     message: str,
 ) -> None:
+    """
+    Verify reusable workflow input names, required values, and supplied types.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    values : str
+        YAML with mapping supplied to the local action or reusable workflow
+        call.
+    message : str
+        Expected diagnostic substring; an empty string selects a successful
+        case.
+    """
     write_file(
         '.github/workflows/target.yml',
         """on:
@@ -258,6 +415,19 @@ def test_yaml_only_and_recursive_alias(
     tmp_path: Path,
     write_file: FileWriter,
 ) -> None:
+    """
+    Verify generic YAML skips pin checks and recursive aliases terminate
+    traversal.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Per-test temporary directory for files and isolated consumer
+        repositories.
+    write_file : FileWriter
+        Fixture writer that creates parent directories and writes UTF-8
+        repository files.
+    """
     write_file('form.yml', 'form: &form {uses: arbitrary, nested: *form}')
     config = AutomationConfig(tmp_path, workflow_globs=(), yaml_globs=('form.yml',))
     assert validate(config) == []

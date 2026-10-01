@@ -15,7 +15,14 @@ from tests.support.files import FileWriter
 
 
 class TestChangelog:
-    """Validate dated semantic releases with precise failure diagnostics."""
+    """
+    Validate dated semantic releases with precise failure diagnostics.
+
+    Notes
+    -----
+    Exercise optional version prefixes, real calendar dates, missing files, and
+    invalid version syntax using temporary changelog text.
+    """
 
     @pytest.mark.parametrize(
         ('content', 'expected'),
@@ -37,15 +44,54 @@ class TestChangelog:
         expected: list[str],
         release: str,
     ) -> None:
+        """
+        Verify release headings, dates, and optional version prefixes.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        content : str
+            File contents selected for the parameterized success or failure
+            scenario.
+        expected : list[str]
+            Exact expected validator result or command text for the scenario.
+        release : str
+            Release-version string supplied to changelog validation.
+        """
         assert validate(write_file('CHANGELOG.md', content), release) == expected
 
     @pytest.mark.parametrize('release', ['latest', 'v1.2', '1.2.3rc1', '01.2.3'])
     def test_invalid_release(self, tmp_path: Path, release: str) -> None:
+        """
+        Verify invalid release syntax produces one version-format diagnostic.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        release : str
+            Release-version string supplied to changelog validation.
+        """
         failures = validate(tmp_path / 'CHANGELOG.md', release)
         assert len(failures) == 1
         assert 'release version must use' in failures[0]
 
-    def test_missing_file(self, tmp_path: Path) -> None:
+    def test_missing_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Verify a missing changelog produces the expected file diagnostic.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        """
         path = tmp_path / 'CHANGELOG.md'
         assert validate(path, '1.2.3') == [f'changelog does not exist: {path}']
 

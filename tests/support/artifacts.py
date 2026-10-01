@@ -65,7 +65,8 @@ def artifact_directory_fixture(
     request : pytest.FixtureRequest
         Request used to read the optional --artifact-dir command-line value.
     tmp_path_factory : pytest.TempPathFactory
-        Factory allocating an isolated output directory when building artifacts.
+        Factory allocating an isolated output directory when building
+        artifacts.
     repository_root : pathlib.Path
         Project checkout used as the build command's working directory.
 

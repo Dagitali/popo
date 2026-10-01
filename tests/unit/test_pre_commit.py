@@ -14,13 +14,37 @@ import yaml
 
 
 class TestLocalHooks:
-    """Keep hooks usable without a bare Python executable on the caller's PATH."""
+    """
+    Keep hooks usable without a bare Python executable on the caller's PATH.
+
+    Notes
+    -----
+    Inspect checkout YAML and canonical package metadata without installing or
+    running hooks. Assert managed Ruff dependencies and Make-based system-hook
+    commands, stages, and filename handling.
+    """
 
     @pytest.mark.parametrize(
         'hook_id',
         ['popo-self-check', 'make-check-pre-push', 'ruff-check', 'ruff-format'],
     )
-    def test_interpreter_and_scope(self, repository_root: Path, hook_id: str) -> None:
+    def test_interpreter_and_scope(
+        self,
+        repository_root: Path,
+        hook_id: str,
+    ) -> None:
+        """
+        Verify local hook interpreter, stage, and filename contracts.
+
+        Parameters
+        ----------
+        repository_root : pathlib.Path
+            Resolved checkout root containing canonical source and tool
+            configuration.
+        hook_id : str
+            Local hook identifier whose interpreter, stage, and filename
+            behavior is inspected.
+        """
         config = yaml.safe_load(
             (repository_root / '.pre-commit-config.yaml').read_text(encoding='utf-8'),
         )
