@@ -38,8 +38,7 @@ class TestSupport:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         assert automation_paths(tmp_path / 'absent') == []
 
@@ -54,11 +53,9 @@ class TestSupport:
         Parameters
         ----------
         repository_root : pathlib.Path
-            Resolved checkout root containing canonical source and tool
-            configuration.
+            Checkout containing canonical project files.
         monkeypatch : pytest.MonkeyPatch
-            Fixture restoring temporary environment, attribute, and working-
-            directory overrides.
+            Restore environment, attributes, and working directory.
         """
         version = Mock(side_effect=PackageNotFoundError('popo'))
         monkeypatch.setattr('importlib.metadata.version', version)
