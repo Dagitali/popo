@@ -101,7 +101,10 @@ def _detect_dependencies(
 # SECTION: FUNCTIONS
 
 
-def parse_dependencies(root: Path, popo: dict[str, object]) -> DependencyConfig:
+def parse_dependencies(
+    root: Path,
+    popo: dict[str, object],
+) -> DependencyConfig:
     """
     Apply dependency overrides to detected repository defaults.
 
