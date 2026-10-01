@@ -38,11 +38,9 @@ def test_invalid_configuration(
     Parameters
     ----------
     tmp_path : pathlib.Path
-        Per-test temporary directory for files and isolated consumer
-        repositories.
+        Temporary directory for isolated test inputs.
     write_file : FileWriter
-        Fixture writer that creates parent directories and writes UTF-8
-        repository files.
+        UTF-8 writer creating parent directories in ``tmp_path``.
     setting : str
         Automation TOML setting selected to exercise invalid configuration.
     """
