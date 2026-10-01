@@ -233,7 +233,9 @@ creates a release.
    changelog section, leaving `Unreleased` available for subsequent changes.
 3. Create `docs/releases/vMAJOR.MINOR.PATCH.md` from the [release notes template] and update the
    [release archive]. Mark the record planned until the release is finalized, and identify any
-   compatibility changes and outstanding validation.
+   compatibility changes and outstanding validation. The PR release-record gate requires the
+   candidate's dated entry on release/hotfix branches and rechecks versioned documents for all dated
+   entries. Feature work may stay under `Unreleased`.
 4. Run `make release-changelog RELEASE_VERSION=vMAJOR.MINOR.PATCH`, `make docs-markdown`, and `make
    check-release`. Use a fresh `PYTHON_DIST_DIR` if existing artifacts belong to another build.
 5. Review the final diff and record validation against the exact candidate checkout without

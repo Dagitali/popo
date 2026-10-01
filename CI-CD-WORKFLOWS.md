@@ -32,7 +32,7 @@ branch rules, environment reviewers, or publication settings are enabled.
 
 | Workflow | Trigger | Responsibility |
 | --- | --- | --- |
-| [PR gates] | Pull requests and merge groups | Validate optional branch-routing policy |
+| [PR gates] | Pull requests and merge groups | Validate optional branch routing and release records |
 | [CI] | Pull requests, pushes to `main`, merge groups, manual dispatch | Source, dependency-boundary, distribution, and installation validation |
 | [Security] | Manual dispatch | Audit resolved runtime dependencies |
 | [SBOM] | Relevant pushes to `main`, manual dispatch | Generate a validated dependency inventory |
@@ -49,7 +49,14 @@ SHAs, and jobs declare their required token permissions.
 
 PR gates validate `PR_TARGET_RULES`; an unset value imposes no routing restrictions. Popo does not
 require GitFlow branch names. Merge groups validate configuration and rely on queued PRs for routing
-checks. The [branch-protection guide] defines the complete policy.
+checks. A separate `Validate release records` job checks that every dated changelog section has an
+existing versioned document with the matching heading. Release/hotfix branches using
+`release/MAJOR.MINOR.PATCH` or `hotfix/MAJOR.MINOR.PATCH` (optionally with `v`) must also have their
+candidate's dated entry. Other source names retain the configured routing policy and may accumulate
+changes under `Unreleased`. Merge groups recheck the combined tree's release history and inherit
+candidate-version checks from queued PRs. Release-record checks use a checkout with `contents: read`
+and credentials disabled; they never execute release documents or publish. The [branch-protection
+guide] defines required-check activation.
 
 ### CI
 
