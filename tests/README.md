@@ -37,14 +37,21 @@ top-level directory.
 Within `tests/unit/`:
 
 - `checks/` mirrors `popo.checks`, with one test module per checker.
-- `configs/` covers `popo.config`: project loading and shared loader contracts in `test_project.py`,
-  and automation configuration validation in `test_automation.py`.
+- `configs/` covers `popo.config`: project loading and shared loader contracts in `test_u_project.py`,
+  and automation configuration validation in `test_u_automation.py`.
 - Tests for shared support, Make, hooks, and repository workflows remain at the unit-layer root.
 
 Both subdirectories inherit the `unit` marker and shared fixtures. Checker tests may construct or
 load configuration to exercise a validator; configuration-only validation belongs in `configs/`.
 
 ## Discovery and Selection
+
+Use `test_u_*.py` for unit modules, `test_i_*.py` for integration modules, `test_e_*.py` for e2e
+modules, and `test_m_*.py` for meta modules. These prefixes reduce cross-layer module-name
+collisions and remain compatible with pytest's default `test_*.py` discovery. Function and method
+names continue to use `test_`. Keep package directories and the configured
+`--import-mode=importlib`: unit subpackages can still have matching basenames, such as their
+automation test modules.
 
 `make test` and plain pytest collect unit and integration tests only. Artifact tests remain opt-in
 because building and installing distributions may access package indexes.
