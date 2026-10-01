@@ -1,5 +1,5 @@
 """
-:mod:`tests.e2e.test_distribution_installation` module.
+:mod:`tests.e2e.test_e_distribution_installation` module.
 
 Exercise installed commands outside the checkout in clean environments.
 """
