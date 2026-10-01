@@ -87,6 +87,9 @@ Popo's PR workflow checks dated changelog entries against versioned release docu
 candidate versions on release/hotfix branches. Hosted required-check configuration is needed to
 block merges; see [workflow map] for the validation boundary.
 
+Test modules use scope prefixes (`test_u_`, `test_i_`, `test_e_`, and `test_m_`) to reduce
+cross-layer namespace collisions; see [test layout] for discovery and selection.
+
 ## Architecture
 
 Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
