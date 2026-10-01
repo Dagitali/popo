@@ -25,9 +25,11 @@ class AutomationConfig:
     workflow_globs, action_globs, template_globs, yaml_globs : tuple[str, ...]
         Root-relative discovery patterns. Explicit patterns must match files.
     local_repositories : tuple[str, ...]
-        Owner/repository aliases resolved against this checkout, not remote refs.
+        Owner/repository aliases resolved against this checkout, not remote
+        refs.
     template_placeholder_refs : tuple[str, ...]
-        Exact ref tokens allowed only in templates referencing existing self targets.
+        Exact ref tokens allowed only in templates referencing existing self
+        targets.
     configured : bool
         Whether the consumer opted in through tool.popo.automation.
     """
@@ -64,7 +66,8 @@ def load_automation_config(root: Path) -> AutomationConfig:
     Raises
     ------
     ConfigurationError
-        Invalid TOML, unknown settings, bad types, or unsafe discovery patterns.
+        Invalid TOML, unknown settings, bad types, or unsafe discovery
+        patterns.
     OSError, UnicodeError
         Unreadable or undecodable configuration.
     """

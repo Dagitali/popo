@@ -41,8 +41,9 @@ class PythonPolicyConfig:
 
     Notes
     -----
-    ``load_config`` bases relative configured paths on the repository root.
-    Construction does not read files or validate versions and policy syntax.
+    :func:`~popo.config.load_config` bases relative configured paths on the
+    repository root. Construction does not read files or validate versions and
+    policy syntax.
     """
 
     metadata: Path

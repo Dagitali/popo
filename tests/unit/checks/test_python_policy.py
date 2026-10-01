@@ -21,7 +21,33 @@ def policy_fixture(
     tmp_path: Path,
     write_file: FileWriter,
 ) -> PythonPolicyConfig:
-    """Create one consistent policy; individual cases vary only their relevant input."""
+    """
+    Prepare consistent Python-policy inputs for an isolated test.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Consumer root for temporary metadata, version file, and workflow.
+    write_file : tests.support.files.FileWriter
+        Helper creating the UTF-8 policy input files.
+
+    Returns
+    -------
+    PythonPolicyConfig
+        Python >=3.13,<3.15 policy with preferred version 3.13, Ruff target
+        py313, and mypy version 3.13, pointing to the prepared input files.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If writing a fixture file fails.
+
+    Notes
+    -----
+    Individual scenarios modify only the relevant input or replace a model
+    field. Creating the fixture does not run the policy validator or contact
+    services.
+    """
     metadata = write_file(
         'pyproject.toml',
         '[project]\nrequires-python = ">=3.13,<3.15"\n'
@@ -43,7 +69,15 @@ def policy_fixture(
 
 
 class TestPythonPolicy:
-    """Validate policy consistency and supported workflow version declarations."""
+    """
+    Validate policy consistency and supported workflow version declarations.
+
+    Notes
+    -----
+    Start from consistent temporary policy files, then vary one declaration or
+    configuration field. Supply explicit checker-runtime versions to keep
+    results independent of the interpreter executing the tests.
+    """
 
     @pytest.mark.parametrize(
         'dimension',
@@ -60,7 +94,24 @@ class TestPythonPolicy:
         dimension: str,
         version: str,
     ) -> None:
-        """Resolve every block-list item, including quoted values with comments."""
+        """
+        Resolve every block-list item, including quoted values with comments.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        dimension : str
+            Workflow matrix key used to resolve the setup-python version
+            expression.
+        version : str
+            Candidate interpreter or workflow version selected for policy
+            validation.
+        """
         path = write_file(
             '.github/workflows/ci.yml',
             'jobs:\n  check:\n    strategy:\n      matrix:\n'
@@ -94,6 +145,28 @@ class TestPythonPolicy:
         content: str,
         message: str,
     ) -> None:
+        """
+        Verify changed policy inputs produce the expected inconsistency
+        diagnostic.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        path : str
+            Repository-relative path whose contents are prepared for the
+            scenario.
+        content : str
+            File contents selected for the parameterized success or failure
+            scenario.
+        message : str
+            Expected diagnostic substring; an empty string selects a successful
+            case.
+        """
         write_file(path, content)
         assert any(
             message in failure for failure in validate(policy, running_version='3.13')
@@ -103,6 +176,16 @@ class TestPythonPolicy:
         self,
         policy: PythonPolicyConfig,
     ) -> None:
+        """
+        Verify an invalid configured Python requirement becomes a policy
+        diagnostic.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        """
         assert (
             'invalid requires-python policy'
             in validate(replace(policy, requires_python='invalid'))[0]
@@ -118,6 +201,20 @@ class TestPythonPolicy:
         tmp_path: Path,
         field: str,
     ) -> None:
+        """
+        Verify each missing Python-policy input is reported.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        field : str
+            Configuration path field replaced with a missing input.
+        """
         config = replace(policy, **{field: tmp_path / 'missing'})
         assert any(
             'does not exist' in f for f in validate(config, running_version='3.13')
@@ -134,6 +231,25 @@ class TestPythonPolicy:
         target: str,
         valid: bool,
     ) -> None:
+        """
+        Verify top-level settings in a separate Ruff file match the policy
+        target.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        target : str
+            Ruff target-version text written to the separate configuration
+            file.
+        valid : bool
+            Whether the candidate Ruff target should satisfy the configured
+            policy.
+        """
         path = write_file('ruff.toml', f'target-version = "{target}"')
         failures = validate(replace(policy, ruff_config=path), running_version='3.13')
         assert (failures == []) is valid
@@ -155,6 +271,20 @@ class TestPythonPolicy:
         write_file: FileWriter,
         declaration: str,
     ) -> None:
+        """
+        Verify setup-python requires a resolvable explicit version declaration.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        declaration : str
+            Workflow version declaration or expression selected for resolution.
+        """
         path = write_file(
             '.github/workflows/ci.yml',
             f'uses: actions/setup-python@{'a' * 40}\n{declaration}',
@@ -186,6 +316,20 @@ class TestPythonPolicy:
         write_file: FileWriter,
         declaration: str,
     ) -> None:
+        """
+        Verify supported literal, environment, and matrix declarations.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        declaration : str
+            Workflow version declaration or expression selected for resolution.
+        """
         write_file(
             '.github/workflows/ci.yml',
             f'uses: actions/setup-python@{'a' * 40}\n{declaration}\n',
@@ -196,6 +340,15 @@ class TestPythonPolicy:
         self,
         policy: PythonPolicyConfig,
     ) -> None:
+        """
+        Verify an out-of-policy checker runtime produces a runtime diagnostic.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        """
         assert 'checker runtime' in validate(policy, running_version='3.12')[0]
 
     @pytest.mark.parametrize('version', ['3.12', 'banana'])
@@ -205,6 +358,22 @@ class TestPythonPolicy:
         write_file: FileWriter,
         version: str,
     ) -> None:
+        """
+        Verify invalid or unsupported workflow versions produce an exact
+        diagnostic.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent temporary Python-policy configuration before the
+            scenario changes it.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        version : str
+            Candidate interpreter or workflow version selected for policy
+            validation.
+        """
         path = write_file('.github/workflows/ci.yml', f'python-version: "{version}"\n')
         assert validate(policy, running_version='3.13') == [
             f'{path}: unsupported Python version {version!r}',

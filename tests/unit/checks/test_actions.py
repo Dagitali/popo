@@ -15,7 +15,15 @@ from tests.support.files import FileWriter
 
 
 class TestActions:
-    """Verify action pinning, local exemptions, and recursive discovery."""
+    """
+    Verify action pinning, local exemptions, and recursive discovery.
+
+    Notes
+    -----
+    Use temporary YAML files to test discovery and line-numbered pin
+    diagnostics. Local and container exemptions are tested without fetching or
+    executing referenced actions.
+    """
 
     @pytest.mark.parametrize(
         'reference',
@@ -33,6 +41,21 @@ class TestActions:
         write_file: FileWriter,
         reference: str,
     ) -> None:
+        """
+        Verify full-SHA, local, and container references pass pin validation.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        reference : str
+            Automation uses value selected for the pin or target-resolution
+            scenario.
+        """
         write_file('.github/ci.yaml', f'uses: {reference}\n')
         assert validate(tmp_path / '.github') == []
 
@@ -41,6 +64,19 @@ class TestActions:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
+        """
+        Verify recursive action discovery reports only the unpinned remote
+        step.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        """
         action = write_file(
             'actions/setup/action.yaml',
             'steps:\n  - uses: ./local\n  - uses: docker://alpine:3\n'
@@ -69,6 +105,22 @@ class TestActions:
         write_file: FileWriter,
         reference: str,
     ) -> None:
+        """
+        Verify malformed remote references produce a precise line-numbered
+        failure.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        reference : str
+            Automation uses value selected for the pin or target-resolution
+            scenario.
+        """
         action = write_file('action.yml', f'uses: {reference}\n')
         assert validate(tmp_path) == [
             f'{action}:1: remote action must use a full '
@@ -80,6 +132,18 @@ class TestActions:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
+        """
+        Verify a floating action tag fails while a local step remains exempt.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        write_file : FileWriter
+            Fixture writer that creates parent directories and writes UTF-8
+            repository files.
+        """
         workflow = write_file(
             '.github/workflows/ci.yml',
             'steps:\n  - uses: actions/checkout@v4\n  - uses: ./local\n',
@@ -94,6 +158,15 @@ class TestActions:
         self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify missing automation directories produce a discovery diagnostic.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Per-test temporary directory for files and isolated consumer
+            repositories.
+        """
         assert validate(tmp_path / 'missing') == [
             f'automation directory does not exist: {tmp_path / 'missing'}',
         ]

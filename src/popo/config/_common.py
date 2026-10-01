@@ -12,7 +12,17 @@ from typing import cast
 
 
 class ConfigurationError(ValueError):
-    """Raised when popo configuration is invalid."""
+    """
+    Signal invalid consumer configuration as a :exc:`ValueError` subtype.
+
+    Notes
+    -----
+    Loaders use this exception for invalid TOML, table structure, setting
+    types, and policy values. The inherited :exc:`ValueError` constructor
+    accepts the error message. Configuration loading does not wrap filesystem
+    or decoding errors in this class; those propagate separately. CLI handlers
+    catch this exception and return a reported configuration failure.
+    """
 
 
 # !SECTION
@@ -62,7 +72,7 @@ def read_string(
     default: str,
 ) -> str:
     """
-    Read a nonempty string, using the default only when the key is absent.
+    Read a nonempty string, using ``default`` only when ``key`` is absent.
 
     Parameters
     ----------
@@ -112,7 +122,7 @@ def require_table(
     Raises
     ------
     ConfigurationError
-        If value is not a dictionary.
+        If ``value`` is not a dictionary.
     """
     if not isinstance(value, dict):
         raise ConfigurationError(f'{name} must be a TOML table')

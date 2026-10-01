@@ -130,10 +130,11 @@ def _requirement_lines(
 
     Notes
     -----
-    Blank lines and full-line comments are ignored. Inline comments begin
-    with whitespace followed by ``#``; adjacent URL fragments are preserved.
+    Blank lines and full-line comments are ignored. Inline comments begin with
+    whitespace followed by ``#``; adjacent URL fragments are preserved.
     Includes, installer options, and line continuations are not expanded.
-    Requirement syntax is validated separately by _requirements.
+    Requirement syntax is validated separately by
+    :func:`~popo.checks.dependencies._requirements`.
     """
     values: list[str] = []
     failures: list[str] = []
@@ -225,14 +226,16 @@ def validate(
 
     Notes
     -----
-    Exact mode compares normalized requirement declarations. Minimum-constraints
+    Exact mode compares normalized requirement declarations.
+    Minimum-constraints
     mode compares declared lower bounds with exact fixture pins. Neither mode
     installs packages or verifies the currently installed dependency versions.
 
     Only project.dependencies is inspected, not optional dependencies or
     dependency groups. Environment markers are not evaluated: exact mode
     retains them in declaration comparisons, while minimum-constraints mode
-    compares extracted bounds without using markers or extras to select entries.
+    compares extracted bounds without using markers or extras to select
+    entries.
     Missing inputs, invalid TOML, and parsing or bound-extraction failures
     return before the final mapping comparison.
     """

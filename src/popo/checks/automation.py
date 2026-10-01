@@ -19,13 +19,58 @@ from .actions import is_pinned
 
 
 class _Loader(yaml.SafeLoader):
-    """Reject duplicate/non-string keys and retain GitHub's on key."""
+    """
+    Load safe YAML with string-only keys and GitHub-compatible booleans.
+
+    Parameters
+    ----------
+    stream : str, bytes, or file-like object
+        YAML input accepted by the inherited SafeLoader constructor.
+
+    Notes
+    -----
+    Mapping construction rejects duplicate keys and non-string keys. The loader
+    uses its own implicit resolvers: only case-insensitive ``true`` and
+    ``false`` resolve as booleans, preserving names such as ``on`` and values
+    such as ``yes`` as strings. Other safe YAML constructors remain inherited.
+    The loader parses data without executing automation or constructing
+    arbitrary Python objects.
+    """
 
     def construct_mapping(
         self,
         node: yaml.MappingNode,
         deep: bool = False,
     ) -> dict[Hashable, object]:
+        """
+        Construct a mapping while enforcing unique string keys.
+
+        Parameters
+        ----------
+        node : yaml.MappingNode
+            YAML mapping node whose key/value pairs are constructed in source
+            order.
+        deep : bool, optional
+            Forwarded to :meth:`yaml.SafeLoader.construct_object` for keys and
+            values. Defaults to ``False``.
+
+        Returns
+        -------
+        dict[collections.abc.Hashable, object]
+            Constructed mapping with string keys and safely constructed values.
+
+        Raises
+        ------
+        ValueError
+            If a constructed key is not a string or repeats an earlier key.
+        yaml.YAMLError
+            If inherited construction cannot process a key or value node.
+
+        Notes
+        -----
+        Errors propagate to the caller. During file validation, the outer
+        validator converts these errors into diagnostics.
+        """
         result: dict[Hashable, object] = {}
         for key_node, value_node in node.value:
             key: object = self.construct_object(key_node, deep=deep)
@@ -65,6 +110,34 @@ def _call(
     target: dict[str, object],
     workflow: bool,
 ) -> None:
+    """
+    Validate supplied inputs against a local action or workflow contract.
+
+    Parameters
+    ----------
+    node : dict[str, object]
+        Caller mapping with optional ``with`` inputs.
+    target : dict[str, object]
+        Action document or workflow_call mapping with optional ``inputs``.
+    workflow : bool
+        Whether declarations require workflow input types and supplied values
+        must match string, boolean, or number types.
+
+    Raises
+    ------
+    ValueError
+        If input tables or declarations are not mappings, supplied names are
+        unknown, required inputs lack values and defaults, or workflow input
+        types or supplied values are invalid.
+
+    Notes
+    -----
+    Validate without mutating either mapping. Strings containing ``${{`` skip
+    supplied-value type checks; expressions are not evaluated. Action inputs
+    receive name/required checks without workflow type enforcement. A required
+    input with a declared default may be omitted. Errors propagate here and
+    become per-file diagnostics in :func:`~popo.checks.automation.validate`.
+    """
     declared = _mapping(target.get('inputs', {}), 'inputs')
     supplied = _mapping(node.get('with', {}), 'with')
     if unknown := set(supplied) - set(declared):
@@ -97,6 +170,30 @@ def _call(
 def _composite(
     data: dict[str, object],
 ) -> None:
+    """
+    Validate action metadata and the supported composite-step structure.
+
+    Parameters
+    ----------
+    data : dict[str, object]
+        Parsed action document containing name, description, and runs settings.
+
+    Raises
+    ------
+    ValueError
+        If name or description is not a nonempty string, runs is not a mapping,
+        composite steps are not a nonempty list of mappings, a step does not
+        contain exactly one of run/uses, or a run step lacks a nonempty shell.
+
+    Notes
+    -----
+    Non-composite runtimes return after validating name, description, and the
+    runs
+    mapping. This helper does not validate the complete action schema or
+    execute steps.
+    It does not mutate ``data``; :func:`~popo.checks.automation.validate`
+    converts its errors into per-file diagnostics.
+    """
     for key in ('name', 'description'):
         if not isinstance(data.get(key), str) or not data[key]:
             raise ValueError(f'action needs {key}')
@@ -121,6 +218,34 @@ def _inside(
     root: Path,
     path: Path,
 ) -> Path:
+    """
+    Resolve a path and require it to remain within the resolved root.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Repository boundary, resolved before comparison.
+    path : pathlib.Path
+        Path to resolve, including any symlinks. Relative paths are based on
+        the process working directory, not implicitly joined to root.
+
+    Returns
+    -------
+    pathlib.Path
+        Resolved absolute path equal to root or below it.
+
+    Raises
+    ------
+    ValueError
+        If the resolved path lies outside the resolved root.
+    OSError
+        If path resolution fails, including a symlink loop.
+
+    Notes
+    -----
+    Resolution does not require the target to exist. This containment check
+    does not establish file type, readability, or a general filesystem sandbox.
+    """
     resolved = path.resolve()
     if not resolved.is_relative_to(root.resolve()):
         raise ValueError(f'path escapes repository: {path}')
@@ -131,6 +256,31 @@ def _mapping(
     value: object,
     label: str,
 ) -> dict[str, object]:
+    """
+    Require a dictionary and narrow its type without copying its contents.
+
+    Parameters
+    ----------
+    value : object
+        Candidate mapping; only dict instances are accepted.
+    label : str
+        Description used in a failure diagnostic.
+
+    Returns
+    -------
+    dict[str, object]
+        The original dictionary, with its type narrowed for callers.
+
+    Raises
+    ------
+    ValueError
+        If value is not a dict instance.
+
+    Notes
+    -----
+    Do not validate key or value types or mutate the dictionary. String-key
+    validation for YAML occurs in the loader.
+    """
     if not isinstance(value, dict):
         raise ValueError(f'{label} must be a mapping')
     return cast(dict[str, object], value)
@@ -140,6 +290,38 @@ def _metadata(
     root: Path,
     path: Path,
 ) -> None:
+    """
+    Validate the JSON companion of an automation template.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Repository boundary for the companion file.
+    path : pathlib.Path
+        Template path whose final suffix is replaced with .properties.json.
+
+    Raises
+    ------
+    ValueError
+        If the companion escapes root, is not a mapping, lacks nonempty string
+        name/description fields, or has invalid categories/filePatterns arrays.
+    json.JSONDecodeError
+        If the companion contains invalid JSON.
+    OSError, UnicodeError
+        If path resolution, reading, or decoding fails. Reading uses the
+        default text encoding of the execution environment.
+    re.PatternError
+        If a filePatterns entry is not a valid regular expression.
+
+    Notes
+    -----
+    Missing optional arrays default to empty lists. Compile patterns without
+    matching
+    files, evaluating automation, or changing either file. These errors
+    propagate here
+    and are converted into diagnostics by
+    :func:`~popo.checks.automation.validate`.
+    """
     metadata = _inside(root, path.with_suffix('.properties.json'))
     doc = _mapping(json.loads(metadata.read_text()), 'template metadata')
     for key in ('name', 'description'):
@@ -158,6 +340,32 @@ def _nodes(
     value: object,
     seen: set[int] | None = None,
 ) -> Iterator[dict[str, object]]:
+    """
+    Yield nested mappings once while avoiding cycles and repeated aliases.
+
+    Parameters
+    ----------
+    value : object
+        Parsed data to traverse; only dictionaries and lists are descended
+        into.
+    seen : set[int] or None, optional
+        Identities already visited. A supplied set is updated in place; when
+        omitted, create one shared by the recursive traversal.
+
+    Yields
+    ------
+    dict[str, object]
+        Original dictionaries in depth-first order, visiting a parent before
+        its children and preserving dictionary value/list element order.
+
+    Notes
+    -----
+    Scalars yield nothing. Shared containers and recursive YAML aliases are
+    visited only once. Values are not copied or mutated; keys are assumed to
+    have been validated by the loader. The visited set is updated as the
+    iterator is consumed. Traversal remains recursive and can exceed Python's
+    recursion limit for sufficiently deep input.
+    """
     seen = set() if seen is None else seen
     if not isinstance(value, (dict, list)) or id(value) in seen:
         return
@@ -176,6 +384,37 @@ def _read(
     path: Path,
 ) -> dict[str, object]:
     # PyYAML's dynamic return value is narrowed at this boundary.
+    """
+    Read a UTF-8 YAML file and require a mapping document.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        File to read; repository containment is checked separately by callers.
+
+    Returns
+    -------
+    dict[str, object]
+        Parsed document using the restricted safe loader.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If the file cannot be read or decoded as UTF-8.
+    yaml.YAMLError
+        If YAML parsing or safe construction fails.
+    ValueError
+        If the document is not a mapping or contains duplicate/non-string keys.
+
+    Notes
+    -----
+    Empty YAML resolves to ``None`` and fails the mapping requirement. Read
+    without
+    modifying the file or executing referenced automation.
+    :func:`~popo.checks.automation.validate` converts these errors into
+    per-file
+    diagnostics.
+    """
     value: object = yaml.load(path.read_text(encoding='utf-8'), Loader=_Loader)
     return _mapping(value, 'document')
 
@@ -184,6 +423,46 @@ def _target(
     config: AutomationConfig,
     reference: str,
 ) -> Path | None:
+    """
+    Resolve a local or configured self-aliased automation reference.
+
+    Parameters
+    ----------
+    config : AutomationConfig
+        Consumer root and owner/repository aliases for this checkout.
+    reference : str
+        A ./ path, an aliased owner/repository/path@revision reference, or a
+        reference outside the configured local forms.
+
+    Returns
+    -------
+    pathlib.Path or None
+        Resolved in-root YAML file, or ``None`` for a reference that is neither
+        a ./
+        path nor a configured alias. Directory targets select exactly one
+        action.yml or
+        action.yaml file.
+
+    Raises
+    ------
+    ValueError
+        If an aliased reference lacks a single nonempty revision, the resolved
+        path escapes root, a directory lacks exactly one action file, or the
+        final target is missing or does not have a .yml/.yaml suffix.
+    OSError
+        If filesystem inspection or path resolution fails.
+
+    Notes
+    -----
+    Resolve aliases in configuration order against the current checkout.
+    Revision text
+    is parsed but not fetched or verified, and pin/placeholder policy is
+    checked
+    separately. Do not parse the target's contents or execute it.
+    :func:`~popo.checks.automation.validate` converts these errors into
+    per-file
+    diagnostics.
+    """
     relative: str | None = None
     if reference.startswith('./'):
         relative = reference[2:]

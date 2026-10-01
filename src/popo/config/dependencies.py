@@ -25,7 +25,8 @@ DependencyMode = Literal['minimum-constraints', 'exact']
 @dataclass(frozen=True, slots=True)
 class DependencyConfig:
     """
-    Store immutable dependency-boundary inputs without validating their contents.
+    Store immutable dependency-boundary inputs without validating their
+    contents.
 
     Attributes
     ----------
@@ -38,8 +39,9 @@ class DependencyConfig:
 
     Notes
     -----
-    ``load_config`` bases relative configured paths on the repository root.
-    Direct construction performs no path resolution or runtime validation.
+    :func:`~popo.config.load_config` bases relative configured paths on the
+    repository root. Direct construction performs no path resolution or runtime
+    validation.
     """
 
     metadata: Path
@@ -57,7 +59,8 @@ def _detect_dependencies(
     root: Path,
 ) -> DependencyConfig:
     """
-    Select dependency inputs using the first existing metadata/requirements pair.
+    Select dependency inputs using the first existing metadata/requirements
+    pair.
 
     Parameters
     ----------
@@ -67,7 +70,8 @@ def _detect_dependencies(
     Returns
     -------
     DependencyConfig
-        Prefer root pyproject.toml with requirements/lowest.txt in minimum mode,
+        Prefer root pyproject.toml with requirements/lowest.txt in minimum
+        mode,
         then root pyproject.toml with requirements.txt in exact mode, then the
         corresponding pyproject.toml and requirements.txt pair under infra/.
         If none exists, return the first layout without creating its files.

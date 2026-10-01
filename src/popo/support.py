@@ -27,7 +27,7 @@ def automation_paths(
     /,
 ) -> list[Path]:
     """
-    Return sorted YAML automation files below *directory*.
+    Return sorted YAML automation files below ``directory``.
 
     Parameters
     ----------
@@ -97,7 +97,8 @@ def report(
     Parameters
     ----------
     failures : collections.abc.Sequence[str]
-        Validation failures to print to standard output with ``FAIL:`` prefixes.
+        Validation failures to print to standard output with ``FAIL:``
+        prefixes.
     success : str
         Message to print with a ``PASS:`` prefix when there are no failures.
 
