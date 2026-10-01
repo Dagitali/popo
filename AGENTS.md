@@ -67,6 +67,7 @@ Keep that workflow independent of a particular assistant or editor.
 - Organize tests by unit, integration, meta, and e2e scope; keep shared fixtures in tests/support.
   Default checks run unit and integration tests; artifact layers are opt-in.
 - Use single-quoted Python strings, an 88-character line length, and strict typing.
+- Limit Python docstring lines to 79 characters, including indentation.
 - Use NumPy-style public docstrings with meaningful parameter, return, and exception contracts.
   Document caught errors returned as diagnostics separately from exceptions that propagate.
 - Keep unit tests deterministic and independent of credentials, deployed services, and network
