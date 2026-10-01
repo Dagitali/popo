@@ -36,16 +36,14 @@ def artifact_fixture(
     Returns
     -------
     pathlib.Path
-        Single matching wheel or source-distribution path for this module.
+        Matching wheel or sdist, prevalidated by ``artifact_directory``.
 
     Raises
     ------
-    AssertionError
-        If the glob matches zero or multiple paths for the requested type.
+    StopIteration
+        If an artifact is removed after the directory fixture validates it.
     """
-    paths = list(artifact_directory.glob(request.param))
-    assert len(paths) == 1, f'Expected one {request.param} in {artifact_directory}'
-    return paths[0]
+    return next(artifact_directory.glob(request.param))
 
 
 @pytest.fixture(
@@ -78,6 +76,8 @@ def artifact_directory_fixture(
 
     Raises
     ------
+    AssertionError
+        If the directory lacks exactly one wheel and one source distribution.
     subprocess.CalledProcessError
         If the build or Twine validation command exits unsuccessfully.
     subprocess.TimeoutExpired
@@ -92,7 +92,7 @@ def artifact_directory_fixture(
     with its default isolated build environment. Build dependencies may be
     downloaded. Both paths run Twine through the current interpreter; neither
     publishes artifacts or installs them for smoke testing. Exact artifact
-    counts are checked separately by artifact_fixture.
+    counts are checked before Twine runs.
     """
     configured = request.config.getoption('--artifact-dir')
     if configured:
@@ -105,14 +105,18 @@ def artifact_directory_fixture(
             check=True,
             timeout=300,
         )
+    artifacts = []
+    for pattern in ('*.whl', '*.tar.gz'):
+        matches = sorted(directory.glob(pattern))
+        assert len(matches) == 1, f'Expected one {pattern} in {directory}'
+        artifacts.extend(matches)
     subprocess.run(
         [
             sys.executable,
             '-m',
             'twine',
             'check',
-            *map(str, sorted(directory.glob('*.whl'))),
-            *map(str, sorted(directory.glob('*.tar.gz'))),
+            *map(str, artifacts),
         ],
         check=True,
         timeout=60,
