@@ -28,7 +28,9 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.3 Series
 
-- [v0.3.5] — planned, prepared 2026-10-01: Complete NumPy-style Python docstrings, add Sphinx
+- [v0.3.6] — 2026-10-01: Validate release records in PRs and merge queues,
+  document required-check activation, and backfill the 0.3.5 release record.
+- [v0.3.5] — 2026-10-01: Complete NumPy-style Python docstrings, add Sphinx
   references, and document the 79-character docstring convention.
 - [v0.3.4] — 2026-10-01: Update Commitizen and Ruff pre-commit hooks without changing Popo runtime
   behavior or consumer configuration.
@@ -112,3 +114,4 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.3.3]: v0.3.3.md
 [v0.3.4]: v0.3.4.md
 [v0.3.5]: v0.3.5.md
+[v0.3.6]: v0.3.6.md
