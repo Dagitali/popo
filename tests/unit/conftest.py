@@ -31,7 +31,10 @@ def symlink_fixture() -> Callable[[Path, Path], None]:
     broken fixture setup. The fixture itself does not create links.
     """
 
-    def create(link: Path, target: Path) -> None:
+    def create(
+        link: Path,
+        target: Path,
+    ) -> None:
         """
         Link fixture paths or skip when platform capabilities prevent it.
 
