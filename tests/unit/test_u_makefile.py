@@ -6,6 +6,7 @@ boundaries.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -17,7 +18,7 @@ import pytest
 # SECTION: TYPE ALIASES
 
 
-type Make = Callable[..., subprocess.CompletedProcess[str]]
+type MakeRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 # !SECTION
@@ -30,7 +31,7 @@ type Make = Callable[..., subprocess.CompletedProcess[str]]
 def make_fixture(
     repository_root: Path,
     tmp_path: Path,
-) -> Make:
+) -> MakeRunner:
     """
     Provide a bounded Make runner using a temporary copy of the checkout
     Makefile.
@@ -44,7 +45,7 @@ def make_fixture(
 
     Returns
     -------
-    Make
+    MakeRunner
         Callable accepting Make arguments and returning captured text results.
 
     Raises
@@ -55,10 +56,10 @@ def make_fixture(
     Notes
     -----
     Skip the test if Make is unavailable. Remove inherited Make control
-    variables, PYTHON, PYTEST, and VIRTUAL_ENV from the subprocess environment.
-    The returned runner permits nonzero exits for assertions and bounds each
-    call to 60 seconds. Scenario commands may create files and environments
-    only in their fixtures.
+    variables and configurable Makefile variables from each subprocess
+    environment. The returned runner permits nonzero exits for assertions and
+    bounds each call to 60 seconds. Scenario commands may create files and
+    environments only in their fixtures.
     """
     executable = shutil.which('make')
     if executable is None:
@@ -66,21 +67,20 @@ def make_fixture(
     checkout = tmp_path / 'checkout'
     checkout.mkdir()
     shutil.copyfile(repository_root / 'Makefile', checkout / 'Makefile')
-    environment = {
-        key: value
-        for key, value in os.environ.items()
-        if key
-        not in {
-            'MAKEFLAGS',
-            'MFLAGS',
-            'MAKELEVEL',
-            'MAKEOVERRIDES',
-            'MAKEFILES',
-            'PYTHON',
-            'PYTEST',
-            'VIRTUAL_ENV',
-        }
-    }
+    override_names = {
+        'MAKEFLAGS',
+        'MFLAGS',
+        'MAKELEVEL',
+        'MAKEOVERRIDES',
+        'MAKEFILES',
+        'VIRTUAL_ENV',
+    } | set(
+        re.findall(
+            r'^([A-Z][A-Z0-9_]*)\s*\?=',
+            (checkout / 'Makefile').read_text(encoding='utf-8'),
+            re.MULTILINE,
+        ),
+    )
 
     def run(
         *args: str,
@@ -115,7 +115,11 @@ def make_fixture(
         return subprocess.run(
             [executable, '--no-print-directory', *args],
             cwd=checkout,
-            env=environment,
+            env={
+                key: value
+                for key, value in os.environ.items()
+                if key not in override_names
+            },
             capture_output=True,
             text=True,
             check=False,
@@ -144,7 +148,7 @@ class TestMakefile:
 
     def test_checks_use_checkout_source_path(
         self,
-        make: Make,
+        make: MakeRunner,
         tmp_path: Path,
     ) -> None:
         """
@@ -152,16 +156,35 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         result = make('-s', 'test', 'PYTEST=printf \'%s\' "$$PYTHONPATH"')
         assert result.returncode == 0, result.stderr
         assert result.stdout.split(os.pathsep)[0] == str(tmp_path / 'checkout/src')
+
+    def test_inherited_overrides_do_not_leak(
+        self,
+        make: MakeRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Keep nested Make assertions independent of caller overrides.
+
+        Parameters
+        ----------
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
+        monkeypatch : pytest.MonkeyPatch
+            Restore environment, attributes, and working directory.
+        """
+        monkeypatch.setenv('TEST_ARGS', '--must-not-leak')
+        monkeypatch.setenv('PYTHON', 'must-not-run')
+        result = make('-n', 'test')
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == 'python3 -m pytest'
 
     @pytest.mark.parametrize(
         ('managed', 'overrides', 'expected'),
@@ -177,7 +200,7 @@ class TestMakefile:
     )
     def test_interpreter_selection(
         self,
-        make: Make,
+        make: MakeRunner,
         tmp_path: Path,
         managed: bool,
         overrides: tuple[str, ...],
@@ -188,12 +211,10 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         managed : bool
             Whether the temporary checkout includes a managed interpreter stub.
         overrides : tuple[str, ...]
@@ -218,7 +239,7 @@ class TestMakefile:
     )
     def test_aliases_preserve_commands(
         self,
-        make: Make,
+        make: MakeRunner,
         alias: str,
         target: str,
     ) -> None:
@@ -227,9 +248,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         alias : str
             Contributor convenience target compared with its canonical target.
         target : str
@@ -242,7 +262,7 @@ class TestMakefile:
 
     def test_default_gate_preserves_existing_checks(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify default Make checks include source gates without building or
@@ -250,9 +270,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make('-n', 'PYTHON=custom-python')
         explicit = make('-n', 'check', 'PYTHON=custom-python')
@@ -270,7 +289,7 @@ class TestMakefile:
     )
     def test_distribution_paths_and_arguments_are_overridable(
         self,
-        make: Make,
+        make: MakeRunner,
         target: str,
         prefix: str,
     ) -> None:
@@ -279,9 +298,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         target : str
             Artifact test target whose path and arguments are overridden.
         prefix : str
@@ -302,7 +320,7 @@ class TestMakefile:
 
     def test_help_lists_public_targets_without_running_checks(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify Make help lists contributor targets without executing the
@@ -310,9 +328,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make('help')
         assert result.returncode == 0, result.stderr
@@ -329,16 +346,15 @@ class TestMakefile:
 
     def test_packaging_commands_are_overridable(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify distribution build and metadata-check commands accept overrides.
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make(
             '-n',
@@ -361,7 +377,7 @@ class TestMakefile:
     )
     def test_policy_targets_use_overridable_commands(
         self,
-        make: Make,
+        make: MakeRunner,
         target: str,
         command: str,
     ) -> None:
@@ -370,9 +386,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         target : str
             Make policy target to inspect without executing its checker.
         command : str
@@ -389,7 +404,7 @@ class TestMakefile:
 
     def test_release_changelog_requires_explicit_version(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify release-changelog fails before invocation when its version is
@@ -397,9 +412,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make('release-changelog', 'RELEASE_VERSION=', 'PYTHON=must-not-run')
         assert result.returncode != 0
@@ -407,16 +421,15 @@ class TestMakefile:
 
     def test_release_validation_reuses_configured_artifacts(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify release checks share the configured artifact directory.
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make('-n', 'check-release', 'PYTHON_DIST_DIR=release artifacts')
         assert result.returncode == 0, result.stderr
@@ -430,7 +443,7 @@ class TestMakefile:
     )
     def test_setup_targets_install_only_in_managed_environment(
         self,
-        make: Make,
+        make: MakeRunner,
         target: str,
     ) -> None:
         """
@@ -438,9 +451,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         target : str
             Installation target selecting runtime-only or development
             dependencies.
@@ -454,7 +466,7 @@ class TestMakefile:
 
     def test_standalone_distribution_tests_keep_temporary_builds(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify standalone artifact targets leave build-on-demand selection to
@@ -462,9 +474,8 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make('-n', 'test-distribution', 'test-installation', 'TEST_ARGS=-x')
         assert result.returncode == 0, result.stderr
@@ -477,7 +488,7 @@ class TestMakefile:
 
     def test_unsupported_bootstrap_is_rejected_before_creation(
         self,
-        make: Make,
+        make: MakeRunner,
         tmp_path: Path,
     ) -> None:
         """
@@ -486,12 +497,10 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         environment = tmp_path / 'not-created'
         result = make(
@@ -507,7 +516,7 @@ class TestMakefile:
 
     def test_venv_creation_and_safe_reuse(
         self,
-        make: Make,
+        make: MakeRunner,
         tmp_path: Path,
     ) -> None:
         """
@@ -516,12 +525,10 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         environment = tmp_path / 'managed env'
         args = ('venv', f'PY={sys.executable}', f'VENV_DIR={environment}')
@@ -540,7 +547,7 @@ class TestMakefile:
     )
     def test_venv_preserves_mismatched_environment(
         self,
-        make: Make,
+        make: MakeRunner,
         tmp_path: Path,
     ) -> None:
         """
@@ -548,12 +555,10 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         environment = tmp_path / 'mismatched'
         executable = environment / 'bin/python'
@@ -568,7 +573,7 @@ class TestMakefile:
 
     def test_venv_preserves_unusable_existing_directory(
         self,
-        make: Make,
+        make: MakeRunner,
         tmp_path: Path,
     ) -> None:
         """
@@ -577,12 +582,10 @@ class TestMakefile:
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         marker = tmp_path / 'keep.txt'
         marker.write_text('user data', encoding='utf-8')
@@ -593,16 +596,15 @@ class TestMakefile:
 
     def test_windows_environment_paths(
         self,
-        make: Make,
+        make: MakeRunner,
     ) -> None:
         """
         Verify Windows setup commands select Scripts and python.exe paths.
 
         Parameters
         ----------
-        make : Make
-            Runner using a copied Makefile and an environment stripped of
-            inherited Make overrides.
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
         """
         result = make('show-venv', 'OS=Windows_NT', 'VENV_DIR=custom env')
         assert result.returncode == 0, result.stderr
