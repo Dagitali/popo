@@ -1,5 +1,5 @@
 """
-:mod:`tests.integration.test_cli` module.
+:mod:`tests.integration.test_i_cli` module.
 
 Test command-line success and failure reporting.
 """
