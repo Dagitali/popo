@@ -122,8 +122,8 @@ def installation_fixture(
     -------
     Installation
         Interpreter, console script, working directory, and sanitized
-        environment
-        after virtual-environment creation, pip installation, and pip check.
+        environment after virtual-environment creation, pip installation, and
+        pip check.
 
     Raises
     ------
@@ -139,10 +139,8 @@ def installation_fixture(
     -----
     Remove PYTHONPATH and PYTHONHOME from the inherited environment to avoid
     source-import overrides. :mod:`pip` may download runtime or build
-    requirements. All
-    installed-CLI scenarios in the module share this fixture for each artifact;
-    their
-    consumer repositories remain independent.
+    requirements. All installed-CLI scenarios in the module share this fixture
+    for each artifact; their consumer repositories remain independent.
     """
     directory = tmp_path_factory.mktemp('installed')
     environment = {
@@ -194,11 +192,18 @@ class TestInstalledCLI:
         'module',
         [False, True],
     )
+    @pytest.mark.parametrize(
+        ('reference', 'status'),
+        [('upstream/action@main', 1), ('upstream/action@' + 'a' * 40, 0)],
+        ids=['mutable', 'pinned'],
+    )
     def test_automation_contracts(
         self,
         installation: Installation,
         tmp_path: Path,
         module: bool,
+        reference: str,
+        status: int,
     ) -> None:
         """
         Verify installed automation checking reports pins without rewriting
@@ -207,37 +212,33 @@ class TestInstalledCLI:
         Parameters
         ----------
         installation : Installation
-            Isolated installed artifact with CLI paths and a sanitized
-            subprocess
-            environment.
+            Installed artifact isolated from checkout imports.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
+        reference : str
+            Remote reference selected for the pin-validation scenario.
+        status : int
+            Expected installed CLI exit status.
         module : bool
             Whether to invoke python -m popo rather than the console-script
-            entry
-            point.
+            entry point.
         """
         (tmp_path / 'pyproject.toml').write_text(
             '[tool.popo.automation]\nworkflow-globs = ["ci.yml"]',
             encoding='utf-8',
         )
         workflow = tmp_path / 'ci.yml'
-        for reference, status in [
-            ('upstream/action@main', 1),
-            ('upstream/action@' + 'a' * 40, 0),
-        ]:
-            source = f'jobs: {{test: {{steps: [{{uses: {reference}}}]}}}}'
-            workflow.write_text(source, encoding='utf-8')
-            result = installation.run(
-                'check-automation-contracts',
-                '--root',
-                str(tmp_path),
-                module=module,
-            )
-            assert result.returncode == status, result.stdout + result.stderr
-            assert not result.stderr
-            assert workflow.read_text(encoding='utf-8') == source
+        source = f'jobs: {{test: {{steps: [{{uses: {reference}}}]}}}}'
+        workflow.write_text(source, encoding='utf-8')
+        result = installation.run(
+            'check-automation-contracts',
+            '--root',
+            str(tmp_path),
+            module=module,
+        )
+        assert result.returncode == status, result.stdout + result.stderr
+        assert not result.stderr
+        assert workflow.read_text(encoding='utf-8') == source
 
     @pytest.mark.parametrize(
         'argument',
@@ -260,15 +261,12 @@ class TestInstalledCLI:
         Parameters
         ----------
         installation : Installation
-            Isolated installed artifact with CLI paths and a sanitized
-            subprocess
-            environment.
+            Installed artifact isolated from checkout imports.
         argument : str
             Information option to exercise, either --help or --version.
         module : bool
             Whether to invoke python -m popo rather than the console-script
-            entry
-            point.
+            entry point.
         """
         result = installation.run(argument, module=module)
         assert result.returncode == 0, result.stderr
@@ -301,12 +299,9 @@ class TestInstalledCLI:
         Parameters
         ----------
         installation : Installation
-            Isolated installed artifact with CLI paths and a sanitized
-            subprocess
-            environment.
+            Installed artifact isolated from checkout imports.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
