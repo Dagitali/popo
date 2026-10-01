@@ -267,6 +267,80 @@ class TestWorkflows:
         assert 'EXPECTED_TAG_OBJECT' in command and 'sha256sum --check' in command
         assert 'upload --clobber' not in command
 
+    @pytest.mark.parametrize(
+        ('case', 'event', 'head', 'success'),
+        [
+            ('valid', 'pull_request', 'release/1.2.3', True),
+            ('valid', 'pull_request', 'hotfix/v1.2.3', True),
+            ('valid', 'pull_request', 'feature/change', True),
+            ('valid', 'merge_group', '', True),
+            ('missing', 'pull_request', 'release/1.2.3', False),
+            ('missing', 'merge_group', '', False),
+            ('wrong-heading', 'pull_request', 'release/1.2.3', False),
+            ('empty-changelog', 'pull_request', 'release/1.2.3', False),
+            ('invalid-date', 'pull_request', 'release/1.2.3', False),
+            ('duplicate', 'pull_request', 'release/1.2.3', False),
+            ('valid', 'pull_request', 'release/1.2.4', False),
+            ('valid', 'pull_request', 'hotfix/not-a-version', False),
+        ],
+    )
+    def test_release_records(
+        self,
+        workflow: WorkflowLoader,
+        tmp_path: Path,
+        case: str,
+        event: str,
+        head: str,
+        success: bool,
+    ) -> None:
+        """
+        Require candidate records and recheck merged release history.
+
+        Parameters
+        ----------
+        workflow : WorkflowLoader
+            Loader for the checkout's workflow declarations.
+        tmp_path : pathlib.Path
+            Isolated checkout containing synthetic release documents.
+        case : str
+            Record or changelog defect selected for the scenario.
+        event : str
+            Pull-request or merge-group event under test.
+        head : str
+            Source branch identifying an optional release candidate.
+        success : bool
+            Expected gate success for the supplied fixture.
+        """
+        document = workflow('pr.yml')
+        assert set(document['on']) == {'pull_request', 'merge_group'}
+        assert document['permissions'] == {}
+        job = document['jobs']['release-records']
+        assert job['permissions'] == {'contents': 'read'}
+        assert job['name'] == 'Validate release records'
+        assert 'if' not in job
+        assert job['steps'][0]['with']['persist-credentials'] == 'false'
+        date = '2026-02-30' if case == 'invalid-date' else '2026-10-01'
+        changelog = f'## Unreleased\n\n## [1.2.3] - {date}\n'
+        if case == 'empty-changelog':
+            changelog = '## Unreleased\n'
+        elif case == 'duplicate':
+            changelog += f'## [1.2.3] - {date}\n'
+        (tmp_path / 'CHANGELOG.md').write_text(changelog, encoding='utf-8')
+        directory = tmp_path / 'docs' / 'releases'
+        directory.mkdir(parents=True)
+        if case != 'missing':
+            heading = 'other' if case == 'wrong-heading' else 'Popo v1.2.3'
+            (directory / 'v1.2.3.md').write_text(f'# {heading}\n', encoding='utf-8')
+        result = subprocess.run(
+            [sys.executable, '-c', job['steps'][1]['run']],
+            cwd=tmp_path,
+            env=os.environ | {'EVENT_NAME': event, 'HEAD_REF': head},
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert (result.returncode == 0) is success, result.stderr
+
     @pytest.mark.skipif(
         shutil.which('bash') is None or shutil.which('git') is None,
         reason='Tag gate requires Bash and Git',
