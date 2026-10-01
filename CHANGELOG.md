@@ -40,6 +40,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Prefix unit, integration, e2e, and meta test modules with `test_u_`, `test_i_`, `test_e_`, and
+  `test_m_`, respectively, to reduce cross-layer namespace collisions; update Make targets, module
+  docstrings, and test-path references while preserving test names and importlib discovery.
+
 ## [0.3.6] - 2026-10-01
 
 - Add a read-only PR and merge-queue gate for dated changelog sections and matching release
