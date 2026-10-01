@@ -9,10 +9,11 @@
 #
 # Responsibilities
 # - Validate and enforce optional repository-configured target-branch rules.
+# - Require release records to agree with dated changelog sections.
 # - Keep source and package validation in ci.yml.
 #
 # Maintainer Notes
-# - No checkout or token permissions are needed for metadata-only checks.
+# - Routing needs no checkout; release records use a read-only checkout.
 # - PR_TARGET_RULES is a JSON object keyed by exact target branch name.
 # - An unset variable means no branch-routing restrictions, not GitFlow.
 # - Merge groups inherit routing checks from their constituent pull requests.
@@ -85,3 +86,57 @@ jobs:
                   ):
                       raise SystemExit('Source branch must belong to this repository')
               print('Pull request target policy passed.')
+
+  release-records:
+    name: Validate release records
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the proposed merge
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # Pinned v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate changelog and versioned release records
+        shell: python
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          import datetime
+          import os
+          import re
+          from pathlib import Path
+
+          root = Path.cwd().resolve()
+          text = (root / 'CHANGELOG.md').read_text(encoding='utf-8')
+          version = r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
+          headings = re.findall(
+              rf'^## \[(v?{version})\] - ([0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}})\s*$',
+              text,
+              re.MULTILINE,
+          )
+          releases = set()
+          for release, date in headings:
+              datetime.date.fromisoformat(date)
+              release = release.removeprefix('v')
+              if release in releases:
+                  raise SystemExit(f'Duplicate dated changelog section: {release}')
+              releases.add(release)
+              record = root / 'docs' / 'releases' / f'v{release}.md'
+              if not record.resolve().is_relative_to(root) or not record.is_file():
+                  raise SystemExit(f'Missing release document: docs/releases/v{release}.md')
+              if f'# Popo v{release}' not in record.read_text(encoding='utf-8').splitlines():
+                  raise SystemExit(f'Missing version heading in {record.relative_to(root)}')
+          if not releases:
+              raise SystemExit('CHANGELOG.md has no dated release sections')
+          if os.environ['EVENT_NAME'] == 'pull_request':
+              head = os.environ['HEAD_REF']
+              if head.startswith(('release/', 'hotfix/')):
+                  candidate = head.split('/', 1)[1].removeprefix('v')
+                  if re.fullmatch(version, candidate) is None:
+                      raise SystemExit('Release/hotfix branch must name MAJOR.MINOR.PATCH')
+                  if candidate not in releases:
+                      raise SystemExit(f'CHANGELOG.md has no dated section for {candidate}')
+          print('Release records match dated changelog sections.')

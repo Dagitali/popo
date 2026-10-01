@@ -83,6 +83,10 @@ publishing is not configured; see the [release policy].
   inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
 
+Popo's PR workflow checks dated changelog entries against versioned release documents and validates
+candidate versions on release/hotfix branches. Hosted required-check configuration is needed to
+block merges; see [workflow map] for the validation boundary.
+
 ## Architecture
 
 Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
@@ -371,3 +375,5 @@ the [release policy].
 [license badge]: https://img.shields.io/github/license/Dagitali/popo.svg
 [release badge]: https://img.shields.io/github/v/tag/Dagitali/popo?label=release
 [test layout]: tests/README.md
+
+[workflow map]: CI-CD-WORKFLOWS.md

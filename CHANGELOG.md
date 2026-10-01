@@ -19,6 +19,8 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.3.6 - 2026-10-01](#036---2026-10-01)
+- [0.3.5 - 2026-10-01](#035---2026-10-01)
 - [0.3.4 - 2026-10-01](#034---2026-10-01)
 - [0.3.3 - 2026-09-30](#033---2026-09-30)
 - [0.3.2 - 2026-09-30](#032---2026-09-30)
@@ -37,6 +39,19 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.3.6] - 2026-10-01
+
+- Add a read-only PR and merge-queue gate for dated changelog sections and matching release
+  documents, with explicit candidate-version validation on release/hotfix branches. Document the
+  required-check transition for `main` and `develop`; hosted enforcement requires activation after
+  successful hosted validation.
+- Add 12 release-record regression scenarios and synchronize contributor, workflow, and branch
+  protection guidance. Backfill the 0.3.5 release document and dated changelog section without
+  changing its existing tag or claiming historical artifact validation.
+- No CLI, consumer-configuration, runtime dependency, or publication behavior changes.
+
+## [0.3.5] - 2026-10-01
 
 - Limit Python docstring lines to 79 characters, including indentation, and record the convention in
   agent guidance without changing docstring content or executable behavior.
@@ -262,6 +277,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.3.2]: docs/releases/v0.3.2.md
 [0.3.3]: docs/releases/v0.3.3.md
 [0.3.4]: docs/releases/v0.3.4.md
+[0.3.5]: docs/releases/v0.3.5.md
+[0.3.6]: docs/releases/v0.3.6.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

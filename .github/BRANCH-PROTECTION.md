@@ -29,6 +29,7 @@ pushes to `main`, merge groups, and manual dispatches.
   - [Selection Principles](#selection-principles)
   - [Repository-Specific Checks](#repository-specific-checks)
 - [Configurable PR Routing](#configurable-pr-routing)
+- [Release Record Gate](#release-record-gate)
 - [Disallowing Direct Updates](#disallowing-direct-updates)
 - [Merge Queue](#merge-queue)
 - [Updating Required Checks](#updating-required-checks)
@@ -132,6 +133,32 @@ request target` on the affected branches before relying on this enforcement; whe
 rerun checks for queued PRs before merging. Repository variables and branch protections are not
 created by committing the workflow.
 
+## Release Record Gate
+
+The PR workflow emits `Validate release records` on every pull request and merge group. It requires
+`docs/releases/vMAJOR.MINOR.PATCH.md` with a matching `# Popo vMAJOR.MINOR.PATCH` heading for every
+dated changelog release. Duplicate sections and invalid calendar dates fail. A source named
+`release/MAJOR.MINOR.PATCH` or `hotfix/MAJOR.MINOR.PATCH`, optionally with a leading `v` on the
+version, must also have that candidate's dated section. This adds candidate validation for those
+names; it does not require all contributions to use those prefixes or change `PR_TARGET_RULES`.
+Feature branches can continue collecting changes under `Unreleased`.
+
+To block merges into `main` and `develop`, use a ruleset covering `refs/heads/main` and
+`refs/heads/develop`, require pull requests and `Validate release records`, and leave its bypass
+list empty unless an explicit recovery exception is approved. Preserve existing protections. If
+using a merge queue, revalidate queued PRs when this policy changes; candidate versions come from
+their PR source names, while the merge group rechecks the combined release history.
+
+The prepared [release-record ruleset] targets `main` and `develop` with no bypass actors. Its
+activation is a separate transition after a successful hosted run; inspect its current enforcement
+state before relying on it.
+
+Stage the ruleset as disabled until the new workflow is available on GitHub and has a successful
+hosted run. Then select the verified emitted check name, activate the ruleset, and confirm a missing
+record blocks a representative PR. A disabled ruleset provides no enforcement. The local gate and
+its tests do not prove active hosted enforcement. Follow [Updating Required
+Checks](#updating-required-checks) for the transition.
+
 ## Disallowing Direct Updates
 
 Configure an active ruleset or equivalent branch protection for each integration or release branch.
@@ -185,6 +212,7 @@ transition.
 [Updating Required Checks]: #updating-required-checks
 [contributing guidelines]: ../CONTRIBUTING.md
 [release policy]: ../RELEASE-POLICY.md
+[release-record ruleset]: https://github.com/Dagitali/popo/rules/24320739
 [release workflow]: workflows/cd.yml
 [CI workflow]: workflows/ci.yml
 [PR gates]: workflows/pr.yml
