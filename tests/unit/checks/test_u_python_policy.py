@@ -16,8 +16,8 @@ from tests.support.files import FileWriter
 # SECTION: FIXTURES
 
 
-@pytest.fixture(name='policy')
-def policy_fixture(
+@pytest.fixture
+def policy(
     tmp_path: Path,
     write_file: FileWriter,
 ) -> PythonPolicyConfig:
@@ -100,11 +100,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         dimension : str
             Workflow matrix key used to resolve the setup-python version
             expression.
@@ -152,11 +150,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         path : str
             Repository-relative path whose contents are prepared for the
             scenario.
@@ -183,8 +179,7 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         """
         assert (
             'invalid requires-python policy'
@@ -207,11 +202,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         field : str
             Configuration path field replaced with a missing input.
         """
@@ -238,11 +231,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         target : str
             Ruff target-version text written to the separate configuration
             file.
@@ -277,11 +268,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         declaration : str
             Workflow version declaration or expression selected for resolution.
         """
@@ -322,11 +311,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         declaration : str
             Workflow version declaration or expression selected for resolution.
         """
@@ -346,8 +333,7 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         """
         assert 'checker runtime' in validate(policy, running_version='3.12')[0]
 
@@ -365,11 +351,9 @@ class TestPythonPolicy:
         Parameters
         ----------
         policy : PythonPolicyConfig
-            Consistent temporary Python-policy configuration before the
-            scenario changes it.
+            Consistent policy inputs, isolated from the real checkout.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         version : str
             Candidate interpreter or workflow version selected for policy
             validation.
