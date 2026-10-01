@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.3.4 - 2026-10-01](#034---2026-10-01)
 - [0.3.3 - 2026-09-30](#033---2026-09-30)
 - [0.3.2 - 2026-09-30](#032---2026-09-30)
 - [0.3.1 - 2026-09-30](#031---2026-09-30)
@@ -36,6 +37,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.3.4] - 2026-10-01
+
+- Update the Commitizen pre-commit hook from `v4.18.1` to `v4.19.0` and Ruff hooks from `v0.16.8` to
+  `v0.16.9` through [PR #3], preserving existing hook stages, arguments, and local checks.
+- No runtime dependency, CLI, consumer-configuration, or publication behavior changes.
 
 ## [0.3.3] - 2026-09-30
 
@@ -244,5 +251,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.3.1]: docs/releases/v0.3.1.md
 [0.3.2]: docs/releases/v0.3.2.md
 [0.3.3]: docs/releases/v0.3.3.md
+[0.3.4]: docs/releases/v0.3.4.md
+[PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
