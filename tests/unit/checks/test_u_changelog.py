@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.checks.test_changelog` module.
+:mod:`tests.unit.checks.test_u_changelog` module.
 
 Test release headings, calendar dates, and missing changelog errors.
 """

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_project` module.
+:mod:`tests.unit.configs.test_u_project` module.
 
 Test project configuration discovery and shared loader contracts.
 """

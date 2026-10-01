@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.checks.test_dependencies` module.
+:mod:`tests.unit.checks.test_u_dependencies` module.
 
 Test dependency lower bounds, exact matching, and policy failures.
 """

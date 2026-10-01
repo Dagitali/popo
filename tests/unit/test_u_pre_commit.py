@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_pre_commit` module.
+:mod:`tests.unit.test_u_pre_commit` module.
 
 Protect local hook interpreter selection and filename handling.
 """

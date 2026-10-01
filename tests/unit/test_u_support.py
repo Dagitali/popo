@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_support` module.
+:mod:`tests.unit.test_u_support` module.
 
 Cover missing automation directories and uninstalled-package version fallback.
 """

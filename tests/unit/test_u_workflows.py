@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_workflows` module.
+:mod:`tests.unit.test_u_workflows` module.
 
 Protect configurable routing and publication boundaries.
 """

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.checks.test_automation` module.
+:mod:`tests.unit.checks.test_u_automation` module.
 
 Exercise portable, read-only automation contracts.
 """

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.test_makefile` module.
+:mod:`tests.unit.test_u_makefile` module.
 
 Test Make target discovery, command overrides, and preserved validation
 boundaries.
@@ -468,9 +468,9 @@ class TestMakefile:
         """
         result = make('-n', 'test-distribution', 'test-installation', 'TEST_ARGS=-x')
         assert result.returncode == 0, result.stderr
-        assert 'pytest -x "tests/meta/test_package_artifacts.py"' in result.stdout
+        assert 'pytest -x "tests/meta/test_m_package_artifacts.py"' in result.stdout
         assert (
-            'pytest -x "tests/e2e/test_distribution_installation.py"' in result.stdout
+            'pytest -x "tests/e2e/test_e_distribution_installation.py"' in result.stdout
         )
         assert '--artifact-dir' not in result.stdout
         assert ' -m build' not in result.stdout

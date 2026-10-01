@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.checks.test_actions` module.
+:mod:`tests.unit.checks.test_u_actions` module.
 
 Test immutable action references and nested automation discovery.
 """
