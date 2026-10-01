@@ -43,7 +43,8 @@ def _actions(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments with root (Path) and automation_directory (Path or None).
+        Parsed arguments with ``root`` (:class:`pathlib.Path`) and
+        ``automation_directory`` (:class:`pathlib.Path` or ``None``).
 
     Returns
     -------
@@ -53,15 +54,16 @@ def _actions(
     Raises
     ------
     OSError
-        If a discovered automation file cannot be read or a path cannot resolve.
+        If a discovered automation file cannot be read or a path cannot
+        resolve.
     UnicodeError
         If automation text cannot be decoded as UTF-8.
 
     Notes
     -----
-    Default to `.github` under the resolved root. An explicit relative
-    `automation_directory` is resolved against the process working directory,
-    not against `args.root`.
+    Default to ``.github`` under the resolved root. An explicit relative
+    ``automation_directory`` is resolved against the process working directory,
+    not against ``args.root``.
     """
     directory = args.automation_directory
     if directory is None:
@@ -73,7 +75,7 @@ def _add_root(
     parser: argparse.ArgumentParser,
 ) -> None:
     """
-    Add `--root`, capturing the working directory as its default immediately.
+    Add ``--root``, capturing the working directory as its default immediately.
 
     Parameters
     ----------
@@ -102,7 +104,8 @@ def _all(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments containing root (Path), the consumer repository.
+        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
+        consumer repository.
 
     Returns
     -------
@@ -121,11 +124,11 @@ def _all(
     Notes
     -----
     Load consumer configuration, then run those checks in order without
-    stopping for returned failures. Include automation contracts only when their
-    configuration table is present. Exceptions still propagate. The release
-    changelog check is excluded because it requires an explicit release
-    version. Return the collected diagnostics and success message without
-    printing.
+    stopping for returned failures. Include automation contracts only when
+    their configuration table is present. Exceptions still propagate. The
+    release changelog check is excluded because it requires an explicit
+    release version. Return the collected diagnostics and success message
+    without printing.
     """
     root = args.root.resolve()
     config = load_config(root)
@@ -148,7 +151,7 @@ def _automation(args: argparse.Namespace) -> tuple[list[str], str]:
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed root and pins_only options.
+        Parsed ``root`` and ``pins_only`` options.
 
     Returns
     -------
@@ -158,7 +161,7 @@ def _automation(args: argparse.Namespace) -> tuple[list[str], str]:
     Raises
     ------
     ConfigurationError
-        Invalid consumer configuration, reported by main.
+        Invalid consumer configuration, reported by :func:`main`.
     """
     config = load_automation_config(args.root)
     return automation.validate(
@@ -176,13 +179,15 @@ def _changelog(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed root (Path), release (str), and changelog (Path or None).
+        Parsed ``root`` (:class:`pathlib.Path`), ``release`` (:class:`str`),
+        and ``changelog`` (:class:`pathlib.Path` or ``None``).
 
     Returns
     -------
     tuple[list[str], str]
         Changelog diagnostics and the success-only report message. Invalid
-        release syntax is returned as a diagnostic, not raised as ValueError.
+        release syntax is returned as a diagnostic, not raised as
+        :exc:`ValueError`.
 
     Raises
     ------
@@ -215,7 +220,8 @@ def _dependencies(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments containing root (Path), the consumer repository.
+        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
+        consumer repository.
 
     Returns
     -------
@@ -244,7 +250,8 @@ def _docs(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments containing root (Path), the consumer repository.
+        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
+        consumer repository.
 
     Returns
     -------
@@ -270,7 +277,8 @@ def _python(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments containing root (Path), the consumer repository.
+        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
+        consumer repository.
 
     Returns
     -------
@@ -370,8 +378,8 @@ def main(argv: list[str] | None = None) -> int:
     Parameters
     ----------
     argv : list[str] or None, optional
-        Arguments excluding the executable name. When omitted, argparse reads
-        the process arguments; an empty list is not treated as omission.
+        Arguments excluding the executable name. When omitted, :mod:`argparse`
+        reads the process arguments; an empty list is not treated as omission.
 
     Returns
     -------
@@ -383,13 +391,15 @@ def main(argv: list[str] | None = None) -> int:
     ------
     SystemExit
         With status zero for help or version output, or status two for invalid
-        arguments. These parser exits are distinct from returned check statuses.
+        arguments. These parser exits are distinct from returned check
+        statuses.
 
     Notes
     -----
-    ConfigurationError is converted to a reported failure. Other exceptions,
-    including file-read and decoding errors, propagate. Check reports go to
-    standard output; argparse handles its own help and error streams.
+    :exc:`~popo.config.ConfigurationError` is converted to a reported failure.
+    Other exceptions, including file-read and decoding errors, propagate. Check
+    reports go to standard output; :mod:`argparse` handles its own help and
+    error streams.
     """
 
     args = create_parser().parse_args(argv)

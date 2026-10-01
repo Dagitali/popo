@@ -58,8 +58,9 @@ class Installation:
         *arguments : str
             CLI arguments appended to the chosen entry point.
         module : bool, optional
-            Use the installation's Python interpreter with -m popo when True;
-            otherwise invoke its console script. Defaults to False.
+            Use the installation's Python interpreter with -m popo when
+            ``True``; otherwise invoke its console script. Defaults to
+            ``False``.
 
         Returns
         -------
@@ -76,9 +77,10 @@ class Installation:
 
         Notes
         -----
-        Use the installation's working directory and environment. Nonzero
-        statuses are returned for scenario assertions instead of raising
-        CalledProcessError.
+        Use :attr:`Installation.directory` and
+        :attr:`Installation.environment`. Nonzero statuses are returned for
+        scenario assertions instead of raising
+        :exc:`~subprocess.CalledProcessError`.
         """
         prefix = [str(self.python), '-m', 'popo'] if module else [str(self.command)]
         return subprocess.run(
@@ -119,7 +121,8 @@ def installation_fixture(
     Returns
     -------
     Installation
-        Interpreter, console script, working directory, and sanitized environment
+        Interpreter, console script, working directory, and sanitized
+        environment
         after virtual-environment creation, pip installation, and pip check.
 
     Raises
@@ -135,9 +138,11 @@ def installation_fixture(
     Notes
     -----
     Remove PYTHONPATH and PYTHONHOME from the inherited environment to avoid
-    source-import overrides. Installation may download runtime or build
-    requirements. All installed-CLI scenarios in the module share this fixture
-    for each artifact; their consumer repositories remain independent.
+    source-import overrides. :mod:`pip` may download runtime or build
+    requirements. All
+    installed-CLI scenarios in the module share this fixture for each artifact;
+    their
+    consumer repositories remain independent.
     """
     directory = tmp_path_factory.mktemp('installed')
     environment = {
@@ -196,18 +201,21 @@ class TestInstalledCLI:
         module: bool,
     ) -> None:
         """
-        Verify installed automation checking reports pins without rewriting inputs.
+        Verify installed automation checking reports pins without rewriting
+        inputs.
 
         Parameters
         ----------
         installation : Installation
-            Isolated installed artifact with CLI paths and a sanitized subprocess
+            Isolated installed artifact with CLI paths and a sanitized
+            subprocess
             environment.
         tmp_path : pathlib.Path
             Per-test temporary directory for files and isolated consumer
             repositories.
         module : bool
-            Whether to invoke python -m popo rather than the console-script entry
+            Whether to invoke python -m popo rather than the console-script
+            entry
             point.
         """
         (tmp_path / 'pyproject.toml').write_text(
@@ -252,12 +260,14 @@ class TestInstalledCLI:
         Parameters
         ----------
         installation : Installation
-            Isolated installed artifact with CLI paths and a sanitized subprocess
+            Isolated installed artifact with CLI paths and a sanitized
+            subprocess
             environment.
         argument : str
             Information option to exercise, either --help or --version.
         module : bool
-            Whether to invoke python -m popo rather than the console-script entry
+            Whether to invoke python -m popo rather than the console-script
+            entry
             point.
         """
         result = installation.run(argument, module=module)
@@ -285,12 +295,14 @@ class TestInstalledCLI:
         message: str,
     ) -> None:
         """
-        Verify installed Markdown checks report status and preserve consumer files.
+        Verify installed Markdown checks report status and preserve consumer
+        files.
 
         Parameters
         ----------
         installation : Installation
-            Isolated installed artifact with CLI paths and a sanitized subprocess
+            Isolated installed artifact with CLI paths and a sanitized
+            subprocess
             environment.
         tmp_path : pathlib.Path
             Per-test temporary directory for files and isolated consumer

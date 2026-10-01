@@ -51,8 +51,8 @@ class _Loader(yaml.SafeLoader):
             YAML mapping node whose key/value pairs are constructed in source
             order.
         deep : bool, optional
-            Forwarded to the inherited object constructor for keys and values.
-            Defaults to False.
+            Forwarded to :meth:`yaml.SafeLoader.construct_object` for keys and
+            values. Defaults to ``False``.
 
         Returns
         -------
@@ -136,7 +136,7 @@ def _call(
     supplied-value type checks; expressions are not evaluated. Action inputs
     receive name/required checks without workflow type enforcement. A required
     input with a declared default may be omitted. Errors propagate here and
-    become per-file diagnostics in validate.
+    become per-file diagnostics in :func:`~popo.checks.automation.validate`.
     """
     declared = _mapping(target.get('inputs', {}), 'inputs')
     supplied = _mapping(node.get('with', {}), 'with')
@@ -188,9 +188,11 @@ def _composite(
     Notes
     -----
     Non-composite runtimes return after validating name, description, and the
-    runs mapping. This helper does not validate the complete action schema or
-    execute steps. It does not mutate data; validate converts its errors into
-    per-file diagnostics.
+    runs
+    mapping. This helper does not validate the complete action schema or
+    execute steps.
+    It does not mutate ``data``; :func:`~popo.checks.automation.validate`
+    converts its errors into per-file diagnostics.
     """
     for key in ('name', 'description'):
         if not isinstance(data.get(key), str) or not data[key]:
@@ -314,8 +316,11 @@ def _metadata(
     Notes
     -----
     Missing optional arrays default to empty lists. Compile patterns without
-    matching files, evaluating automation, or changing either file. These
-    errors propagate here and are converted into diagnostics by validate.
+    matching
+    files, evaluating automation, or changing either file. These errors
+    propagate here
+    and are converted into diagnostics by
+    :func:`~popo.checks.automation.validate`.
     """
     metadata = _inside(root, path.with_suffix('.properties.json'))
     doc = _mapping(json.loads(metadata.read_text()), 'template metadata')
@@ -403,9 +408,12 @@ def _read(
 
     Notes
     -----
-    Empty YAML resolves to None and fails the mapping requirement. Read without
-    modifying the file or executing referenced automation. validate converts
-    these errors into per-file diagnostics.
+    Empty YAML resolves to ``None`` and fails the mapping requirement. Read
+    without
+    modifying the file or executing referenced automation.
+    :func:`~popo.checks.automation.validate` converts these errors into
+    per-file
+    diagnostics.
     """
     value: object = yaml.load(path.read_text(encoding='utf-8'), Loader=_Loader)
     return _mapping(value, 'document')
@@ -429,9 +437,11 @@ def _target(
     Returns
     -------
     pathlib.Path or None
-        Resolved in-root YAML file, or None for a reference that is neither a
-        ./ path nor a configured alias. Directory targets select exactly one
-        action.yml or action.yaml file.
+        Resolved in-root YAML file, or ``None`` for a reference that is neither
+        a ./
+        path nor a configured alias. Directory targets select exactly one
+        action.yml or
+        action.yaml file.
 
     Raises
     ------
@@ -445,9 +455,13 @@ def _target(
     Notes
     -----
     Resolve aliases in configuration order against the current checkout.
-    Revision text is parsed but not fetched or verified, and pin/placeholder
-    policy is checked separately. Do not parse the target's contents or execute
-    it. validate converts these errors into per-file diagnostics.
+    Revision text
+    is parsed but not fetched or verified, and pin/placeholder policy is
+    checked
+    separately. Do not parse the target's contents or execute it.
+    :func:`~popo.checks.automation.validate` converts these errors into
+    per-file
+    diagnostics.
     """
     relative: str | None = None
     if reference.startswith('./'):

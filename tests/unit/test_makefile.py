@@ -1,7 +1,8 @@
 """
 :mod:`tests.unit.test_makefile` module.
 
-Test Make target discovery, command overrides, and preserved validation boundaries.
+Test Make target discovery, command overrides, and preserved validation
+boundaries.
 """
 
 import os

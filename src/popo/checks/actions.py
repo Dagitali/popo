@@ -27,7 +27,8 @@ USES_PATTERN = re.compile(
 def is_pinned(
     reference: str,
 ) -> bool:
-    """Return whether a reference satisfies the shared pin policy.
+    """
+    Return whether a reference satisfies the shared pin policy.
 
     Parameters
     ----------
@@ -37,8 +38,10 @@ def is_pinned(
     Returns
     -------
     bool
-        True for a full hexadecimal commit or an exempt local/container reference.
-        This syntax check does not verify remote existence or container immutability.
+        ``True`` for a full hexadecimal commit or an exempt local/container
+        reference.
+        This syntax check does not verify remote existence or container
+        immutability.
     """
     if reference.startswith(('./', 'docker://')):
         return True

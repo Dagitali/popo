@@ -22,7 +22,8 @@ class ProjectConfig:
     Attributes
     ----------
     root : pathlib.Path
-        Consumer repository root, resolved to an absolute path by load_config.
+        Consumer repository root, resolved to an absolute path by
+        :func:`~popo.config.load_config`.
     dependencies : DependencyConfig
         Dependency inputs and comparison mode.
     python_policy : PythonPolicyConfig
@@ -46,13 +47,14 @@ class ProjectConfig:
 
 def load_config(root: Path) -> ProjectConfig:
     """
-    Load configuration for *root*, applying portable layout defaults.
+    Load configuration for ``root``, applying portable layout defaults.
 
     Parameters
     ----------
     root : pathlib.Path
         Consumer repository containing optional ``[tool.popo]`` configuration
-        in ``pyproject.toml``. Relative configured paths are based on this root.
+        in ``pyproject.toml``. Relative configured paths are based on this
+        root.
 
     Returns
     -------
@@ -64,7 +66,8 @@ def load_config(root: Path) -> ProjectConfig:
     ------
     ConfigurationError
         If root metadata contains invalid TOML, a required table or string has
-        an invalid type or value, or the dependency comparison mode is unsupported.
+        an invalid type or value, or the dependency comparison mode is
+        unsupported.
     OSError
         If an existing metadata file cannot be read.
     UnicodeError
@@ -73,14 +76,15 @@ def load_config(root: Path) -> ProjectConfig:
     Notes
     -----
     Unknown configuration keys are ignored. Individual validators check the
-    referenced files; successful loading alone does not establish policy validity.
+    referenced files; successful loading alone does not establish policy
+    validity.
 
     Missing root metadata behaves as empty configuration. Dependency-layout
     detection supplies defaults before explicit overrides are applied. The
     default requires-python text comes from the selected dependency metadata,
     falling back to ``>=3.13`` when absent or not a string. Invalid TOML in
     separately selected dependency metadata also falls back at this stage;
-    invalid root TOML raises ConfigurationError instead.
+    invalid root TOML raises :exc:`~popo.config.ConfigurationError` instead.
 
     Preferred Python defaults to ``3.13``; mypy defaults to that preference
     and Ruff to ``py`` plus its digits. Version-file and workflow paths default

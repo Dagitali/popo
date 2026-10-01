@@ -73,7 +73,7 @@ def _read_toml(
     Returns
     -------
     tuple[dict[str, object] or None, list[str]]
-        Parsed document and an empty failure list, or None and a diagnostic
+        Parsed document and an empty failure list, or ``None`` and a diagnostic
         when the path is not a file or TOML parsing fails.
 
     Raises
@@ -117,7 +117,8 @@ def _resolve_versions(
     -----
     Searches select the first matching declaration in the text, without
     modeling YAML scope, job boundaries, matrix include/exclude rules, or
-    general expression evaluation. Resolved values are not recursively expanded.
+    general expression evaluation. Resolved values are not recursively
+    expanded.
     """
     if value.startswith('[') and value.endswith(']'):
         return tuple(_normalize_scalar(item) for item in value[1:-1].split(','))
@@ -175,7 +176,8 @@ def _table(
     -------
     dict[str, object]
         Original dictionary without entry validation, or a new empty mapping.
-        Non-dictionary values do not raise ConfigurationError here.
+        Non-dictionary values do not raise
+        :exc:`~popo.config.ConfigurationError` here.
     """
     return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
@@ -209,7 +211,7 @@ def validate(
     Raises
     ------
     packaging.version.InvalidVersion
-        If an explicitly supplied, nonempty running_version is not a valid
+        If an explicitly supplied, nonempty ``running_version`` is not a valid
         version. Invalid workflow versions instead produce diagnostics.
     OSError
         If an existing input cannot be read.
@@ -221,11 +223,12 @@ def validate(
     Consumer policy is supplied by the configuration, not inferred from Popo's
     own supported-version range. This check does not install interpreters.
     Metadata specifier text, mypy and Ruff settings, and the stripped version
-    file are compared exactly with configured expectations. Runtime and resolved
-    workflow versions are tested for membership in the configured specifier set.
-    Workflow resolution is text-based and supports literals, inline lists,
-    environment references, and inline or contiguous block-list matrices; it
-    does not evaluate arbitrary expressions or model job-local YAML scope.
+    file are compared exactly with configured expectations. Runtime and
+    resolved workflow versions are tested for membership in the configured
+    specifier set. Workflow resolution is text-based and supports literals,
+    inline lists, environment references, and inline or contiguous block-list
+    matrices; it does not evaluate arbitrary expressions or model job-local
+    YAML scope.
     """
 
     try:

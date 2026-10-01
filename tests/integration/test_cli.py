@@ -142,7 +142,8 @@ class TestCommandLine:
         message: str,
     ) -> None:
         """
-        Verify CLI dispatch returns the expected status and standard-output diagnostic.
+        Verify CLI dispatch returns the expected status and standard-output
+        diagnostic.
 
         Parameters
         ----------
@@ -156,11 +157,14 @@ class TestCommandLine:
             Fixture restoring temporary environment, attribute, and working-
             directory overrides.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI calls.
+            Fixture capturing standard output and error from in-process CLI
+            calls.
         arguments : list[str]
-            CLI argument sequence for the parameterized dispatch or parser scenario.
+            CLI argument sequence for the parameterized dispatch or parser
+            scenario.
         path : str
-            Repository-relative path whose contents are prepared for the scenario.
+            Repository-relative path whose contents are prepared for the
+            scenario.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -186,7 +190,8 @@ class TestCommandLine:
         constraint: str,
     ) -> None:
         """
-        Verify CLI dependency checks accept minimum pins with optional comments.
+        Verify CLI dependency checks accept minimum pins with optional
+        comments.
 
         Parameters
         ----------
@@ -197,9 +202,11 @@ class TestCommandLine:
             Per-test temporary directory for files and isolated consumer
             repositories.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI calls.
+            Fixture capturing standard output and error from in-process CLI
+            calls.
         constraint : str
-            Minimum dependency pin, optionally followed by an inline annotation.
+            Minimum dependency pin, optionally followed by an inline
+            annotation.
         """
         write_file('pyproject.toml', '[project]\ndependencies = ["demo>=1,<2"]')
         write_file('requirements/lowest.txt', constraint)
@@ -212,7 +219,8 @@ class TestCommandLine:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """
-        Verify module execution reports the installed version and exits successfully.
+        Verify module execution reports the installed version and exits
+        successfully.
 
         Parameters
         ----------
@@ -220,7 +228,8 @@ class TestCommandLine:
             Fixture restoring temporary environment, attribute, and working-
             directory overrides.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI calls.
+            Fixture capturing standard output and error from in-process CLI
+            calls.
         """
         monkeypatch.setattr('sys.argv', ['popo', '--version'])
         with pytest.raises(SystemExit) as error:
@@ -245,19 +254,22 @@ class TestCommandLine:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """
-        Verify informational and invalid arguments use their documented exit channels.
+        Verify informational and invalid arguments use their documented exit
+        channels.
 
         Parameters
         ----------
         arguments : list[str]
-            CLI argument sequence for the parameterized dispatch or parser scenario.
+            CLI argument sequence for the parameterized dispatch or parser
+            scenario.
         status : int
             Expected process or CLI exit status.
         message : str
             Expected diagnostic substring; an empty string selects a successful
             case.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI calls.
+            Fixture capturing standard output and error from in-process CLI
+            calls.
         """
         with pytest.raises(SystemExit) as error:
             main(arguments)

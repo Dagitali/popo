@@ -43,8 +43,8 @@ def workflow_fixture(
     Returns
     -------
     WorkflowLoader
-        Callable reading a named workflow with yaml.BaseLoader, preserving
-        scalar values such as on and false as strings.
+        Callable reading a named workflow with :class:`yaml.BaseLoader`,
+        preserving scalar values such as on and false as strings.
 
     Notes
     -----
@@ -60,12 +60,14 @@ def workflow_fixture(
         Parameters
         ----------
         name : str
-            Workflow filename joined to the fixture's .github/workflows directory.
+            Workflow filename joined to the fixture's .github/workflows
+            directory.
 
         Returns
         -------
         dict[str, typing.Any]
-            Parsed workflow document, narrowed to a dictionary for test assertions.
+            Parsed workflow document, narrowed to a dictionary for test
+            assertions.
 
         Raises
         ------
@@ -76,9 +78,10 @@ def workflow_fixture(
 
         Notes
         -----
-        BaseLoader preserves all scalar values as strings. The cast does not validate
-        the parsed document's shape. Supply trusted fixture filenames; path
-        containment is not enforced by this helper.
+        :class:`yaml.BaseLoader` preserves all scalar values as strings. The
+        :func:`typing.cast` does not validate the parsed document's shape.
+        Supply trusted fixture filenames; path containment is not enforced by
+        this helper.
         """
         path = repository_root / '.github' / 'workflows' / name
         return cast(
@@ -326,11 +329,11 @@ class TestWorkflows:
 
             Notes
             -----
-            Commands operate in the enclosing test's tmp_path. Global/system
-            Git configuration and inherited GIT_ variables are excluded;
-            identity, signing, and hook overrides are supplied explicitly.
-            Repository mutations create local test fixtures rather than
-            changing the checkout.
+            Commands operate in the enclosing test's ``tmp_path``.
+            Global/system Git configuration and inherited GIT_ variables are
+            excluded; identity, signing, and hook overrides are supplied
+            explicitly. Repository mutations create local test fixtures rather
+            than changing the checkout.
             """
             return subprocess.run(
                 [

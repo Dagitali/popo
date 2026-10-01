@@ -157,11 +157,12 @@ def _markdown_paths(
 
     Notes
     -----
-    Ignore a path when any root-relative component exactly matches a name
-    in IGNORED_PARTS; substring matches such as docs/building.md remain.
-    Filtering applies to discovered sources, not explicitly linked targets.
-    Glob matching follows the host filesystem's case rules. Discovery does
-    not enforce the resolved-target boundary used during link validation.
+    Ignore a path when any root-relative component exactly matches a name in
+    :data:`~popo.checks.docs.IGNORED_PARTS`; substring matches such as
+    docs/building.md remain. Filtering applies to discovered sources, not
+    explicitly linked targets. Glob matching follows the host filesystem's case
+    rules. Discovery does not enforce the resolved-target boundary used during
+    link validation.
     """
     return sorted(
         path
@@ -190,8 +191,9 @@ def _slugify(
     -----
     Strip HTML tags and surrounding whitespace, retain word characters,
     hyphens, and spaces, then replace surviving space runs with hyphens.
-    Underscores are retained. Duplicate suffixes are added by _anchors, not
-    here; full Markdown rendering and entity decoding are not performed.
+    Underscores are retained. Duplicate suffixes are added by
+    :func:`~popo.checks.docs._anchors`, not here; full Markdown rendering and
+    entity decoding are not performed.
     """
     heading = re.sub(r'<[^>]+>', '', heading).strip().lower()
     heading = re.sub(r'[^\w\- ]', '', heading)

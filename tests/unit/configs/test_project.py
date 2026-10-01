@@ -190,7 +190,8 @@ class TestConfiguration:
         message: str,
     ) -> None:
         """
-        Verify project and automation loaders reject malformed root settings alike.
+        Verify project and automation loaders reject malformed root settings
+        alike.
 
         Parameters
         ----------
@@ -278,7 +279,8 @@ class TestConfiguration:
         message: str,
     ) -> None:
         """
-        Verify project loading reports the expected invalid-configuration error.
+        Verify project loading reports the expected invalid-configuration
+        error.
 
         Parameters
         ----------

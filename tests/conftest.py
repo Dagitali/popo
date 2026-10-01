@@ -74,7 +74,7 @@ def write_file_fixture(
         Parameters
         ----------
         relative_path : str
-            Path joined to the enclosing test's tmp_path. The caller is
+            Path joined to the enclosing test's ``tmp_path``. The caller is
             responsible for supplying a trusted path; containment is not
             enforced.
         content : str

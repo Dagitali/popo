@@ -444,7 +444,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
-        Verify non-Markdown fragment links still require the target file to exist.
+        Verify non-Markdown fragment links still require the target file to
+        exist.
 
         Parameters
         ----------
