@@ -38,6 +38,16 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Limit Python docstring lines to 79 characters, including indentation, and record the convention in
+  agent guidance without changing docstring content or executable behavior.
+- Mark Python abstraction references in docstring prose with Sphinx roles and use inline literals
+  for parameter names, preserving NumPy sections and executable behavior.
+- Complete remaining test-case, fixture, subprocess-helper, and class docstrings with NumPy-style
+  contracts; document setup isolation, timeouts, propagated errors, and scenario inputs without
+  changing executable behavior.
+- Expand automation loader and helper docstrings with NumPy-style input, result, exception, and
+  validation-boundary contracts without changing checker behavior.
+
 ## [0.3.4] - 2026-10-01
 
 - Update the Commitizen pre-commit hook from `v4.18.1` to `v4.19.0` and Ruff hooks from `v0.16.8` to
