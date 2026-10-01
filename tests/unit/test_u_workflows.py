@@ -119,8 +119,7 @@ class TestWorkflows:
         Parameters
         ----------
         workflow : WorkflowLoader
-            Loader reading checkout workflow YAML with scalar values preserved
-            as strings.
+            Loader preserving checkout workflow scalars as strings.
         """
         document = workflow('deployment-test.yml')
         assert set(document['on']) == {'workflow_dispatch'}
@@ -196,8 +195,7 @@ class TestWorkflows:
         Parameters
         ----------
         workflow : WorkflowLoader
-            Loader reading checkout workflow YAML with scalar values preserved
-            as strings.
+            Loader preserving checkout workflow scalars as strings.
         rules : object
             Routing-policy object serialized into the workflow script
             environment.
@@ -240,8 +238,7 @@ class TestWorkflows:
         Parameters
         ----------
         workflow : WorkflowLoader
-            Loader reading checkout workflow YAML with scalar values preserved
-            as strings.
+            Loader preserving checkout workflow scalars as strings.
         """
         document = workflow('cd.yml')
         assert (
@@ -299,9 +296,9 @@ class TestWorkflows:
         Parameters
         ----------
         workflow : WorkflowLoader
-            Loader for the checkout's workflow declarations.
+            Loader preserving checkout workflow scalars as strings.
         tmp_path : pathlib.Path
-            Isolated checkout containing synthetic release documents.
+            Temporary directory for isolated test inputs.
         case : str
             Record or changelog defect selected for the scenario.
         event : str
@@ -361,11 +358,9 @@ class TestWorkflows:
         Parameters
         ----------
         workflow : WorkflowLoader
-            Loader reading checkout workflow YAML with scalar values preserved
-            as strings.
+            Loader preserving checkout workflow scalars as strings.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         case : str
             Tag fixture variant: valid, lightweight, missing, invalid, or off-
             branch.
