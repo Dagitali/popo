@@ -47,11 +47,9 @@ class TestActions:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         reference : str
             Automation uses value selected for the pin or target-resolution
             scenario.
@@ -71,11 +69,9 @@ class TestActions:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         action = write_file(
             'actions/setup/action.yaml',
@@ -112,11 +108,9 @@ class TestActions:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         reference : str
             Automation uses value selected for the pin or target-resolution
             scenario.
@@ -138,11 +132,9 @@ class TestActions:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         workflow = write_file(
             '.github/workflows/ci.yml',
@@ -164,8 +156,7 @@ class TestActions:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         assert validate(tmp_path / 'missing') == [
             f'automation directory does not exist: {tmp_path / 'missing'}',
