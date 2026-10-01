@@ -1,5 +1,5 @@
 """
-:mod:`tests.meta.test_package_artifacts` module.
+:mod:`tests.meta.test_m_package_artifacts` module.
 
 Verify public distribution content and entry-point contracts.
 """
