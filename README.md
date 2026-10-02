@@ -87,6 +87,9 @@ Popo's PR workflow checks dated changelog entries against versioned release docu
 candidate versions on release/hotfix branches. Hosted required-check configuration is needed to
 block merges; see [workflow map] for the validation boundary.
 
+Test modules use scope prefixes (`test_u_`, `test_i_`, `test_e_`, and `test_m_`) to reduce
+cross-layer namespace collisions; see [test layout] for discovery and selection.
+
 ## Architecture
 
 Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
@@ -248,7 +251,8 @@ when no virtual environment is active; activation is not required for `make test
 An explicit `PYTHON` override takes precedence.
 
 Unit tests group checker coverage under `tests/unit/checks/` and configuration coverage under
-`tests/unit/configs/`; see the [test layout] for selection and shared-fixture conventions.
+`tests/unit/configs/`. Independent parameterized scenarios and isolated subprocess fixtures keep
+failures reproducible; see the [test layout] for selection and shared-fixture conventions.
 
 When optional hooks are installed, the pre-push stage runs `make check-pre-push` (the full local
 quality gate). It does not install dependencies, build distributions, or publish artifacts.

@@ -1,5 +1,5 @@
 """
-:mod:`tests.integration.test_cli` module.
+:mod:`tests.integration.test_i_cli` module.
 
 Test command-line success and failure reporting.
 """
@@ -40,14 +40,11 @@ class TestCommandLine:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI
-            calls.
+            Capture in-process CLI output and errors.
         """
         write_file(
             'pyproject.toml',
@@ -148,17 +145,13 @@ class TestCommandLine:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         monkeypatch : pytest.MonkeyPatch
-            Fixture restoring temporary environment, attribute, and working-
-            directory overrides.
+            Restore environment, attributes, and working directory.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI
-            calls.
+            Capture in-process CLI output and errors.
         arguments : list[str]
             CLI argument sequence for the parameterized dispatch or parser
             scenario.
@@ -196,14 +189,11 @@ class TestCommandLine:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI
-            calls.
+            Capture in-process CLI output and errors.
         constraint : str
             Minimum dependency pin, optionally followed by an inline
             annotation.
@@ -225,16 +215,13 @@ class TestCommandLine:
         Parameters
         ----------
         monkeypatch : pytest.MonkeyPatch
-            Fixture restoring temporary environment, attribute, and working-
-            directory overrides.
+            Restore environment, attributes, and working directory.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI
-            calls.
+            Capture in-process CLI output and errors.
         """
         monkeypatch.setattr('sys.argv', ['popo', '--version'])
-        with pytest.raises(SystemExit) as error:
+        with pytest.raises(SystemExit, check=lambda error: error.code == 0):
             runpy.run_module('popo', run_name='__main__')
-        assert error.value.code == 0
         assert __version__ in capsys.readouterr().out
 
     @pytest.mark.parametrize(
@@ -268,12 +255,10 @@ class TestCommandLine:
             Expected diagnostic substring; an empty string selects a successful
             case.
         capsys : pytest.CaptureFixture[str]
-            Fixture capturing standard output and error from in-process CLI
-            calls.
+            Capture in-process CLI output and errors.
         """
-        with pytest.raises(SystemExit) as error:
+        with pytest.raises(SystemExit, check=lambda error: error.code == status):
             main(arguments)
-        assert error.value.code == status
         captured = capsys.readouterr()
         assert message in (captured.out if status == 0 else captured.err)
 

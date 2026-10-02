@@ -1,9 +1,10 @@
 """
-:mod:`tests.unit.checks.test_docs` module.
+:mod:`tests.unit.checks.test_u_docs` module.
 
 Test local Markdown targets, heading anchors, and ignored build output.
 """
 
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
 
@@ -38,11 +39,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         readme = write_file(
             'README.md',
@@ -80,11 +79,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         link : str
             Markdown link text or destination selected for the scenario.
         message : str
@@ -114,11 +111,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         target : str
             Destination or expected configuration value selected for the
             scenario.
@@ -141,11 +136,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         for directory in (
             '.github',
@@ -177,11 +170,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         link : str
             Markdown link text or destination selected for the scenario.
         """
@@ -205,11 +196,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         name : str
             Maintained Markdown path chosen to resemble an excluded directory
             name.
@@ -236,11 +225,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         anchor : str
             Explicit HTML anchor declaration tested against matching local
             links.
@@ -259,11 +246,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         readme = write_file(
             'README.md',
@@ -282,11 +267,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         readme = write_file(
             'README.md',
@@ -311,11 +294,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         write_file('README.md', '```markdown\n[example]: missing.md\n```\n')
         assert validate(tmp_path) == []
@@ -331,11 +312,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         write_file('node_modules/demo/README.md', '# Package\n')
         source = write_file(
@@ -376,11 +355,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         link : str
             Markdown link text or destination selected for the scenario.
         target : str
@@ -404,8 +381,7 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         root = tmp_path / 'missing'
         assert validate(root) == [f'repository root does not exist: {root}']
@@ -426,11 +402,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         filename : str
             Non-Markdown target filename populated with binary bytes.
         """
@@ -450,11 +424,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         readme = write_file('README.md', '[Manual](missing.pdf#page=2)\n')
         assert validate(tmp_path) == [
@@ -477,11 +449,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         destination : str
             Reference-definition destination, optionally including brackets or
             a title.
@@ -505,11 +475,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         write_file('README.md', '[guide]: <my guide.md#intro> "Title"\n')
         write_file('my guide.md', '# Intro\n')
@@ -536,11 +504,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         target : str
             Destination or expected configuration value selected for the
             scenario.
@@ -562,6 +528,7 @@ class TestMarkdownLinks:
         self,
         write_file: FileWriter,
         target: str,
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
         Resolve links and directory README targets before anchor inspection.
@@ -569,8 +536,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        symlink : collections.abc.Callable
+            Platform-aware creator for temporary symbolic links.
         target : str
             Destination or expected configuration value selected for the
             scenario.
@@ -579,12 +547,9 @@ class TestMarkdownLinks:
         source = write_file('repo/README.md', f'[Outside]({target})\n')
         root = source.parent
         (root / 'docs').mkdir()
-        try:
-            (root / 'external').symlink_to(outside)
-            (root / 'directory').symlink_to(outside.parent, target_is_directory=True)
-            (root / 'docs/README.md').symlink_to(outside)
-        except OSError as error:
-            pytest.skip(f'Symlinks are unavailable: {error}')
+        symlink(root / 'external', outside)
+        symlink(root / 'directory', outside.parent)
+        symlink(root / 'docs/README.md', outside)
         with patch.object(docs, '_anchors') as anchors:
             assert validate(root) == [
                 f'{source}:1: link escapes repository: {target}',
@@ -603,14 +568,11 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         monkeypatch : pytest.MonkeyPatch
-            Fixture restoring temporary environment, attribute, and working-
-            directory overrides.
+            Restore environment, attributes, and working directory.
         """
         write_file('repo/README.md', '# Home\n')
         write_file('repo/docs/guide.md', '[Home](../README.md#home)\n')
@@ -641,11 +603,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         block : str
             Fenced code example inserted before an active broken link.
         """
@@ -668,11 +628,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         fence : str
             Opening code fence deliberately left without a matching close.
         """
@@ -691,11 +649,9 @@ class TestMarkdownLinks:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         readme = write_file('README.md', '[Guide](guide.MD#missing)\n')
         write_file('guide.MD', '# Intro\n')

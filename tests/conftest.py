@@ -67,7 +67,10 @@ def write_file_fixture(
     traversal.
     """
 
-    def write(relative_path: str, content: str) -> Path:
+    def write(
+        relative_path: str,
+        content: str,
+    ) -> Path:
         """
         Create a UTF-8 fixture file and return its path.
 

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.checks.test_dependencies` module.
+:mod:`tests.unit.checks.test_u_dependencies` module.
 
 Test dependency lower bounds, exact matching, and policy failures.
 """
@@ -36,8 +36,7 @@ class TestDependencyPolicy:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         metadata = write_file('pyproject.toml', '[project]\ndependencies = []')
         requirements = write_file(
@@ -142,8 +141,7 @@ class TestDependencyPolicy:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         dependencies : str
             Project dependency declarations selected for comparison.
         constraints : str
@@ -186,8 +184,7 @@ class TestDependencyPolicy:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         suffix : str
             Trailing requirement text exercising comment or URL-fragment
             handling.
@@ -225,8 +222,7 @@ class TestDependencyPolicy:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -252,8 +248,7 @@ class TestDependencyPolicy:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         paths = (tmp_path / 'pyproject.toml', tmp_path / 'requirements.txt')
         assert validate(DependencyConfig(*paths, 'exact')) == [
@@ -275,8 +270,7 @@ class TestDependencyPolicy:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         suffix : str
             Trailing requirement text exercising comment or URL-fragment
             handling.

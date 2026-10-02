@@ -40,6 +40,15 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Refactor tests into independent parameterized scenarios, simplify fixture naming and repeated
+  setup, group automation contracts into cohesive test classes, and expand automation regression
+  coverage. Prevent inherited Make overrides from leaking into tests, reject incomplete artifact
+  sets before Twine validation, and limit symlink skips to platform restrictions while preserving
+  CLI behavior and test-layer boundaries.
+- Prefix unit, integration, e2e, and meta test modules with `test_u_`, `test_i_`, `test_e_`, and
+  `test_m_`, respectively, to reduce cross-layer namespace collisions; update Make targets, module
+  docstrings, and test-path references while preserving test names and importlib discovery.
+
 ## [0.3.6] - 2026-10-01
 
 - Add a read-only PR and merge-queue gate for dated changelog sections and matching release
