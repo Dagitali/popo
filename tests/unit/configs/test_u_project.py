@@ -1,9 +1,10 @@
 """
-:mod:`tests.unit.configs.test_project` module.
+:mod:`tests.unit.configs.test_u_project` module.
 
 Test project configuration discovery and shared loader contracts.
 """
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -56,11 +57,9 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         metadata : str
             Expected repository-relative metadata file discovered for the
             layout.
@@ -87,8 +86,7 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         config = load_config(tmp_path)
         assert config.root == tmp_path.resolve()
@@ -107,11 +105,9 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         write_file(
             'pyproject.toml',
@@ -138,8 +134,7 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         config = load_config(tmp_path)
         mode: DependencyMode = 'minimum-constraints'
@@ -162,11 +157,9 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         metadata : str
             Metadata text selected for the parsing or validation scenario.
         """
@@ -182,10 +175,12 @@ class TestConfiguration:
             ('[tool]\npopo = []', 'tool.popo must be a TOML table'),
         ],
     )
+    @pytest.mark.parametrize('loader', [load_config, load_automation_config])
     def test_loaders_share_root_validation(
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        loader: Callable[[Path], ProjectConfig | AutomationConfig],
         content: str,
         message: str,
     ) -> None:
@@ -196,11 +191,11 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        loader : collections.abc.Callable
+            Project or automation loader under test.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -209,9 +204,8 @@ class TestConfiguration:
             case.
         """
         write_file('pyproject.toml', content)
-        for loader in (load_config, load_automation_config):
-            with pytest.raises(ConfigurationError, match=message):
-                loader(tmp_path)
+        with pytest.raises(ConfigurationError, match=message):
+            loader(tmp_path)
 
     def test_loaders_validate_only_their_domains(
         self,
@@ -224,11 +218,9 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         write_file(
             'pyproject.toml',
@@ -252,9 +244,6 @@ class TestConfiguration:
     @pytest.mark.parametrize(
         ('content', 'message'),
         [
-            ('[', 'invalid TOML'),
-            ('tool = 1', 'tool must be a TOML table'),
-            ('[tool]\npopo = []', 'tool.popo must be a TOML table'),
             (
                 '[tool.popo]\ndependencies = []',
                 'tool.popo.dependencies must be a TOML table',
@@ -285,11 +274,9 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -313,11 +300,9 @@ class TestConfiguration:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
         write_file(
             'pyproject.toml',

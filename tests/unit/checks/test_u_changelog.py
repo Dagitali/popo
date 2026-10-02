@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.checks.test_changelog` module.
+:mod:`tests.unit.checks.test_u_changelog` module.
 
 Test release headings, calendar dates, and missing changelog errors.
 """
@@ -50,8 +50,7 @@ class TestChangelog:
         Parameters
         ----------
         write_file : FileWriter
-            Fixture writer that creates parent directories and writes UTF-8
-            repository files.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -63,15 +62,18 @@ class TestChangelog:
         assert validate(write_file('CHANGELOG.md', content), release) == expected
 
     @pytest.mark.parametrize('release', ['latest', 'v1.2', '1.2.3rc1', '01.2.3'])
-    def test_invalid_release(self, tmp_path: Path, release: str) -> None:
+    def test_invalid_release(
+        self,
+        tmp_path: Path,
+        release: str,
+    ) -> None:
         """
         Verify invalid release syntax produces one version-format diagnostic.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         release : str
             Release-version string supplied to changelog validation.
         """
@@ -89,8 +91,7 @@ class TestChangelog:
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Per-test temporary directory for files and isolated consumer
-            repositories.
+            Temporary directory for isolated test inputs.
         """
         path = tmp_path / 'CHANGELOG.md'
         assert validate(path, '1.2.3') == [f'changelog does not exist: {path}']
