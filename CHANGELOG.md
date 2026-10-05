@@ -19,6 +19,8 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.4.1 - 2026-10-04](#041---2026-10-04)
+- [0.4.0 - 2026-10-04](#040---2026-10-04)
 - [0.3.7 - 2026-10-01](#037---2026-10-01)
 - [0.3.6 - 2026-10-01](#036---2026-10-01)
 - [0.3.5 - 2026-10-01](#035---2026-10-01)
@@ -40,6 +42,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.4.1] - 2026-10-04
+
+- Backfill the 0.4.0 release record, archive entry, and dated changelog section while preserving the
+  existing tag and distinguishing historical evidence from current-checkout validation.
+
+## [0.4.0] - 2026-10-04
 
 - Recognize revision-free `$/` action/workflow references natively in pin and automation contract
   validation, including containment, target, and input checks without source copying.
@@ -298,6 +307,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.3.5]: docs/releases/v0.3.5.md
 [0.3.6]: docs/releases/v0.3.6.md
 [0.3.7]: docs/releases/v0.3.7.md
+[0.4.0]: docs/releases/v0.4.0.md
+[0.4.1]: docs/releases/v0.4.1.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
