@@ -431,8 +431,8 @@ def _target(
     config : AutomationConfig
         Consumer root and owner/repository aliases for this checkout.
     reference : str
-        A ./ path, an aliased owner/repository/path@revision reference, or a
-        reference outside the configured local forms.
+        A ./ or $/ path, an aliased owner/repository/path@revision reference,
+        or a reference outside the configured local forms.
 
     Returns
     -------
@@ -454,17 +454,21 @@ def _target(
 
     Notes
     -----
-    Resolve aliases in configuration order against the current checkout.
-    Revision text
-    is parsed but not fetched or verified, and pin/placeholder policy is
-    checked
-    separately. Do not parse the target's contents or execute it.
-    :func:`~popo.checks.automation.validate` converts these errors into
-    per-file
-    diagnostics.
+    Self references resolve against the supplied checkout, without copying
+    files or resolving against a consumer workspace. Reject revisions and
+    traversal before resolving them. Resolve aliases in configuration order
+    against the current checkout. Revision text is parsed but not fetched or
+    verified, and pin/placeholder policy is checked separately. Do not parse
+    the target's contents or execute it.
+    :func:`~popo.checks.automation.validate` converts these errors into per-
+    file diagnostics.
     """
     relative: str | None = None
-    if reference.startswith('./'):
+    if reference.startswith('$/'):
+        if not is_pinned(reference):
+            raise ValueError(f'invalid self-repository reference: {reference}')
+        relative = reference[2:]
+    elif reference.startswith('./'):
         relative = reference[2:]
     else:
         for alias in config.local_repositories:
