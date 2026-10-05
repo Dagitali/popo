@@ -41,6 +41,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Recognize revision-free `$/` action/workflow references natively in pin and automation contract
+  validation, including containment, target, and input checks without source copying.
+- Add `check-actionlint` for read-only compatibility with older actionlint versions. Use parsed YAML
+  locations and a disposable automation-only view, retain source diagnostics and exact tool exit
+  statuses, and keep external-tool execution separate from `check-all`.
+
 ## [0.3.7] - 2026-10-01
 
 - Refactor tests into independent parameterized scenarios, simplify fixture naming and repeated
