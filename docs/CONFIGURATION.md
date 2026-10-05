@@ -111,12 +111,18 @@ expressions or full YAML semantics.
   explicit links into excluded directories still have their targets checked.
 - `check-github-actions-pins` defaults to `.github` under the selected root and accepts
   `--automation-directory`. Remote references must contain a non-empty action name and a full
-  40-character hexadecimal commit SHA. Local (`./`) and container (`docker://`) references are
+  40-character hexadecimal commit SHA. Local (`./`), valid self (`$/`), and container (`docker://`) references are
   exempt; the check does not verify repository existence or container-image immutability.
 - `check-automation-contracts` loads automation settings and validates parsed YAML, local input
   contracts, composite steps, template metadata, and reference pins. `--pins-only` skips input,
   composite, and metadata checks; YAML parsing and local target resolution still run. See the
   [automation contracts guide] for exemptions and limits.
+- `check-actionlint` selects configured workflows/templates or explicit in-root paths and runs an
+  already-installed linter using a disposable self-reference compatibility view. `--actionlint`
+  selects the executable/options. Source files are not rewritten, diagnostics retain source
+  locations, and the exact external status is returned. Tool launch and source errors return one.
+  Unlike native contract checks, this explicitly invokes an external tool; it is not included in
+  `check-all` and does not install tools, execute workflow commands, or access the network itself.
 - `check-dependency-boundaries` and `check-python-policy` load dependency and Python-policy
   configuration together; they do not load automation settings.
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
