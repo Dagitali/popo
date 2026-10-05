@@ -40,9 +40,17 @@ def is_pinned(
     bool
         ``True`` for a full hexadecimal commit or an exempt local/container
         reference.
-        This syntax check does not verify remote existence or container
-        immutability.
+        Self-repository references must be revision-free, nonempty paths
+        without traversal. This syntax check does not verify target existence
+        or container immutability; automation contracts check local targets.
     """
+    if reference.startswith('$/'):
+        path = reference[2:]
+        return bool(
+            path
+            and not any(part in ('', '.', '..') for part in path.split('/'))
+            and not any(character in path for character in '@\\\n\r'),
+        )
     if reference.startswith(('./', 'docker://')):
         return True
     action, separator, revision = reference.rpartition('@')

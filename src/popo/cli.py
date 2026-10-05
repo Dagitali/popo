@@ -9,8 +9,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
+import yaml
+
 from . import __version__
 from .checks import (
+    actionlint,
     actions,
     automation,
     changelog,
@@ -351,6 +354,14 @@ def create_parser() -> argparse.ArgumentParser:
     )
     automation_parser.set_defaults(handler=_automation)
 
+    lint_parser = commands.add_parser(
+        'check-actionlint',
+        help='Run actionlint with temporary self-reference compatibility',
+    )
+    _add_root(lint_parser)
+    lint_parser.add_argument('--actionlint', default='actionlint')
+    lint_parser.add_argument('paths', nargs='*')
+
     dependency_parser = commands.add_parser('check-dependency-boundaries')
     _add_root(dependency_parser)
     dependency_parser.set_defaults(handler=_dependencies)
@@ -386,6 +397,7 @@ def main(argv: list[str] | None = None) -> int:
     int
         Zero for a successful check or one for reported validation and
         configuration failures. Results are printed through shared reporting.
+        check-actionlint instead returns the exact external validator status.
 
     Raises
     ------
@@ -400,9 +412,22 @@ def main(argv: list[str] | None = None) -> int:
     Other exceptions, including file-read and decoding errors, propagate. Check
     reports go to standard output; :mod:`argparse` handles its own help and
     error streams.
+    check-actionlint reports source/tool errors as status one and preserves
+    the external linter's streams and exact returned exit status.
     """
 
     args = create_parser().parse_args(argv)
+    if args.command == 'check-actionlint':
+        try:
+            return actionlint.run(args.root, args.paths, args.actionlint)
+        except (
+            ConfigurationError,
+            OSError,
+            UnicodeError,
+            ValueError,
+            yaml.YAMLError,
+        ) as error:
+            return report([f'actionlint: {error}'], success='')
     command = cast(Command, args.handler)
     try:
         failures, success = command(args)

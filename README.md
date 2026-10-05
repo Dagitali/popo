@@ -141,6 +141,7 @@ Run a check from the repository it should inspect:
 popo check-docs
 popo check-github-actions-pins
 popo check-automation-contracts
+popo check-actionlint
 popo check-dependency-boundaries
 popo check-python-policy
 popo check-release-changelog v1.2.3
@@ -191,7 +192,8 @@ When dependency configuration is absent, `popo` detects the layouts
 `popo check-automation-contracts --root .` validates parsed YAML, duplicate keys, local
 workflow/action input contracts, composite-step structure, template metadata, and immutable remote
 references. Use `--pins-only` to skip input, composite, and metadata checks; parsing and local
-target resolution still run. The older `check-github-actions-pins` command is unchanged.
+target resolution still run. The older `check-github-actions-pins` command remains available and
+also recognizes valid revision-free self references.
 
 See the [automation settings reference] for command boundaries and validation rules. Configure
 discovery and policy in the consuming repository, without importing Popo internals:
@@ -211,12 +213,12 @@ other settings default to `[]`. Patterns are root-relative and must each match a
 disable a category. Add `.yaml` patterns if used by your repository. `yaml-globs` validates syntax
 only. Invalid settings, unreadable files, and escaping paths fail validation.
 
-Local `./` references and configured `owner/repository` aliases resolve against the current
-checkout, never against historical or remote commits. Calls reject unknown/missing required inputs
-and literal workflow input type mismatches; expression values are not evaluated. Composite actions
-require names, descriptions, and nonempty steps with exactly one of `run` or `uses`; `run` steps
-require shells. Templates require matching `.properties.json` files with names/descriptions and
-valid optional categories/filePatterns; orphan metadata is reported.
+Local `./` and same-repository `$/` references, plus configured `owner/repository` aliases, resolve
+against the current checkout, never against historical or remote commits. Calls reject
+unknown/missing required inputs and literal workflow input type mismatches; expression values are
+not evaluated. Composite actions require names, descriptions, and nonempty steps with exactly one of
+`run` or `uses`; `run` steps require shells. Templates require matching `.properties.json` files
+with names/descriptions and valid optional categories/filePatterns; orphan metadata is reported.
 
 Placeholder exemptions apply only to configured template files referencing existing targets through
 a configured local alias. They never exempt ordinary workflows or third-party actions. Like the
@@ -225,6 +227,26 @@ executed, sources rewritten, or network requests made. Commit existence, contain
 expression evaluation, secrets, outputs, and the complete GitHub schema are outside this check;
 retain actionlint and hosted tests. YAML mapping keys must be strings; `on` remains a string, while
 only `true` and `false` are interpreted as booleans.
+
+Same-repository references must be nonempty, revision-free paths without traversal. Native contract
+validation checks containment, target existence, and supplied inputs directly without rewriting or
+copying source. GitHub executes `$/` at the running workflow/action revision; Popo inspects the
+supplied checkout and does not prove remote or historical revision availability.
+
+`popo check-actionlint --root .` runs an already-installed actionlint against a disposable
+compatibility view. It selects configured workflow/template globs by default, or explicit
+root-relative/absolute in-root paths. For example:
+
+```console
+popo check-actionlint --root . --actionlint 'actionlint -color' .github/workflows/ci.yml
+```
+
+The view contains only selected automation and referenced local targets. Real self-reference YAML
+values become local paths for older actionlint versions; script text, duplicate-key rejection,
+source files, and native contract validation are preserved. Diagnostics map back to source paths,
+and the exact linter exit status is returned. The command never installs tools or executes workflow
+commands; it is separate from `check-all` and requires no consumer schema changes. It does not make
+GitHub Enterprise Server support `$/`; that is a hosted-platform limitation.
 
 ## Design Boundaries
 
