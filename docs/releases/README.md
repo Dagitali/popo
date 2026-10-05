@@ -20,11 +20,19 @@ committed record or local tag does not establish that a GitHub Release or PyPI p
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.4 Series](#04-series)
 - [0.3 Series](#03-series)
 - [0.2 Series](#02-series)
 - [0.1 Series](#01-series)
 - [Initial Scaffold](#initial-scaffold)
 - [Maintaining the Archive](#maintaining-the-archive)
+
+## 0.4 Series
+
+- [v0.4.1] — planned, prepared 2026-10-04: Backfill the 0.4.0 release record and dated changelog
+  history while preserving the original tag and historical evidence boundaries.
+- [v0.4.0] — 2026-10-04: Add native self-repository reference validation and read-only actionlint
+  compatibility; retrospective record added after tagging.
 
 ## 0.3 Series
 
@@ -118,3 +126,5 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.3.5]: v0.3.5.md
 [v0.3.6]: v0.3.6.md
 [v0.3.7]: v0.3.7.md
+[v0.4.0]: v0.4.0.md
+[v0.4.1]: v0.4.1.md
