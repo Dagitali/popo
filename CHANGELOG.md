@@ -19,6 +19,8 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.5.2 - 2026-10-06](#052---2026-10-06)
+- [0.5.1 - 2026-10-06](#051---2026-10-06)
 - [0.5.0 - 2026-10-06](#050---2026-10-06)
 - [0.4.1 - 2026-10-04](#041---2026-10-04)
 - [0.4.0 - 2026-10-04](#040---2026-10-04)
@@ -43,6 +45,18 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.5.2] - 2026-10-06
+
+- Target `develop` for Dependabot version-update pull requests across GitHub Actions, Python, and
+  pre-commit hooks; security-update pull requests continue targeting the default branch.
+- Backfill the 0.5.1 release record, archive entry, and dated changelog section while preserving the
+  existing tag and distinguishing historical evidence from current-checkout validation.
+
+## [0.5.1] - 2026-10-06
+
+- Update md-toc from 9.0.0 to 9.1.0 and Ruff pre-commit hooks from v0.16.9 to v0.16.10 through
+  Dependabot PR #4, preserving existing hook settings and Popo runtime behavior.
 
 ## [0.5.0] - 2026-10-06
 
@@ -321,6 +335,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.4.0]: docs/releases/v0.4.0.md
 [0.4.1]: docs/releases/v0.4.1.md
 [0.5.0]: docs/releases/v0.5.0.md
+[0.5.1]: docs/releases/v0.5.1.md
+[0.5.2]: docs/releases/v0.5.2.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
