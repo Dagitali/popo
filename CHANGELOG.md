@@ -46,9 +46,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.5.0] - 2026-10-06
 
-- Add opt-in `audit-github-settings` with consumer-owned hosted expectations, read-only GitHub
-  evidence, distinct missing/inaccessible findings, JSON output, and approved expiring exceptions.
-  Ordinary repository checks remain offline; no hosted settings are changed.
+- Add opt-in `audit-github-settings` with explicit `[tool.popo.hosted]` consumer expectations for
+  security settings, labels, CODEOWNERS, branch protection, and required check contexts.
+- Report verified settings, confirmed drift, inaccessible evidence, and approved expiring exceptions
+  through sanitized text or JSON output with UTC timestamps and evidence URLs.
+- Add `make hosted-audit`, deterministic regression tests, and configuration and adoption guidance.
+  The command requires authenticated `gh` access to github.com, uses only GET requests, and remains
+  separate from offline `check-all` and `make check`; no hosted settings are changed.
 
 ## [0.4.1] - 2026-10-04
 
