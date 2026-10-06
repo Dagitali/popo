@@ -13,8 +13,9 @@ Maintainer Notes
 
 # Changelog
 
-All notable changes to this project will be documented in this file. Detailed release-candidate
-records are indexed in the [release notes archive].
+This file records concise, user-visible changes. The [release notes archive] indexes detailed scope,
+compatibility, validation evidence, and release status; shared guidance lives in its [reading
+guide].
 
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
@@ -48,12 +49,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.5.2] - 2026-10-06
 
-- Normalize historical release records, UTC tag dates, tag status, and preparation-time validation
-  boundaries without changing existing tags or asserting publication results.
+- Normalize historical release records and UTC dates; centralize shared release guidance and link
+  versioned highlights to this changelog while preserving historical validation evidence.
 - Target `develop` for Dependabot version-update pull requests across GitHub Actions, Python, and
   pre-commit hooks; security-update pull requests continue targeting the default branch.
-- Backfill the 0.5.1 release record, archive entry, and dated changelog section while preserving the
-  existing tag and distinguishing historical evidence from current-checkout validation.
+- Backfill the missing 0.5.1 release record, archive entry, and dated changelog section.
 
 ## [0.5.1] - 2026-10-06
 
@@ -72,8 +72,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.4.1] - 2026-10-04
 
-- Backfill the 0.4.0 release record, archive entry, and dated changelog section while preserving the
-  existing tag and distinguishing historical evidence from current-checkout validation.
+- Backfill the missing 0.4.0 release record, archive entry, and dated changelog section.
 
 ## [0.4.0] - 2026-10-04
 
@@ -315,6 +314,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   clean-distribution tests.
 
 [release notes archive]: docs/releases/README.md
+[reading guide]: docs/releases/README.md#reading-the-records
 [0.1.0]: docs/releases/v0.1.0.md
 [0.1.1]: docs/releases/v0.1.1.md
 [0.1.2]: docs/releases/v0.1.2.md
