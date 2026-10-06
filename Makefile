@@ -49,6 +49,7 @@ HELP_TARGET_WIDTH ?= 22
 PROJECT_TOOLS_MODULE ?= popo
 TESTS_DIR ?= tests
 RELEASE_VERSION ?=
+HOSTED_AUDIT_ARGS ?=
 
 ### Python ###
 
@@ -171,6 +172,10 @@ check-pre-push: check ## Run the local pre-push checks
 
 self-check: ## Run all configured repository-policy checks
 	$(PYTHON) -m $(PROJECT_TOOLS_MODULE) check-all
+
+.PHONY: hosted-audit
+hosted-audit: ## Audit configured GitHub settings (opt-in, read-only; requires gh)
+	$(PYTHON) -m $(PROJECT_TOOLS_MODULE) audit-github-settings $(HOSTED_AUDIT_ARGS)
 
 fix: ## Apply safe Ruff fixes to Python code
 	$(RUFF) check --fix $(PYTHON_LINT_PATHS)
