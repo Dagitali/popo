@@ -43,6 +43,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Add opt-in `audit-github-settings` with consumer-owned hosted expectations, read-only GitHub
+  evidence, distinct missing/inaccessible findings, JSON output, and approved expiring exceptions.
+  Ordinary repository checks remain offline; no hosted settings are changed.
+
 ## [0.4.1] - 2026-10-04
 
 - Backfill the 0.4.0 release record, archive entry, and dated changelog section while preserving the
