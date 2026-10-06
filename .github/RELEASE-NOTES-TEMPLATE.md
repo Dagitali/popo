@@ -84,7 +84,8 @@ Start with a link to the shared interpretation rules:
   evidence.
 - Include relevant automated tests, static checks, build results, artifact inspection, CLI output
   and exit-code checks, and representative manual verification.
-- Record failures, skipped checks and reasons, and outstanding release-specific evidence.
+- Keep all completed checks, failures, skipped checks and reasons, and outstanding evidence in this
+  section; other sections should link here when referring to validation gaps.
 - Describe historical preparation requirements in the past tense; preserve their recorded outcomes.
 - Link shared rules instead of repeating generic validation or publication disclaimers.
 
@@ -98,11 +99,14 @@ Link to the shared tagging and publication rules:
 - Describe expected package, infrastructure, dependency, artifact, or operational effects.
 - State whether resource replacements, data migrations, DNS or publication changes, or service
   interruption are expected.
-- Provide a safe rollback or forward-fix approach appropriate to the release.
+- Provide a safe rollback or forward-fix approach specific to the release.
+- Link shared publication and tag-preservation rules instead of repeating them.
 
 ## Known Limitations and Follow-Up
 
-- Record intentional limitations, deferred work, and monitoring expectations.
+- Record only release-specific limitations, deferred work, and monitoring expectations.
+- Link to [Validation](#validation) for outstanding checks; do not repeat its evidence or shared
+  release checklists here.
 - Link public follow-up issues when available.
 - Write `None.` when no release-specific limitations or follow-up work remain.
 
