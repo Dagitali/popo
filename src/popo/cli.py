@@ -5,6 +5,7 @@ Command-line interface for popo.
 """
 
 import argparse
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
@@ -19,10 +20,12 @@ from .checks import (
     changelog,
     dependencies,
     docs,
+    hosted,
     python_policy,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
+from .config.hosted import load_hosted_config
 from .support import report
 
 # SECTION: TYPE ALIASES
@@ -379,6 +382,12 @@ def create_parser() -> argparse.ArgumentParser:
     all_parser = commands.add_parser('check-all')
     _add_root(all_parser)
     all_parser.set_defaults(handler=_all)
+    hosted_parser = commands.add_parser(
+        'audit-github-settings',
+        help='Explicit read-only hosted drift audit (requires gh)',
+    )
+    _add_root(hosted_parser)
+    hosted_parser.add_argument('--format', choices=('text', 'json'), default='text')
     return parser
 
 
@@ -398,6 +407,8 @@ def main(argv: list[str] | None = None) -> int:
         Zero for a successful check or one for reported validation and
         configuration failures. Results are printed through shared reporting.
         check-actionlint instead returns the exact external validator status.
+        audit-github-settings returns one for drift or inaccessible evidence;
+        approved, unexpired exceptions do not fail the audit.
 
     Raises
     ------
@@ -414,9 +425,27 @@ def main(argv: list[str] | None = None) -> int:
     error streams.
     check-actionlint reports source/tool errors as status one and preserves
     the external linter's streams and exact returned exit status.
+    audit-github-settings is an explicit network operation, excluded from
+    check-all. It prints sanitized text or JSON findings to standard output.
     """
 
     args = create_parser().parse_args(argv)
+    if args.command == 'audit-github-settings':
+        try:
+            result = hosted.audit(load_hosted_config(args.root))
+        except (ConfigurationError, OSError, UnicodeError) as error:
+            if args.format == 'json':
+                print(json.dumps({'error': f'configuration: {error}'}))
+                return 1
+            return report([f'configuration: {error}'], success='')
+        if args.format == 'json':
+            print(result.to_json())
+        else:
+            print(f'GitHub settings audit: {result.observed_at}')
+            for item in result.findings:
+                print(f'{item.status}: {item.repository} {item.check}: {item.detail}')
+                print(f'  evidence: {item.evidence}')
+        return int(result.failed)
     if args.command == 'check-actionlint':
         try:
             return actionlint.run(args.root, args.paths, args.actionlint)
