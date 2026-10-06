@@ -9,14 +9,15 @@
 # Responsibilities
 # - Keep GitHub Actions, Python package metadata, and pre-commit hooks current
 #   through reviewable pull requests.
-# - Route routine dependency maintenance through review on the default branch.
+# - Route routine dependency maintenance through review on `develop`.
 # - Reduce supply-chain exposure from stale dependencies while preserving
 #   review, CI, and package-build gates.
 #
 # Maintainer Notes
 # - `pyproject.toml` is the canonical Python dependency metadata source.
-# - Omit `target-branch` to follow the repository default branch without
-#   imposing a particular branching model.
+# - Target `develop` for version updates in every configured ecosystem.
+# - Keep this configuration on the default branch so GitHub can read it.
+# - Security-update pull requests still target the default branch.
 # - Use UTC for predictable schedules independent of maintainer location or
 #   daylight-saving changes; keep ecosystem update times staggered.
 # - Omit `labels` to retain Dependabot's automatically created dependency and
@@ -47,6 +48,7 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -62,6 +64,7 @@ updates:
 
   - package-ecosystem: pip
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -78,6 +81,7 @@ updates:
 
   - package-ecosystem: pre-commit
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
