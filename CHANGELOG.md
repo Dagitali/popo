@@ -106,15 +106,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.3.5] - 2026-10-01
 
-- Limit Python docstring lines to 79 characters, including indentation, and record the convention in
-  agent guidance without changing docstring content or executable behavior.
-- Mark Python abstraction references in docstring prose with Sphinx roles and use inline literals
-  for parameter names, preserving NumPy sections and executable behavior.
-- Complete remaining test-case, fixture, subprocess-helper, and class docstrings with NumPy-style
-  contracts; document setup isolation, timeouts, propagated errors, and scenario inputs without
-  changing executable behavior.
-- Expand automation loader and helper docstrings with NumPy-style input, result, exception, and
-  validation-boundary contracts without changing checker behavior.
+- Standardize source and test docstrings with NumPy-style contracts, Sphinx references, inline
+  parameter literals, and the 79-character line convention; preserve executable behavior.
+- Document fixture isolation, subprocess timeouts, propagated errors, scenario inputs, and
+  automation-loader validation boundaries.
 
 ## [0.3.4] - 2026-10-01
 
