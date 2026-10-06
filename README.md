@@ -371,6 +371,11 @@ Do not include credentials, private repository data, or vulnerability details in
 - [Release checklist]: Preparation, validation, and separately authorized tagging and publication.
 - [Release playbook]: Evidence and closeout checklist for maintainers.
 
+Dependabot version-update pull requests target `develop` for GitHub Actions, Python dependencies,
+and pre-commit hooks. Security-update pull requests target the default branch. GitHub reads
+`.github/dependabot.yml` from the default branch; merge configuration changes there to activate
+them.
+
 Release validation, opt-in GitHub publication, and disposable installation tests are documented in
 the [release policy].
 
