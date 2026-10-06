@@ -16,10 +16,6 @@ Maintainer Notes
 This archive indexes Popo's release-aligned records, newest first. These documents preserve change
 scope, compatibility, validation, rollback, and follow-up details where applicable.
 
-Tagged dates in this archive and versioned introductions use UTC tagger dates, consistent with the
-[published tags] page. Preparation and validation dates retain their recorded context; changelog
-dates may reflect the original preparation date.
-
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
@@ -36,66 +32,47 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.5 Series
 
-- [v0.5.2] — planned, prepared 2026-10-06: Route Dependabot version updates to `develop` and
-  backfill 0.5.1 release history while preserving the existing tag.
-- [v0.5.1] — 2026-10-06: Update md-toc and Ruff pre-commit hooks; retrospective record added
-  after tagging.
-- [v0.5.0] — 2026-10-06: Add opt-in, read-only GitHub security, label, CODEOWNERS, and
-  branch-protection auditing with explicit consumer expectations, text/JSON reports, expiring
-  approved exceptions, Make support, tests, and adoption guidance.
+- [v0.5.2] — planned, prepared 2026-10-06: Dependabot routing and release-history maintenance.
+- [v0.5.1] — 2026-10-06: md-toc and Ruff hook updates; retrospective record.
+- [v0.5.0] — 2026-10-06: Opt-in GitHub settings audit.
 
 ## 0.4 Series
 
-- [v0.4.1] — 2026-10-05: Backfill the 0.4.0 release record and dated changelog
-  history while preserving the original tag and historical evidence boundaries.
-- [v0.4.0] — 2026-10-05: Add native self-repository reference validation and read-only actionlint
-  compatibility; retrospective record added after tagging.
+- [v0.4.1] — 2026-10-05: Backfill 0.4.0 release history.
+- [v0.4.0] — 2026-10-05: Self-repository references and actionlint compatibility;
+  retrospective record.
 
 ## 0.3 Series
 
-- [v0.3.7] — 2026-10-02: Refactor test naming, classes, parameterized scenarios, and fixtures;
-  strengthen subprocess isolation and artifact validation.
-- [v0.3.6] — 2026-10-01: Validate release records in PRs and merge queues, document required-check
-  activation, and backfill the 0.3.5 release record.
-- [v0.3.5] — 2026-10-01: Complete NumPy-style Python docstrings, add Sphinx references, and document
-  the 79-character docstring convention.
-- [v0.3.4] — 2026-10-01: Update Commitizen and Ruff pre-commit hooks without changing Popo runtime
-  behavior or consumer configuration.
-- [v0.3.3] — 2026-09-30: Reorganize checker and configuration unit tests, correct shared-helper
-  imports, and synchronize test-layout guidance.
-- [v0.3.2] — 2026-09-30: Correct omitted release records and dated changelog history while
-  preserving the existing 0.3.1 tag.
-- [v0.3.1] — 2026-09-30: Align and generalize root documentation; retrospective record added in
-  0.3.2 because the original tag lacked its dated changelog entry and release document.
-- [v0.3.0] — 2026-09-30: Add automation-contract validation, reorganize configuration, expand
-  regression coverage, and repair documentation references.
+- [v0.3.7] — 2026-10-02: Test-suite refactoring and artifact isolation.
+- [v0.3.6] — 2026-10-01: PR release-record validation and 0.3.5 backfill.
+- [v0.3.5] — 2026-10-01: Python docstring completion and conventions.
+- [v0.3.4] — 2026-10-01: Commitizen and Ruff hook updates.
+- [v0.3.3] — 2026-09-30: Unit-test organization and shared imports.
+- [v0.3.2] — 2026-09-30: Backfill 0.3.1 release history.
+- [v0.3.1] — 2026-09-30: Root documentation alignment; retrospective record.
+- [v0.3.0] — 2026-09-30: Automation contracts and configuration domains.
 
 ## 0.2 Series
 
-- [v0.2.4] — 2026-09-27: Standardize historical release records and evidence boundaries.
-- [v0.2.3] — 2026-09-27: Align contributor validation guidance, release records,
-  and test-fixture documentation.
-- [v0.2.2] — 2026-09-26: Expand source docstrings and clarify checker contracts without behavior
-  changes.
-- [v0.2.1] — 2026-09-26: Correct the build option used by distribution and clean-installation tests.
-- [v0.2.0] — 2026-09-26: Expand repository checks, tighten validation, and align reusable
-  contributor tooling and documentation.
+- [v0.2.4] — 2026-09-27: Historical release-record standardization.
+- [v0.2.3] — 2026-09-27: Contributor and test documentation alignment.
+- [v0.2.2] — 2026-09-26: Source docstrings and checker contracts.
+- [v0.2.1] — 2026-09-26: Artifact-build option correction.
+- [v0.2.0] — 2026-09-26: Expanded repository validation and contributor tooling.
 
 ## 0.1 Series
 
-- [v0.1.5] — 2026-09-24: Display the root README on the repository homepage.
-- [v0.1.4] — 2026-09-24: Correct dated release history and restore the changelog gate for the new
-  tag.
-- [v0.1.3] — 2026-09-24: Update Commitizen and Ruff hooks; tagged CD validation failed because the
-  dated entry was missing. The entry is backfilled in 0.1.4.
-- [v0.1.2] — 2026-09-24: Remove the obsolete Dependabot exclusion test and correct dependency
-  guidance.
-- [v0.1.1] — 2026-09-24: Align the `packaging` minimum at 26.3.
-- [v0.1.0] — 2026-09-24: Initial repository-policy CLI and validation workflows.
+- [v0.1.5] — 2026-09-24: Root README selection on GitHub.
+- [v0.1.4] — 2026-09-24: Backfill 0.1.3 release history.
+- [v0.1.3] — 2026-09-24: Commitizen and Ruff hook updates; retrospective record.
+- [v0.1.2] — 2026-09-24: Obsolete Dependabot test removal.
+- [v0.1.1] — 2026-09-24: Coordinated packaging minimum and fixture.
+- [v0.1.0] — 2026-09-24: Initial repository-policy CLI.
 
 ## Initial Scaffold
 
-- [v0.0.0] — 2026-09-21: Initial repository shell; not an installable CLI package.
+- [v0.0.0] — 2026-09-21: Repository scaffold; no installable CLI.
 
 ## Reading the Records
 
@@ -106,12 +83,13 @@ guidance. The initial scaffold has no dated changelog section and records its hi
 
 ### Evidence Boundaries
 
-Tagged introductions use UTC dates verified from annotated Git tag metadata. Preparation dates and
-results describe the checkout tested at that time. Pending historical checklists are not proof that
-the eventual tagged artifacts passed. Retrospective corrections describe maintained history without
-modifying the original tagged tree. Neither a document nor a tag establishes hosted cross-platform
-validation, artifact integrity, or publication. Each record retains its specific completed checks,
-failures, skipped checks, and evidence gaps.
+This index and tagged introductions use UTC dates verified from annotated Git tag metadata,
+consistent with the [published tags] page. Changelog dates may reflect original preparation dates.
+Preparation dates and results describe the checkout tested at that time. Pending historical
+checklists are not proof that the eventual tagged artifacts passed. Retrospective corrections
+describe maintained history without modifying the original tagged tree. Neither a document nor a tag
+establishes hosted cross-platform validation, artifact integrity, or publication. Each record
+retains its specific completed checks, failures, skipped checks, and evidence gaps.
 
 ### Release Operations
 
