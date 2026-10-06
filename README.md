@@ -35,6 +35,7 @@ development, pre-commit hooks, and continuous integration (CI) the same commands
 - [Quickstart](#quickstart)
 - [Configuration](#configuration)
   - [Automation Contracts](#automation-contracts)
+  - [Hosted Settings Audit](#hosted-settings-audit)
 - [Design Boundaries](#design-boundaries)
 - [Development](#development)
 - [Support Popo](#support-popo)
@@ -248,6 +249,15 @@ and the exact linter exit status is returned. The command never installs tools o
 commands; it is separate from `check-all` and requires no consumer schema changes. It does not make
 GitHub Enterprise Server support `$/`; that is a hosted-platform limitation.
 
+### Hosted Settings Audit
+
+`popo audit-github-settings --root . --format json` reads explicit `[tool.popo.hosted]` expectations
+through authenticated GitHub CLI GET requests. It checks private reporting, secret scanning/push
+protection, labels, default-branch CODEOWNERS, and required check contexts from effective rules plus
+legacy protections. See the [hosted audit guide] for configuration, exceptions, evidence limits, and
+exit behavior. This opt-in command is excluded from `check-all` and ordinary `make check`; those
+checks remain offline.
+
 ## Design Boundaries
 
 All checks are read-only. `popo` does not deploy infrastructure, modify repositories, or contact
@@ -386,6 +396,7 @@ the [release policy].
 [automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
 [Testing guide]: docs/TESTING.md
+[hosted audit guide]: docs/hosted-audit.md
 [API guidance]: docs/api/README.md
 [Developer onboarding]: docs/development/onboarding.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md

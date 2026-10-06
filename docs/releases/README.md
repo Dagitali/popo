@@ -20,12 +20,18 @@ committed record or local tag does not establish that a GitHub Release or PyPI p
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.5 Series](#05-series)
 - [0.4 Series](#04-series)
 - [0.3 Series](#03-series)
 - [0.2 Series](#02-series)
 - [0.1 Series](#01-series)
 - [Initial Scaffold](#initial-scaffold)
 - [Maintaining the Archive](#maintaining-the-archive)
+
+## 0.5 Series
+
+- [v0.5.0] — planned, prepared 2026-10-06: Add opt-in, read-only GitHub settings auditing with
+  explicit consumer expectations, sanitized reports, and expiring approved exceptions.
 
 ## 0.4 Series
 
@@ -128,3 +134,4 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.3.7]: v0.3.7.md
 [v0.4.0]: v0.4.0.md
 [v0.4.1]: v0.4.1.md
+[v0.5.0]: v0.5.0.md
