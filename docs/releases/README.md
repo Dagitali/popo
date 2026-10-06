@@ -30,6 +30,10 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.5 Series
 
+- [v0.5.2] — planned, prepared 2026-10-06: Route Dependabot version updates to `develop` and
+  backfill 0.5.1 release history while preserving the existing tag.
+- [v0.5.1] — 2026-10-06: Update md-toc and Ruff pre-commit hooks; retrospective record added
+  after tagging.
 - [v0.5.0] — 2026-10-06: Add opt-in, read-only GitHub security, label, CODEOWNERS, and
   branch-protection auditing with explicit consumer expectations, text/JSON reports, expiring
   approved exceptions, Make support, tests, and adoption guidance.
@@ -136,3 +140,5 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.4.0]: v0.4.0.md
 [v0.4.1]: v0.4.1.md
 [v0.5.0]: v0.5.0.md
+[v0.5.1]: v0.5.1.md
+[v0.5.2]: v0.5.2.md
