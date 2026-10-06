@@ -48,6 +48,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.5.2] - 2026-10-06
 
+- Normalize historical release records, UTC tag dates, tag status, and preparation-time validation
+  boundaries without changing existing tags or asserting publication results.
 - Target `develop` for Dependabot version-update pull requests across GitHub Actions, Python, and
   pre-commit hooks; security-update pull requests continue targeting the default branch.
 - Backfill the 0.5.1 release record, archive entry, and dated changelog section while preserving the
