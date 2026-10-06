@@ -19,6 +19,7 @@ records are indexed in the [release notes archive].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.5.0 - 2026-10-06](#050---2026-10-06)
 - [0.4.1 - 2026-10-04](#041---2026-10-04)
 - [0.4.0 - 2026-10-04](#040---2026-10-04)
 - [0.3.7 - 2026-10-01](#037---2026-10-01)
@@ -42,6 +43,16 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.5.0] - 2026-10-06
+
+- Add opt-in `audit-github-settings` with explicit `[tool.popo.hosted]` consumer expectations for
+  security settings, labels, CODEOWNERS, branch protection, and required check contexts.
+- Report verified settings, confirmed drift, inaccessible evidence, and approved expiring exceptions
+  through sanitized text or JSON output with UTC timestamps and evidence URLs.
+- Add `make hosted-audit`, deterministic regression tests, and configuration and adoption guidance.
+  The command requires authenticated `gh` access to github.com, uses only GET requests, and remains
+  separate from offline `check-all` and `make check`; no hosted settings are changed.
 
 ## [0.4.1] - 2026-10-04
 
@@ -309,6 +320,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.3.7]: docs/releases/v0.3.7.md
 [0.4.0]: docs/releases/v0.4.0.md
 [0.4.1]: docs/releases/v0.4.1.md
+[0.5.0]: docs/releases/v0.5.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

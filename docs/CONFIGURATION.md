@@ -20,6 +20,7 @@ are resolved against that root. See the [configuration example] for a complete s
 - [Dependency Settings](#dependency-settings)
 - [Python-Policy Settings](#python-policy-settings)
 - [Automation Settings](#automation-settings)
+- [Hosted Audit Settings](#hosted-audit-settings)
 - [Command Boundaries](#command-boundaries)
 - [Validation Rules](#validation-rules)
 
@@ -86,6 +87,13 @@ The standalone `check-automation-contracts` command uses default workflow discov
 is absent. `check-all` includes automation contracts only when the table is present, even if empty.
 Automation loading is independent of dependency and Python-policy settings.
 
+## Hosted Audit Settings
+
+`[tool.popo.hosted]` declares explicit repository expectations and approved exception attestations.
+Only `audit-github-settings` loads it; `check-all` stays offline. See [Hosted Settings Audit] for
+the complete schema, statuses, permissions, and evidence limits. Unknown hosted keys and malformed
+or duplicate scopes fail loading rather than being silently ignored. This capability is unreleased.
+
 ## Command Boundaries
 
 Python-policy workflow inspection resolves literal versions, simple environment references, and
@@ -148,3 +156,4 @@ read-only and do not repair files or change consumer policy automatically.
 
 [automation contracts guide]: ../README.md#automation-contracts
 [configuration example]: ../README.md#configuration
+[Hosted Settings Audit]: hosted-audit.md

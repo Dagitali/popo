@@ -20,6 +20,7 @@ committed record or local tag does not establish that a GitHub Release or PyPI p
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.5 Series](#05-series)
 - [0.4 Series](#04-series)
 - [0.3 Series](#03-series)
 - [0.2 Series](#02-series)
@@ -27,16 +28,22 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 - [Initial Scaffold](#initial-scaffold)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.5 Series
+
+- [v0.5.0] — 2026-10-06: Add opt-in, read-only GitHub security, label, CODEOWNERS, and
+  branch-protection auditing with explicit consumer expectations, text/JSON reports, expiring
+  approved exceptions, Make support, tests, and adoption guidance.
+
 ## 0.4 Series
 
-- [v0.4.1] — planned, prepared 2026-10-04: Backfill the 0.4.0 release record and dated changelog
+- [v0.4.1] — 2026-10-05: Backfill the 0.4.0 release record and dated changelog
   history while preserving the original tag and historical evidence boundaries.
-- [v0.4.0] — 2026-10-04: Add native self-repository reference validation and read-only actionlint
+- [v0.4.0] — 2026-10-05: Add native self-repository reference validation and read-only actionlint
   compatibility; retrospective record added after tagging.
 
 ## 0.3 Series
 
-- [v0.3.7] — 2026-10-01: Refactor test naming, classes, parameterized scenarios, and fixtures;
+- [v0.3.7] — 2026-10-02: Refactor test naming, classes, parameterized scenarios, and fixtures;
   strengthen subprocess isolation and artifact validation.
 - [v0.3.6] — 2026-10-01: Validate release records in PRs and merge queues, document required-check
   activation, and backfill the 0.3.5 release record.
@@ -128,3 +135,4 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.3.7]: v0.3.7.md
 [v0.4.0]: v0.4.0.md
 [v0.4.1]: v0.4.1.md
+[v0.5.0]: v0.5.0.md
