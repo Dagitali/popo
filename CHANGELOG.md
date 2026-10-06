@@ -13,12 +13,15 @@ Maintainer Notes
 
 # Changelog
 
-All notable changes to this project will be documented in this file. Detailed release-candidate
-records are indexed in the [release notes archive].
+This file records concise, user-visible changes. The [release notes archive] indexes detailed scope,
+compatibility, validation evidence, and release status; shared guidance lives in its [reading
+guide].
 
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.5.2 - 2026-10-06](#052---2026-10-06)
+- [0.5.1 - 2026-10-06](#051---2026-10-06)
 - [0.5.0 - 2026-10-06](#050---2026-10-06)
 - [0.4.1 - 2026-10-04](#041---2026-10-04)
 - [0.4.0 - 2026-10-04](#040---2026-10-04)
@@ -44,6 +47,19 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+## [0.5.2] - 2026-10-06
+
+- Normalize historical release records and UTC dates; centralize shared release guidance and link
+  versioned highlights to this changelog while preserving historical validation evidence.
+- Target `develop` for Dependabot version-update pull requests across GitHub Actions, Python, and
+  pre-commit hooks; security-update pull requests continue targeting the default branch.
+- Backfill the missing 0.5.1 release record, archive entry, and dated changelog section.
+
+## [0.5.1] - 2026-10-06
+
+- Update md-toc from 9.0.0 to 9.1.0 and Ruff pre-commit hooks from v0.16.9 to v0.16.10 through
+  Dependabot PR #4, preserving existing hook settings and Popo runtime behavior.
+
 ## [0.5.0] - 2026-10-06
 
 - Add opt-in `audit-github-settings` with explicit `[tool.popo.hosted]` consumer expectations for
@@ -56,8 +72,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.4.1] - 2026-10-04
 
-- Backfill the 0.4.0 release record, archive entry, and dated changelog section while preserving the
-  existing tag and distinguishing historical evidence from current-checkout validation.
+- Backfill the missing 0.4.0 release record, archive entry, and dated changelog section.
 
 ## [0.4.0] - 2026-10-04
 
@@ -91,15 +106,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## [0.3.5] - 2026-10-01
 
-- Limit Python docstring lines to 79 characters, including indentation, and record the convention in
-  agent guidance without changing docstring content or executable behavior.
-- Mark Python abstraction references in docstring prose with Sphinx roles and use inline literals
-  for parameter names, preserving NumPy sections and executable behavior.
-- Complete remaining test-case, fixture, subprocess-helper, and class docstrings with NumPy-style
-  contracts; document setup isolation, timeouts, propagated errors, and scenario inputs without
-  changing executable behavior.
-- Expand automation loader and helper docstrings with NumPy-style input, result, exception, and
-  validation-boundary contracts without changing checker behavior.
+- Standardize source and test docstrings with NumPy-style contracts, Sphinx references, inline
+  parameter literals, and the 79-character line convention; preserve executable behavior.
+- Document fixture isolation, subprocess timeouts, propagated errors, scenario inputs, and
+  automation-loader validation boundaries.
 
 ## [0.3.4] - 2026-10-01
 
@@ -299,6 +309,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   clean-distribution tests.
 
 [release notes archive]: docs/releases/README.md
+[reading guide]: docs/releases/README.md#reading-the-records
 [0.1.0]: docs/releases/v0.1.0.md
 [0.1.1]: docs/releases/v0.1.1.md
 [0.1.2]: docs/releases/v0.1.2.md
@@ -321,6 +332,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.4.0]: docs/releases/v0.4.0.md
 [0.4.1]: docs/releases/v0.4.1.md
 [0.5.0]: docs/releases/v0.5.0.md
+[0.5.1]: docs/releases/v0.5.1.md
+[0.5.2]: docs/releases/v0.5.2.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
