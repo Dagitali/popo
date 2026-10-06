@@ -14,12 +14,11 @@ Maintainer Notes
 # Release Notes Archive
 
 This archive indexes Popo's release-aligned records, newest first. These documents preserve change
-scope, compatibility, validation, publication, rollback, and follow-up details where applicable. A
-committed record or local tag does not establish that a GitHub Release or PyPI package exists.
+scope, compatibility, validation, rollback, and follow-up details where applicable.
 
 Tagged dates in this archive and versioned introductions use UTC tagger dates, consistent with the
 [published tags] page. Preparation and validation dates retain their recorded context; changelog
-dates may reflect the original preparation date. Tags do not prove publication.
+dates may reflect the original preparation date.
 
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
@@ -30,6 +29,9 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 - [0.2 Series](#02-series)
 - [0.1 Series](#01-series)
 - [Initial Scaffold](#initial-scaffold)
+- [Reading the Records](#reading-the-records)
+  - [Evidence Boundaries](#evidence-boundaries)
+  - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
 
 ## 0.5 Series
@@ -95,6 +97,30 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 - [v0.0.0] — 2026-09-21: Initial repository shell; not an installable CLI package.
 
+## Reading the Records
+
+The [changelog] owns concise, version-specific highlights. This index provides navigation and
+release status; versioned records own detailed scope, compatibility, recorded validation,
+limitations, and rollback considerations. Link to the owning document rather than copying its full
+guidance. The initial scaffold has no dated changelog section and records its highlights here.
+
+### Evidence Boundaries
+
+Tagged introductions use UTC dates verified from annotated Git tag metadata. Preparation dates and
+results describe the checkout tested at that time. Pending historical checklists are not proof that
+the eventual tagged artifacts passed. Retrospective corrections describe maintained history without
+modifying the original tagged tree. Neither a document nor a tag establishes hosted cross-platform
+validation, artifact integrity, or publication. Each record retains its specific completed checks,
+failures, skipped checks, and evidence gaps.
+
+### Release Operations
+
+The [release policy] owns validation and publication safeguards; the [release playbook] owns
+preparation and closeout steps. The current workflows validate tags and make GitHub publication
+opt-in; they do not publish to PyPI. Documentation changes do not authorize tagging, publication, or
+hosted settings changes. Preserve existing tags and use reviewed follow-up releases for fixes.
+Versioned deployment sections describe only release-specific effects and rollback considerations.
+
 ## Maintaining the Archive
 
 1. Create `docs/releases/vMAJOR.MINOR.PATCH.md` for an agreed release candidate using the [release
@@ -112,10 +138,10 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 The current CD workflow generates GitHub Release notes; it does not automatically consume these
 Markdown records. Keep published notes consistent with the reviewed record when publication is
-authorized. Creating documentation does not authorize tagging or publishing.
+authorized.
 
 Keep changes after the latest dated changelog entry in `Unreleased` until the next candidate is
-prepared. A dated entry or tag does not establish artifact publication.
+prepared.
 
 [release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
