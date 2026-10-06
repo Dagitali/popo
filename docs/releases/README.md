@@ -17,6 +17,10 @@ This archive indexes Popo's release-aligned records, newest first. These documen
 scope, compatibility, validation, publication, rollback, and follow-up details where applicable. A
 committed record or local tag does not establish that a GitHub Release or PyPI package exists.
 
+Tagged dates in this archive and versioned introductions use UTC tagger dates, consistent with the
+[published tags] page. Preparation and validation dates retain their recorded context; changelog
+dates may reflect the original preparation date. Tags do not prove publication.
+
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
@@ -101,9 +105,9 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 3. Record the candidate tag without embedding a commit SHA, and distinguish completed checks from
    pending checks. Never transfer current-checkout validation results to a historical tag.
 4. Add the record to this index, newest first, using `version — YYYY-MM-DD: summary` with the date
-   from the changelog or verified release record. For untagged candidates, use `version — planned,
-   prepared YYYY-MM-DD: summary`; if no date is established, use `undated` rather than inventing
-   one. Keep reference definitions sorted by destination.
+   from verified tag metadata in UTC for tagged releases. For untagged candidates, use `version —
+   planned, prepared YYYY-MM-DD: summary`; if no date is established, use `undated` rather than
+   inventing one. Keep reference definitions sorted by destination.
 5. Run `make docs-markdown`. Before release, complete the separate gates in the [release policy].
 
 The current CD workflow generates GitHub Release notes; it does not automatically consume these
@@ -142,3 +146,4 @@ prepared. A dated entry or tag does not establish artifact publication.
 [v0.5.0]: v0.5.0.md
 [v0.5.1]: v0.5.1.md
 [v0.5.2]: v0.5.2.md
+[published tags]: https://github.com/Dagitali/popo/tags
