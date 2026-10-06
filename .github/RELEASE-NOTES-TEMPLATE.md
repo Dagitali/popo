@@ -13,6 +13,7 @@ Responsibilities
 Maintainer Notes
 - Keep guidance language- and platform-neutral; retain relevant CLI contracts.
 - Keep local references aligned with the repository documentation.
+- Link shared release guidance and changelog highlights instead of duplicating them.
 -->
 
 # Release Notes Template
@@ -20,9 +21,15 @@ Maintainer Notes
 Use this template when preparing a versioned document for the [release notes archive] and reviewed
 notes for any corresponding GitHub Release. The committed record preserves the candidate's detailed
 scope and validation evidence; it does not establish tagging or publication. Reconcile the notes
-with the [changelog] and [release policy], keep the sections that apply, and add more focused
+with the [changelog] and [reading guide], keep the sections that apply, and add more focused
 sections when needed. Release notes should explain released behavior without depending on private
 operational evidence.
+
+For a new record, use `# Popo vMAJOR.MINOR.PATCH` and an introduction identifying either the
+verified UTC tag date or the planned candidate's preparation date. Point its changelog reference to
+the matching dated section. Resolve reference destinations relative to `docs/releases/`, sort them
+by destination, and remove unused definitions; the links below resolve from this template's
+`.github/` location.
 
 - [Highlights](#highlights)
 - [Change Scope](#change-scope)
@@ -34,9 +41,11 @@ operational evidence.
 
 ## Highlights
 
-- Summarize the most important user-visible or operational changes.
-- Explain the outcome and its value rather than listing commits or internal implementation details.
-- Identify security, reliability, accessibility, or maintainability improvements when material.
+Link to the dated changelog entry instead of copying its change list:
+
+> See the [changelog] for this version's concise change list.
+
+For an initial scaffold without a dated changelog entry, record its highlights here.
 
 ## Change Scope
 
@@ -66,17 +75,26 @@ operational evidence.
 
 ## Validation
 
-- List checks completed against the exact release candidate.
+Start with a link to the shared interpretation rules:
+
+> Interpret these results using the [evidence boundaries].
+
+- List checks completed against the exact checkout or artifact tested, with dates and results.
 - Identify the candidate tag without embedding a commit SHA, and link available artifact-integrity
   evidence.
 - Include relevant automated tests, static checks, build results, artifact inspection, CLI output
   and exit-code checks, and representative manual verification.
-- Distinguish completed evidence from checks that must still pass during release or deployment.
+- Record failures, skipped checks and reasons, and outstanding release-specific evidence.
+- Describe historical preparation requirements in the past tense; preserve their recorded outcomes.
+- Link shared rules instead of repeating generic validation or publication disclaimers.
 
 ## Deployment and Rollback
 
-- Explain whether merging or tagging triggers deployment, publication, or neither and which
-  protected environment, if any, is used.
+Link to the shared tagging and publication rules:
+
+> Shared tagging and publication rules are in [release operations].
+
+- Describe release-specific changes to deployment or publication behavior, if any.
 - Describe expected package, infrastructure, dependency, artifact, or operational effects.
 - State whether resource replacements, data migrations, DNS or publication changes, or service
   interruption are expected.
@@ -92,5 +110,7 @@ Before committing the release document, remove unused guidance, verify links and
 and ensure credentials, private identifiers, and confidential evidence are absent.
 
 [changelog]: ../CHANGELOG.md
-[release policy]: ../RELEASE-POLICY.md
 [release notes archive]: ../docs/releases/README.md
+[evidence boundaries]: ../docs/releases/README.md#evidence-boundaries
+[reading guide]: ../docs/releases/README.md#reading-the-records
+[release operations]: ../docs/releases/README.md#release-operations
