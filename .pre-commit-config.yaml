@@ -68,7 +68,7 @@ repos:
 
   # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.19.0
+    rev: v4.19.1
     hooks:
       - id: commitizen
         stages: [commit-msg]
@@ -172,7 +172,7 @@ repos:
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.1
+    rev: v2.4.0
     hooks:
       - id: mypy
         stages: [manual]
