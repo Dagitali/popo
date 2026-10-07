@@ -142,6 +142,7 @@ Run a check from the repository it should inspect:
 popo check-docs
 popo check-github-actions-pins
 popo check-automation-contracts
+popo check-repository-safety
 popo check-actionlint
 popo check-dependency-boundaries
 popo check-python-policy
@@ -154,7 +155,9 @@ Every command accepts `--root`. The equivalent module entry point is
 
 `check-all` runs the documentation, action-pin, dependency, and Python-policy checks. Release
 changelog validation is separate and requires the release version to check. Automation contracts are
-included when the consumer explicitly configures `[tool.popo.automation]`.
+included when the consumer explicitly configures `[tool.popo.automation]`. Repository safety checks
+are similarly opt-in through `[tool.popo.safety]`; see the [safety settings reference]. Available
+since v0.6.0.
 
 ## Configuration
 
@@ -407,6 +410,7 @@ the [release policy].
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
+[safety settings reference]: docs/repository-safety.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml

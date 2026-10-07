@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.6 Series](#06-series)
 - [0.5 Series](#05-series)
 - [0.4 Series](#04-series)
 - [0.3 Series](#03-series)
@@ -29,6 +30,10 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Evidence Boundaries](#evidence-boundaries)
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
+
+## 0.6 Series
+
+- [v0.6.0] — 2026-10-07: Opt-in repository safety checks.
 
 ## 0.5 Series
 
@@ -150,4 +155,5 @@ prepared.
 [v0.5.0]: v0.5.0.md
 [v0.5.1]: v0.5.1.md
 [v0.5.2]: v0.5.2.md
+[v0.6.0]: v0.6.0.md
 [published tags]: https://github.com/Dagitali/popo/tags

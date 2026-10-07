@@ -72,6 +72,7 @@ generated output from another project.
 
 ## Guides
 
+- [Repository safety]: Opt-in offline workflow trust boundaries and npm root consistency.
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
 - [Configuration reference]: Input paths, dependency modes, Python-policy defaults, automation
   settings, and CLI scope.
@@ -129,6 +130,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Change management]: playbooks/change-management.md
 [Release playbook]: playbooks/release.md
 [release archive]: releases/README.md
+[Repository safety]: repository-safety.md
 [Runbooks]: runbooks/README.md
 [Incident response]: runbooks/incident-response.md
 [Update required checks]: runbooks/update-required-checks.md
