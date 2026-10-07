@@ -33,7 +33,7 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.6 Series
 
-- [v0.6.0] — planned, prepared 2026-10-07: Opt-in repository safety checks.
+- [v0.6.0] — 2026-10-07: Opt-in repository safety checks.
 
 ## 0.5 Series
 
