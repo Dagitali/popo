@@ -58,6 +58,34 @@ class TestCommandLine:
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
             (
+                ['check-repository-safety'],
+                'pyproject.toml',
+                '[tool.popo.safety]\n',
+                0,
+                'PASS:',
+            ),
+            (
+                ['check-repository-safety'],
+                'pyproject.toml',
+                '[tool.popo.safety]\nworkflow-globs=["absent.yml"]',
+                1,
+                'no safety workflows match:',
+            ),
+            (
+                ['check-all'],
+                'pyproject.toml',
+                '[tool.popo.safety]\nworkflow-globs=["absent.yml"]',
+                1,
+                'no safety workflows match:',
+            ),
+            (
+                ['check-repository-safety'],
+                'README.md',
+                '# Consumer',
+                1,
+                'requires tool.popo.safety',
+            ),
+            (
                 ['check-automation-contracts'],
                 '.github/workflows/ci.yml',
                 'on: {workflow_call: null}',
