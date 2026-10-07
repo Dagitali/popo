@@ -33,6 +33,8 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.6 Series
 
+- [v0.6.3] — 2026-10-07: Repair missing 0.6.2 release records.
+- [v0.6.2] — 2026-10-07: Release-history backfill and status corrections.
 - [v0.6.1] — 2026-10-07: Commitizen and mypy hook updates; retrospective record.
 - [v0.6.0] — 2026-10-07: Opt-in repository safety checks.
 
@@ -158,4 +160,6 @@ prepared.
 [v0.5.2]: v0.5.2.md
 [v0.6.0]: v0.6.0.md
 [v0.6.1]: v0.6.1.md
+[v0.6.2]: v0.6.2.md
+[v0.6.3]: v0.6.3.md
 [published tags]: https://github.com/Dagitali/popo/tags
