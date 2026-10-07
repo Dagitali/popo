@@ -22,10 +22,12 @@ from .checks import (
     docs,
     hosted,
     python_policy,
+    safety,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
 from .config.hosted import load_hosted_config
+from .config.safety import load_safety_config
 from .support import report
 
 # SECTION: TYPE ALIASES
@@ -130,10 +132,10 @@ def _all(
     Notes
     -----
     Load consumer configuration, then run those checks in order without
-    stopping for returned failures. Include automation contracts only when
-    their configuration table is present. Exceptions still propagate. The
-    release changelog check is excluded because it requires an explicit
-    release version. Return the collected diagnostics and success message
+    stopping for returned failures. Include automation contracts and safety
+    checks only when their configuration tables are present. Exceptions
+    still propagate. Release changelog validation requires an explicit
+    release version and is excluded. Return the diagnostics and success message
     without printing.
     """
     root = args.root.resolve()
@@ -147,10 +149,15 @@ def _all(
     automation_config = load_automation_config(root)
     if automation_config.configured:
         failures.extend(automation.validate(automation_config))
+    safety_config = load_safety_config(root)
+    if safety_config.configured:
+        failures.extend(safety.validate(safety_config))
     return failures, 'all configured repository checks passed'
 
 
-def _automation(args: argparse.Namespace) -> tuple[list[str], str]:
+def _automation(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """
     Dispatch configured automation validation through the public CLI.
 
@@ -304,6 +311,28 @@ def _python(
     return python_policy.validate(config), 'Python policy is consistent'
 
 
+def _safety(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch opt-in read-only safety validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Diagnostics and success-only message.
+    """
+    config = load_safety_config(args.root)
+    if not config.configured:
+        raise ConfigurationError('check-repository-safety requires tool.popo.safety')
+    return safety.validate(config), 'configured repository safety checks passed'
+
+
 # !SECTION
 
 
@@ -356,6 +385,13 @@ def create_parser() -> argparse.ArgumentParser:
         help='Check parsed references without input, composite, or metadata checks',
     )
     automation_parser.set_defaults(handler=_automation)
+
+    safety_parser = commands.add_parser(
+        'check-repository-safety',
+        help='Check opt-in privileged triggers, shell interpolation, and npm pairs',
+    )
+    _add_root(safety_parser)
+    safety_parser.set_defaults(handler=_safety)
 
     lint_parser = commands.add_parser(
         'check-actionlint',

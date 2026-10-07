@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.6.0 - 2026-10-07](#060---2026-10-07)
 - [0.5.2 - 2026-10-06](#052---2026-10-06)
 - [0.5.1 - 2026-10-06](#051---2026-10-06)
 - [0.5.0 - 2026-10-06](#050---2026-10-06)
@@ -46,6 +47,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.6.0] - 2026-10-07
+
+- Add opt-in `check-repository-safety` and `[tool.popo.safety]` for reviewed privileged-trigger
+  exceptions, direct event-data shell interpolation, and npm manifest/lockfile root consistency.
+  Include configured safety checks in `check-all` without network access or command execution; full
+  dependency-graph validation and workflow trust review remain separate requirements.
 
 ## [0.5.2] - 2026-10-06
 
@@ -334,6 +342,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.5.0]: docs/releases/v0.5.0.md
 [0.5.1]: docs/releases/v0.5.1.md
 [0.5.2]: docs/releases/v0.5.2.md
+[0.6.0]: docs/releases/v0.6.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
