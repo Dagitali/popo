@@ -67,7 +67,7 @@ To get started:
 ## Release Status
 
 Popo is a pre-1.0 package with alpha development status. Review the [changelog] and [release
-archive] for compatibility changes and candidate status. The release badge reports Git tags; it does
+archive] for compatibility changes and release status. The release badge reports Git tags; it does
 not establish successful artifact publication. GitHub Release publication is opt-in, and PyPI
 publishing is not configured; see the [release policy].
 

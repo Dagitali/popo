@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.6.1 - 2026-10-07](#061---2026-10-07)
 - [0.6.0 - 2026-10-07](#060---2026-10-07)
 - [0.5.2 - 2026-10-06](#052---2026-10-06)
 - [0.5.1 - 2026-10-06](#051---2026-10-06)
@@ -47,6 +48,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.6.1] - 2026-10-07
+
+- Update Commitizen pre-commit hooks from v4.19.0 to v4.19.1 and mypy hooks from v2.3.1 to v2.4.0
+  through Dependabot PR #5, preserving hook settings and Popo runtime behavior.
 
 ## [0.6.0] - 2026-10-07
 
@@ -343,6 +349,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.5.1]: docs/releases/v0.5.1.md
 [0.5.2]: docs/releases/v0.5.2.md
 [0.6.0]: docs/releases/v0.6.0.md
+[0.6.1]: docs/releases/v0.6.1.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
