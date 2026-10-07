@@ -33,11 +33,12 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.6 Series
 
+- [v0.6.1] — 2026-10-07: Commitizen and mypy hook updates; retrospective record.
 - [v0.6.0] — 2026-10-07: Opt-in repository safety checks.
 
 ## 0.5 Series
 
-- [v0.5.2] — planned, prepared 2026-10-06: Dependabot routing and release-history maintenance.
+- [v0.5.2] — 2026-10-06: Dependabot routing and release-history maintenance.
 - [v0.5.1] — 2026-10-06: md-toc and Ruff hook updates; retrospective record.
 - [v0.5.0] — 2026-10-06: Opt-in GitHub settings audit.
 
@@ -156,4 +157,5 @@ prepared.
 [v0.5.1]: v0.5.1.md
 [v0.5.2]: v0.5.2.md
 [v0.6.0]: v0.6.0.md
+[v0.6.1]: v0.6.1.md
 [published tags]: https://github.com/Dagitali/popo/tags
