@@ -10,9 +10,9 @@ Maintainer Notes
 # Repository Safety
 
 `popo check-repository-safety --root .` requires explicit `[tool.popo.safety]` configuration.
-`check-all` includes it only when configured. This capability is unreleased; v0.5.2 does not provide
-it. Checks read local files only, return one for failures, and never install packages, execute
-workflow commands, or change settings. The [CLI guide] covers other checks.
+`check-all` includes it only when configured. Available since v0.6.0. Checks read local files only,
+return one for failures, and never install packages, execute workflow commands, or change settings.
+The [CLI guide] covers other checks.
 
 - [Configuration](#configuration)
 - [Workflow Trust Boundaries](#workflow-trust-boundaries)
