@@ -27,5 +27,5 @@ of tracked documents. Generated API pages and cloud infrastructure diagrams are 
 documentation setup.
 
 [architecture overview]: ../../README.md#architecture
-[interface checklist]: ../api/evolution-checklist.md
 [change-impact map]: change-impact-map.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md

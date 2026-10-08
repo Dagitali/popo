@@ -29,5 +29,5 @@ exact tags and artifact identity when investigating failures.
 
 [Branch protection]: ../../.github/BRANCH-PROTECTION.md
 [Release playbook]: ../playbooks/release.md
+[Update required checks]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
 [Incident response]: incident-response.md
-[Update required checks]: update-required-checks.md

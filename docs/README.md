@@ -25,6 +25,9 @@ root or under `.github/` so contributors and GitHub can discover its conventiona
 
 ## Document Scope
 
+Reusable procedures and blank templates are linked directly from Dagitali Engineering. See
+[engineering guidance] for the replacement map; this checkout retains Popo-specific documentation.
+
 Guides describe Popo's actual CLI and repository policy. Consumer configuration is independent of
 Popo's development conventions. Historical release records preserve their preparation context;
 current source, tests, workflows, and maintained guides establish present behavior.
@@ -115,24 +118,25 @@ Use reference links sorted by destination and keep file headers and tables of co
 [release policy]: ../RELEASE-POLICY.md
 [Tests overview]: ../tests/README.md
 [Configuration reference]: CONFIGURATION.md
-[Evidence inventory template]: EVIDENCE_INVENTORY_TEMPLATE.md
 [Testing guide]: TESTING.md
 [API notes]: api/README.md
-[Interface evolution]: api/evolution-checklist.md
 [Architecture notes]: architecture/README.md
 [Change-impact map]: architecture/change-impact-map.md
-[Development documentation]: development/README.md
-[agent workflow]: development/agent-workflow.md
 [Developer onboarding]: development/onboarding.md
-[task templates]: development/task-templates.md
+[engineering guidance]: engineering.md
+[Development documentation]: https://github.com/Dagitali/engineering/blob/main/development/README.md
+[agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
+[Interface evolution]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
+[Change management]: https://github.com/Dagitali/engineering/blob/main/playbooks/change-management.md
+[Update required checks]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
+[task templates]: https://github.com/Dagitali/engineering/blob/main/templates/development-task.md
+[Evidence inventory template]: https://github.com/Dagitali/engineering/blob/main/templates/evidence-inventory.md
 [Playbooks]: playbooks/README.md
 [Adoption playbook]: playbooks/adopt-popo.md
-[Change management]: playbooks/change-management.md
 [Release playbook]: playbooks/release.md
 [release archive]: releases/README.md
 [Repository safety]: repository-safety.md
 [Runbooks]: runbooks/README.md
 [Incident response]: runbooks/incident-response.md
-[Update required checks]: runbooks/update-required-checks.md
 [Tutorials]: tutorials/README.md
 [First repository tutorial]: tutorials/check-first-repository.md

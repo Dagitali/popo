@@ -60,7 +60,7 @@ clean environments. It may download dependencies but does not publish.
 - [ ] Synchronize maintained branches according to the configured repository review policy.
 - [ ] Record follow-up work and use a new version for post-release corrections; never move tags.
 
-[release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [contributor checklist]: ../../CONTRIBUTING.md#release-preparation
 [release policy]: ../../RELEASE-POLICY.md
 [release archive]: ../releases/README.md
+[release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md

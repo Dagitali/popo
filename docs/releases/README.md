@@ -131,10 +131,11 @@ authorized.
 Keep changes after the latest dated changelog entry in `Unreleased` until the next candidate is
 prepared.
 
-[release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
 [release policy]: ../../RELEASE-POLICY.md
 [release playbook]: ../playbooks/release.md
+[release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
+[published tags]: https://github.com/Dagitali/popo/tags
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
 [v0.1.1]: v0.1.1.md
@@ -166,4 +167,3 @@ prepared.
 [v0.6.3]: v0.6.3.md
 [v0.6.4]: v0.6.4.md
 [v0.6.5]: v0.6.5.md
-[published tags]: https://github.com/Dagitali/popo/tags

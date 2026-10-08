@@ -101,7 +101,7 @@ platform, or policy.
 
 [installation instructions]: ../../README.md#installation
 [configuration reference]: ../CONFIGURATION.md
-[interface checklist]: ../api/evolution-checklist.md
 [incident runbook]: ../runbooks/incident-response.md
-[required-check runbook]: ../runbooks/update-required-checks.md
 [first-check tutorial]: ../tutorials/check-first-repository.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
+[required-check runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
