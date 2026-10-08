@@ -28,10 +28,10 @@ These procedures do not authorize publication, tag creation, or hosted-setting c
 [release policy] for delivery safeguards. Add new playbooks only for concrete workflows, not to
 mirror an unrelated project's directory count.
 
-[release policy]: ../../RELEASE-POLICY.md
-[Testing guide]: ../TESTING.md
-[Interface evolution]: ../api/evolution-checklist.md
-[Incident response]: ../runbooks/incident-response.md
+[release policy]: ../../CONTRIBUTING.md#release-policy
 [Adopt Popo]: adopt-popo.md
-[Change management]: change-management.md
-[Release checklist]: release.md
+[Interface evolution]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
+[Change management]: https://github.com/Dagitali/engineering/blob/main/playbooks/change-management.md
+[Release checklist]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[Incident response]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
+[Testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md

@@ -33,6 +33,7 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.6 Series
 
+- [v0.6.6] — 2026-10-08: Centralize shared engineering documentation.
 - [v0.6.5] — 2026-10-08: Adopt the organization pull request template.
 - [v0.6.4] — 2026-10-07: Adopt organization issue templates.
 - [v0.6.3] — 2026-10-07: Repair missing 0.6.2 release records.
@@ -131,10 +132,11 @@ authorized.
 Keep changes after the latest dated changelog entry in `Unreleased` until the next candidate is
 prepared.
 
-[release notes template]: ../../.github/RELEASE-NOTES-TEMPLATE.md
 [changelog]: ../../CHANGELOG.md
-[release policy]: ../../RELEASE-POLICY.md
-[release playbook]: ../playbooks/release.md
+[release policy]: ../../CONTRIBUTING.md#release-policy
+[release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
+[published tags]: https://github.com/Dagitali/popo/tags
 [v0.0.0]: v0.0.0.md
 [v0.1.0]: v0.1.0.md
 [v0.1.1]: v0.1.1.md
@@ -166,4 +168,4 @@ prepared.
 [v0.6.3]: v0.6.3.md
 [v0.6.4]: v0.6.4.md
 [v0.6.5]: v0.6.5.md
-[published tags]: https://github.com/Dagitali/popo/tags
+[v0.6.6]: v0.6.6.md

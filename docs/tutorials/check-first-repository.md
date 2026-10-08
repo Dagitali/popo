@@ -85,5 +85,5 @@ if you want to contribute to Popo itself.
 
 [installation instructions]: ../../README.md#installation
 [configuration reference]: ../CONFIGURATION.md
-[developer onboarding guide]: ../development/onboarding.md
-[incident runbook]: ../runbooks/incident-response.md
+[developer onboarding guide]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
+[incident runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md

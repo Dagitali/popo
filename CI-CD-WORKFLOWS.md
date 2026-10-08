@@ -117,7 +117,6 @@ Run `make check` for the default source gate, `make docs-markdown` for local Mar
 artifact targets from the [testing guide] when needed. Hosted checks remain distinct from these
 local results.
 
-[branch-protection guide]: .github/BRANCH-PROTECTION.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
 [CD]: .github/workflows/cd.yml
 [CI]: .github/workflows/ci.yml
@@ -125,6 +124,7 @@ local results.
 [PR gates]: .github/workflows/pr.yml
 [SBOM]: .github/workflows/sbom.yml
 [Security]: .github/workflows/security.yml
-[release policy]: RELEASE-POLICY.md
-[testing guide]: docs/TESTING.md
-[required-check runbook]: docs/runbooks/update-required-checks.md
+[branch-protection guide]: CONTRIBUTING.md#protected-branches-and-pr-routing
+[release policy]: CONTRIBUTING.md#release-policy
+[required-check runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
+[testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md

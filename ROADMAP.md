@@ -62,9 +62,9 @@ their inputs, ownership, failure behavior, and test strategy. Evaluate extension
 guidance]. Automatic fixes, cloud operations, and hosted administration would require separate scope
 decisions; they are not implied by this roadmap.
 
+[release policy]: CONTRIBUTING.md#release-policy
 [design guidance]: DESIGN.md
 [README]: README.md
-[release policy]: RELEASE-POLICY.md
-[interface checklist]: docs/api/evolution-checklist.md
 [adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md

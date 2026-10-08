@@ -373,12 +373,15 @@ behavior. Retaining a local issue form or `config.yml` would replace the inherit
 
 ### Maintainer Docs
 
+Shared engineering procedures and blank templates live in Dagitali Engineering; see the [engineering
+guidance] for the replacement map and local ownership boundaries.
+
 - [Developer onboarding]: First local checks, repository orientation, and CLI learning path.
 - [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
 - [Testing guide]: Focused checks, dependency boundaries, and installation validation.
 - [Agent instructions]: Repository rules for automated coding agents.
 - [Workflow map]: CI/CD roles, triggers, and publication boundaries.
-- [Learnings]: Test selection, dependency drift, action pins, package versions, and recovery.
+- [Learnings]: Shared tooling lessons; Popo-specific recovery notes remain in the contributor guide.
 - [Roadmap]: Current foundations and evidence needed for future scope decisions.
 - [Branch protection]: Configurable PR routing, required checks, and hosted-setting boundaries.
 - [Changelog]: Project change history.
@@ -396,33 +399,35 @@ Release validation, opt-in GitHub publication, and disposable installation tests
 the [release policy].
 
 [Python support]: #requirements
-[Branch protection]: .github/BRANCH-PROTECTION.md
 [agent instructions]: AGENTS.md
 [Architecture]: ARCHITECTURE.md
 [changelog]: CHANGELOG.md
 [Workflow map]: CI-CD-WORKFLOWS.md
+[workflow map]: CI-CD-WORKFLOWS.md
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [contributing guide]: CONTRIBUTING.md
+[Branch protection]: CONTRIBUTING.md#protected-branches-and-pr-routing
+[release policy]: CONTRIBUTING.md#release-policy
 [Release checklist]: CONTRIBUTING.md#release-preparation
 [Design]: DESIGN.md
-[Learnings]: LEARNINGS.md
 [MIT License]: LICENSE
-[References]: REFERENCES.md
-[release policy]: RELEASE-POLICY.md
 [roadmap]: ROADMAP.md
 [security policy]: SECURITY.md
 [support guide]: SUPPORT.md
 [Configuration reference]: docs/CONFIGURATION.md
 [automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
-[Testing guide]: docs/TESTING.md
-[hosted audit guide]: docs/hosted-audit.md
 [API guidance]: docs/api/README.md
-[Developer onboarding]: docs/development/onboarding.md
+[engineering guidance]: docs/engineering.md
+[hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
-[Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
 [safety settings reference]: docs/repository-safety.md
+[References]: https://github.com/Dagitali/engineering/blob/main/REFERENCES.md
+[Developer onboarding]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
+[Learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
+[Release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[Testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml
@@ -434,5 +439,3 @@ the [release policy].
 [license badge]: https://img.shields.io/github/license/Dagitali/popo.svg
 [release badge]: https://img.shields.io/github/v/tag/Dagitali/popo?label=release
 [test layout]: tests/README.md
-
-[workflow map]: CI-CD-WORKFLOWS.md

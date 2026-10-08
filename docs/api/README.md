@@ -29,4 +29,4 @@ to maintained guidance rather than duplicating implementation details.
 [Public API guidance]: ../../CONTRIBUTING.md#public-api-and-type-checking
 [CLI quickstart]: ../../README.md#quickstart
 [Configuration reference]: ../CONFIGURATION.md
-[Interface evolution checklist]: evolution-checklist.md
+[Interface evolution checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md

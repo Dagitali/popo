@@ -27,7 +27,7 @@ Popo's checks and installation workflows do not deploy cloud resources. Do not i
 cleanup procedure into this project or infer authorization to modify a consumer repository. Preserve
 exact tags and artifact identity when investigating failures.
 
-[Branch protection]: ../../.github/BRANCH-PROTECTION.md
-[Release playbook]: ../playbooks/release.md
-[Incident response]: incident-response.md
-[Update required checks]: update-required-checks.md
+[Branch protection]: ../../CONTRIBUTING.md#protected-branches-and-pr-routing
+[Release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[Incident response]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
+[Update required checks]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
