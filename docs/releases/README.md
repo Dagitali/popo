@@ -33,6 +33,7 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.6 Series
 
+- [v0.6.6] — 2026-10-08: Centralize shared engineering documentation.
 - [v0.6.5] — 2026-10-08: Adopt the organization pull request template.
 - [v0.6.4] — 2026-10-07: Adopt organization issue templates.
 - [v0.6.3] — 2026-10-07: Repair missing 0.6.2 release records.
@@ -167,3 +168,4 @@ prepared.
 [v0.6.3]: v0.6.3.md
 [v0.6.4]: v0.6.4.md
 [v0.6.5]: v0.6.5.md
+[v0.6.6]: v0.6.6.md
