@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.6.6 - 2026-10-08](#066---2026-10-08)
 - [0.6.5 - 2026-10-08](#065---2026-10-08)
 - [0.6.4 - 2026-10-07](#064---2026-10-07)
 - [0.6.3 - 2026-10-07](#063---2026-10-07)
@@ -53,18 +54,15 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
-- Replace standalone branch-protection and release-policy documents with Engineering's shared
-  guidance; consolidate Popo-specific routing, release validation, and publication safeguards in the
-  GitHub-recognized contributor guide and update all policy references.
-- Replace local testing and onboarding guides with Engineering's shared equivalents, retaining
-  setup commands in the contributor guide and test contracts in the test README. Preserve
-  GitHub-recognized README/community-health files and installed agent instructions.
-- Replace local learnings, references, release-playbook, and incident-response copies with
-  Engineering equivalents on `main`; retain unique recovery details in contributor guidance and
-  preserve community-health files, agent instructions, and Popo-specific contracts and history.
-- Replace eight local engineering guides, indexes, and blank templates with direct links to Dagitali
-  Engineering; retain Popo-specific documentation, community-health files, and agent instructions,
-  and update maintained navigation to the shared equivalents.
+## [0.6.6] - 2026-10-08
+
+- Replace sixteen local engineering guides, policy files, indexes, and blank templates with Dagitali
+  Engineering equivalents; shared Markdown links follow the organization's `main` branch.
+- Consolidate Popo-specific setup, recovery, branch routing, release validation, and publication
+  safeguards in `CONTRIBUTING.md`; retain community-health files, agent instructions, product
+  contracts, test layout, and release history.
+- Update documentation navigation and policy references, and record shared-source ownership and
+  maintenance boundaries in `docs/engineering.md`.
 
 ## [0.6.5] - 2026-10-08
 
@@ -394,6 +392,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.6.3]: docs/releases/v0.6.3.md
 [0.6.4]: docs/releases/v0.6.4.md
 [0.6.5]: docs/releases/v0.6.5.md
+[0.6.6]: docs/releases/v0.6.6.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
