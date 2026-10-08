@@ -53,6 +53,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Replace eight local engineering guides, indexes, and blank templates with direct links to Dagitali
+  Engineering; retain Popo-specific documentation, community-health files, and agent instructions,
+  and update maintained navigation to the shared equivalents.
+
 ## [0.6.5] - 2026-10-08
 
 - Remove the local pull request template in favor of Dagitali's organization default, update

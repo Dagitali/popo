@@ -65,6 +65,6 @@ decisions; they are not implied by this roadmap.
 [design guidance]: DESIGN.md
 [README]: README.md
 [release policy]: RELEASE-POLICY.md
-[interface checklist]: docs/api/evolution-checklist.md
 [adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md

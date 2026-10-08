@@ -166,7 +166,7 @@ See the [contributing guide], [test layout], and [release policy] for command an
 [learnings]: LEARNINGS.md
 [release policy]: RELEASE-POLICY.md
 [testing guide]: docs/TESTING.md
-[agent workflow]: docs/development/agent-workflow.md
-[task templates]: docs/development/task-templates.md
 [release playbook]: docs/playbooks/release.md
+[agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
+[task templates]: https://github.com/Dagitali/engineering/blob/main/templates/development-task.md
 [test layout]: tests/README.md

@@ -373,6 +373,9 @@ behavior. Retaining a local issue form or `config.yml` would replace the inherit
 
 ### Maintainer Docs
 
+Shared engineering procedures and blank templates live in Dagitali Engineering; see the [engineering
+guidance] for the replacement map and local ownership boundaries.
+
 - [Developer onboarding]: First local checks, repository orientation, and CLI learning path.
 - [Test layout]: Test layers, selection, shared fixtures, and artifact boundaries.
 - [Testing guide]: Focused checks, dependency boundaries, and installation validation.
@@ -401,6 +404,7 @@ the [release policy].
 [Architecture]: ARCHITECTURE.md
 [changelog]: CHANGELOG.md
 [Workflow map]: CI-CD-WORKFLOWS.md
+[workflow map]: CI-CD-WORKFLOWS.md
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [contributing guide]: CONTRIBUTING.md
 [Release checklist]: CONTRIBUTING.md#release-preparation
@@ -416,9 +420,10 @@ the [release policy].
 [automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
 [Testing guide]: docs/TESTING.md
-[hosted audit guide]: docs/hosted-audit.md
 [API guidance]: docs/api/README.md
 [Developer onboarding]: docs/development/onboarding.md
+[engineering guidance]: docs/engineering.md
+[hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
@@ -434,5 +439,3 @@ the [release policy].
 [license badge]: https://img.shields.io/github/license/Dagitali/popo.svg
 [release badge]: https://img.shields.io/github/v/tag/Dagitali/popo?label=release
 [test layout]: tests/README.md
-
-[workflow map]: CI-CD-WORKFLOWS.md

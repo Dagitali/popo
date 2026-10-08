@@ -91,4 +91,4 @@ policy] for versioned changes, and document intentional compatibility breaks exp
 [release policy]: RELEASE-POLICY.md
 [configuration reference]: docs/CONFIGURATION.md
 [testing guide]: docs/TESTING.md
-[interface checklist]: docs/api/evolution-checklist.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md

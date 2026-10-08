@@ -127,4 +127,4 @@ local results.
 [Security]: .github/workflows/security.yml
 [release policy]: RELEASE-POLICY.md
 [testing guide]: docs/TESTING.md
-[required-check runbook]: docs/runbooks/update-required-checks.md
+[required-check runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md

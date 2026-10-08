@@ -309,7 +309,6 @@ requests, and documentation corrections; the [support guide] explains what to in
 repository data, or vulnerability details in public issues.
 
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
-[release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
 [CI workflow]: .github/workflows/ci.yml
 [SBOM workflow]: .github/workflows/sbom.yml
@@ -327,6 +326,7 @@ repository data, or vulnerability details in public issues.
 [security policy]: SECURITY.md
 [support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
-[test layout]: tests/README.md
 [pull request template]: https://github.com/Dagitali/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md
+[release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
 [issue forms]: https://github.com/Dagitali/popo/issues/new/choose
+[test layout]: tests/README.md

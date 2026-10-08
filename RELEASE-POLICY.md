@@ -120,10 +120,10 @@ macOS, and Windows with Python 3.13 and 3.14. It tests CLI help, version, succes
 failing checks outside the checkout. Hosted runners dispose of the temporary environments. It does
 not test a published package, mutate a consumer repository, or deploy external resources.
 
-[release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [CD workflow]: .github/workflows/cd.yml
 [deployment-test.yml]: .github/workflows/deployment-test.yml
 [changelog]: CHANGELOG.md
 [roadmap]: ROADMAP.md
 [support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
+[release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
