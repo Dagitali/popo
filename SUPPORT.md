@@ -63,7 +63,6 @@ The [release policy] owns release classification and deprecation guidance and di
 candidate validation, tagging, and optional publication. Consumer CI, deployment, remediation, and
 hosted settings remain consumer responsibilities.
 
-[issue forms]: .github/ISSUE_TEMPLATE/
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [learnings]: LEARNINGS.md
 [README]: README.md
@@ -72,3 +71,4 @@ hosted settings remain consumer responsibilities.
 [configuration reference]: docs/CONFIGURATION.md
 [documentation index]: docs/README.md
 [release archive]: docs/releases/README.md
+[issue forms]: https://github.com/Dagitali/popo/issues/new/choose
