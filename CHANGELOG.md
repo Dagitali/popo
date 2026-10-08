@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.6.4 - 2026-10-07](#064---2026-10-07)
 - [0.6.3 - 2026-10-07](#063---2026-10-07)
 - [0.6.2 - 2026-10-07](#062---2026-10-07)
 - [0.6.1 - 2026-10-07](#061---2026-10-07)
@@ -50,6 +51,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.6.4] - 2026-10-07
+
+- Remove local issue forms and chooser configuration to adopt Dagitali's organization defaults;
+  retain blank issues, version/environment context, and Popo-specific support/security policies
+  while adopting bracketed titles, optional selectors, and shared reporting navigation. Point
+  contributor/support links to the hosted chooser; displayed inheritance remains to be verified.
 
 ## [0.6.3] - 2026-10-07
 
@@ -364,6 +372,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.6.1]: docs/releases/v0.6.1.md
 [0.6.2]: docs/releases/v0.6.2.md
 [0.6.3]: docs/releases/v0.6.3.md
+[0.6.4]: docs/releases/v0.6.4.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

@@ -130,6 +130,26 @@ class TestWorkflows:
         assert len(job['strategy']['matrix']['os']) == 3
         assert job['steps'][-1]['run'] == 'python -m pytest tests/meta tests/e2e'
 
+    def test_issue_forms_do_not_override_organization_defaults(
+        self,
+        repository_root: Path,
+    ) -> None:
+        """
+        Keep local issue templates from suppressing organization inheritance.
+
+        Parameters
+        ----------
+        repository_root : pathlib.Path
+            Read-only Popo checkout under test.
+
+        Notes
+        -----
+        Checks only local override absence, not hosted chooser behavior or
+        the availability of organization defaults.
+        """
+        directory = repository_root / '.github' / 'ISSUE_TEMPLATE'
+        assert not any(path.is_file() for path in directory.rglob('*'))
+
     @pytest.mark.parametrize(
         ('rules', 'head', 'repository', 'event', 'success'),
         [
