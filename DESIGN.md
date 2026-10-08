@@ -87,8 +87,8 @@ consumer ownership, immutable action pins, and least-privilege automation. Follo
 policy] for versioned changes, and document intentional compatibility breaks explicitly.
 
 [Architecture]: ARCHITECTURE.md
-[learnings]: LEARNINGS.md
-[release policy]: RELEASE-POLICY.md
+[release policy]: CONTRIBUTING.md#release-policy
 [configuration reference]: docs/CONFIGURATION.md
-[testing guide]: docs/TESTING.md
-[interface checklist]: docs/api/evolution-checklist.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
+[learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
+[testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md

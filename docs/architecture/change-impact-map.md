@@ -67,6 +67,6 @@ and obtain appropriate authorization. For release work, record exact candidate e
 [release playbook]; preserve existing tags and report outstanding checks honestly.
 
 [documentation synchronization guide]: ../../CONTRIBUTING.md#documentation-synchronization
-[testing guide]: ../TESTING.md
-[interface checklist]: ../api/evolution-checklist.md
-[release playbook]: ../playbooks/release.md
+[interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
+[release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md

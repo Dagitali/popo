@@ -64,11 +64,11 @@ candidate validation, tagging, and optional publication. Consumer CI, deployment
 hosted settings remain consumer responsibilities.
 
 [Code of Conduct]: CODE_OF_CONDUCT.md
-[learnings]: LEARNINGS.md
+[release policy]: CONTRIBUTING.md#release-policy
 [README]: README.md
-[release policy]: RELEASE-POLICY.md
 [security policy]: SECURITY.md
 [configuration reference]: docs/CONFIGURATION.md
 [documentation index]: docs/README.md
 [release archive]: docs/releases/README.md
+[learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
 [issue forms]: https://github.com/Dagitali/popo/issues/new/choose
