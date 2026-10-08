@@ -68,5 +68,5 @@ and obtain appropriate authorization. For release work, record exact candidate e
 
 [documentation synchronization guide]: ../../CONTRIBUTING.md#documentation-synchronization
 [testing guide]: ../TESTING.md
-[release playbook]: ../playbooks/release.md
 [interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
+[release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md

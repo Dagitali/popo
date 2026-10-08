@@ -53,6 +53,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Replace local learnings, references, release-playbook, and incident-response copies with
+  Engineering equivalents on `main`; retain unique recovery details in contributor guidance and
+  preserve community-health files, agent instructions, and Popo-specific contracts and history.
 - Replace eight local engineering guides, indexes, and blank templates with direct links to Dagitali
   Engineering; retain Popo-specific documentation, community-health files, and agent instructions,
   and update maintained navigation to the shared equivalents.

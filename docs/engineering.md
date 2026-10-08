@@ -35,6 +35,10 @@ current shared guidance without requiring a sibling clone.
 | `docs/runbooks/update-required-checks.md` | [runbooks/update-required-checks.md](https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md) |
 | `docs/EVIDENCE_INVENTORY_TEMPLATE.md` | [templates/evidence-inventory.md](https://github.com/Dagitali/engineering/blob/main/templates/evidence-inventory.md) |
 | `.github/RELEASE-NOTES-TEMPLATE.md` | [templates/releases/python-package.md](https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md) |
+| `LEARNINGS.md` | [learnings/python-and-repository-tooling.md](https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md) |
+| `REFERENCES.md` | [REFERENCES.md](https://github.com/Dagitali/engineering/blob/main/REFERENCES.md) |
+| `docs/playbooks/release.md` | [playbooks/release.md](https://github.com/Dagitali/engineering/blob/main/playbooks/release.md) |
+| `docs/runbooks/incident-response.md` | [runbooks/repository-ci-incident.md](https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md) |
 
 Navigation and reference links now target these equivalents. Historical release descriptions retain
 their original change claims; their template links resolve to the shared source instead of a deleted
@@ -48,7 +52,7 @@ files and notices retain their existing authority.
 
 Popo-specific architecture, design, source-impact map, configuration, checker guides, consumer
 adoption tutorial/playbook, onboarding, test layout and commands, workflow map, branch-routing
-configuration, release policy/playbook/archive, and diagnosed failure records stay beside their
+configuration, release policy/archive, and contributor recovery notes stay beside their
 implementation. Engineering's own root policies are policies for that documentation repository, not
 replacements for Popo's contracts. Shared examples do not impose tool versions, GitFlow routes,
 support promises, publication behavior, or authority to mutate consumer repositories.
@@ -73,6 +77,10 @@ cannot preserve a required local contract. Do not restore duplicate guidance mer
 path.
 
 ## Validation
+
+The additional four-file replacement passed `make docs-markdown`, `make check` (426 tests and
+all static/repository checks), shared-path verification, and `git diff --check` on 2026-10-08.
+Artifact checks were skipped because this change affects documentation only.
 
 On 2026-10-08, this migration passed `make docs-markdown`, `make check` (426 unit/integration tests,
 lint, formatting, strict typing, and repository checks), and `git diff --check`. Shared paths and

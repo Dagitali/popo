@@ -133,7 +133,7 @@ prepared.
 
 [changelog]: ../../CHANGELOG.md
 [release policy]: ../../RELEASE-POLICY.md
-[release playbook]: ../playbooks/release.md
+[release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
 [release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
 [published tags]: https://github.com/Dagitali/popo/tags
 [v0.0.0]: v0.0.0.md

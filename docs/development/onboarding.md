@@ -82,4 +82,4 @@ requires diagnosis rather than routine implementation.
 [configuration reference]: ../CONFIGURATION.md
 [documentation index]: ../README.md
 [testing guide]: ../TESTING.md
-[incident runbook]: ../runbooks/incident-response.md
+[incident runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md

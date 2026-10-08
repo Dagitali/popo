@@ -381,7 +381,7 @@ guidance] for the replacement map and local ownership boundaries.
 - [Testing guide]: Focused checks, dependency boundaries, and installation validation.
 - [Agent instructions]: Repository rules for automated coding agents.
 - [Workflow map]: CI/CD roles, triggers, and publication boundaries.
-- [Learnings]: Test selection, dependency drift, action pins, package versions, and recovery.
+- [Learnings]: Shared tooling lessons; Popo-specific recovery notes remain in the contributor guide.
 - [Roadmap]: Current foundations and evidence needed for future scope decisions.
 - [Branch protection]: Configurable PR routing, required checks, and hosted-setting boundaries.
 - [Changelog]: Project change history.
@@ -409,9 +409,7 @@ the [release policy].
 [contributing guide]: CONTRIBUTING.md
 [Release checklist]: CONTRIBUTING.md#release-preparation
 [Design]: DESIGN.md
-[Learnings]: LEARNINGS.md
 [MIT License]: LICENSE
-[References]: REFERENCES.md
 [release policy]: RELEASE-POLICY.md
 [roadmap]: ROADMAP.md
 [security policy]: SECURITY.md
@@ -425,9 +423,11 @@ the [release policy].
 [engineering guidance]: docs/engineering.md
 [hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
-[Release playbook]: docs/playbooks/release.md
 [release archive]: docs/releases/README.md
 [safety settings reference]: docs/repository-safety.md
+[References]: https://github.com/Dagitali/engineering/blob/main/REFERENCES.md
+[Learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
+[Release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml

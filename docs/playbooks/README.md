@@ -30,8 +30,8 @@ mirror an unrelated project's directory count.
 
 [release policy]: ../../RELEASE-POLICY.md
 [Testing guide]: ../TESTING.md
-[Incident response]: ../runbooks/incident-response.md
 [Adopt Popo]: adopt-popo.md
 [Interface evolution]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
 [Change management]: https://github.com/Dagitali/engineering/blob/main/playbooks/change-management.md
-[Release checklist]: release.md
+[Release checklist]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[Incident response]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md

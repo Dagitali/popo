@@ -128,15 +128,15 @@ Use reference links sorted by destination and keep file headers and tables of co
 [agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
 [Interface evolution]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
 [Change management]: https://github.com/Dagitali/engineering/blob/main/playbooks/change-management.md
+[Release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[Incident response]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
 [Update required checks]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
 [task templates]: https://github.com/Dagitali/engineering/blob/main/templates/development-task.md
 [Evidence inventory template]: https://github.com/Dagitali/engineering/blob/main/templates/evidence-inventory.md
 [Playbooks]: playbooks/README.md
 [Adoption playbook]: playbooks/adopt-popo.md
-[Release playbook]: playbooks/release.md
 [release archive]: releases/README.md
 [Repository safety]: repository-safety.md
 [Runbooks]: runbooks/README.md
-[Incident response]: runbooks/incident-response.md
 [Tutorials]: tutorials/README.md
 [First repository tutorial]: tutorials/check-first-repository.md

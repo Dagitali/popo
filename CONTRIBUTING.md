@@ -27,6 +27,7 @@ under this project's [MIT License].
 - [Testing](#testing)
   - [Distribution Validation](#distribution-validation)
   - [Release Preparation](#release-preparation)
+  - [Recovery Notes](#recovery-notes)
 - [Documentation](#documentation)
   - [Documentation Synchronization](#documentation-synchronization)
 - [Community Standards](#community-standards)
@@ -249,6 +250,18 @@ creates a release.
 6. Follow the [release policy] for separately authorized tagging and optional publication. Never
    move a released tag or treat documentation preparation as authorization to publish.
 
+### Recovery Notes
+
+Use the shared [repository incident procedure] with this project's commands and [release policy].
+For dependency-policy failures, compare `pyproject.toml` lower bounds with
+`requirements/lowest.txt`; the check compares file contents, not installed versions. For
+repository-contract test `KeyError` failures, confirm the intended configuration before restoring a
+key or changing the test. Use `make show-venv` for environment selection and a fresh
+`PYTHON_DIST_DIR` for mixed artifacts. The source-import fallback in `popo.__version__` does not
+establish a release artifact's version. A tagged tree missing its dated changelog needs a corrected
+follow-up version; see the [historical changelog failure]. Do not move the original tag or weaken
+validation.
+
 ## Documentation
 
 Keep prose concise, use descriptive link text, and wrap code, file names, commands, and identifiers
@@ -319,14 +332,16 @@ repository data, or vulnerability details in public issues.
 [workflow map]: CI-CD-WORKFLOWS.md
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [design guidance]: DESIGN.md
-[learnings]: LEARNINGS.md
 [MIT License]: LICENSE
 [README]: README.md
 [release policy]: RELEASE-POLICY.md
 [security policy]: SECURITY.md
 [support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
+[historical changelog failure]: docs/releases/v0.1.3.md
 [pull request template]: https://github.com/Dagitali/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md
+[learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
+[repository incident procedure]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
 [release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
 [issue forms]: https://github.com/Dagitali/popo/issues/new/choose
 [test layout]: tests/README.md

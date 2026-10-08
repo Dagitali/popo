@@ -163,10 +163,10 @@ See the [contributing guide], [test layout], and [release policy] for command an
 [workflow map]: CI-CD-WORKFLOWS.md
 [contributing guide]: CONTRIBUTING.md
 [documentation synchronization guide]: CONTRIBUTING.md#documentation-synchronization
-[learnings]: LEARNINGS.md
 [release policy]: RELEASE-POLICY.md
 [testing guide]: docs/TESTING.md
-[release playbook]: docs/playbooks/release.md
 [agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
+[learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
+[release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
 [task templates]: https://github.com/Dagitali/engineering/blob/main/templates/development-task.md
 [test layout]: tests/README.md
