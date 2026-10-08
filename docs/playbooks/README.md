@@ -29,9 +29,9 @@ These procedures do not authorize publication, tag creation, or hosted-setting c
 mirror an unrelated project's directory count.
 
 [release policy]: ../../RELEASE-POLICY.md
-[Testing guide]: ../TESTING.md
 [Adopt Popo]: adopt-popo.md
 [Interface evolution]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
 [Change management]: https://github.com/Dagitali/engineering/blob/main/playbooks/change-management.md
 [Release checklist]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
 [Incident response]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
+[Testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md

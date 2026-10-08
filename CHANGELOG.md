@@ -53,6 +53,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Replace local testing and onboarding guides with Engineering's shared equivalents, retaining
+  setup commands in the contributor guide and test contracts in the test README. Preserve
+  GitHub-recognized README/community-health files and installed agent instructions.
 - Replace local learnings, references, release-playbook, and incident-response copies with
   Engineering equivalents on `main`; retain unique recovery details in contributor guidance and
   preserve community-health files, agent instructions, and Popo-specific contracts and history.

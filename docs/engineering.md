@@ -39,6 +39,8 @@ current shared guidance without requiring a sibling clone.
 | `REFERENCES.md` | [REFERENCES.md](https://github.com/Dagitali/engineering/blob/main/REFERENCES.md) |
 | `docs/playbooks/release.md` | [playbooks/release.md](https://github.com/Dagitali/engineering/blob/main/playbooks/release.md) |
 | `docs/runbooks/incident-response.md` | [runbooks/repository-ci-incident.md](https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md) |
+| `docs/TESTING.md` | [testing/python.md](https://github.com/Dagitali/engineering/blob/main/testing/python.md) |
+| `docs/development/onboarding.md` | [development/onboarding.md](https://github.com/Dagitali/engineering/blob/main/development/onboarding.md) |
 
 Navigation and reference links now target these equivalents. Historical release descriptions retain
 their original change claims; their template links resolve to the shared source instead of a deleted
@@ -46,12 +48,12 @@ local file. No local redirect or adapter documents remain for the replaced files
 
 ## Retained Local Authority
 
-Community-health files (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and
+README entry points, community-health files (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and
 `SUPPORT.md`), `AGENTS.md`, and installed Copilot instructions remain committed locally. Licensing
 files and notices retain their existing authority.
 
 Popo-specific architecture, design, source-impact map, configuration, checker guides, consumer
-adoption tutorial/playbook, onboarding, test layout and commands, workflow map, branch-routing
+adoption tutorial/playbook, contributor setup, test layout and commands, workflow map, branch-routing
 configuration, release policy/archive, and contributor recovery notes stay beside their
 implementation. Engineering's own root policies are policies for that documentation repository, not
 replacements for Popo's contracts. Shared examples do not impose tool versions, GitFlow routes,
@@ -77,6 +79,10 @@ cannot preserve a required local contract. Do not restore duplicate guidance mer
 path.
 
 ## Validation
+
+The testing/onboarding replacement passed `make docs-markdown`, `make check` (426 tests and all
+static/repository checks), shared-path verification, and `git diff --check` on 2026-10-08. Artifact
+checks were skipped because package behavior and metadata are unchanged.
 
 The additional four-file replacement passed `make docs-markdown`, `make check` (426 tests and
 all static/repository checks), shared-path verification, and `git diff --check` on 2026-10-08.

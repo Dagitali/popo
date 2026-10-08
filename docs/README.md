@@ -118,14 +118,13 @@ Use reference links sorted by destination and keep file headers and tables of co
 [release policy]: ../RELEASE-POLICY.md
 [Tests overview]: ../tests/README.md
 [Configuration reference]: CONFIGURATION.md
-[Testing guide]: TESTING.md
 [API notes]: api/README.md
 [Architecture notes]: architecture/README.md
 [Change-impact map]: architecture/change-impact-map.md
-[Developer onboarding]: development/onboarding.md
 [engineering guidance]: engineering.md
 [Development documentation]: https://github.com/Dagitali/engineering/blob/main/development/README.md
 [agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
+[Developer onboarding]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
 [Interface evolution]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
 [Change management]: https://github.com/Dagitali/engineering/blob/main/playbooks/change-management.md
 [Release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
@@ -133,6 +132,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Update required checks]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
 [task templates]: https://github.com/Dagitali/engineering/blob/main/templates/development-task.md
 [Evidence inventory template]: https://github.com/Dagitali/engineering/blob/main/templates/evidence-inventory.md
+[Testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md
 [Playbooks]: playbooks/README.md
 [Adoption playbook]: playbooks/adopt-popo.md
 [release archive]: releases/README.md

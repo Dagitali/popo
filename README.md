@@ -417,17 +417,17 @@ the [release policy].
 [Configuration reference]: docs/CONFIGURATION.md
 [automation settings reference]: docs/CONFIGURATION.md#automation-settings
 [Documentation index]: docs/README.md
-[Testing guide]: docs/TESTING.md
 [API guidance]: docs/api/README.md
-[Developer onboarding]: docs/development/onboarding.md
 [engineering guidance]: docs/engineering.md
 [hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md
 [safety settings reference]: docs/repository-safety.md
 [References]: https://github.com/Dagitali/engineering/blob/main/REFERENCES.md
+[Developer onboarding]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
 [Learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
 [Release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
+[Testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md
 [CI workflow]: https://github.com/Dagitali/popo/actions/workflows/ci.yml
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml

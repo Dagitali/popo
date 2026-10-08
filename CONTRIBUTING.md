@@ -64,6 +64,12 @@ version source. See the [release policy] and [release archive] for release-affec
 
 ### Development Setup
 
+For a first local session, inspect `git status --short`, run `make dev PY=python3.13` (or
+`PY=python3.14`), then `make show-venv` and `make check`. Optional `make hooks` installs local hooks
+after setup. Use `make help` for focused targets. The shared [onboarding procedure] supplies
+planning and review guidance; this section owns Popo's setup.
+
+
 Create and activate a virtual environment with Python 3.13 or 3.14, then install the project in
 editable mode:
 
@@ -340,6 +346,7 @@ repository data, or vulnerability details in public issues.
 [release archive]: docs/releases/README.md
 [historical changelog failure]: docs/releases/v0.1.3.md
 [pull request template]: https://github.com/Dagitali/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md
+[onboarding procedure]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
 [learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
 [repository incident procedure]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
 [release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md

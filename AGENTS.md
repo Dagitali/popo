@@ -164,9 +164,9 @@ See the [contributing guide], [test layout], and [release policy] for command an
 [contributing guide]: CONTRIBUTING.md
 [documentation synchronization guide]: CONTRIBUTING.md#documentation-synchronization
 [release policy]: RELEASE-POLICY.md
-[testing guide]: docs/TESTING.md
 [agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
 [learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
 [release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
 [task templates]: https://github.com/Dagitali/engineering/blob/main/templates/development-task.md
+[testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md
 [test layout]: tests/README.md
