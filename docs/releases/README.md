@@ -33,7 +33,7 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.6 Series
 
-- [v0.6.4] — prepared 2026-10-07: Adopt organization issue templates; release-form documentation.
+- [v0.6.4] — 2026-10-07: Adopt organization issue templates.
 - [v0.6.3] — 2026-10-07: Repair missing 0.6.2 release records.
 - [v0.6.2] — 2026-10-07: Release-history backfill and status corrections.
 - [v0.6.1] — 2026-10-07: Commitizen and mypy hook updates; retrospective record.
