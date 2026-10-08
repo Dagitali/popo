@@ -359,6 +359,13 @@ feedback, and documentation corrections are useful contributions alongside code 
 
 Do not include credentials, private repository data, or vulnerability details in public issues.
 
+Popo uses Dagitali's inherited organization issue forms and chooser configuration instead of local
+copies. They provide bracketed title prefixes, required bug-report version/environment context,
+optional classification, blank issues, and support/security navigation. Popo's own support and
+security policies remain authoritative for this project. Hosted inheritance must be verified after
+the removal of local overrides reaches the default branch; local checks do not prove chooser
+behavior. Retaining a local issue form or `config.yml` would replace the inherited set.
+
 ### Maintainer Docs
 
 - [Developer onboarding]: First local checks, repository orientation, and CLI learning path.
@@ -385,7 +392,6 @@ the [release policy].
 
 [Python support]: #requirements
 [Branch protection]: .github/BRANCH-PROTECTION.md
-[Issue forms]: .github/ISSUE_TEMPLATE/
 [agent instructions]: AGENTS.md
 [Architecture]: ARCHITECTURE.md
 [changelog]: CHANGELOG.md
@@ -416,6 +422,7 @@ the [release policy].
 [CI badge]: https://github.com/Dagitali/popo/actions/workflows/ci.yml/badge.svg?branch=main
 [PR gates workflow]: https://github.com/Dagitali/popo/actions/workflows/pr.yml
 [PR gates badge]: https://github.com/Dagitali/popo/actions/workflows/pr.yml/badge.svg
+[Issue forms]: https://github.com/Dagitali/popo/issues/new/choose
 [GitHub releases]: https://github.com/Dagitali/popo/releases
 [GitHub tags]: https://github.com/Dagitali/popo/tags
 [Python badge]: https://img.shields.io/badge/python-3.13%20%7C%203.14-blue.svg

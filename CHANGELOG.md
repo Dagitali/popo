@@ -51,6 +51,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Remove local issue forms and chooser configuration to adopt Dagitali's organization defaults;
+  retain blank issues, version/environment context, and Popo-specific support/security policies
+  while adopting bracketed titles, optional selectors, and shared reporting navigation. Point
+  contributor/support links to the hosted chooser; displayed inheritance remains to be verified.
+
 ## [0.6.3] - 2026-10-07
 
 - Backfill the missing 0.6.2 changelog entry and release record, and add matching 0.6.3 records to

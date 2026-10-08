@@ -304,7 +304,6 @@ requests, and documentation corrections; the [support guide] explains what to in
 repository data, or vulnerability details in public issues.
 
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
-[issue forms]: .github/ISSUE_TEMPLATE/
 [release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
 [pull request template]: .github/pull_request_template.md
@@ -325,3 +324,4 @@ repository data, or vulnerability details in public issues.
 [support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
 [test layout]: tests/README.md
+[issue forms]: https://github.com/Dagitali/popo/issues/new/choose
