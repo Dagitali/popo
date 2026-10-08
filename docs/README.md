@@ -108,14 +108,14 @@ generated output from another project.
 
 Use reference links sorted by destination and keep file headers and tables of contents current.
 
-[Branch protection]: ../.github/BRANCH-PROTECTION.md
 [Agent instructions]: ../AGENTS.md
 [Changelog]: ../CHANGELOG.md
 [Contributing]: ../CONTRIBUTING.md
 [Development setup]: ../CONTRIBUTING.md#development-setup
 [Documentation synchronization]: ../CONTRIBUTING.md#documentation-synchronization
+[Branch protection]: ../CONTRIBUTING.md#protected-branches-and-pr-routing
+[release policy]: ../CONTRIBUTING.md#release-policy
 [Project overview]: ../README.md
-[release policy]: ../RELEASE-POLICY.md
 [Tests overview]: ../tests/README.md
 [Configuration reference]: CONFIGURATION.md
 [API notes]: api/README.md

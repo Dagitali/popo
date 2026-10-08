@@ -399,7 +399,6 @@ Release validation, opt-in GitHub publication, and disposable installation tests
 the [release policy].
 
 [Python support]: #requirements
-[Branch protection]: .github/BRANCH-PROTECTION.md
 [agent instructions]: AGENTS.md
 [Architecture]: ARCHITECTURE.md
 [changelog]: CHANGELOG.md
@@ -407,10 +406,11 @@ the [release policy].
 [workflow map]: CI-CD-WORKFLOWS.md
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [contributing guide]: CONTRIBUTING.md
+[Branch protection]: CONTRIBUTING.md#protected-branches-and-pr-routing
+[release policy]: CONTRIBUTING.md#release-policy
 [Release checklist]: CONTRIBUTING.md#release-preparation
 [Design]: DESIGN.md
 [MIT License]: LICENSE
-[release policy]: RELEASE-POLICY.md
 [roadmap]: ROADMAP.md
 [security policy]: SECURITY.md
 [support guide]: SUPPORT.md

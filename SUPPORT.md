@@ -64,8 +64,8 @@ candidate validation, tagging, and optional publication. Consumer CI, deployment
 hosted settings remain consumer responsibilities.
 
 [Code of Conduct]: CODE_OF_CONDUCT.md
+[release policy]: CONTRIBUTING.md#release-policy
 [README]: README.md
-[release policy]: RELEASE-POLICY.md
 [security policy]: SECURITY.md
 [configuration reference]: docs/CONFIGURATION.md
 [documentation index]: docs/README.md

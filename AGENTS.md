@@ -158,12 +158,12 @@ Record reusable findings in [learnings] or the relevant runbook without exposing
 
 See the [contributing guide], [test layout], and [release policy] for command and artifact details.
 
-[branch-protection guide]: .github/BRANCH-PROTECTION.md
 [architecture]: ARCHITECTURE.md
 [workflow map]: CI-CD-WORKFLOWS.md
 [contributing guide]: CONTRIBUTING.md
 [documentation synchronization guide]: CONTRIBUTING.md#documentation-synchronization
-[release policy]: RELEASE-POLICY.md
+[branch-protection guide]: CONTRIBUTING.md#protected-branches-and-pr-routing
+[release policy]: CONTRIBUTING.md#release-policy
 [agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
 [learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
 [release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md

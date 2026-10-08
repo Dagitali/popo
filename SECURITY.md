@@ -66,5 +66,5 @@ current support boundary and the [release policy] for delivery safeguards.
 
 [architecture]: ARCHITECTURE.md
 [workflow map]: CI-CD-WORKFLOWS.md
-[release policy]: RELEASE-POLICY.md
+[release policy]: CONTRIBUTING.md#release-policy
 [support guide]: SUPPORT.md

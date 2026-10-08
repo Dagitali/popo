@@ -132,7 +132,7 @@ Keep changes after the latest dated changelog entry in `Unreleased` until the ne
 prepared.
 
 [changelog]: ../../CHANGELOG.md
-[release policy]: ../../RELEASE-POLICY.md
+[release policy]: ../../CONTRIBUTING.md#release-policy
 [release playbook]: https://github.com/Dagitali/engineering/blob/main/playbooks/release.md
 [release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
 [published tags]: https://github.com/Dagitali/popo/tags

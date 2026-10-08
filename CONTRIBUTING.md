@@ -21,12 +21,16 @@ under this project's [MIT License].
 - [Development Workflow](#development-workflow)
   - [Development Setup](#development-setup)
 - [Protected Branches and PR Routing](#protected-branches-and-pr-routing)
+  - [Configurable PR Routing](#configurable-pr-routing)
+  - [Release Record Gate](#release-record-gate)
+  - [Required Checks](#required-checks)
 - [Public API and Type Checking](#public-api-and-type-checking)
 - [Local Quality Gates](#local-quality-gates)
   - [GitHub Automation](#github-automation)
 - [Testing](#testing)
   - [Distribution Validation](#distribution-validation)
   - [Release Preparation](#release-preparation)
+  - [Release Policy](#release-policy)
   - [Recovery Notes](#recovery-notes)
 - [Documentation](#documentation)
   - [Documentation Synchronization](#documentation-synchronization)
@@ -99,15 +103,53 @@ shell and Make, such as Git Bash.
 
 ## Protected Branches and PR Routing
 
-Popo's routing is configurable rather than tied to GitFlow. With `PR_TARGET_RULES` unset, the PR
-gate imposes no target-branch restrictions. Follow the configured branch roles and required checks
-described in the [branch-protection guide]; that guide is a proposed baseline, not proof that hosted
-protections are active.
+Use Engineering's [shared branch protection] and [required-check transitions] for the review
+baseline and hosted transition procedure. Popo's rules below remain authoritative. These documents
+and workflows do not activate hosted protections or authorize changing them. CI post-push validation
+names `main`; pull-request and merge-group validation are not restricted to that branch. Do not
+infer fixed GitFlow routes or use local branch-finishing commands in place of reviewed pull
+requests.
 
-Do not treat local merge or branch-finishing commands, including `git flow ... finish`, as the
-authoritative integration step: they bypass the pull-request review surface. Synchronize maintained
-branches through reviewed pull requests. Do not assume `develop`, fixed source-branch prefixes, or a
-support-branch strategy are required when no such policy has been configured.
+### Configurable PR Routing
+
+The PR gates workflow validates `PR_TARGET_RULES`. Unset means `{}`: no target restrictions. Keys
+are exact target branches; `head_pattern` is a required Python regular expression matched against
+the entire source name. Optional `same_repository` defaults to false. Unknown fields or invalid
+configuration fail. Unlisted targets are unrestricted; fork PRs must match the pattern and are
+rejected when `same_repository` is true. An optional GitFlow-like rule for `main` is:
+
+```json
+{"main": {"head_pattern": "(release|hotfix)/.+", "same_repository": true}}
+```
+
+Merge groups validate configuration and inherit routing checks from queued PRs. Require the verified
+`Guard pull request target` context on affected branches and rerun queued PR checks when rules
+change before relying on enforcement.
+
+### Release Record Gate
+
+`Validate release records` runs for PRs and merge groups. Every dated changelog release requires
+`docs/releases/vMAJOR.MINOR.PATCH.md` headed `# Popo vMAJOR.MINOR.PATCH`; duplicate sections and
+invalid calendar dates fail. Source names `release/MAJOR.MINOR.PATCH` and `hotfix/MAJOR.MINOR.PATCH`
+(optionally with `v` before the version) also require the candidate's dated entry. Other work may
+remain under `Unreleased`; these names do not impose routing restrictions.
+
+The prepared [release-record ruleset] targets `main` and `develop` without bypass actors. Inspect
+its actual enforcement state. For an authorized activation, cover `refs/heads/main` and
+`refs/heads/develop`, require PRs and the verified `Validate release records` context, and retain
+existing protections. Keep bypass empty unless an explicit recovery exception is approved. Stage new
+requirements disabled until successful hosted results are available, then verify a missing record
+blocks a representative PR. Revalidate queued PRs after changes; merge groups check the combined
+history. Local tests do not establish hosted enforcement.
+
+### Required Checks
+
+Current CI candidates are the Python 3.13/3.14 `check` jobs, four interpreter/dependency-boundary
+combinations, and macOS/Windows clean-install jobs. Choose exact emitted names from successful
+hosted runs; preserve current required contexts during edits. Both CI and PR gates handle
+`merge_group`. Verify all selected contexts report before enabling a queue. Manual security,
+installation, publication, and post-push SBOM jobs are not universal PR or queue gates. Use the
+[workflow map] for current triggers, matrices, and artifacts.
 
 ## Public API and Type Checking
 
@@ -256,6 +298,43 @@ creates a release.
 6. Follow the [release policy] for separately authorized tagging and optional publication. Never
    move a released tag or treat documentation preparation as authorization to publish.
 
+### Release Policy
+
+Use Engineering's [Python release guidance] for the shared compatibility, artifact, and recovery
+procedure. Popo is pre-1.0/alpha and follows Semantic Versioning: compatible fixes and documentation
+or packaging repairs are patch candidates; new optional capabilities are minor candidates. Required
+migration needs explicit compatibility review and release notes (major after 1.0). Classify complete
+behavior changes, including stricter validators and dropped runtimes, rather than file counts.
+No fixed deprecation window or stable-line backport commitment is established.
+
+Versions derive from Git tags through `setuptools-scm`. CD accepts annotated `vMAJOR.MINOR.PATCH`
+tags reachable from the default branch. Preserve tag identities. The tagged tree must contain
+current packaging, tests, setup action, and its dated changelog entry; a later passing checkout does
+not repair an incompatible historical tag. Validate `make check`, wheel and sdist metadata with
+`twine check`, clean installations, and wheel-version matching to the selected tag.
+
+CD builds once and tests those same distributions, produces a validated runtime SBOM and SHA-256
+checksums, and retains workflow artifacts for 14 days. Records belong in the [release archive];
+mark untagged candidates planned and record results against the actual candidate. CLI compatibility
+includes commands, flags, configuration, output, and exit codes. CD generates GitHub Release notes
+rather than reading committed records automatically; reconcile published notes with the record.
+
+GitHub publication is disabled by default and needs separate authorization. Configure the `release`
+environment's reviewers and branch restrictions, set `ENABLE_RELEASE_PUBLISHING` exactly to `true`,
+then manually dispatch CD from the default branch with an existing tag and explicit `publish`.
+Obtain environment approval. Workflow declarations do not configure these protections; verify plan
+capabilities and hosted settings before enabling publication. A tag push validates without publishing.
+
+The publication job receives only validated artifacts, does not execute tagged project code,
+verifies the remote tag object and checksums, and creates a GitHub Release with job-scoped
+permissions. Existing releases are not overwritten; historical releases are not automatically
+marked latest. No workflow publishes to PyPI, creates release tags, or deploys cloud resources.
+
+The manual installation workflow builds the selected checkout's wheel and sdist and tests help,
+version, passing checks, and failing checks in disposable environments outside the source tree on
+Linux, macOS, and Windows with Python 3.13/3.14. It does not validate a published package, mutate a
+consumer repository, or deploy resources. See the [workflow map] for configured delivery details.
+
 ### Recovery Notes
 
 Use the shared [repository incident procedure] with this project's commands and [release policy].
@@ -327,7 +406,8 @@ requests, and documentation corrections; the [support guide] explains what to in
 [security policy] for sensitive vulnerability reports. Do not include credentials, private
 repository data, or vulnerability details in public issues.
 
-[branch-protection guide]: .github/BRANCH-PROTECTION.md
+[branch-protection guide]: #protected-branches-and-pr-routing
+[release policy]: #release-policy
 [Python setup action]: .github/actions/setup-python-project/action.yml
 [CI workflow]: .github/workflows/ci.yml
 [SBOM workflow]: .github/workflows/sbom.yml
@@ -340,15 +420,18 @@ repository data, or vulnerability details in public issues.
 [design guidance]: DESIGN.md
 [MIT License]: LICENSE
 [README]: README.md
-[release policy]: RELEASE-POLICY.md
 [security policy]: SECURITY.md
 [support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
 [historical changelog failure]: docs/releases/v0.1.3.md
 [pull request template]: https://github.com/Dagitali/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md
 [onboarding procedure]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
+[shared branch protection]: https://github.com/Dagitali/engineering/blob/main/governance/branch-protection.md
 [learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md
+[Python release guidance]: https://github.com/Dagitali/engineering/blob/main/releases/python-packages.md
 [repository incident procedure]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md
+[required-check transitions]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
 [release notes template]: https://github.com/Dagitali/engineering/blob/main/templates/releases/python-package.md
 [issue forms]: https://github.com/Dagitali/popo/issues/new/choose
+[release-record ruleset]: https://github.com/Dagitali/popo/rules/24320739
 [test layout]: tests/README.md

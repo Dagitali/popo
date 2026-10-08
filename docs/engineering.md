@@ -41,21 +41,24 @@ current shared guidance without requiring a sibling clone.
 | `docs/runbooks/incident-response.md` | [runbooks/repository-ci-incident.md](https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md) |
 | `docs/TESTING.md` | [testing/python.md](https://github.com/Dagitali/engineering/blob/main/testing/python.md) |
 | `docs/development/onboarding.md` | [development/onboarding.md](https://github.com/Dagitali/engineering/blob/main/development/onboarding.md) |
+| `.github/BRANCH-PROTECTION.md` | [governance/branch-protection.md](https://github.com/Dagitali/engineering/blob/main/governance/branch-protection.md) |
+| `RELEASE-POLICY.md` | [releases/python-packages.md](https://github.com/Dagitali/engineering/blob/main/releases/python-packages.md) |
 
-Navigation and reference links now target these equivalents. Historical release descriptions retain
-their original change claims; their template links resolve to the shared source instead of a deleted
-local file. No local redirect or adapter documents remain for the replaced files.
+Navigation links target shared equivalents. References to Popo-specific branch and release contracts
+target the retained contributor guide, which links to the shared procedures. Historical release
+descriptions retain their original change claims; their template links resolve to the shared source
+instead of a deleted local file. No local redirect or adapter documents remain for the replaced
+files.
 
 ## Retained Local Authority
 
-README entry points, community-health files (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and
-`SUPPORT.md`), `AGENTS.md`, and installed Copilot instructions remain committed locally. Licensing
+README entry points, community-health files (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
+`SECURITY.md`, and `SUPPORT.md`), `AGENTS.md`, and installed Copilot instructions remain committed locally. Licensing
 files and notices retain their existing authority.
 
 Popo-specific architecture, design, source-impact map, configuration, checker guides, consumer
-adoption tutorial/playbook, contributor setup, test layout and commands, workflow map, branch-routing
-configuration, release policy/archive, and contributor recovery notes stay beside their
-implementation. Engineering's own root policies are policies for that documentation repository, not
+adoption tutorial/playbook, contributor setup, test layout and commands, workflow map, release
+archive, and contributor policy/recovery notes stay beside their implementation. Engineering's own root policies are policies for that documentation repository, not
 replacements for Popo's contracts. Shared examples do not impose tool versions, GitFlow routes,
 support promises, publication behavior, or authority to mutate consumer repositories.
 
@@ -80,6 +83,10 @@ path.
 
 ## Validation
 
+The branch/release-policy consolidation passed `make docs-markdown`, `make check` (426 tests
+and all static/repository checks), and `git diff --check` on 2026-10-08. Shared replacement paths
+were verified in the sibling checkout. Artifact checks were skipped for documentation-only work.
+
 The testing/onboarding replacement passed `make docs-markdown`, `make check` (426 tests and all
 static/repository checks), shared-path verification, and `git diff --check` on 2026-10-08. Artifact
 checks were skipped because package behavior and metadata are unchanged.
@@ -98,5 +105,5 @@ workflow, hosted-setting, package metadata, or publication changes are included.
 
 [agent instructions]: ../AGENTS.md
 [contributing]: ../CONTRIBUTING.md
-[release policy]: ../RELEASE-POLICY.md
+[release policy]: ../CONTRIBUTING.md#release-policy
 [license and notices]: https://github.com/Dagitali/engineering/blob/main/README.md#license

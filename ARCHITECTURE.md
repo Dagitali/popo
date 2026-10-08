@@ -102,8 +102,8 @@ Current source and tests establish behavior; historical notes preserve the evide
 specific versions.
 
 [workflow map]: CI-CD-WORKFLOWS.md
+[release policy]: CONTRIBUTING.md#release-policy
 [design guidance]: DESIGN.md
-[release policy]: RELEASE-POLICY.md
 [security policy]: SECURITY.md
 [configuration reference]: docs/CONFIGURATION.md
 [change-impact map]: docs/architecture/change-impact-map.md

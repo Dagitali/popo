@@ -53,6 +53,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Replace standalone branch-protection and release-policy documents with Engineering's shared
+  guidance; consolidate Popo-specific routing, release validation, and publication safeguards in the
+  GitHub-recognized contributor guide and update all policy references.
 - Replace local testing and onboarding guides with Engineering's shared equivalents, retaining
   setup commands in the contributor guide and test contracts in the test README. Preserve
   GitHub-recognized README/community-health files and installed agent instructions.
