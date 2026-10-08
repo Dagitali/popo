@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.6.5 - 2026-10-08](#065---2026-10-08)
 - [0.6.4 - 2026-10-07](#064---2026-10-07)
 - [0.6.3 - 2026-10-07](#063---2026-10-07)
 - [0.6.2 - 2026-10-07](#062---2026-10-07)
@@ -51,6 +52,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.6.5] - 2026-10-08
+
+- Remove the local pull request template in favor of Dagitali's organization default, update
+  contributor references, and preserve Popo's packaging and read-only validation requirements in
+  contributor guidance; hosted template injection remains to be verified after integration.
 
 ## [0.6.4] - 2026-10-07
 
@@ -373,6 +380,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.6.2]: docs/releases/v0.6.2.md
 [0.6.3]: docs/releases/v0.6.3.md
 [0.6.4]: docs/releases/v0.6.4.md
+[0.6.5]: docs/releases/v0.6.5.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
