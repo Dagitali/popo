@@ -52,6 +52,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Remove the local pull request template in favor of Dagitali's organization default, update
+  contributor references, and preserve Popo's packaging and read-only validation requirements in
+  contributor guidance; hosted template injection remains to be verified after integration.
+
 ## [0.6.4] - 2026-10-07
 
 - Remove local issue forms and chooser configuration to adopt Dagitali's organization defaults;

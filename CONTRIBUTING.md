@@ -53,6 +53,11 @@ Discuss substantial changes in an issue before investing in an implementation.
 6. Push the branch and open a pull request using the [pull request template].
 7. Merge through GitHub after the configured checks and reviews pass.
 
+Popo uses the organization [pull request template] rather than a local copy. Its generic checklist
+does not replace this project's requirements: review `AGENTS.md`, preserve read-only checks and
+consumer-independent policy, and run `make test-distribution test-installation` for packaging
+changes. Verify template injection after the local override removal reaches the default branch.
+
 Package versions are derived from Git tags by `setuptools-scm`; do not add or hand-edit a second
 version source. See the [release policy] and [release archive] for release-affecting changes.
 
@@ -306,7 +311,6 @@ repository data, or vulnerability details in public issues.
 [branch-protection guide]: .github/BRANCH-PROTECTION.md
 [release notes template]: .github/RELEASE-NOTES-TEMPLATE.md
 [Python setup action]: .github/actions/setup-python-project/action.yml
-[pull request template]: .github/pull_request_template.md
 [CI workflow]: .github/workflows/ci.yml
 [SBOM workflow]: .github/workflows/sbom.yml
 [security workflow]: .github/workflows/security.yml
@@ -324,4 +328,5 @@ repository data, or vulnerability details in public issues.
 [support guide]: SUPPORT.md
 [release archive]: docs/releases/README.md
 [test layout]: tests/README.md
+[pull request template]: https://github.com/Dagitali/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md
 [issue forms]: https://github.com/Dagitali/popo/issues/new/choose

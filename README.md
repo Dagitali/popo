@@ -359,6 +359,11 @@ feedback, and documentation corrections are useful contributions alongside code 
 
 Do not include credentials, private repository data, or vulnerability details in public issues.
 
+Popo also uses Dagitali's organization pull request template rather than a local copy. The
+[contributing guide] retains project-specific packaging checks and read-only validation
+requirements. Verify inherited PR-template injection after integration; local checks do not
+establish it.
+
 Popo uses Dagitali's inherited organization issue forms and chooser configuration instead of local
 copies. They provide bracketed title prefixes, required bug-report version/environment context,
 optional classification, blank issues, and support/security navigation. Popo's own support and
