@@ -281,8 +281,10 @@ class TestInstalledCLI:
         [
             ('# Consumer\n', 0, 'PASS:'),
             ('[missing](missing.md)\n', 1, 'FAIL:'),
+            ('[Text][missing]\n', 1, 'undefined reference:'),
+            ('![Image](missing.png)\n', 1, 'local target does not exist:'),
         ],
-        ids=['valid-project', 'broken-link'],
+        ids=['valid-project', 'broken-link', 'undefined-reference', 'missing-image'],
     )
     def test_checks_consumer(
         self,

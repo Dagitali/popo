@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.7.0 - 2026-10-22](#070---2026-10-22)
 - [0.6.6 - 2026-10-08](#066---2026-10-08)
 - [0.6.5 - 2026-10-08](#065---2026-10-08)
 - [0.6.4 - 2026-10-07](#064---2026-10-07)
@@ -53,6 +54,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.7.0] - 2026-10-22
+
+- Extend Markdown validation to local inline images, undefined full/collapsed reference labels and
+  conflicting reference destinations; ignore inline code and HTML comments without losing source
+  line numbers. Keep external destinations offline and local targets within the repository.
 
 ## [0.6.6] - 2026-10-08
 
@@ -393,6 +400,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.6.4]: docs/releases/v0.6.4.md
 [0.6.5]: docs/releases/v0.6.5.md
 [0.6.6]: docs/releases/v0.6.6.md
+[0.7.0]: docs/releases/v0.7.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

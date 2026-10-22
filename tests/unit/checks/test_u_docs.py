@@ -588,8 +588,19 @@ class TestMarkdownLinks:
             '````\n```\n[Example](missing.md)\n````',
             '```\n```python\n[Example](missing.md)\n```',
             '   ```markdown\n[Example](missing.md)\n  ````  ',
+            '```html\n<!-- literal comment opener\n```',
+            '`<!--` is a literal comment opener.',
         ],
-        ids=['backticks', 'tildes', 'mixed', 'shorter', 'info-string', 'indented'],
+        ids=[
+            'backticks',
+            'tildes',
+            'mixed',
+            'shorter',
+            'info-string',
+            'indented',
+            'fenced-comment-delimiter',
+            'inline-comment-delimiter',
+        ],
     )
     def test_skips_code_examples_and_preserves_line_numbers(
         self,
@@ -657,4 +668,129 @@ class TestMarkdownLinks:
         write_file('guide.MD', '# Intro\n')
         assert validate(tmp_path) == [
             f'{readme}:1: anchor does not exist: guide.MD#missing',
+        ]
+
+    @pytest.mark.parametrize(
+        ('content', 'message'),
+        [
+            ('[Text][missing]', 'undefined reference: missing'),
+            ('[Text][]', 'undefined reference: Text'),
+            ('![Image][missing]', 'undefined reference: missing'),
+            ('[same]: one.png\n[ SAME ]: two.png', 'conflicting reference:  SAME '),
+            ('![Image](missing.png)', 'local target does not exist: missing.png'),
+            ('![](missing.png)', 'local target does not exist: missing.png'),
+            ('![Image](../outside.png)', 'link escapes repository: ../outside.png'),
+            ('![Image](images/)', 'local target does not exist: images/'),
+        ],
+    )
+    def test_reference_and_image_failures(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        content: str,
+        message: str,
+    ) -> None:
+        """
+        Reject missing labels, conflicting definitions and invalid images.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Root containing only synthetic consumer documentation.
+        write_file : FileWriter
+            UTF-8 writer for the Markdown source and target files.
+        content : str
+            Active Markdown whose observable failure is checked.
+        message : str
+            Expected diagnostic independent of the temporary root.
+        """
+        write_file('README.md', content)
+        write_file('one.png', 'synthetic')
+        write_file('two.png', 'synthetic')
+        (tmp_path / 'images').mkdir()
+        assert any(message in failure for failure in validate(tmp_path))
+
+    @pytest.mark.parametrize(
+        'content',
+        [
+            '[Text][Some Label]\n[some   LABEL]: image.png',
+            '[Some Label][]\n[ SOME label ]: image.png',
+            '![Text][Some Label]\n[some label]: image.png',
+            '[same]: image.png\n[SAME]: <image.png> "Title"',
+            '![Image](image.png)',
+            '![](image.png "Image title")',
+            '![Image](<my image.png>)',
+            '![Image](https://example.invalid/image.png)',
+            '`[Text][missing]` and ``![Image](missing.png)``',
+            '<!-- [Text][missing]\n![Image](missing.png) -->',
+            '~~~md\n[Text][missing]\n~~~',
+        ],
+    )
+    def test_reference_and_image_successes(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        content: str,
+    ) -> None:
+        """
+        Accept normalized labels and local images while ignoring examples.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Synthetic consumer root; no network is used.
+        write_file : FileWriter
+            UTF-8 writer for the source and synthetic image targets.
+        content : str
+            Markdown syntax expected to pass the bounded validator.
+        """
+        write_file('README.md', content)
+        write_file('image.png', 'synthetic')
+        write_file('my image.png', 'synthetic')
+        assert validate(tmp_path) == []
+
+    def test_multiline_comments_preserve_diagnostic_line_numbers(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Keep diagnostics on original lines after masking HTML comments.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Synthetic consumer root.
+        write_file : FileWriter
+            Writer supplying a multiline comment and active reference.
+        """
+        source = write_file(
+            'README.md',
+            '<!--\n[Example][hidden]\n-->\n[Real][missing]',
+        )
+        assert validate(tmp_path) == [f'{source}:4: undefined reference: missing']
+
+    def test_inline_images_cannot_escape_through_symlinks(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        symlink: Callable[[Path, Path], None],
+    ) -> None:
+        """
+        Resolve image symlinks before accepting repository-local targets.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Parent directory containing the repository and outside target.
+        write_file : FileWriter
+            Writer supplying synthetic Markdown and image files.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware symlink creator.
+        """
+        outside = write_file('outside.png', 'synthetic')
+        source = write_file('repo/README.md', '![Image](image.png)')
+        symlink(source.parent / 'image.png', outside)
+        assert validate(source.parent) == [
+            f'{source}:1: link escapes repository: image.png',
         ]
