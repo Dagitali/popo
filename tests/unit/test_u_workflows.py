@@ -288,6 +288,10 @@ class TestWorkflows:
         ('case', 'event', 'head', 'success'),
         [
             ('valid', 'pull_request', 'release/1.2.3', True),
+            ('valid', 'pull_request', 'release/prepare-1.2.3', True),
+            ('valid', 'pull_request', 'release/prepare-v1.2.3', True),
+            ('valid', 'pull_request', 'release/prepare-1.2.4', False),
+            ('valid', 'pull_request', 'release/prepare-invalid', False),
             ('valid', 'pull_request', 'hotfix/v1.2.3', True),
             ('valid', 'pull_request', 'feature/change', True),
             ('valid', 'merge_group', '', True),

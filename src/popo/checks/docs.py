@@ -18,8 +18,12 @@ EXPLICIT_ANCHOR_PATTERN = re.compile(
     re.IGNORECASE,
 )
 HEADING_PATTERN = re.compile(r'^#{1,6}\s+(?P<heading>.+?)\s*#*\s*$')
-LINK_PATTERN = re.compile(r'(?<!!)\[[^\]]+\]\((?P<target>[^)]+)\)')
-REFERENCE_PATTERN = re.compile(r'^ {0,3}\[[^\]]+\]:[ \t]*(<[^>]*>|\S+)')
+LINK_PATTERN = re.compile(r'(?P<image>!?)\[[^\]]*\]\((?P<target>[^)]+)\)')
+REFERENCE_PATTERN = re.compile(
+    r'^ {0,3}\[(?P<label>[^]\n]+)\]:[ \t]*(?P<target><[^>]*>|\S+)',
+)
+REFERENCE_USE_PATTERN = re.compile(r'\[([^]\n]+)\][ \t]*\[([^]\n]*)\]')
+INLINE_CODE_PATTERN = re.compile(r'(?<!`)(`+)(?!`)(.*?)\1(?!`)')
 
 IGNORED_PARTS = {
     '.git',
@@ -113,15 +117,17 @@ def _content_lines(
     Fences start with at least three matching markers after at most three
     spaces. Closing fences must use the same marker, be at least as long,
     and have only whitespace after the markers. Fence lines are excluded;
-    an unclosed fence suppresses all remaining lines. Inline code and indented
-    code blocks are not filtered.
+    an unclosed fence suppresses all remaining lines. HTML comments are masked
+    without changing line numbers. Inline code and indented code blocks are
+    not filtered here; link scanning separately masks inline code.
     """
     fence: str | None = None
+    in_comment = False
     for line_number, line in enumerate(
         path.read_text(encoding='utf-8').splitlines(),
         start=1,
     ):
-        marker = FENCE_PATTERN.match(line)
+        marker = None if in_comment else FENCE_PATTERN.match(line)
         if marker is not None:
             candidate = marker.group('marker')
             if fence is None:
@@ -134,8 +140,24 @@ def _content_lines(
             ):
                 fence = None
                 continue
-        if fence is None:
-            yield line_number, line
+        if fence is not None:
+            continue
+        # Comment delimiters inside inline code are literal Markdown examples.
+        visible = INLINE_CODE_PATTERN.sub(lambda match: ' ' * len(match.group()), line)
+        parts: list[str] = []
+        position = 0
+        while True:
+            delimiter = '-->' if in_comment else '<!--'
+            index = (line if in_comment else visible).find(delimiter, position)
+            if index < 0:
+                if not in_comment:
+                    parts.append(line[position:])
+                break
+            if not in_comment:
+                parts.append(line[position:index])
+            position = index + len(delimiter)
+            in_comment = not in_comment
+        yield line_number, ''.join(parts)
 
 
 def _markdown_paths(
@@ -233,10 +255,13 @@ def validate(
 
     Notes
     -----
-    Inspect inline links and single-line reference definitions outside fenced
-    code blocks. Accept heading and explicit HTML anchors. External URLs are
-    skipped without network requests; undefined reference labels and inline
-    image links are not checked. Fragments are validated only for Markdown
+    Inspect inline links/images and single-line reference definitions outside
+    fenced code, HTML comments, and inline code. Accept heading and explicit
+    HTML anchors without requiring HTML tags. Normalize reference labels with
+    whitespace folding and case folding; reject conflicting destinations and
+    undefined full or collapsed reference uses. Shortcut reference syntax and
+    nested/escaped link syntax are not fully parsed. External URLs are skipped
+    without network requests. Fragments are validated only for Markdown
     targets; other local targets are checked for existence. Files are never
     modified.
     Check reference definitions even when unused. Accept existing directory
@@ -253,14 +278,37 @@ def validate(
     failures: list[str] = []
     anchor_cache: dict[Path, set[str]] = {}
     for source in _markdown_paths(root):
-        for line_number, line in _content_lines(source):
+        lines = list(_content_lines(source))
+        references: dict[str, str] = {}
+        for line_number, line in lines:
             reference = REFERENCE_PATTERN.match(line)
-            targets = (
-                [reference.group(1)]
-                if reference is not None
-                else LINK_PATTERN.findall(line)
-            )
-            for target in targets:
+            if reference is None:
+                continue
+            label = ' '.join(reference.group('label').split()).casefold()
+            target = reference.group('target').strip('<>')
+            if label in references and references[label] != target:
+                failures.append(
+                    f'{source}:{line_number}: conflicting reference: '
+                    f'{reference.group('label')}',
+                )
+            references.setdefault(label, target)
+        for line_number, line in lines:
+            reference = REFERENCE_PATTERN.match(line)
+            if reference is not None:
+                targets = [(reference.group('target'), False)]
+            else:
+                line = INLINE_CODE_PATTERN.sub('', line)
+                for text, label in REFERENCE_USE_PATTERN.findall(line):
+                    label = label or text
+                    if ' '.join(label.split()).casefold() not in references:
+                        failures.append(
+                            f'{source}:{line_number}: undefined reference: {label}',
+                        )
+                targets = [
+                    (match.group('target'), bool(match.group('image')))
+                    for match in LINK_PATTERN.finditer(line)
+                ]
+            for target, image in targets:
                 raw_target = target.strip().strip('<>')
                 if ' "' in raw_target:
                     raw_target = raw_target.split(' "', maxsplit=1)[0]
@@ -279,7 +327,7 @@ def validate(
                         f'{raw_target}',
                     )
                     continue
-                if target_path.is_dir() and not parsed.fragment:
+                if target_path.is_dir() and not parsed.fragment and not image:
                     continue
                 if not target_path.is_file():
                     failures.append(
