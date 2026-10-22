@@ -60,6 +60,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Extend Markdown validation to local inline images, undefined full/collapsed reference labels and
   conflicting reference destinations; ignore inline code and HTML comments without losing source
   line numbers. Keep external destinations offline and local targets within the repository.
+- Accept verb-oriented `release/prepare-MAJOR.MINOR.PATCH` candidate names while preserving dated
+  release-record requirements and the existing release/hotfix naming forms.
 
 ## [0.6.6] - 2026-10-08
 

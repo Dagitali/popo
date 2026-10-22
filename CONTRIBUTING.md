@@ -130,7 +130,8 @@ change before relying on enforcement.
 
 `Validate release records` runs for PRs and merge groups. Every dated changelog release requires
 `docs/releases/vMAJOR.MINOR.PATCH.md` headed `# Popo vMAJOR.MINOR.PATCH`; duplicate sections and
-invalid calendar dates fail. Source names `release/MAJOR.MINOR.PATCH` and `hotfix/MAJOR.MINOR.PATCH`
+invalid calendar dates fail. Source names `release/prepare-MAJOR.MINOR.PATCH`, legacy `release/MAJOR.MINOR.PATCH`, and
+`hotfix/MAJOR.MINOR.PATCH`
 (optionally with `v` before the version) also require the candidate's dated entry. Other work may
 remain under `Unreleased`; these names do not impose routing restrictions.
 
