@@ -74,10 +74,10 @@ configured; see the [release policy].
 
 ## Features
 
-- Local Markdown inline links, reference definitions, and heading or explicit HTML anchors,
-  excluding fenced code examples, rejecting repository-escaping targets, and limiting fragment
-  validation to Markdown targets; generated and vendored sources such as `node_modules` are
-  excluded;
+- Local Markdown inline links/images, reference definitions, and heading or explicit HTML anchors,
+  with undefined full/collapsed labels and conflicting definitions rejected. Fenced/inline code
+  and HTML comments are excluded, targets cannot escape the repository, and fragment validation
+  applies only to Markdown; generated and vendored sources such as `node_modules` are excluded;
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;

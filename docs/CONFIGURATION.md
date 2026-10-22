@@ -102,10 +102,12 @@ and have inline comments. This is static inspection, not evaluation of arbitrary
 expressions or full YAML semantics.
 
 - `check-docs` reads repository-local Markdown; it does not require Python-policy configuration. It
-  validates inline links and single-line reference definitions, including unused definitions, with
-  heading and explicit HTML `<a id="...">` or `<a name="...">` anchors. It does not detect undefined
-  reference labels, validate inline image links, or check external URLs. Fenced code examples are
-  excluded from link scanning and heading-anchor discovery. Closing fences must use the same marker
+  validates inline links/images and single-line reference definitions, including unused definitions,
+  with generated heading IDs and optional explicit HTML anchors. Full and collapsed reference labels
+  use case folding and collapsed whitespace; undefined labels and conflicting destinations fail.
+  Shortcut references and nested/escaped link syntax are not fully parsed. External URLs are not
+  checked. Fenced/inline code and HTML comments are excluded from link scanning; fenced code and
+  comments are excluded from heading-anchor discovery. Closing fences must use the same marker
   character and be at least as long as the opening fence. Plain directory links need no README;
   directory links with fragments resolve to that directory's `README.md`. Fragments are checked only
   on Markdown targets (`.md`, case-insensitive); other local files are checked for existence without

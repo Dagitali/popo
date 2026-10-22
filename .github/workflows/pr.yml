@@ -134,9 +134,12 @@ jobs:
           if os.environ['EVENT_NAME'] == 'pull_request':
               head = os.environ['HEAD_REF']
               if head.startswith(('release/', 'hotfix/')):
-                  candidate = head.split('/', 1)[1].removeprefix('v')
+                  candidate = head.split('/', 1)[1]
+                  if head.startswith('release/'):
+                      candidate = candidate.removeprefix('prepare-')
+                  candidate = candidate.removeprefix('v')
                   if re.fullmatch(version, candidate) is None:
-                      raise SystemExit('Release/hotfix branch must name MAJOR.MINOR.PATCH')
+                      raise SystemExit('Release/hotfix branch must contain a valid MAJOR.MINOR.PATCH candidate')
                   if candidate not in releases:
                       raise SystemExit(f'CHANGELOG.md has no dated section for {candidate}')
           print('Release records match dated changelog sections.')
