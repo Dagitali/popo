@@ -52,9 +52,9 @@ def load_config(root: Path) -> ProjectConfig:
     Parameters
     ----------
     root : pathlib.Path
-        Consumer repository containing optional ``[tool.popo]`` configuration
-        in ``pyproject.toml``. Relative configured paths are based on this
-        root.
+        Consumer repository containing standalone ``popo.toml`` or optional
+        ``[tool.popo]`` in ``pyproject.toml``. Relative configured paths are
+        based on this root; standalone policy takes precedence without merging.
 
     Returns
     -------

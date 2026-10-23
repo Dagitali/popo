@@ -91,7 +91,8 @@ def load_hosted_config(
     Parameters
     ----------
     root : pathlib.Path
-        Repository containing ``[tool.popo.hosted]`` in pyproject.toml.
+        Repository containing hosted settings (``[tool.popo.hosted]``) in the
+        selected policy source (e.g., popo.toml or pyproject.toml).
 
     Returns
     -------
