@@ -66,6 +66,10 @@ are not prohibited. These bounded checks are not complete taint analysis: indire
 alternate event contexts, and third-party action behavior require review or a dedicated security
 analyzer.
 
+Parsed YAML mappings are visited once even when shared or cyclic aliases are present. Safety checks
+continue past recursive aliases to inspect subsequent scripts and checkouts without duplicate
+diagnostics for a shared mapping. The iterative traversal does not remove YAML-parser limits.
+
 ## npm Consistency
 
 Each pair compares manifest name/version and dependency, development, and optional-dependency
