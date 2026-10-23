@@ -38,7 +38,8 @@ keys, malformed configuration, duplicate YAML keys, and unreadable inputs fail.
 
 `pull_request_target` and `workflow_run` are denied by default because they can create privileged
 execution boundaries. Allow only a reviewed workflow/trigger pair with a nonempty owner, reason,
-approver, and quoted ISO expiry date:
+approver, and quoted ISO expiry date in canonical `YYYY-MM-DD` form (compact and ISO week dates are
+rejected):
 
 ```toml
 [[tool.popo.safety.exceptions]]
