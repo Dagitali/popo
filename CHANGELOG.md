@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.8.0 - 2026-10-23](#080---2026-10-23)
 - [0.7.0 - 2026-10-22](#070---2026-10-22)
 - [0.6.6 - 2026-10-08](#066---2026-10-08)
 - [0.6.5 - 2026-10-08](#065---2026-10-08)
@@ -54,6 +55,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.8.0] - 2026-10-23
+
+- Add opt-in `check-required-files` and `check-file-headers` commands with consumer-owned paths,
+  identity templates, comment formats, executable directives and reasoned preservation exceptions.
+  Configured file checks also participate in `check-all`; existing consumers remain unchanged.
+- Align local Ruff-hook dependency bounds with the existing development extra.
 
 ## [0.7.0] - 2026-10-22
 
@@ -403,6 +411,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.6.5]: docs/releases/v0.6.5.md
 [0.6.6]: docs/releases/v0.6.6.md
 [0.7.0]: docs/releases/v0.7.0.md
+[0.8.0]: docs/releases/v0.8.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

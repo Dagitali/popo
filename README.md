@@ -78,6 +78,8 @@ configured; see the [release policy].
   with undefined full/collapsed labels and conflicting definitions rejected. Fenced/inline code
   and HTML comments are excluded, targets cannot escape the repository, and fragment validation
   applies only to Markdown; generated and vendored sources such as `node_modules` are excluded;
+- Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
+  policies];
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
@@ -141,6 +143,8 @@ Run a check from the repository it should inspect:
 
 ```console
 popo check-docs
+popo check-required-files
+popo check-file-headers
 popo check-github-actions-pins
 popo check-automation-contracts
 popo check-repository-safety
@@ -156,9 +160,9 @@ Every command accepts `--root`. The equivalent module entry point is
 
 `check-all` runs the documentation, action-pin, dependency, and Python-policy checks. Release
 changelog validation is separate and requires the release version to check. Automation contracts are
-included when the consumer explicitly configures `[tool.popo.automation]`. Repository safety checks
-are similarly opt-in through `[tool.popo.safety]`; see the [safety settings reference]. Available
-since v0.6.0.
+included when the consumer explicitly configures `[tool.popo.automation]`. Required-file and header
+checks are enabled only by their consumer tables. Repository safety checks are similarly opt-in
+through `[tool.popo.safety]`; see the [safety settings reference]. Available since v0.6.0.
 
 ## Configuration
 
@@ -419,6 +423,7 @@ the [release policy].
 [Documentation index]: docs/README.md
 [API guidance]: docs/api/README.md
 [engineering guidance]: docs/engineering.md
+[file policies]: docs/file-policies.md
 [hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md
