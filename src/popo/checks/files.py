@@ -7,6 +7,7 @@ Validate exact required files and configured source headers without mutation.
 import ast
 import subprocess
 from fnmatch import fnmatchcase
+from itertools import dropwhile, takewhile
 from pathlib import Path
 
 from ..config.files import HeaderRule, HeadersConfig, RequiredFilesConfig
@@ -42,10 +43,12 @@ def _header(
         except SyntaxError as error:
             raise ValueError('invalid Python source') from error
     if rule.format == 'xml':
-        lines = text.splitlines(True)
-        while lines and lines[0].startswith(('<?xml ', '<!DOCTYPE ')):
-            lines.pop(0)
-        text = ''.join(lines)
+        text = ''.join(
+            dropwhile(
+                lambda line: line.startswith(('<?xml ', '<!DOCTYPE ')),
+                text.splitlines(keepends=True),
+            ),
+        )
     if rule.format in {'html', 'xml', 'block'}:
         start, end = ('/*\n', '*/') if rule.format == 'block' else ('<!--\n', '-->')
         if not text.startswith(start) or end not in text:
@@ -54,12 +57,10 @@ def _header(
     marker = '#' if rule.format == 'hash' else '//'
     if text.startswith('#!'):
         text = text.partition('\n')[2]
-    lines = []
-    for line in text.splitlines():
-        if not line.startswith(marker):
-            break
-        lines.append(line.removeprefix(marker).removeprefix(' '))
-    return '\n'.join(lines)
+    return '\n'.join(
+        line.removeprefix(marker).removeprefix(' ')
+        for line in takewhile(lambda line: line.startswith(marker), text.splitlines())
+    )
 
 
 def _problem(
@@ -121,7 +122,7 @@ def _sources(config: HeadersConfig) -> list[Path]:
     return sorted(
         path
         for path in paths
-        if path.is_file()
+        if (path.is_file() or (path.is_symlink() and not path.exists()))
         and not set(path.relative_to(config.root).parts[:-1]).intersection(
             config.ignored_directories,
         )
@@ -157,7 +158,8 @@ def validate_headers(
     -------
     list[str]
         Unclassified formats, malformed headers, discovery/read failures and
-        symlink escapes. Exception contents are never decoded.
+        symlink escapes, including dangling links. Exception contents are never
+        decoded.
 
     Notes
     -----
@@ -218,17 +220,22 @@ def validate_required(
     Returns
     -------
     list[str]
-        Relative-path diagnostics; all configured entries are checked.
+        Relative-path diagnostics; all configured entries are checked. Path
+        resolution and inspection errors become diagnostics rather than
+        stopping later checks.
     """
     failures = []
     for relative in config.required:
         path = config.root / relative
-        if not path.resolve().is_relative_to(config.root):
-            failures.append(f'{relative}: required file escapes repository')
-        elif not path.is_file():
-            failures.append(
-                f'{relative}: required file does not exist or is not a file',
-            )
+        try:
+            if not path.resolve().is_relative_to(config.root):
+                failures.append(f'{relative}: required file escapes repository')
+            elif not path.is_file():
+                failures.append(
+                    f'{relative}: required file does not exist or is not a file',
+                )
+        except (OSError, UnicodeError, ValueError) as error:
+            failures.append(f'{relative}: {error}')
     return failures
 
 
