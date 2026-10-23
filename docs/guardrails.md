@@ -63,11 +63,12 @@ guardrails:
 	popo check-all --profile guardrails
 ```
 
-An optional leading `@` is accepted. Variables, prerequisites, extra commands and wrapper
-invocations are outside this deliberately literal recipe contract. The profile includes the parity
-check so local hooks and CI check their own wiring as well as the repository policies. This does not
-recurse: the parity checker reads the declarations without invoking Make or running the profile
-again.
+An optional leading `@`, blank lines and non-recipe Make comments are accepted. Comments do not
+terminate a recipe: additional tab-prefixed commands still fail validation. Variables,
+prerequisites, extra commands and wrapper invocations are outside this deliberately literal recipe
+contract. The profile includes the parity check so local hooks and CI check their own wiring as well
+as the repository policies. This does not recurse: the parity checker reads the declarations without
+invoking Make or running the profile again.
 
 ## Pre-Commit Hook
 
