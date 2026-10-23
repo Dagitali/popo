@@ -109,6 +109,10 @@ and compare all input bytes after checking. Version output must equal the select
 version rather than merely parse as a version. Coverage is diagnostic; no reduced threshold masks
 regressions.
 
+Guardrail contract fixtures live in `tests/support/guardrails.py` and serve configuration, checker
+and CLI tests. Cases cover non-Python consumers, explicit profiles, structured results, root
+containment and independently reported Make/hook/workflow drift without executing those inputs.
+
 Shared YAML traversal tests cover deep parsed containers, depth-first order, caller-supplied visited
 sets, and repeated aliases. Checker tests separately verify cyclic YAML input, retained policy
 diagnostics and unchanged source bytes; use parameterized fixtures for mapping and sequence cycles.
