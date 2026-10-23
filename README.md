@@ -89,6 +89,9 @@ configured; see the [release policy].
   inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
 
+Python-policy checks report unresolved environment or matrix version references even alongside valid
+declarations; package and embedded Ruff settings are validated from the same metadata read.
+
 Popo's PR workflow checks dated changelog entries against versioned release documents and validates
 candidate versions on release/hotfix branches. Hosted required-check configuration is needed to
 block merges; see [workflow map] for the validation boundary.

@@ -56,6 +56,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Read shared Python-policy package/Ruff metadata once and report each shared input failure once.
+- Reject unresolved workflow Python-version references even when another declaration is valid;
+  report unresolved expressions as unsupported versions instead of silently skipping them.
 - Share safe YAML loading and iterative mapping traversal across automation, actionlint and safety
   checks. Preserve nested traversal order and avoid recursion-limit failures in parsed structures.
 - Fix safety-check crashes on recursive YAML aliases and duplicate shell-interpolation diagnostics
