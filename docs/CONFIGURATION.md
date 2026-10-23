@@ -72,7 +72,13 @@ Popo a complete installer requirements-file parser.
 The default `requires-python` comes from dependency metadata even when the Python-policy metadata
 path is overridden. Set it explicitly when using a different policy. Popo checks the running
 interpreter against that policy as well as checking repository declarations; run it with an
-interpreter supported by both Popo and the consumer policy.
+interpreter supported by both Popo and the consumer policy. Within the validator, shared
+package/Ruff TOML is read once, with a single diagnostic for a missing or malformed shared input.
+Configuration loading remains separate.
+
+Every discovered workflow `python-version` declaration is checked. Unresolved supported env/matrix
+references produce an unsupported-version diagnostic even when another declaration is valid.
+Resolution remains text-based and does not model job-local scope or arbitrary expressions.
 
 ## Automation Settings
 
