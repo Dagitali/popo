@@ -58,6 +58,27 @@ class TestCommandLine:
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
             (
+                ['check-required-files'],
+                'README.md',
+                '# Project\n',
+                1,
+                'requires tool.popo.files',
+            ),
+            (
+                ['check-file-headers'],
+                'README.md',
+                '# Project\n',
+                1,
+                'requires tool.popo.headers',
+            ),
+            (
+                ['check-required-files'],
+                'pyproject.toml',
+                '[tool.popo.files]\nrequired=["absent"]',
+                1,
+                'required file does not exist',
+            ),
+            (
                 ['check-repository-safety'],
                 'pyproject.toml',
                 '[tool.popo.safety]\n',
@@ -202,7 +223,10 @@ class TestCommandLine:
         assert message in captured.out
         assert not captured.err
 
-    @pytest.mark.parametrize('constraint', ['demo==1', 'demo==1 # minimum'])
+    @pytest.mark.parametrize(
+        'constraint',
+        ['demo==1', 'demo==1 # minimum'],
+    )
     def test_dependency_command(
         self,
         write_file: FileWriter,
@@ -289,6 +313,46 @@ class TestCommandLine:
             main(arguments)
         captured = capsys.readouterr()
         assert message in (captured.out if status == 0 else captured.err)
+
+    def test_aggregate_includes_configured_file_policies(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        Collect both file-policy failures through the aggregate public command.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated consumer root.
+        write_file : FileWriter
+            Writer for the opt-in policy and malformed source.
+        capsys : pytest.CaptureFixture[str]
+            Captured command diagnostics.
+        """
+        write_file(
+            'pyproject.toml',
+            """[tool.popo.files]
+required = ["absent"]
+[tool.popo.headers]
+project = "Sample"
+notice = "Copyright"
+[[tool.popo.headers.rules]]
+patterns = ["*"]
+format = "raw"
+prefix = "HEADER"
+[[tool.popo.headers.exceptions]]
+patterns = ["pyproject.toml"]
+reason = "Synthetic metadata"
+""",
+        )
+        write_file('sample', 'missing header')
+        assert main(['check-all', '--root', str(tmp_path)]) == 1
+        output = capsys.readouterr().out
+        assert 'absent: required file' in output
+        assert 'sample: header does not match' in output
 
 
 # !SECTION

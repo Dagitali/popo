@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.8 Series](#08-series)
 - [0.7 Series](#07-series)
 - [0.6 Series](#06-series)
 - [0.5 Series](#05-series)
@@ -32,9 +33,14 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.8 Series
+
+- [v0.8.0] — 2026-10-23: Add opt-in required-file and configurable header checks; release text
+  prepared in released form, tagging and publication pending.
+
 ## 0.7 Series
 
-- [v0.7.0] — Planned: Extend Markdown reference-label and inline-image validation.
+- [v0.7.0] — 2026-10-22: Extend Markdown reference-label and inline-image validation.
 
 ## 0.6 Series
 
@@ -120,8 +126,12 @@ Versioned deployment sections describe only release-specific effects and rollbac
 1. Create `docs/releases/vMAJOR.MINOR.PATCH.md` for an agreed release candidate using the [release
    notes template]. Mark untagged candidates as planned; do not infer a release number from a
    development build or a fallback version.
-2. Reconcile scope with the candidate's changes and changelog. Preserve the template's applicable
-   compatibility, support, validation, publication, rollback, and follow-up sections.
+2. Reconcile scope with the candidate's changes and changelog. Use these main sections in order:
+   Highlights, Change Scope, Compatibility and Configuration, Support Boundary, Validation,
+   Deployment and Rollback, and Known Limitations and Follow-Up. Include Breaking Changes and
+   Deprecations subsections under Compatibility and Configuration. Retain specialized subsections
+   and include all headings in the contents list. Preserve historical evidence and distinguish an
+   absence of recorded changes from a newly verified compatibility claim.
 3. Record the candidate tag without embedding a commit SHA, and distinguish completed checks from
    pending checks. Never transfer current-checkout validation results to a historical tag.
 4. Add the record to this index, newest first, using `version — YYYY-MM-DD: summary` with the date
@@ -175,3 +185,4 @@ prepared.
 [v0.6.5]: v0.6.5.md
 [v0.6.6]: v0.6.6.md
 [v0.7.0]: v0.7.0.md
+[v0.8.0]: v0.8.0.md

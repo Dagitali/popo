@@ -321,5 +321,56 @@ class TestInstalledCLI:
         assert not result.stderr
         assert readme.read_text(encoding='utf-8') == content
 
+    @pytest.mark.parametrize(
+        'command',
+        ['check-required-files', 'check-file-headers'],
+    )
+    def test_installed_file_policies(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        command: str,
+    ) -> None:
+        """
+        Verify opt-in file commands through installed package entry points.
+
+        Parameters
+        ----------
+        installation : Installation
+            Wheel or sdist installed outside the source checkout.
+        tmp_path : pathlib.Path
+            Disposable consumer with an intentionally failing policy.
+        command : str
+            Public file-policy subcommand to exercise.
+        """
+        metadata = tmp_path / 'pyproject.toml'
+        metadata.write_text(
+            """[tool.popo.files]
+required = ["required.txt"]
+[tool.popo.headers]
+project = "Sample"
+notice = "Copyright"
+[[tool.popo.headers.rules]]
+patterns = ["*"]
+format = "raw"
+prefix = "HEADER"
+purpose-required = false
+[[tool.popo.headers.exceptions]]
+patterns = ["pyproject.toml"]
+reason = "Synthetic policy fixture"
+""",
+            encoding='utf-8',
+        )
+        source = tmp_path / 'required.txt'
+        source.write_text('HEADER', encoding='utf-8')
+        result = installation.run(command, '--root', str(tmp_path))
+        assert result.returncode == 0, result.stdout + result.stderr
+        source.unlink()
+        if command == 'check-file-headers':
+            source.write_text('INVALID', encoding='utf-8')
+        result = installation.run(command, '--root', str(tmp_path), module=True)
+        assert result.returncode == 1, result.stdout + result.stderr
+        assert 'FAIL:' in result.stdout
+
 
 # !SECTION
