@@ -69,8 +69,8 @@ dependencies; see the [contributing guide] for isolated environments and depende
 
 ## Shared Fixtures
 
-The [test configuration] registers [artifact fixtures] and shared hosted-policy fixtures as pytest
-plugins. Both artifact layers reuse one wheel and one sdist per session, either from
+The [test configuration] registers [artifact fixtures], hosted-policy and guardrail fixtures as
+pytest plugins. Both artifact layers reuse one wheel and one sdist per session, either from
 `--artifact-dir` or an isolated temporary build. The directory must contain exactly one wheel and
 one sdist before `twine check` runs. Installation tests remove source-path overrides and exercise
 the installed CLI outside the checkout.
@@ -95,11 +95,12 @@ fixtures local to their test module unless multiple layers use them. Hosted obse
 `tests/support/hosted.py`, with prefixed fixture names and function scope so mutable API responses
 remain isolated. Hosted configuration cases belong in `unit/configs/`, GET-adapter and observation
 cases in `unit/checks/`, and public CLI reporting in `integration/`. Parameterized CLI-format
-fixtures cover default text, explicit text and JSON independently; invalid configuration must fail
-before the observer runs. Subprocess tests use timeouts; Make runs against a temporary copy of the
-Makefile, and Make and Git fixtures exclude inherited tool configuration where it can change the
-result. The Make runner derives configurable variables from the copied Makefile and strips caller
-overrides such as `TEST_ARGS`; pass deliberate overrides as Make command arguments instead.
+fixtures in `integration/conftest.py` cover default text, explicit text and JSON independently for
+hosted and native commands; invalid configuration must fail before the observer runs. Subprocess
+tests use timeouts; Make runs against a temporary copy of the Makefile, and Make and Git fixtures
+exclude inherited tool configuration where it can change the result. The Make runner derives
+configurable variables from the copied Makefile and strips caller overrides such as `TEST_ARGS`;
+pass deliberate overrides as Make command arguments instead.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
@@ -113,7 +114,16 @@ Guardrail contract fixtures live in `tests/support/guardrails.py` and serve conf
 and CLI tests. Cases cover non-Python consumers, explicit profiles, structured results, root
 containment and independently reported Make/hook/workflow drift without executing those inputs.
 Make-comment regressions distinguish harmless separators from extra commands; hook cases retain
-strict YAML boolean typing while inspecting each repository/hook pair once.
+strict YAML boolean typing and assert specific diagnostic messages instead of counts alone. Shared
+parameterized fixtures prepare matching, Make, hook and workflow cases for standalone,
+default-selection and self-inspecting profile commands. In-process and installed tests give each
+combination a fresh consumer. `support/files.py` provides recursive byte snapshots, including nested
+files, for read-only comparisons; these snapshots do not record empty directories or file metadata.
+
+Markdown target/discovery/containment tests remain in `unit/checks/test_u_docs.py`; reference/image
+cases live in `test_u_docs_references.py`, and fence/comment/anchor syntax in
+`test_u_docs_syntax.py`. The split preserves the original scenarios and detailed method
+documentation.
 
 Shared YAML traversal tests cover deep parsed containers, depth-first order, caller-supplied visited
 sets, and repeated aliases. Checker tests separately verify cyclic YAML input, retained policy
