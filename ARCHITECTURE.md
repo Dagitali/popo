@@ -48,6 +48,7 @@ flowchart LR
 | Entry points | `src/popo/__main__.py`, `src/popo/cli.py` | Parse commands, select roots, dispatch checks, and return statuses |
 | Configuration | `src/popo/config/` | Load consumer settings and domain-specific defaults |
 | Validators | `src/popo/checks/` | Inspect files and return findings |
+| Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
 | Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report results |
 | Package contract | `src/popo/__init__.py`, `src/popo/py.typed` | Version lookup, intentional exports, and typing marker |
 | Verification | `tests/` | Unit, CLI integration, distribution, and clean-install contracts |

@@ -204,7 +204,8 @@ When dependency configuration is absent, `popo` detects the layouts
 workflow/action input contracts, composite-step structure, template metadata, and immutable remote
 references. Use `--pins-only` to skip input, composite, and metadata checks; parsing and local
 target resolution still run. The older `check-github-actions-pins` command remains available and
-also recognizes valid revision-free self references.
+also recognizes valid revision-free self references. Parsed YAML traversal visits shared mappings
+once and handles recursive aliases; safety checks retain diagnostics without recursion crashes.
 
 See the [automation settings reference] for command boundaries and validation rules. Configure
 discovery and policy in the consuming repository, without importing Popo internals:

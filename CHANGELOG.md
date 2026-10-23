@@ -56,6 +56,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Share safe YAML loading and iterative mapping traversal across automation, actionlint and safety
+  checks. Preserve nested traversal order and avoid recursion-limit failures in parsed structures.
+- Fix safety-check crashes on recursive YAML aliases and duplicate shell-interpolation diagnostics
+  for mappings reused through aliases; continue inspecting later policy violations.
 - Consolidate CLI parser setup and configuration string-array validation, modernize type aliases,
   and complete class-based unit suites while preserving consumer-specific policy differences.
 - Report malformed dependency project tables as diagnostics instead of raising an attribute error.
