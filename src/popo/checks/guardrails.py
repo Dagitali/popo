@@ -37,7 +37,12 @@ def _read_yaml(
 def _make(
     config: GuardrailsConfig,
 ) -> list[str]:
-    """Require one literal target with one canonical profile invocation."""
+    """
+    Require one literal target with one canonical profile invocation.
+
+    Non-recipe Make comments and blank lines do not terminate a recipe block.
+    Tab-prefixed comments remain recipe entries under this literal contract.
+    """
     lines = config.makefile.read_text(encoding='utf-8').splitlines()
     targets = [i for i, line in enumerate(lines) if line == f'{config.target}:']
     command = f'popo check-all --profile {config.profile}'
@@ -45,7 +50,7 @@ def _make(
         return [f'{config.makefile}: require one literal {config.target}: target']
     recipe: list[str] = []
     for line in lines[targets[0] + 1 :]:
-        if not line.strip():
+        if not line.strip() or line.lstrip(' ').startswith('#'):
             continue
         if not line.startswith('\t'):
             break
@@ -63,10 +68,10 @@ def _hooks(
     """Require a local system hook that checks the entire repository."""
     document = _read_yaml(config.hooks)
     matches = [
-        _mapping(hook)
-        for repo in _items(document.get('repos'))
-        for hook in _items(_mapping(repo).get('hooks'))
-        if _mapping(hook).get('id') == config.hook
+        (repo.get('repo'), hook)
+        for repo in map(_mapping, _items(document.get('repos')))
+        for hook in map(_mapping, _items(repo.get('hooks')))
+        if hook.get('id') == config.hook
     ]
     expected = {
         'entry': f'make {config.target}',
@@ -74,29 +79,22 @@ def _hooks(
         'pass_filenames': False,
         'always_run': True,
     }
-    local = any(
-        _mapping(repo).get('repo') == 'local'
-        and any(
-            _mapping(hook).get('id') == config.hook
-            for hook in _items(_mapping(repo).get('hooks'))
-        )
-        for repo in _items(document.get('repos'))
-    )
-    if (
-        len(matches) != 1
-        or not local
-        or any(
-            type(matches[0].get(key)) is not type(value) or matches[0].get(key) != value
-            for key, value in expected.items()
-        )
-        or ('args' in matches[0] and matches[0]['args'] != [])
-    ):
-        return [
-            f'{config.hooks}: {config.hook} must be one local system hook invoking '
-            f'make {config.target} with always_run=true and pass_filenames=false, '
-            'without args',
-        ]
-    return []
+    if len(matches) == 1:
+        repository, hook = matches[0]
+        if (
+            repository == 'local'
+            and all(
+                type(hook.get(key)) is type(value) and hook.get(key) == value
+                for key, value in expected.items()
+            )
+            and hook.get('args', []) == []
+        ):
+            return []
+    return [
+        f'{config.hooks}: {config.hook} must be one local system hook invoking '
+        f'make {config.target} with always_run=true and pass_filenames=false, '
+        'without args',
+    ]
 
 
 def _workflow(
@@ -162,8 +160,8 @@ def validate(
     -----
     This checks declared wiring, not shell equivalence or hosted enforcement.
     Includes, variables, conditional execution and tool installation are
-    outside
-    this contract; consumers retain responsibility for their execution context.
+    outside this contract; consumers retain responsibility for their execution
+    context.
     """
     failures: list[str] = []
     for check in (_make, _hooks, _workflow):
