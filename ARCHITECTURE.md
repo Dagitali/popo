@@ -46,6 +46,7 @@ flowchart LR
 | Component | Source | Responsibility |
 | --- | --- | --- |
 | Entry points | `src/popo/__main__.py`, `src/popo/cli.py` | Parse commands, select roots, dispatch checks, and return statuses |
+| Native commands | `src/popo/_commands.py` | Adapt offline checks and share their handler registry between individual and aggregate dispatch |
 | Configuration | `src/popo/config/` | Load consumer settings and domain-specific defaults |
 | Validators | `src/popo/checks/` | Inspect files and return findings |
 | Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
@@ -66,10 +67,12 @@ Python versions, and tool configuration belong in `pyproject.toml`.
 
 `check-all` runs an explicit selection or profile when supplied; otherwise it retains baseline
 checks and configured opt-in domains. `explain` reports this selection without invoking validators.
-Native offline reporting supports text and versioned JSON with ordered check identities.
-Release-changelog validation requires an explicit version and remains separate. Configuration
-failures are reported; some I/O and decoding exceptions propagate. The [configuration reference] and
-source docstrings describe individual command boundaries.
+Native offline reporting supports text and versioned JSON with ordered check identities. Aggregate
+execution uses the same native adapters directly, without rebuilding the CLI parser; adapters own
+defaults for optional check-specific arguments. Release-changelog validation requires an explicit
+version and remains separate. Configuration failures are reported; some I/O and decoding exceptions
+propagate. The [configuration reference] and source docstrings describe individual command
+boundaries.
 
 ## Optional Integrations
 

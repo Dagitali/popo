@@ -91,6 +91,9 @@ configured; see the [release policy].
   inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
 
+Guardrail parity keeps reading Make recipes across non-recipe comments, accepting comment-only
+separators without allowing them to hide extra commands.
+
 Python-policy checks report unresolved environment or matrix version references even alongside valid
 declarations; package and embedded Ruff settings are validated from the same metadata read.
 

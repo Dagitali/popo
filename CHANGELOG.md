@@ -58,6 +58,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Separate native check adapters from CLI parsing and share their dispatch registry; run selected
+  checks directly instead of rebuilding and reparsing the CLI. Preserve command defaults and
+  diagnostic contracts, and collect pre-commit hook matches in one traversal.
+- Keep inspecting Make recipes across non-recipe comments: accept comments before a valid recipe and
+  reject extra commands previously hidden after comment separators.
 - Align autopep8 with Ruff by ignoring `E203`, preventing commit-time formatting conflicts on
   complex slices.
 - Add standalone `popo.toml`, explicit offline check selection and named profiles so Swift, CDK and
