@@ -27,6 +27,7 @@ class TestGuardrailParity:
         'recipe',
         [
             'guardrails:\n\t@popo check-all --profile guardrails\n',
+            'guardrails:\n# Consumer comment\n\tpopo check-all --profile guardrails\n',
             'guardrails:\n\n\tpopo check-all --profile guardrails\n\nother:\n\tfalse',
         ],
     )
@@ -47,6 +48,7 @@ class TestGuardrailParity:
             'other:\n\tpopo check-all --profile guardrails',
             'guardrails:\n\ttrue',
             'guardrails:\n\tpopo check-all --profile guardrails\n\tfalse',
+            'guardrails:\n\tpopo check-all --profile guardrails\n# Comment\n\tfalse',
             'guardrails:\nguardrails:\n',
             'guardrails: prerequisite\n\tpopo check-all --profile guardrails',
         ],
@@ -70,6 +72,8 @@ class TestGuardrailParity:
             ('pass_filenames: false', 'pass_filenames: false\n        args: false'),
             ('pass_filenames: false', 'pass_filenames: false\n        args: null'),
             ('always_run: true', 'always_run: false'),
+            ('always_run: true', 'always_run: 1'),
+            ('pass_filenames: false', 'pass_filenames: 0'),
             ('pass_filenames: false', 'pass_filenames: true'),
             ('pass_filenames: false', 'pass_filenames: "false"'),
             ('repo: local', 'repo: https://example.invalid/hooks'),
