@@ -13,6 +13,23 @@ from popo.checks.safety import validate
 from popo.config.safety import SafetyConfig
 from tests.support.files import FileWriter
 
+# SECTION: FIXTURES
+
+
+@pytest.fixture(
+    params=[
+        pytest.param('&workflow\non: EVENT\nloop: *workflow\n', id='mapping-cycle'),
+        pytest.param('on: EVENT\nloop: &loop [*loop]\n', id='sequence-cycle'),
+    ],
+)
+def cyclic_workflow(request: pytest.FixtureRequest) -> str:
+    """Supply recursive YAML aliases independent of workflow policy values."""
+    return str(request.param)
+
+
+# !SECTION
+
+
 # SECTION: TESTS
 
 
@@ -275,3 +292,65 @@ class TestNpmDependencyShapes:
 
 
 # !SECTION
+
+
+class TestWorkflowAliases:
+    """Inspect cyclic and shared YAML safely without losing policy findings."""
+
+    @pytest.mark.parametrize('event', ['push', 'pull_request_target'])
+    @pytest.mark.parametrize(
+        'unsafe',
+        [False, True],
+        ids=['safe-script', 'unsafe-script'],
+    )
+    def test_recursive_aliases(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        cyclic_workflow: str,
+        event: str,
+        unsafe: bool,
+    ) -> None:
+        """
+        Terminate on aliases and still inspect subsequent scripts and
+        checkouts.
+        """
+        script = 'echo ${{ github.event.issue.title }}' if unsafe else 'echo ok'
+        source = cyclic_workflow.replace('EVENT', event) + (
+            'jobs:\n  check:\n    steps:\n'
+            '      - uses: actions/checkout@revision\n'
+            '        with: {ref: "${{ github.event.pull_request.head.sha }}"}\n'
+            f'      - run: "{script}"\n'
+        )
+        path = write_file('ci.yml', source)
+        expected = []
+        if event == 'pull_request_target':
+            expected.extend(
+                [
+                    'ci.yml: privileged trigger pull_request_target needs exception',
+                    'ci.yml: privileged checkout of pull-request head',
+                ],
+            )
+        if unsafe:
+            expected.append('ci.yml: event data interpolated directly into run')
+        assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == expected
+        assert path.read_text(encoding='utf-8') == source
+
+    def test_repeated_alias_is_inspected_once(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Avoid duplicate diagnostics for one run mapping reused through aliases.
+        """
+        write_file(
+            'ci.yml',
+            (
+                'on: push\njobs: {check: {steps: ['
+                '&step {run: "echo ${{ github.event.issue.title }}"}, *step]}}'
+            ),
+        )
+        assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == [
+            'ci.yml: event data interpolated directly into run',
+        ]
