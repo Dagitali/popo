@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from packaging.utils import parse_sdist_filename, parse_wheel_filename
 from packaging.version import Version
 
 # SECTION: DATA CLASSES
@@ -98,6 +99,31 @@ class Installation:
 
 
 # SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='use_module',
+    params=[False, True],
+    ids=['console', 'module'],
+)
+def use_module_fixture(
+    request: pytest.FixtureRequest,
+) -> bool:
+    """Exercise both installed entry points with independent inputs."""
+    return bool(request.param)
+
+
+@pytest.fixture(
+    name='artifact_version',
+    scope='module',
+)
+def artifact_version_fixture(
+    artifact: Path,
+) -> Version:
+    """Read the expected version from a validated wheel or sdist filename."""
+    if artifact.suffix == '.whl':
+        return parse_wheel_filename(artifact.name)[1]
+    return parse_sdist_filename(artifact.name)[1]
 
 
 @pytest.fixture(
@@ -189,10 +215,6 @@ class TestInstalledCLI:
     """
 
     @pytest.mark.parametrize(
-        'module',
-        [False, True],
-    )
-    @pytest.mark.parametrize(
         ('reference', 'status'),
         [('upstream/action@main', 1), ('upstream/action@' + 'a' * 40, 0)],
         ids=['mutable', 'pinned'],
@@ -201,7 +223,7 @@ class TestInstalledCLI:
         self,
         installation: Installation,
         tmp_path: Path,
-        module: bool,
+        use_module: bool,
         reference: str,
         status: int,
     ) -> None:
@@ -219,7 +241,7 @@ class TestInstalledCLI:
             Remote reference selected for the pin-validation scenario.
         status : int
             Expected installed CLI exit status.
-        module : bool
+        use_module : bool
             Whether to invoke python -m popo rather than the console-script
             entry point.
         """
@@ -234,7 +256,7 @@ class TestInstalledCLI:
             'check-automation-contracts',
             '--root',
             str(tmp_path),
-            module=module,
+            module=use_module,
         )
         assert result.returncode == status, result.stdout + result.stderr
         assert not result.stderr
@@ -244,16 +266,12 @@ class TestInstalledCLI:
         'argument',
         ['--help', '--version'],
     )
-    @pytest.mark.parametrize(
-        'module',
-        [False, True],
-        ids=['console', 'module'],
-    )
     def test_information_commands(
         self,
         installation: Installation,
+        artifact_version: Version,
         argument: str,
-        module: bool,
+        use_module: bool,
     ) -> None:
         """
         Verify help and version output through console and module entry points.
@@ -262,18 +280,20 @@ class TestInstalledCLI:
         ----------
         installation : Installation
             Installed artifact isolated from checkout imports.
+        artifact_version : packaging.version.Version
+            Expected artifact version, independent of source-import fallbacks.
         argument : str
             Information option to exercise, either --help or --version.
-        module : bool
+        use_module : bool
             Whether to invoke python -m popo rather than the console-script
             entry point.
         """
-        result = installation.run(argument, module=module)
+        result = installation.run(argument, module=use_module)
         assert result.returncode == 0, result.stderr
         if argument == '--help':
             assert 'check-all' in result.stdout
         else:
-            assert Version(result.stdout.split()[-1]).release
+            assert Version(result.stdout.split()[-1]) == artifact_version
         assert not result.stderr
 
     @pytest.mark.parametrize(
@@ -290,6 +310,7 @@ class TestInstalledCLI:
         self,
         installation: Installation,
         tmp_path: Path,
+        use_module: bool,
         content: str,
         status: int,
         message: str,
@@ -304,6 +325,8 @@ class TestInstalledCLI:
             Installed artifact isolated from checkout imports.
         tmp_path : pathlib.Path
             Temporary directory for isolated test inputs.
+        use_module : bool
+            Select the installed module instead of the console script.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -315,12 +338,18 @@ class TestInstalledCLI:
         """
         readme = tmp_path / 'README.md'
         readme.write_text(content, encoding='utf-8')
-        result = installation.run('check-docs', '--root', str(tmp_path))
+        result = installation.run(
+            'check-docs',
+            '--root',
+            str(tmp_path),
+            module=use_module,
+        )
         assert result.returncode == status, result.stderr
         assert message in result.stdout
         assert not result.stderr
         assert readme.read_text(encoding='utf-8') == content
 
+    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
     @pytest.mark.parametrize(
         'command',
         ['check-required-files', 'check-file-headers'],
@@ -330,6 +359,8 @@ class TestInstalledCLI:
         installation: Installation,
         tmp_path: Path,
         command: str,
+        use_module: bool,
+        valid: bool,
     ) -> None:
         """
         Verify opt-in file commands through installed package entry points.
@@ -339,9 +370,13 @@ class TestInstalledCLI:
         installation : Installation
             Wheel or sdist installed outside the source checkout.
         tmp_path : pathlib.Path
-            Disposable consumer with an intentionally failing policy.
+            Disposable consumer with one passing or failing policy scenario.
         command : str
             Public file-policy subcommand to exercise.
+        use_module : bool
+            Select the installed module instead of the console script.
+        valid : bool
+            Whether this consumer satisfies the selected file-policy check.
         """
         metadata = tmp_path / 'pyproject.toml'
         metadata.write_text(
@@ -362,15 +397,14 @@ reason = "Synthetic policy fixture"
             encoding='utf-8',
         )
         source = tmp_path / 'required.txt'
-        source.write_text('HEADER', encoding='utf-8')
-        result = installation.run(command, '--root', str(tmp_path))
-        assert result.returncode == 0, result.stdout + result.stderr
-        source.unlink()
-        if command == 'check-file-headers':
-            source.write_text('INVALID', encoding='utf-8')
-        result = installation.run(command, '--root', str(tmp_path), module=True)
-        assert result.returncode == 1, result.stdout + result.stderr
-        assert 'FAIL:' in result.stdout
+        if valid or command == 'check-file-headers':
+            source.write_text('HEADER' if valid else 'INVALID', encoding='utf-8')
+        original = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+        result = installation.run(command, '--root', str(tmp_path), module=use_module)
+        assert result.returncode == (0 if valid else 1), result.stdout + result.stderr
+        assert ('PASS:' if valid else 'FAIL:') in result.stdout
+        assert result.stderr == ''
+        assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == original
 
 
 # !SECTION
