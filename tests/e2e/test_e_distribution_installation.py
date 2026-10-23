@@ -4,6 +4,7 @@
 Exercise installed commands outside the checkout in clean environments.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -13,6 +14,8 @@ from pathlib import Path
 import pytest
 from packaging.utils import parse_sdist_filename, parse_wheel_filename
 from packaging.version import Version
+
+from popo.config.guardrails import GuardrailsConfig
 
 # SECTION: DATA CLASSES
 
@@ -405,6 +408,78 @@ reason = "Synthetic policy fixture"
         assert ('PASS:' if valid else 'FAIL:') in result.stdout
         assert result.stderr == ''
         assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == original
+
+
+class TestInstalledSelection:
+    """
+    Verify language-neutral plans through isolated installed entry points.
+    """
+
+    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
+    def test_standalone_profile(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        use_module: bool,
+        valid: bool,
+    ) -> None:
+        """
+        Select docs without Python metadata and preserve the consumer bytes.
+        """
+        policy = tmp_path / 'popo.toml'
+        policy.write_text('[profiles.docs]\nchecks=["check-docs"]\n', encoding='utf-8')
+        readme = tmp_path / 'README.md'
+        readme.write_text(
+            '# Consumer' if valid else '[missing](absent)',
+            encoding='utf-8',
+        )
+        original = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+        arguments = ['--root', str(tmp_path), '--profile', 'docs', '--format', 'json']
+        explanation = installation.run('explain', *arguments, module=use_module)
+        assert explanation.returncode == 0, explanation.stdout + explanation.stderr
+        assert explanation.stderr == ''
+        assert json.loads(explanation.stdout)['checks'] == ['check-docs']
+        result = installation.run('check-all', *arguments, module=use_module)
+        assert result.returncode == int(not valid), result.stdout + result.stderr
+        assert result.stderr == ''
+        report = json.loads(result.stdout)
+        assert report['schema_version'] == 1
+        assert report['passed'] is valid
+        assert report['checks'][0]['check'] == 'check-docs'
+        assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == original
+
+    @pytest.mark.parametrize('valid', [True, False], ids=['matching', 'drifted'])
+    def test_guardrail_contract(
+        self,
+        installation: Installation,
+        guardrail_consumer: GuardrailsConfig,
+        use_module: bool,
+        valid: bool,
+    ) -> None:
+        """Inspect profile wiring from installed packages without running Make."""
+        if not valid:
+            guardrail_consumer.makefile.write_text(
+                'guardrails:\n\tfalse',
+                encoding='utf-8',
+            )
+        root = guardrail_consumer.root
+        original = {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        for arguments in (
+            ['check-guardrail-parity'],
+            ['check-all', '--profile', 'guardrails'],
+        ):
+            result = installation.run(
+                *arguments,
+                '--root',
+                str(root),
+                '--format',
+                'json',
+                module=use_module,
+            )
+            assert result.returncode == int(not valid), result.stdout + result.stderr
+            assert result.stderr == ''
+            assert json.loads(result.stdout)['passed'] is valid
+        assert {p: p.read_bytes() for p in root.rglob('*') if p.is_file()} == original
 
 
 # !SECTION
