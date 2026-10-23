@@ -112,6 +112,8 @@ regressions.
 Guardrail contract fixtures live in `tests/support/guardrails.py` and serve configuration, checker
 and CLI tests. Cases cover non-Python consumers, explicit profiles, structured results, root
 containment and independently reported Make/hook/workflow drift without executing those inputs.
+Make-comment regressions distinguish harmless separators from extra commands; hook cases retain
+strict YAML boolean typing while inspecting each repository/hook pair once.
 
 Shared YAML traversal tests cover deep parsed containers, depth-first order, caller-supplied visited
 sets, and repeated aliases. Checker tests separately verify cyclic YAML input, retained policy
