@@ -13,10 +13,19 @@ Maintainer Notes
 
 # Configuration Reference
 
-Popo reads `[tool.popo]` from `pyproject.toml` in the inspected repository root. Select that root
-with a command's `--root` option; otherwise it uses the working directory. Relative configured paths
-are resolved against that root. See the [configuration example] for a complete starting point.
+Popo reads standalone `popo.toml` when present, otherwise `[tool.popo]` from `pyproject.toml` in the
+inspected root. Standalone settings use the file's top level: `[files]` corresponds to
+`[tool.popo.files]`. The selected source is authoritative: settings are not merged, and malformed
+standalone policy never falls back to Python metadata. Python package metadata remains in
+`pyproject.toml`; standalone policy does not replace the inputs of Python-specific validators.
 
+Select the root with `--root`; otherwise it uses the working directory. Relative configured paths
+are resolved against that root. See the [configuration example] for a Python starting point and the
+[guardrail guide] for a language-neutral consumer.
+
+- [Check Selection](#check-selection)
+- [Guardrail Parity](#guardrail-parity)
+- [Output and Explanation](#output-and-explanation)
 - [Dependency Settings](#dependency-settings)
 - [Python-Policy Settings](#python-policy-settings)
 - [Automation Settings](#automation-settings)
@@ -24,6 +33,62 @@ are resolved against that root. See the [configuration example] for a complete s
 - [Hosted Audit Settings](#hosted-audit-settings)
 - [Command Boundaries](#command-boundaries)
 - [Validation Rules](#validation-rules)
+
+## Check Selection
+
+Top-level `checks` (or `tool.popo.checks`) replaces `check-all`'s default selection with an ordered,
+nonempty array of unique full command names. Profiles under `[profiles.NAME]` (or
+`[tool.popo.profiles.NAME]`) require exactly one `checks` field with the same validation. `popo
+check-all --profile NAME` selects that profile instead of top-level checks. No profile is selected
+automatically. Missing profiles, duplicate names, empty arrays and unknown checks fail.
+
+Selectable commands are `check-docs`, `check-github-actions-pins`, `check-dependency-boundaries`,
+`check-python-policy`, `check-automation-contracts`, `check-repository-safety`,
+`check-required-files`, `check-file-headers` and `check-guardrail-parity`. Checks run in declared
+order. Reported failures and per-domain configuration failures do not hide later selected checks.
+Unhandled filesystem and decoding errors retain their command-specific propagation boundaries.
+
+Without explicit selection, legacy baseline checks remain enabled and configured optional domains
+join them. Explicit selection can omit configured domains; unselected domain settings are not
+validated by execution. A selected file/header/safety check still requires its own configuration.
+Automation retains its standalone workflow defaults. External actionlint, hosted auditing and
+version-dependent release validation remain explicit commands, outside aggregate selection.
+
+## Guardrail Parity
+
+`[guardrails]` (or `[tool.popo.guardrails]`) declares one literal invocation chain. See the
+[guardrail guide] for a working example and static-inspection limits.
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `makefile` | `Makefile` | Make recipe source |
+| `hooks` | `.pre-commit-config.yaml` | Pre-commit configuration |
+| `workflow` | `.github/workflows/ci.yml` | Workflow source |
+| `target` | `guardrails` | Literal Make target |
+| `hook` | `popo` | Unique local hook ID |
+| `job` | `guardrails` | Workflow job key |
+| `step` | `popo` | Unique step ID within that job |
+| `profile` | `guardrails` | Explicit named profile invoked by Make |
+
+Paths must stay within the repository, including symlink resolution; absolute and parent paths are
+rejected. Identifiers contain ASCII letters, digits, underscores or hyphens, with a letter, digit or
+underscore first. Unknown settings fail. The delegated profile must exist and can include
+`check-guardrail-parity` itself: the checker inspects literal commands without invoking them.
+
+## Output and Explanation
+
+Native offline commands accept `--format text|json`; text remains the default. JSON schema version
+one contains `command`, aggregate `passed`, and ordered `checks`. Each result contains `check` (the
+stable public command identifier), `passed`, `diagnostics` and a success-only `summary`. Diagnostics
+contain `severity: "error"` and the original `message`. Selection failures use the `configuration`
+identifier. No guessed file locations or finer rule IDs are added to existing messages. JSON output
+contains no text PASS/FAIL prefixes. Exit status remains zero or one.
+
+`popo explain [--profile NAME] [--format json]` reports the resolved root, selected configuration
+path and its existence, selection reason and ordered check names. It does not run validators or
+verify their domain settings, referenced inputs, installed tools, or hosted enforcement. Invalid
+selection is still a failure. Hosted auditing retains its separate JSON schema; external actionlint
+retains its original streams and status. Argument-parser errors retain argparse's stderr/status two.
 
 ## Dependency Settings
 
@@ -91,8 +156,9 @@ relative to the inspected root, cannot be absolute or contain `..` path componen
 files. Empty arrays disable discovery categories. Resolved paths must remain within the repository.
 
 The standalone `check-automation-contracts` command uses default workflow discovery when the table
-is absent. `check-all` includes automation contracts only when the table is present, even if empty.
-Automation loading is independent of dependency and Python-policy settings.
+is absent. Legacy `check-all` defaults include automation contracts when the table is present, even
+if empty; explicit selections can include or omit that check. Automation loading is independent of
+dependency and Python-policy settings.
 
 ## File Policy Settings
 
@@ -152,9 +218,9 @@ expressions or full YAML semantics.
   configuration together; they do not load automation settings.
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
   `--changelog` to select another file.
-- `check-all` combines documentation, action-pin, dependency, and Python-policy checks, plus
-  automation contracts when `[tool.popo.automation]` is present. It does not include
-  release-changelog validation or accept individual checks' path overrides or `--pins-only`.
+- `check-all` uses explicit checks or a named profile when supplied, otherwise legacy baseline and
+  configured opt-in checks. It does not include release-changelog validation or accept individual
+  checks' path overrides or `--pins-only`; see [Check Selection](#check-selection).
 
 Relative `--automation-directory` and `--changelog` values resolve against the working directory,
 not `--root`. This differs from relative paths inside `[tool.popo]`.
@@ -174,4 +240,5 @@ read-only and do not repair files or change consumer policy automatically.
 [automation contracts guide]: ../README.md#automation-contracts
 [configuration example]: ../README.md#configuration
 [file policies]: file-policies.md
+[guardrail guide]: guardrails.md
 [Hosted Settings Audit]: hosted-audit.md

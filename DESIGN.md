@@ -45,8 +45,10 @@ the [interface checklist].
 
 Keep configuration models and parsing grouped by policy domain under `src/popo/config/`. Shared
 parsing belongs in internal helpers, while the package facade keeps intentional exports explicit.
-Consumer settings live under `[tool.popo]`; package/tool metadata remains canonical in
-`pyproject.toml`.
+Consumer settings live in standalone `popo.toml` or under `[tool.popo]` in `pyproject.toml`.
+Standalone policy takes precedence without merging. Package/tool metadata remains canonical in
+`pyproject.toml`. Explicit check selections and named profiles avoid assuming a consumer language;
+absent selection preserves legacy aggregate defaults.
 
 Preserve purposeful differences between domains: automation settings reject unknown keys and are
 opt-in for aggregate checking, while dependency and Python-policy settings retain their documented

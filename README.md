@@ -82,6 +82,8 @@ configured; see the [release policy].
   applies only to Markdown; generated and vendored sources such as `node_modules` are excluded;
 - Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
   policies];
+- Language-neutral standalone policy, explicit check profiles, JSON results and local/CI guardrail
+  parity; see the [guardrail guide];
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
@@ -148,6 +150,8 @@ Run a check from the repository it should inspect:
 
 ```console
 popo check-docs
+popo explain
+popo check-guardrail-parity
 popo check-required-files
 popo check-file-headers
 popo check-github-actions-pins
@@ -163,19 +167,23 @@ popo check-all
 Every command accepts `--root`. The equivalent module entry point is
 `python -m popo`.
 
-`check-all` runs the documentation, action-pin, dependency, and Python-policy checks. Release
-changelog validation is separate and requires the release version to check. Automation contracts are
-included when the consumer explicitly configures `[tool.popo.automation]`. Required-file and header
-checks are enabled only by their consumer tables. Repository safety checks are similarly opt-in
-through `[tool.popo.safety]`; see the [safety settings reference]. Available since v0.6.0.
+`check-all` defaults to the documentation, action-pin, dependency, and Python-policy checks.
+Explicit `checks` or `--profile NAME` replace that selection; see the [guardrail guide] for Swift,
+CDK and other consumers. Native offline commands accept `--format json`; `popo explain` describes
+the selection without running checks. Release changelog validation is separate and requires the
+release version to check. Automation contracts are included when the consumer explicitly configures
+`[tool.popo.automation]`. Required-file and header checks are enabled only by their consumer tables.
+Repository safety checks are similarly opt-in through `[tool.popo.safety]`; see the [safety settings
+reference]. Available since v0.6.0.
 
 File checks retain dangling symlinks for containment checks and report required-file path errors
 without skipping later entries. See the [file policies] guide for discovery and preservation rules.
 
 ## Configuration
 
-Configuration lives in the inspected repository's `pyproject.toml`. Paths are relative to the
-repository root.
+Consumer policy can live in standalone `popo.toml` or `[tool.popo]` in `pyproject.toml`. Standalone
+policy takes precedence without merging; paths remain relative to the inspected root. Python package
+metadata remains in `pyproject.toml`. See the [guardrail guide] for language-neutral usage.
 
 ```toml
 [tool.popo.dependencies]
@@ -433,6 +441,7 @@ the [release policy].
 [API guidance]: docs/api/README.md
 [engineering guidance]: docs/engineering.md
 [file policies]: docs/file-policies.md
+[guardrail guide]: docs/guardrails.md
 [hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md

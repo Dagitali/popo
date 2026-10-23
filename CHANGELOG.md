@@ -58,6 +58,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Add standalone `popo.toml`, explicit offline check selection and named profiles so Swift, CDK and
+  other consumers can use shared checks without Python project metadata; retain legacy defaults.
+- Add `explain` for check-selection provenance and versioned JSON results for native offline checks.
+  Keep individual check identities and continue after per-domain configuration failures.
+- Add opt-in `check-guardrail-parity` to inspect an explicit Make/profile, whole-repository local
+  pre-commit hook and CI-step invocation contract without executing consumer commands.
+
 ## [0.8.2] - 2026-10-23
 
 - Backfill the missing 0.8.1 changelog entry and release record, and add the 0.8.2 release record
