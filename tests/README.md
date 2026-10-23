@@ -103,7 +103,11 @@ overrides such as `TEST_ARGS`; pass deliberate overrides as Make command argumen
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
-point for each artifact. Coverage is diagnostic; no reduced threshold masks regressions.
+point for each artifact. A shared parameterized entry-point fixture also runs Markdown and file
+policies through both interfaces. Passing and failing file-policy scenarios use separate consumers
+and compare all input bytes after checking. Version output must equal the selected artifact filename
+version rather than merely parse as a version. Coverage is diagnostic; no reduced threshold masks
+regressions.
 
 Shared YAML traversal tests cover deep parsed containers, depth-first order, caller-supplied visited
 sets, and repeated aliases. Checker tests separately verify cyclic YAML input, retained policy
