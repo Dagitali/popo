@@ -23,6 +23,7 @@ class TestWorkflowSafety:
         'source,message',
         [
             ('on: pull_request', ''),
+            ('[]', 'workflow must be a mapping'),
             ('on: [push, pull_request_target]', 'needs exception'),
             ('on: {workflow_run: {workflows: [CI]}}', 'needs exception'),
             ('on: pull_request_target', 'needs exception'),
@@ -72,6 +73,7 @@ class TestWorkflowSafety:
             ('pull_request_target', date(2026, 10, 7), ''),
             ('pull_request_target', date(2026, 10, 6), 'expired'),
             ('push', date(2026, 10, 8), 'unused'),
+            ('push', date(2026, 10, 6), 'unused'),
         ],
     )
     def test_exception_lifecycle(
@@ -235,6 +237,41 @@ class TestNpmPairs:
         assert bool(failures) == bool(message)
         if message:
             assert any(message in item for item in failures)
+
+
+class TestNpmDependencyShapes:
+    """
+    Validate dependency objects without resolving floating version ranges.
+    """
+
+    @pytest.mark.parametrize(
+        ('dependencies', 'message'),
+        [([], 'dependencies must be an object'), ({'lib': '^2.0'}, '')],
+    )
+    def test_dependency_shapes(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        dependencies: object,
+        message: str,
+    ) -> None:
+        """Reject non-objects and permit matching non-exact specifications."""
+        write_file('package.json', json.dumps({'dependencies': dependencies}))
+        write_file(
+            'package-lock.json',
+            json.dumps(
+                {
+                    'lockfileVersion': 3,
+                    'packages': {'': {'dependencies': dependencies}},
+                },
+            ),
+        )
+        failures = validate(
+            SafetyConfig(tmp_path, npm_pairs=(('package.json', 'package-lock.json'),)),
+        )
+        assert bool(failures) == bool(message)
+        if message:
+            assert message in failures[0]
 
 
 # !SECTION

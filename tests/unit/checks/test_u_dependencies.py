@@ -26,6 +26,21 @@ class TestDependencyPolicy:
     without installing or resolving dependencies.
     """
 
+    @pytest.mark.parametrize('project', ['1', '"metadata"', '[]', 'false'])
+    def test_malformed_project_table(
+        self,
+        write_file: FileWriter,
+        project: str,
+    ) -> None:
+        """
+        Report malformed project tables instead of crashing during lookup.
+        """
+        metadata = write_file('pyproject.toml', f'project = {project}')
+        requirements = write_file('requirements.txt', '')
+        assert validate(DependencyConfig(metadata, requirements, 'exact')) == [
+            f'{metadata}: project must be a TOML table',
+        ]
+
     def test_commented_directive_retains_line_number(
         self,
         write_file: FileWriter,

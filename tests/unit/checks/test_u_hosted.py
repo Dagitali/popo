@@ -122,362 +122,475 @@ expires = "2026-10-31"
 # SECTION: TESTS
 
 
-@pytest.mark.parametrize(
-    'http_status',
-    [401, 403, 404, 429, 500, None],
-)
-def test_access_failure(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-    http_status: int | None,
-) -> None:
-    responses['repos/example/library/private-vulnerability-reporting'] = Response(
-        error='GET failed',
-        status=http_status,
+class TestHostedSettings:
+    """Group isolated regression scenarios for hosted."""
+
+    @pytest.mark.parametrize(
+        'http_status',
+        [401, 403, 404, 429, 500, None],
     )
-    assert run(policy, responses)['private-vulnerability-reporting'] == 'inaccessible'
-
-
-@pytest.mark.parametrize(
-    ('stdout', 'returncode', 'stderr', 'paginate', 'expected'),
-    [
-        ('{}', 0, '', False, {}),
-        (
-            '[[{"name":"first"}],[{"name":"last"}]]',
-            0,
-            '',
-            True,
-            [{'name': 'first'}, {'name': 'last'}],
-        ),
-        ('{}', 0, '', True, None),
-        ('not json', 0, '', False, None),
-        ('', 1, 'sensitive-value (HTTP 403)', False, None),
-    ],
-)
-def test_adapter(
-    monkeypatch: pytest.MonkeyPatch,
-    stdout: str,
-    returncode: int,
-    stderr: str,
-    paginate: bool,
-    expected: object,
-) -> None:
-    runner = Mock(
-        return_value=subprocess.CompletedProcess([], returncode, stdout, stderr),
-    )
-    monkeypatch.setattr(subprocess, 'run', runner)
-    result = _github_get('repos/example/library', paginate)
-    assert result.data == expected
-    assert 'sensitive-value' not in result.error
-    command = runner.call_args.args[0]
-    assert command[command.index('--method') + 1] == 'GET'
-    assert '--hostname' in command
-    assert '--paginate' in command if paginate else '--paginate' not in command
-
-
-@pytest.mark.parametrize(
-    'error',
-    [FileNotFoundError(), subprocess.TimeoutExpired('gh', 60)],
-)
-def test_adapter_launch_error(
-    monkeypatch: pytest.MonkeyPatch,
-    error: Exception,
-) -> None:
-    monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error))
-    assert _github_get('repos/example/library').error
-
-
-def test_cli_drift_exit(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    exception_config: str,
-    policy: RepositoryPolicy,
-) -> None:
-    (tmp_path / 'pyproject.toml').write_text(exception_config)
-    result = audit(
-        HostedConfig((policy,), ()),
-        lambda path, pages: Response(error='denied'),
-    )
-    monkeypatch.setattr('popo.cli.hosted.audit', lambda config: result)
-    assert main(['audit-github-settings', '--root', str(tmp_path)]) == 1
-    assert 'inaccessible:' in capsys.readouterr().out
-
-
-def test_cli_json(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-) -> None:
-    (tmp_path / 'pyproject.toml').write_text(
-        '[[tool.popo.hosted.repositories]]\nname="example/library"\n'
-        'settings={private-vulnerability-reporting=true}\n',
-    )
-    result = audit(HostedConfig((policy,), ()), lambda path, pages: responses[path])
-    monkeypatch.setattr('popo.cli.hosted.audit', lambda config: result)
-    assert (
-        main(['audit-github-settings', '--root', str(tmp_path), '--format', 'json'])
-        == 0
-    )
-    assert json.loads(capsys.readouterr().out)['findings'][0]['status'] == 'verified'
-    (tmp_path / 'pyproject.toml').write_text('')
-    assert (
-        main(['audit-github-settings', '--root', str(tmp_path), '--format', 'json'])
-        == 1
-    )
-    assert 'error' in json.loads(capsys.readouterr().out)
-
-
-@pytest.mark.parametrize(
-    'section',
-    ['repositories', 'exceptions'],
-)
-def test_duplicate_scopes(
-    tmp_path: Path,
-    exception_config: str,
-    section: str,
-) -> None:
-    if section == 'repositories':
-        extra = (
-            '\n[[tool.popo.hosted.repositories]]\n'
-            'name="example/library"\nlabels=["bug"]'
+    def test_access_failure(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+        http_status: int | None,
+    ) -> None:
+        responses['repos/example/library/private-vulnerability-reporting'] = Response(
+            error='GET failed',
+            status=http_status,
         )
-    else:
-        extra = (
-            '\n[[tool.popo.hosted.exceptions]]'
-            + exception_config.split('[[tool.popo.hosted.exceptions]]', 1)[1]
+        assert (
+            run(policy, responses)['private-vulnerability-reporting'] == 'inaccessible'
         )
-    (tmp_path / 'pyproject.toml').write_text(exception_config + extra)
-    with pytest.raises(ConfigurationError):
-        load_hosted_config(tmp_path)
 
-
-@pytest.mark.parametrize(
-    ('enabled', 'error', 'expires', 'expected'),
-    [
-        (False, '', date(2026, 10, 5), 'excepted'),
-        (False, '', date(2026, 10, 4), 'missing'),
-        (True, '', date(2026, 10, 6), 'verified'),
-        (False, 'denied', date(2026, 10, 6), 'inaccessible'),
-    ],
-)
-def test_exceptions(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-    enabled: bool,
-    error: str,
-    expires: date,
-    expected: str,
-) -> None:
-    responses['repos/example/library/private-vulnerability-reporting'] = Response(
-        {'enabled': enabled},
-        error,
-    )
-    exception = ExceptionPolicy(
-        policy.name,
-        'private-vulnerability-reporting',
-        'owner',
-        'migration',
-        'reviewer',
-        'https://example.com/approval',
-        expires,
-    )
-    statuses = run(policy, responses, (exception,))
-    assert statuses['private-vulnerability-reporting'] == expected
-    if expires < date(2026, 10, 5):
-        assert statuses['exception:private-vulnerability-reporting'] == 'missing'
-
-
-@pytest.mark.parametrize(
-    'config',
-    [
-        '',
-        '[[tool.popo.hosted.repositories]]\nname="owner/repo"',
-        '[tool.popo.hosted]\nrepositories=[]',
-        '[[tool.popo.hosted.repositories]]\nname="bad"',
-        '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nlabels=["bug","bug"]',
-        '[[tool.popo.hosted.repositories]]\nname="owner/repo"\ncodeowners="yes"',
-        '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nsettings={unknown=true}',
-        '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nsettings={secret-scanning=1}',
-    ],
-)
-def test_invalid_config(
-    tmp_path: Path,
-    config: str,
-) -> None:
-    (tmp_path / 'pyproject.toml').write_text(config)
-    with pytest.raises(ConfigurationError):
-        load_hosted_config(tmp_path)
-
-
-@pytest.mark.parametrize(
-    ('original', 'replacement'),
-    [
-        ('owner = "owner"', 'owner = ""'),
-        ('reason = "Migration"', ''),
-        ('approved-by = "reviewer"', 'approved-by = false'),
-        ('check = "label:bug"', 'check = "label:other"'),
-        ('repository = "example/library"', 'repository = "other/repository"'),
-        ('expires = "2026-10-31"', 'expires = "20261031"'),
-        ('expires = "2026-10-31"', 'expires = "2026-02-31"'),
-        ('expires = "2026-10-31"', 'expires = 2026-10-31'),
-        ('https://example.com/review', 'http://example.com/review'),
-        ('https://example.com/review', 'https://'),
-        ('https://example.com/review', 'https://user:secret@example.com/review'),
-    ],
-)
-def test_invalid_exception(
-    tmp_path: Path,
-    exception_config: str,
-    original: str,
-    replacement: str,
-) -> None:
-    (tmp_path / 'pyproject.toml').write_text(
-        exception_config.replace(original, replacement),
-    )
-    with pytest.raises(ConfigurationError):
-        load_hosted_config(tmp_path)
-
-
-def test_malformed_check_array(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-) -> None:
-    responses['repos/example/library/branches/main/protection'] = Response(
-        {
-            'required_status_checks': {'contexts': 'quality'},
-        },
-    )
-    assert run(policy, responses)['branch:main:check:quality'] == 'inaccessible'
-
-
-@pytest.mark.parametrize(
-    ('suffix', 'data', 'check', 'status'),
-    [
-        (
-            '/private-vulnerability-reporting',
-            {'enabled': False},
-            'private-vulnerability-reporting',
-            'missing',
-        ),
-        (
-            '/private-vulnerability-reporting',
-            {},
-            'private-vulnerability-reporting',
-            'inaccessible',
-        ),
-        (
-            '/private-vulnerability-reporting',
-            {'enabled': 1},
-            'private-vulnerability-reporting',
-            'inaccessible',
-        ),
-        ('/labels?per_page=100', [], 'label:bug', 'missing'),
-        ('/labels?per_page=100', [{}], 'label:bug', 'inaccessible'),
-        (
-            '/git/trees/main?recursive=1',
-            {'truncated': False, 'tree': []},
-            'codeowners',
-            'missing',
-        ),
-        (
-            '/git/trees/main?recursive=1',
-            {'truncated': True, 'tree': []},
-            'codeowners',
-            'inaccessible',
-        ),
-        ('/codeowners/errors?ref=main', {'errors': [{}]}, 'codeowners', 'missing'),
-        ('/codeowners/errors?ref=main', {}, 'codeowners', 'inaccessible'),
-        ('/branches/main', {'protected': False}, 'branch:main:protected', 'missing'),
-        ('/branches/main/protection', {}, 'branch:main:check:quality', 'missing'),
-        (
-            '/rules/branches/main?per_page=100',
-            [{}],
-            'branch:main:check:quality',
-            'inaccessible',
-        ),
-    ],
-)
-def test_observations(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-    suffix: str,
-    data: object,
-    check: str,
-    status: str,
-) -> None:
-    responses['repos/example/library' + suffix] = Response(data)
-    assert run(policy, responses)[check] == status
-
-
-def test_omitted_security(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-) -> None:
-    responses['repos/example/library'] = Response({'default_branch': 'main'})
-    assert run(policy, responses)['secret-scanning'] == 'inaccessible'
-
-
-def test_repository_inaccessible(
-    policy: RepositoryPolicy,
-) -> None:
-    result = audit(
-        HostedConfig((policy,), ()),
-        lambda path, pages: Response(error='404'),
-    )
-    assert result.failed
-    assert {item.status for item in result.findings} == {'inaccessible'}
-
-
-def test_rules_and_legacy_union(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-) -> None:
-    responses['repos/example/library/branches/main/protection'] = Response(
-        'Branch not protected',
-        '404',
-        404,
-    )
-    responses['repos/example/library/rules/branches/main?per_page=100'] = Response(
+    @pytest.mark.parametrize(
+        ('stdout', 'returncode', 'stderr', 'paginate', 'expected'),
         [
+            ('{}', 0, '', False, {}),
+            (
+                '[[{"name":"first"}],[{"name":"last"}]]',
+                0,
+                '',
+                True,
+                [{'name': 'first'}, {'name': 'last'}],
+            ),
+            ('{}', 0, '', True, None),
+            ('not json', 0, '', False, None),
+            ('', 1, 'sensitive-value (HTTP 403)', False, None),
+        ],
+    )
+    def test_adapter(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        stdout: str,
+        returncode: int,
+        stderr: str,
+        paginate: bool,
+        expected: object,
+    ) -> None:
+        runner = Mock(
+            return_value=subprocess.CompletedProcess([], returncode, stdout, stderr),
+        )
+        monkeypatch.setattr(subprocess, 'run', runner)
+        result = _github_get('repos/example/library', paginate)
+        assert result.data == expected
+        assert 'sensitive-value' not in result.error
+        command = runner.call_args.args[0]
+        assert command[command.index('--method') + 1] == 'GET'
+        assert '--hostname' in command
+        assert '--paginate' in command if paginate else '--paginate' not in command
+
+    @pytest.mark.parametrize(
+        'error',
+        [FileNotFoundError(), subprocess.TimeoutExpired('gh', 60)],
+    )
+    def test_adapter_launch_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        error: Exception,
+    ) -> None:
+        monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error))
+        assert _github_get('repos/example/library').error
+
+    def test_cli_drift_exit(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        exception_config: str,
+        policy: RepositoryPolicy,
+    ) -> None:
+        (tmp_path / 'pyproject.toml').write_text(exception_config)
+        result = audit(
+            HostedConfig((policy,), ()),
+            lambda path, pages: Response(error='denied'),
+        )
+        monkeypatch.setattr('popo.cli.hosted.audit', lambda config: result)
+        assert main(['audit-github-settings', '--root', str(tmp_path)]) == 1
+        assert 'inaccessible:' in capsys.readouterr().out
+
+    def test_cli_json(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+    ) -> None:
+        (tmp_path / 'pyproject.toml').write_text(
+            '[[tool.popo.hosted.repositories]]\nname="example/library"\n'
+            'settings={private-vulnerability-reporting=true}\n',
+        )
+        result = audit(HostedConfig((policy,), ()), lambda path, pages: responses[path])
+        monkeypatch.setattr('popo.cli.hosted.audit', lambda config: result)
+        assert (
+            main(['audit-github-settings', '--root', str(tmp_path), '--format', 'json'])
+            == 0
+        )
+        assert (
+            json.loads(capsys.readouterr().out)['findings'][0]['status'] == 'verified'
+        )
+        (tmp_path / 'pyproject.toml').write_text('')
+        assert (
+            main(['audit-github-settings', '--root', str(tmp_path), '--format', 'json'])
+            == 1
+        )
+        assert 'error' in json.loads(capsys.readouterr().out)
+
+    @pytest.mark.parametrize(
+        'section',
+        ['repositories', 'exceptions'],
+    )
+    def test_duplicate_scopes(
+        self,
+        tmp_path: Path,
+        exception_config: str,
+        section: str,
+    ) -> None:
+        if section == 'repositories':
+            extra = (
+                '\n[[tool.popo.hosted.repositories]]\n'
+                'name="example/library"\nlabels=["bug"]'
+            )
+        else:
+            extra = (
+                '\n[[tool.popo.hosted.exceptions]]'
+                + exception_config.split('[[tool.popo.hosted.exceptions]]', 1)[1]
+            )
+        (tmp_path / 'pyproject.toml').write_text(exception_config + extra)
+        with pytest.raises(ConfigurationError):
+            load_hosted_config(tmp_path)
+
+    @pytest.mark.parametrize(
+        ('enabled', 'error', 'expires', 'expected'),
+        [
+            (False, '', date(2026, 10, 5), 'excepted'),
+            (False, '', date(2026, 10, 4), 'missing'),
+            (True, '', date(2026, 10, 6), 'verified'),
+            (False, 'denied', date(2026, 10, 6), 'inaccessible'),
+        ],
+    )
+    def test_exceptions(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+        enabled: bool,
+        error: str,
+        expires: date,
+        expected: str,
+    ) -> None:
+        responses['repos/example/library/private-vulnerability-reporting'] = Response(
+            {'enabled': enabled},
+            error,
+        )
+        exception = ExceptionPolicy(
+            policy.name,
+            'private-vulnerability-reporting',
+            'owner',
+            'migration',
+            'reviewer',
+            'https://example.com/approval',
+            expires,
+        )
+        statuses = run(policy, responses, (exception,))
+        assert statuses['private-vulnerability-reporting'] == expected
+        if expires < date(2026, 10, 5):
+            assert statuses['exception:private-vulnerability-reporting'] == 'missing'
+
+    @pytest.mark.parametrize(
+        'config',
+        [
+            '',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"',
+            '[tool.popo.hosted]\nrepositories=[]',
+            '[tool.popo.hosted]\nunknown=true',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nunknown=true',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nbranches={""=[]}',
+            '[tool.popo.hosted]\nexceptions="bad"\n'
+            'repositories=[{name="owner/repo", labels=["bug"]}]',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nlabels=[1]',
+            '[[tool.popo.hosted.repositories]]\nname="bad"',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nlabels=["bug","bug"]',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\ncodeowners="yes"',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nsettings={unknown=true}',
+            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nsettings={secret-scanning=1}',
+        ],
+    )
+    def test_invalid_config(
+        self,
+        tmp_path: Path,
+        config: str,
+    ) -> None:
+        (tmp_path / 'pyproject.toml').write_text(config)
+        with pytest.raises(ConfigurationError):
+            load_hosted_config(tmp_path)
+
+    @pytest.mark.parametrize(
+        ('original', 'replacement'),
+        [
+            ('owner = "owner"', 'owner = ""'),
+            ('reason = "Migration"', ''),
+            ('approved-by = "reviewer"', 'approved-by = false'),
+            ('check = "label:bug"', 'check = "label:other"'),
+            ('repository = "example/library"', 'repository = "other/repository"'),
+            ('expires = "2026-10-31"', 'expires = "20261031"'),
+            ('expires = "2026-10-31"', 'expires = "2026-02-31"'),
+            ('expires = "2026-10-31"', 'expires = 2026-10-31'),
+            ('https://example.com/review', 'http://example.com/review'),
+            ('https://example.com/review', 'https://'),
+            ('https://example.com/review', 'https://[broken'),
+            ('https://example.com/review', 'https://user:secret@example.com/review'),
+        ],
+    )
+    def test_invalid_exception(
+        self,
+        tmp_path: Path,
+        exception_config: str,
+        original: str,
+        replacement: str,
+    ) -> None:
+        (tmp_path / 'pyproject.toml').write_text(
+            exception_config.replace(original, replacement),
+        )
+        with pytest.raises(ConfigurationError):
+            load_hosted_config(tmp_path)
+
+    def test_malformed_check_array(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+    ) -> None:
+        responses['repos/example/library/branches/main/protection'] = Response(
+            {
+                'required_status_checks': {'contexts': 'quality'},
+            },
+        )
+        assert run(policy, responses)['branch:main:check:quality'] == 'inaccessible'
+
+    @pytest.mark.parametrize(
+        ('suffix', 'data', 'check', 'status'),
+        [
+            (
+                '/private-vulnerability-reporting',
+                {'enabled': False},
+                'private-vulnerability-reporting',
+                'missing',
+            ),
+            (
+                '/private-vulnerability-reporting',
+                {},
+                'private-vulnerability-reporting',
+                'inaccessible',
+            ),
+            (
+                '/private-vulnerability-reporting',
+                {'enabled': 1},
+                'private-vulnerability-reporting',
+                'inaccessible',
+            ),
+            ('/labels?per_page=100', [], 'label:bug', 'missing'),
+            ('/labels?per_page=100', [{}], 'label:bug', 'inaccessible'),
+            (
+                '/git/trees/main?recursive=1',
+                {'truncated': False, 'tree': []},
+                'codeowners',
+                'missing',
+            ),
+            (
+                '/git/trees/main?recursive=1',
+                {'truncated': True, 'tree': []},
+                'codeowners',
+                'inaccessible',
+            ),
+            ('/codeowners/errors?ref=main', {'errors': [{}]}, 'codeowners', 'missing'),
+            ('/codeowners/errors?ref=main', {}, 'codeowners', 'inaccessible'),
+            (
+                '/branches/main',
+                {'protected': False},
+                'branch:main:protected',
+                'missing',
+            ),
+            ('/branches/main/protection', {}, 'branch:main:check:quality', 'missing'),
+            (
+                '/rules/branches/main?per_page=100',
+                [{}],
+                'branch:main:check:quality',
+                'inaccessible',
+            ),
+        ],
+    )
+    def test_observations(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+        suffix: str,
+        data: object,
+        check: str,
+        status: str,
+    ) -> None:
+        responses['repos/example/library' + suffix] = Response(data)
+        assert run(policy, responses)[check] == status
+
+    def test_omitted_security(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+    ) -> None:
+        responses['repos/example/library'] = Response({'default_branch': 'main'})
+        assert run(policy, responses)['secret-scanning'] == 'inaccessible'
+
+    def test_repository_inaccessible(
+        self,
+        policy: RepositoryPolicy,
+    ) -> None:
+        result = audit(
+            HostedConfig((policy,), ()),
+            lambda path, pages: Response(error='404'),
+        )
+        assert result.failed
+        assert {item.status for item in result.findings} == {'inaccessible'}
+
+    def test_rules_and_legacy_union(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+    ) -> None:
+        responses['repos/example/library/branches/main/protection'] = Response(
+            'Branch not protected',
+            '404',
+            404,
+        )
+        responses['repos/example/library/rules/branches/main?per_page=100'] = Response(
+            [
+                {
+                    'type': 'required_status_checks',
+                    'parameters': {
+                        'required_status_checks': [
+                            {'context': 'quality', 'integration_id': 123},
+                        ],
+                    },
+                },
+            ],
+        )
+        assert run(policy, responses)['branch:main:check:quality'] == 'verified'
+
+    def test_unknown_legacy_absence(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+    ) -> None:
+        responses['repos/example/library/branches/main/protection'] = Response(
+            error='404',
+            status=404,
+        )
+        assert run(policy, responses)['branch:main:check:quality'] == 'inaccessible'
+
+    def test_valid_exception(
+        self,
+        tmp_path: Path,
+        exception_config: str,
+    ) -> None:
+        (tmp_path / 'pyproject.toml').write_text(exception_config)
+        config = load_hosted_config(tmp_path)
+        assert config.exceptions[0].expires == date(2026, 10, 31)
+        assert config.repositories[0].labels == ('bug',)
+
+    def test_verified(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+    ) -> None:
+        assert set(run(policy, responses).values()) == {'verified'}
+
+
+class TestHostedEvidenceBoundaries:
+    """
+    Exercise malformed evidence and optional inventory without credentials.
+    """
+
+    @pytest.mark.parametrize(
+        'data',
+        [None, {}, {'protected': 'true'}],
+    )
+    def test_unavailable_branch(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+        data: object,
+    ) -> None:
+        """
+        Require a boolean observation before classifying branch protection.
+        """
+        responses['repos/example/library/branches/main'] = Response(data)
+        statuses = run(policy, responses)
+        assert statuses['branch:main:protected'] == 'inaccessible'
+        assert statuses['branch:main:check:quality'] == 'inaccessible'
+
+    @pytest.mark.parametrize(
+        'data',
+        [
+            None,
+            {},
             {
                 'type': 'required_status_checks',
-                'parameters': {
-                    'required_status_checks': [
-                        {'context': 'quality', 'integration_id': 123},
-                    ],
-                },
+                'parameters': {'required_status_checks': 'bad'},
             },
         ],
     )
-    assert run(policy, responses)['branch:main:check:quality'] == 'verified'
+    def test_malformed_rules(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+        data: object,
+    ) -> None:
+        """
+        Keep incomplete rule evidence distinct from a confirmed missing check.
+        """
+        responses['repos/example/library/rules/branches/main?per_page=100'] = Response(
+            [data],
+        )
+        assert run(policy, responses)['branch:main:check:quality'] == 'inaccessible'
+
+    def test_optional_expectations(self) -> None:
+        """Audit a bare branch expectation without fetching unused evidence."""
+        policy = RepositoryPolicy('example/library', {}, (), False, {'main': ()})
+        responses = {
+            'repos/example/library': Response({}),
+            'repos/example/library/branches/main': Response({'protected': True}),
+        }
+        assert run(policy, responses) == {'branch:main:protected': 'verified'}
 
 
-def test_unknown_legacy_absence(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-) -> None:
-    responses['repos/example/library/branches/main/protection'] = Response(
-        error='404',
-        status=404,
+class TestHostedCheckEvidence:
+    """Check effective-rule availability and nonstring legacy contexts."""
+
+    @pytest.mark.parametrize(
+        ('rules', 'legacy', 'expected'),
+        [
+            (None, {}, 'inaccessible'),
+            ([], {'contexts': [1]}, 'inaccessible'),
+            (
+                [{'type': 'pull_request'}],
+                {'checks': [{'context': 'quality'}]},
+                'verified',
+            ),
+        ],
     )
-    assert run(policy, responses)['branch:main:check:quality'] == 'inaccessible'
-
-
-def test_valid_exception(
-    tmp_path: Path,
-    exception_config: str,
-) -> None:
-    (tmp_path / 'pyproject.toml').write_text(exception_config)
-    config = load_hosted_config(tmp_path)
-    assert config.exceptions[0].expires == date(2026, 10, 31)
-    assert config.repositories[0].labels == ('bug',)
-
-
-def test_verified(
-    policy: RepositoryPolicy,
-    responses: dict[str, Response],
-) -> None:
-    assert set(run(policy, responses).values()) == {'verified'}
+    def test_context_evidence(
+        self,
+        policy: RepositoryPolicy,
+        responses: dict[str, Response],
+        rules: object,
+        legacy: dict[str, object],
+        expected: str,
+    ) -> None:
+        """
+        Accept valid legacy checks while rejecting incomplete typed evidence.
+        """
+        responses['repos/example/library/rules/branches/main?per_page=100'] = Response(
+            rules,
+        )
+        responses['repos/example/library/branches/main/protection'] = Response(
+            {'required_status_checks': legacy},
+        )
+        assert run(policy, responses)['branch:main:check:quality'] == expected
