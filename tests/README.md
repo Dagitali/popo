@@ -100,6 +100,11 @@ Installed-CLI scenarios share a module-scoped environment per artifact, but each
 its own temporary project. Help and version checks exercise both the console script and module entry
 point for each artifact. Coverage is diagnostic; no reduced threshold masks regressions.
 
+Shared YAML traversal tests cover deep parsed containers, depth-first order, caller-supplied visited
+sets, and repeated aliases. Checker tests separately verify cyclic YAML input, retained policy
+diagnostics and unchanged source bytes; use parameterized fixtures for mapping and sequence cycles.
+Traversal depth tests construct Python containers directly so parser limits do not mask walker bugs.
+
 ## Common Commands
 
 After installing development dependencies:
