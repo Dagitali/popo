@@ -122,8 +122,7 @@ def _resolve_versions(
     """
     if value.startswith('[') and value.endswith(']'):
         return tuple(_normalize_scalar(item) for item in value[1:-1].split(','))
-    env_match = ENV_REFERENCE_PATTERN.fullmatch(value)
-    if env_match is not None:
+    if env_match := ENV_REFERENCE_PATTERN.fullmatch(value):
         name = re.escape(env_match.group(1))
         declaration = re.search(
             rf'^[ \t]*{name}:[ \t]*(.+?)[ \t]*$',
@@ -131,8 +130,7 @@ def _resolve_versions(
             re.MULTILINE,
         )
         return () if declaration is None else (_normalize_scalar(declaration.group(1)),)
-    matrix_match = MATRIX_REFERENCE_PATTERN.fullmatch(value)
-    if matrix_match is not None:
+    if matrix_match := MATRIX_REFERENCE_PATTERN.fullmatch(value):
         name = re.escape(matrix_match.group(1))
         declaration = re.search(
             rf'^[ \t]*{name}:[ \t]*\[(?P<values>[^]]+)\]',
@@ -228,7 +226,9 @@ def validate(
     specifier set. Workflow resolution is text-based and supports literals,
     inline lists, environment references, and inline or contiguous block-list
     matrices; it does not evaluate arbitrary expressions or model job-local
-    YAML scope.
+    YAML scope. Unresolved environment and matrix references produce version
+    diagnostics even when other declarations resolve. Shared package/Ruff
+    metadata is read once per validation, including a single parse diagnostic.
     """
 
     try:
@@ -261,8 +261,10 @@ def validate(
                 f'{config.mypy_python_version!r}',
             )
 
-    ruff, ruff_failures = _read_toml(config.ruff_config)
-    failures.extend(ruff_failures)
+    ruff = metadata
+    if config.ruff_config != config.metadata:
+        ruff, ruff_failures = _read_toml(config.ruff_config)
+        failures.extend(ruff_failures)
     if ruff is not None:
         if config.ruff_config == config.metadata:
             value = _table(_table(ruff.get('tool')).get('ruff')).get(
@@ -296,18 +298,17 @@ def validate(
         content = path.read_text(encoding='utf-8')
         configured = [
             resolved
-            for raw in WORKFLOW_VERSION_PATTERN.findall(content)
-            for resolved in _resolve_versions(_normalize_scalar(raw), content)
+            for raw in map(_normalize_scalar, WORKFLOW_VERSION_PATTERN.findall(content))
+            for resolved in (_resolve_versions(raw, content) or (raw,))
         ]
         if 'actions/setup-python@' in content and not configured:
             failures.append(f'{path}: setup-python requires an explicit version')
         for value in configured:
             try:
-                version = Version(value)
+                accepted = Version(value) in supported
             except InvalidVersion:
-                failures.append(f'{path}: unsupported Python version {value!r}')
-                continue
-            if version not in supported:
+                accepted = False
+            if not accepted:
                 failures.append(f'{path}: unsupported Python version {value!r}')
     return failures
 

@@ -25,7 +25,10 @@ class TestSafetyConfiguration:
         assert not config.configured
         assert config.workflows == config.npm_pairs == ()
 
-    @pytest.mark.parametrize('expiry', ['"2026-13-01"', '2026-10-08'])
+    @pytest.mark.parametrize(
+        'expiry',
+        ['"2026-13-01"', '2026-10-08', '"20261008"', '"2026-W41-4"'],
+    )
     def test_exception_date(
         self,
         tmp_path: Path,
@@ -64,6 +67,44 @@ class TestSafetyConfiguration:
         """Fail explicitly for unsupported or unsafe configuration."""
         write_file('pyproject.toml', '[tool.popo.safety]\n' + content)
         with pytest.raises(ConfigurationError, match=message):
+            load_safety_config(tmp_path)
+
+    @pytest.mark.parametrize(
+        ('workflow', 'trigger'),
+        [('*.yml', 'workflow_run'), ('ci.yml', 'push')],
+    )
+    def test_exception_scope(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        workflow: str,
+        trigger: str,
+    ) -> None:
+        """Require an exact workflow path and a privileged trigger."""
+        write_file(
+            'pyproject.toml',
+            (
+                '[[tool.popo.safety.exceptions]]\n'
+                f'workflow="{workflow}"\ntrigger="{trigger}"\n'
+                'owner="team"\nreason="review"\napproved-by="owner"\nexpires="2026-10-08"'
+            ),
+        )
+        with pytest.raises(ConfigurationError):
+            load_safety_config(tmp_path)
+
+    def test_duplicate_exception_scope(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """Reject ambiguous approvals for the same workflow and event."""
+        entry = (
+            '[[tool.popo.safety.exceptions]]\nworkflow="ci.yml"\n'
+            'trigger="workflow_run"\nowner="team"\nreason="review"\n'
+            'approved-by="owner"\nexpires="2026-10-08"\n'
+        )
+        write_file('pyproject.toml', entry * 2)
+        with pytest.raises(ConfigurationError, match='duplicate'):
             load_safety_config(tmp_path)
 
     def test_valid_policy(

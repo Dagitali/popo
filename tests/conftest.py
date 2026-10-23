@@ -1,7 +1,7 @@
 """
 :mod:`tests.conftest` module.
 
-Classify tests by architectural layer and register shared artifact fixtures.
+Classify tests by architectural layer and register shared test fixtures.
 """
 
 from pathlib import Path
@@ -15,7 +15,7 @@ from tests.support.files import FileWriter
 
 TESTS_ROOT = Path(__file__).parent
 TEST_LAYERS = frozenset({'unit', 'integration', 'meta', 'e2e'})
-pytest_plugins = ('tests.support.artifacts',)
+pytest_plugins = ('tests.support.artifacts', 'tests.support.hosted')
 
 
 # !SECTION

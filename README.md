@@ -62,6 +62,8 @@ To get started:
 - Run the same checks locally, in pre-commit hooks, and in CI.
 - Inspect the current repository or select another with `--root`.
 - Configure consumer policy independently of Popo's own development settings.
+- Receive diagnostics for malformed dependency project tables; safety approvals require quoted
+  `YYYY-MM-DD` expiry dates.
 - Validate repository files without modifying them or requiring cloud credentials.
 
 ## Release Status
@@ -86,6 +88,9 @@ configured; see the [release policy].
 - Python-version policy across package metadata, tool configuration, and workflows, including
   inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
+
+Python-policy checks report unresolved environment or matrix version references even alongside valid
+declarations; package and embedded Ruff settings are validated from the same metadata read.
 
 Popo's PR workflow checks dated changelog entries against versioned release documents and validates
 candidate versions on release/hotfix branches. Hosted required-check configuration is needed to
@@ -164,6 +169,9 @@ included when the consumer explicitly configures `[tool.popo.automation]`. Requi
 checks are enabled only by their consumer tables. Repository safety checks are similarly opt-in
 through `[tool.popo.safety]`; see the [safety settings reference]. Available since v0.6.0.
 
+File checks retain dangling symlinks for containment checks and report required-file path errors
+without skipping later entries. See the [file policies] guide for discovery and preservation rules.
+
 ## Configuration
 
 Configuration lives in the inspected repository's `pyproject.toml`. Paths are relative to the
@@ -202,7 +210,8 @@ When dependency configuration is absent, `popo` detects the layouts
 workflow/action input contracts, composite-step structure, template metadata, and immutable remote
 references. Use `--pins-only` to skip input, composite, and metadata checks; parsing and local
 target resolution still run. The older `check-github-actions-pins` command remains available and
-also recognizes valid revision-free self references.
+also recognizes valid revision-free self references. Parsed YAML traversal visits shared mappings
+once and handles recursive aliases; safety checks retain diagnostics without recursion crashes.
 
 See the [automation settings reference] for command boundaries and validation rules. Configure
 discovery and policy in the consuming repository, without importing Popo internals:

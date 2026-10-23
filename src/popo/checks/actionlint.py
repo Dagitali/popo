@@ -21,7 +21,8 @@ from pathlib import Path
 import yaml
 
 from ..config.automation import AutomationConfig, load_automation_config
-from .automation import _inside, _nodes, _read, _target
+from ._yaml import mapping_nodes, read_mapping
+from .automation import _inside, _target
 
 # SECTION: PROTECTED FUNCTIONS
 
@@ -162,9 +163,9 @@ def run(
         path = pending.pop()
         if path in sources:
             continue
-        data = _read(path)
+        data = read_mapping(path)
         sources[path] = _normalize(path.read_text(encoding='utf-8'), config)
-        for node in _nodes(data):
+        for node in mapping_nodes(data):
             reference = node.get('uses')
             if isinstance(reference, str):
                 target = _target(config, reference)

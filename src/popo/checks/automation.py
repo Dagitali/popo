@@ -6,101 +6,13 @@ Validate configured automation contracts without execution or network access.
 
 import json
 import re
-from collections.abc import Hashable, Iterator
 from pathlib import Path
-from typing import cast
 
 import yaml
 
 from ..config.automation import AutomationConfig
+from ._yaml import mapping_nodes, read_mapping, require_mapping
 from .actions import is_pinned
-
-# SECTION: PROTECTED CLASSES
-
-
-class _Loader(yaml.SafeLoader):
-    """
-    Load safe YAML with string-only keys and GitHub-compatible booleans.
-
-    Parameters
-    ----------
-    stream : str, bytes, or file-like object
-        YAML input accepted by the inherited SafeLoader constructor.
-
-    Notes
-    -----
-    Mapping construction rejects duplicate keys and non-string keys. The loader
-    uses its own implicit resolvers: only case-insensitive ``true`` and
-    ``false`` resolve as booleans, preserving names such as ``on`` and values
-    such as ``yes`` as strings. Other safe YAML constructors remain inherited.
-    The loader parses data without executing automation or constructing
-    arbitrary Python objects.
-    """
-
-    def construct_mapping(
-        self,
-        node: yaml.MappingNode,
-        deep: bool = False,
-    ) -> dict[Hashable, object]:
-        """
-        Construct a mapping while enforcing unique string keys.
-
-        Parameters
-        ----------
-        node : yaml.MappingNode
-            YAML mapping node whose key/value pairs are constructed in source
-            order.
-        deep : bool, optional
-            Forwarded to :meth:`yaml.SafeLoader.construct_object` for keys and
-            values. Defaults to ``False``.
-
-        Returns
-        -------
-        dict[collections.abc.Hashable, object]
-            Constructed mapping with string keys and safely constructed values.
-
-        Raises
-        ------
-        ValueError
-            If a constructed key is not a string or repeats an earlier key.
-        yaml.YAMLError
-            If inherited construction cannot process a key or value node.
-
-        Notes
-        -----
-        Errors propagate to the caller. During file validation, the outer
-        validator converts these errors into diagnostics.
-        """
-        result: dict[Hashable, object] = {}
-        for key_node, value_node in node.value:
-            key: object = self.construct_object(key_node, deep=deep)
-            if not isinstance(key, str):
-                raise ValueError('YAML mapping keys must be strings')
-            if key in result:
-                raise ValueError(f'duplicate YAML key: {key}')
-            result[key] = self.construct_object(value_node, deep=deep)
-        return result
-
-
-# !SECTION
-
-
-# SECTION: PROTECTED VARIABLE
-
-
-_Loader.yaml_implicit_resolvers = {
-    key: [(tag, regex) for tag, regex in items if tag != 'tag:yaml.org,2002:bool']
-    for key, items in yaml.SafeLoader.yaml_implicit_resolvers.items()
-}
-_Loader.add_implicit_resolver(
-    'tag:yaml.org,2002:bool',
-    re.compile(r'^(?:true|false)$', re.I),
-    list('tTfF'),
-)
-
-
-# !SECTION
-
 
 # SECTION: PROTECTED FUNCTIONS
 
@@ -138,12 +50,12 @@ def _call(
     input with a declared default may be omitted. Errors propagate here and
     become per-file diagnostics in :func:`~popo.checks.automation.validate`.
     """
-    declared = _mapping(target.get('inputs', {}), 'inputs')
-    supplied = _mapping(node.get('with', {}), 'with')
+    declared = require_mapping(target.get('inputs', {}), 'inputs')
+    supplied = require_mapping(node.get('with', {}), 'with')
     if unknown := set(supplied) - set(declared):
         raise ValueError(f'unknown inputs: {sorted(unknown)}')
     for name, declaration in declared.items():
-        spec = _mapping(declaration, f'input {name}')
+        spec = require_mapping(declaration, f'input {name}')
         if (
             spec.get('required') is True
             and 'default' not in spec
@@ -155,7 +67,7 @@ def _call(
     for name, value in supplied.items():
         if isinstance(value, str) and '${{' in value:
             continue
-        spec = _mapping(declared[name], f'input {name}')
+        spec = require_mapping(declared[name], f'input {name}')
         kind = spec.get('type') if workflow else None
         valid = (
             kind is None
@@ -197,7 +109,7 @@ def _composite(
     for key in ('name', 'description'):
         if not isinstance(data.get(key), str) or not data[key]:
             raise ValueError(f'action needs {key}')
-    runs = _mapping(data.get('runs'), 'runs')
+    runs = require_mapping(data.get('runs'), 'runs')
     if runs.get('using') != 'composite':
         # Other action runtimes are outside composite structural validation.
         return
@@ -205,7 +117,7 @@ def _composite(
     if not isinstance(steps, list) or not steps:
         raise ValueError('composite steps must be a nonempty list')
     for item in steps:
-        step = _mapping(item, 'step')
+        step = require_mapping(item, 'step')
         if ('run' in step) == ('uses' in step):
             raise ValueError('composite step needs exactly one of run/uses')
         if 'run' in step and (
@@ -252,40 +164,6 @@ def _inside(
     return resolved
 
 
-def _mapping(
-    value: object,
-    label: str,
-) -> dict[str, object]:
-    """
-    Require a dictionary and narrow its type without copying its contents.
-
-    Parameters
-    ----------
-    value : object
-        Candidate mapping; only dict instances are accepted.
-    label : str
-        Description used in a failure diagnostic.
-
-    Returns
-    -------
-    dict[str, object]
-        The original dictionary, with its type narrowed for callers.
-
-    Raises
-    ------
-    ValueError
-        If value is not a dict instance.
-
-    Notes
-    -----
-    Do not validate key or value types or mutate the dictionary. String-key
-    validation for YAML occurs in the loader.
-    """
-    if not isinstance(value, dict):
-        raise ValueError(f'{label} must be a mapping')
-    return cast(dict[str, object], value)
-
-
 def _metadata(
     root: Path,
     path: Path,
@@ -323,7 +201,7 @@ def _metadata(
     :func:`~popo.checks.automation.validate`.
     """
     metadata = _inside(root, path.with_suffix('.properties.json'))
-    doc = _mapping(json.loads(metadata.read_text()), 'template metadata')
+    doc = require_mapping(json.loads(metadata.read_text()), 'template metadata')
     for key in ('name', 'description'):
         if not isinstance(doc.get(key), str) or not doc[key]:
             raise ValueError(f'template metadata needs {key}')
@@ -334,89 +212,6 @@ def _metadata(
         if key == 'filePatterns':
             for pattern in values:
                 re.compile(pattern)
-
-
-def _nodes(
-    value: object,
-    seen: set[int] | None = None,
-) -> Iterator[dict[str, object]]:
-    """
-    Yield nested mappings once while avoiding cycles and repeated aliases.
-
-    Parameters
-    ----------
-    value : object
-        Parsed data to traverse; only dictionaries and lists are descended
-        into.
-    seen : set[int] or None, optional
-        Identities already visited. A supplied set is updated in place; when
-        omitted, create one shared by the recursive traversal.
-
-    Yields
-    ------
-    dict[str, object]
-        Original dictionaries in depth-first order, visiting a parent before
-        its children and preserving dictionary value/list element order.
-
-    Notes
-    -----
-    Scalars yield nothing. Shared containers and recursive YAML aliases are
-    visited only once. Values are not copied or mutated; keys are assumed to
-    have been validated by the loader. The visited set is updated as the
-    iterator is consumed. Traversal remains recursive and can exceed Python's
-    recursion limit for sufficiently deep input.
-    """
-    seen = set() if seen is None else seen
-    if not isinstance(value, (dict, list)) or id(value) in seen:
-        return
-    seen.add(id(value))
-    if isinstance(value, dict):
-        mapping = cast(dict[str, object], value)
-        yield mapping
-        children = list(mapping.values())
-    else:
-        children = cast(list[object], value)
-    for child in children:
-        yield from _nodes(child, seen)
-
-
-def _read(
-    path: Path,
-) -> dict[str, object]:
-    # PyYAML's dynamic return value is narrowed at this boundary.
-    """
-    Read a UTF-8 YAML file and require a mapping document.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        File to read; repository containment is checked separately by callers.
-
-    Returns
-    -------
-    dict[str, object]
-        Parsed document using the restricted safe loader.
-
-    Raises
-    ------
-    OSError, UnicodeError
-        If the file cannot be read or decoded as UTF-8.
-    yaml.YAMLError
-        If YAML parsing or safe construction fails.
-    ValueError
-        If the document is not a mapping or contains duplicate/non-string keys.
-
-    Notes
-    -----
-    Empty YAML resolves to ``None`` and fails the mapping requirement. Read
-    without
-    modifying the file or executing referenced automation.
-    :func:`~popo.checks.automation.validate` converts these errors into
-    per-file
-    diagnostics.
-    """
-    value: object = yaml.load(path.read_text(encoding='utf-8'), Loader=_Loader)
-    return _mapping(value, 'document')
 
 
 def _target(
@@ -553,7 +348,7 @@ def validate(
     for path, kind in paths.items():
         try:
             _inside(config.root, path)
-            data = _read(path)
+            data = read_mapping(path)
             if not pins_only:
                 if kind == 'action':
                     _composite(data)
@@ -561,7 +356,7 @@ def validate(
                     _metadata(config.root, path)
             if kind == 'yaml':
                 continue
-            for node in _nodes(data):
+            for node in mapping_nodes(data):
                 if 'uses' not in node:
                     continue
                 reference = node['uses']
@@ -582,14 +377,17 @@ def validate(
                         f'remote action must use a full commit SHA: {reference}',
                     )
                 if target is not None and not pins_only:
-                    doc = _read(target)
+                    doc = read_mapping(target)
                     workflow = target.name not in ('action.yml', 'action.yaml')
                     if workflow:
-                        events = _mapping(doc.get('on'), 'workflow on')
+                        events = require_mapping(doc.get('on'), 'workflow on')
                         if 'workflow_call' not in events:
                             raise ValueError(f'target lacks workflow_call: {reference}')
                         event = events['workflow_call']
-                        doc = _mapping({} if event is None else event, 'workflow_call')
+                        doc = require_mapping(
+                            {} if event is None else event,
+                            'workflow_call',
+                        )
                     _call(node, doc, workflow)
         except (OSError, UnicodeError, ValueError, yaml.YAMLError, re.error) as error:
             failures.append(f'{path}: {error}')

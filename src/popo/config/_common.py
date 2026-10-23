@@ -99,6 +99,46 @@ def read_string(
     return value
 
 
+def read_strings(
+    value: object,
+    name: str,
+    *,
+    unique: bool = True,
+) -> tuple[str, ...]:
+    """
+    Require nonempty strings in an array, optionally rejecting duplicates.
+
+    Parameters
+    ----------
+    value : object
+        Candidate configuration array; an empty array is permitted.
+    name : str
+        Setting name used in failure diagnostics.
+    unique : bool, optional
+        Reject duplicate values by default. Disable for policies that allow
+        repeated discovery patterns or references.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Values in declaration order without stripping whitespace or mutation.
+
+    Raises
+    ------
+    ConfigurationError
+        If the value is not an array of nonblank strings or contains duplicates
+        when uniqueness is required. Reject typos instead of coercing values.
+    """
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item.strip() for item in value
+    ):
+        raise ConfigurationError(f'{name} must be an array of nonempty strings')
+    result = tuple(cast(list[str], value))
+    if unique and len(set(result)) != len(result):
+        raise ConfigurationError(f'{name} contains duplicates')
+    return result
+
+
 def require_table(
     value: object,
     *,
