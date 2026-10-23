@@ -56,6 +56,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Consolidate CLI parser setup and configuration string-array validation, modernize type aliases,
+  and complete class-based unit suites while preserving consumer-specific policy differences.
+- Report malformed dependency project tables as diagnostics instead of raising an attribute error.
+- Require safety-exception expiry strings in canonical `YYYY-MM-DD` form; compact and ISO week dates
+  are rejected. Add regression coverage for malformed policy, hosted evidence and CLI paths.
+
 ## [0.8.0] - 2026-10-23
 
 - Add opt-in `check-required-files` and `check-file-headers` commands with consumer-owned paths,
