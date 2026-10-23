@@ -13,7 +13,7 @@ from ._common import ConfigurationError, read_string, require_table
 # SECTION: TYPE ALIASES
 
 
-DependencyMode = Literal['minimum-constraints', 'exact']
+type DependencyMode = Literal['minimum-constraints', 'exact']
 
 
 # !SECTION

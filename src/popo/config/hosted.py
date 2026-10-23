@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from ._common import ConfigurationError, read_popo, require_table
+from ._common import ConfigurationError, read_popo, read_strings, require_table
 
 # SECTION: DATA CLASSES
 
@@ -46,27 +46,6 @@ class HostedConfig:
 
     repositories: tuple[RepositoryPolicy, ...]
     exceptions: tuple[ExceptionPolicy, ...]
-
-
-# !SECTION
-
-
-# SECTION: PROTECTED FUNCTIONS
-
-
-def _strings(
-    value: object,
-    name: str,
-) -> tuple[str, ...]:
-    """Require unique, nonempty string values in a configuration array."""
-    if not isinstance(value, list) or any(
-        not isinstance(item, str) or not item.strip() for item in value
-    ):
-        raise ConfigurationError(f'{name} must be an array of nonempty strings')
-    result = tuple(str(item) for item in value)
-    if len(set(result)) != len(result):
-        raise ConfigurationError(f'{name} contains duplicates')
-    return result
 
 
 # !SECTION
@@ -162,10 +141,10 @@ def load_hosted_config(
             RepositoryPolicy(
                 name,
                 {key: bool(value) for key, value in settings.items()},
-                _strings(row.get('labels', []), 'labels'),
+                read_strings(row.get('labels', []), 'labels'),
                 codeowners,
                 {
-                    branch: _strings(checks, f'branches.{branch}')
+                    branch: read_strings(checks, f'branches.{branch}')
                     for branch, checks in branches.items()
                 },
             ),

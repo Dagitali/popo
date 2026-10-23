@@ -6,9 +6,8 @@ Load optional consumer automation contracts from pyproject.toml.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
 
-from ._common import ConfigurationError, read_popo, require_table
+from ._common import ConfigurationError, read_popo, read_strings, require_table
 
 # SECTION: DATA CLASSES
 
@@ -89,11 +88,7 @@ def load_automation_config(root: Path) -> AutomationConfig:
     values: dict[str, tuple[str, ...]] = {}
     for key in keys:
         value = table.get(key, list(getattr(defaults, key.replace('-', '_'))))
-        if not isinstance(value, list) or not all(
-            isinstance(item, str) and item.strip() for item in value
-        ):
-            raise ConfigurationError(f'{key} must be an array of nonempty strings')
-        strings = tuple(cast(list[str], value))
+        strings = read_strings(value, key, unique=False)
         for item in strings:
             if key.endswith('-globs') and (
                 Path(item).is_absolute() or '..' in Path(item).parts
