@@ -20,6 +20,7 @@ are resolved against that root. See the [configuration example] for a complete s
 - [Dependency Settings](#dependency-settings)
 - [Python-Policy Settings](#python-policy-settings)
 - [Automation Settings](#automation-settings)
+- [File Policy Settings](#file-policy-settings)
 - [Hosted Audit Settings](#hosted-audit-settings)
 - [Command Boundaries](#command-boundaries)
 - [Validation Rules](#validation-rules)
@@ -86,6 +87,14 @@ files. Empty arrays disable discovery categories. Resolved paths must remain wit
 The standalone `check-automation-contracts` command uses default workflow discovery when the table
 is absent. `check-all` includes automation contracts only when the table is present, even if empty.
 Automation loading is independent of dependency and Python-policy settings.
+
+## File Policy Settings
+
+`[tool.popo.files]` supplies exact required paths for `check-required-files`. `[tool.popo.headers]`
+supplies identity, ordered comment rules and explicit preservation exceptions for
+`check-file-headers`. Neither command requires Python package metadata. Both tables are opt-in for
+`check-all`; an explicit command fails if its own table is absent. See [file policies] for the
+complete schema, matching rules and source-discovery boundaries.
 
 ## Hosted Audit Settings
 
@@ -158,4 +167,5 @@ read-only and do not repair files or change consumer policy automatically.
 
 [automation contracts guide]: ../README.md#automation-contracts
 [configuration example]: ../README.md#configuration
+[file policies]: file-policies.md
 [Hosted Settings Audit]: hosted-audit.md

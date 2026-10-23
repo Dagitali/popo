@@ -20,12 +20,14 @@ from .checks import (
     changelog,
     dependencies,
     docs,
+    files,
     hosted,
     python_policy,
     safety,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
+from .config.files import load_headers_config, load_required_files_config
 from .config.hosted import load_hosted_config
 from .config.safety import load_safety_config
 from .support import report
@@ -133,7 +135,7 @@ def _all(
     -----
     Load consumer configuration, then run those checks in order without
     stopping for returned failures. Include automation contracts and safety
-    checks only when their configuration tables are present. Exceptions
+    and file checks only when their configuration tables are present. Exceptions
     still propagate. Release changelog validation requires an explicit
     release version and is excluded. Return the diagnostics and success message
     without printing.
@@ -152,6 +154,12 @@ def _all(
     safety_config = load_safety_config(root)
     if safety_config.configured:
         failures.extend(safety.validate(safety_config))
+    required = load_required_files_config(root)
+    if required is not None:
+        failures.extend(files.validate_required(required))
+    headers = load_headers_config(root)
+    if headers is not None:
+        failures.extend(files.validate_headers(headers))
     return failures, 'all configured repository checks passed'
 
 
@@ -333,6 +341,54 @@ def _safety(
     return safety.validate(config), 'configured repository safety checks passed'
 
 
+def _required_files(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Dispatch configured required-file validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Failures and a success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        If the policy is absent or malformed.
+    """
+    config = load_required_files_config(args.root)
+    if config is None:
+        raise ConfigurationError('check-required-files requires tool.popo.files')
+    return files.validate_required(config), 'required files are present'
+
+
+def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Dispatch configured header validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Failures and a success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        If the policy is absent or malformed.
+    """
+    config = load_headers_config(args.root)
+    if config is None:
+        raise ConfigurationError('check-file-headers requires tool.popo.headers')
+    return files.validate_headers(config), 'configured file headers are valid'
+
+
 # !SECTION
 
 
@@ -364,6 +420,14 @@ def create_parser() -> argparse.ArgumentParser:
         version=f'%(prog)s {__version__}',
     )
     commands = parser.add_subparsers(dest='command', required=True)
+
+    for name, handler in (
+        ('check-required-files', _required_files),
+        ('check-file-headers', _file_headers),
+    ):
+        file_parser = commands.add_parser(name)
+        _add_root(file_parser)
+        file_parser.set_defaults(handler=handler)
 
     docs_parser = commands.add_parser('check-docs')
     _add_root(docs_parser)

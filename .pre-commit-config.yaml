@@ -68,7 +68,7 @@ repos:
 
   # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.19.1
+    rev: v4.19.2
     hooks:
       - id: commitizen
         stages: [commit-msg]
@@ -131,7 +131,7 @@ repos:
       - id: add-trailing-comma
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
         args: [--py313-plus]
@@ -148,7 +148,7 @@ repos:
 
   # Python: authoritative linting, import ordering, and pyupgrade-style rules
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.10
+    rev: v0.17.0
     hooks:
       # Run the linter
       - id: ruff-check
@@ -190,13 +190,13 @@ repos:
         name: Ruff lint
         entry: python -m ruff check
         language: python
-        additional_dependencies: ['ruff>=0.16.9,<0.17']
+        additional_dependencies: ['ruff>=0.16.9,<0.18']
         types_or: [python, pyi]
       - id: ruff-format
         name: Ruff format check
         entry: python -m ruff format --check
         language: python
-        additional_dependencies: ['ruff>=0.16.9,<0.17']
+        additional_dependencies: ['ruff>=0.16.9,<0.18']
         types_or: [python, pyi]
       - id: popo-self-check
         name: Run popo repository checks
