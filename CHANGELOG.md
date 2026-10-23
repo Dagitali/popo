@@ -58,6 +58,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Align autopep8 with Ruff by ignoring `E203`, preventing commit-time formatting conflicts on
+  complex slices.
 - Add standalone `popo.toml`, explicit offline check selection and named profiles so Swift, CDK and
   other consumers can use shared checks without Python project metadata; retain legacy defaults.
 - Add `explain` for check-selection provenance and versioned JSON results for native offline checks.
