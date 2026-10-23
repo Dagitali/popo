@@ -35,7 +35,7 @@ from .support import report
 # SECTION: TYPE ALIASES
 
 
-Command = Callable[[argparse.Namespace], tuple[list[str], str]]
+type Command = Callable[[argparse.Namespace], tuple[list[str], str]]
 
 
 # !SECTION
@@ -135,10 +135,10 @@ def _all(
     -----
     Load consumer configuration, then run those checks in order without
     stopping for returned failures. Include automation contracts and safety
-    and file checks only when their configuration tables are present. Exceptions
-    still propagate. Release changelog validation requires an explicit
-    release version and is excluded. Return the diagnostics and success message
-    without printing.
+    and file checks only when their configuration tables are present.
+    Exceptions still propagate. Release changelog validation requires an
+    explicit release version and is excluded. Return the diagnostics and
+    success message without printing.
     """
     root = args.root.resolve()
     config = load_config(root)
@@ -421,73 +421,62 @@ def create_parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest='command', required=True)
 
-    for name, handler in (
-        ('check-required-files', _required_files),
-        ('check-file-headers', _file_headers),
-    ):
-        file_parser = commands.add_parser(name)
-        _add_root(file_parser)
-        file_parser.set_defaults(handler=handler)
+    handlers: dict[str, Command | None] = {
+        'check-required-files': _required_files,
+        'check-file-headers': _file_headers,
+        'check-docs': _docs,
+        'check-github-actions-pins': _actions,
+        'check-automation-contracts': _automation,
+        'check-repository-safety': _safety,
+        'check-actionlint': None,
+        'check-dependency-boundaries': _dependencies,
+        'check-python-policy': _python,
+        'check-release-changelog': _changelog,
+        'check-all': _all,
+        'audit-github-settings': None,
+    }
+    help_text = {
+        'check-automation-contracts': (
+            'Validate automation using consumer tool.popo.automation settings'
+        ),
+        'check-repository-safety': (
+            'Check opt-in privileged triggers, shell interpolation, and npm pairs'
+        ),
+        'check-actionlint': (
+            'Run actionlint with temporary self-reference compatibility'
+        ),
+        'audit-github-settings': 'Explicit read-only hosted drift audit (requires gh)',
+    }
+    parsers: dict[str, argparse.ArgumentParser] = {}
+    for name, handler in handlers.items():
+        subparser = (
+            commands.add_parser(name, help=help_text[name])
+            if name in help_text
+            else commands.add_parser(name)
+        )
+        _add_root(subparser)
+        if handler is not None:
+            subparser.set_defaults(handler=handler)
+        parsers[name] = subparser
 
-    docs_parser = commands.add_parser('check-docs')
-    _add_root(docs_parser)
-    docs_parser.set_defaults(handler=_docs)
-
-    actions_parser = commands.add_parser('check-github-actions-pins')
-    _add_root(actions_parser)
-    actions_parser.add_argument('--automation-directory', type=Path)
-    actions_parser.set_defaults(handler=_actions)
-
-    automation_parser = commands.add_parser(
-        'check-automation-contracts',
-        help='Validate automation using consumer tool.popo.automation settings',
+    parsers['check-github-actions-pins'].add_argument(
+        '--automation-directory',
+        type=Path,
     )
-    _add_root(automation_parser)
-    automation_parser.add_argument(
+    parsers['check-automation-contracts'].add_argument(
         '--pins-only',
         action='store_true',
         help='Check parsed references without input, composite, or metadata checks',
     )
-    automation_parser.set_defaults(handler=_automation)
-
-    safety_parser = commands.add_parser(
-        'check-repository-safety',
-        help='Check opt-in privileged triggers, shell interpolation, and npm pairs',
+    parsers['check-actionlint'].add_argument('--actionlint', default='actionlint')
+    parsers['check-actionlint'].add_argument('paths', nargs='*')
+    parsers['check-release-changelog'].add_argument('release')
+    parsers['check-release-changelog'].add_argument('--changelog', type=Path)
+    parsers['audit-github-settings'].add_argument(
+        '--format',
+        choices=('text', 'json'),
+        default='text',
     )
-    _add_root(safety_parser)
-    safety_parser.set_defaults(handler=_safety)
-
-    lint_parser = commands.add_parser(
-        'check-actionlint',
-        help='Run actionlint with temporary self-reference compatibility',
-    )
-    _add_root(lint_parser)
-    lint_parser.add_argument('--actionlint', default='actionlint')
-    lint_parser.add_argument('paths', nargs='*')
-
-    dependency_parser = commands.add_parser('check-dependency-boundaries')
-    _add_root(dependency_parser)
-    dependency_parser.set_defaults(handler=_dependencies)
-
-    python_parser = commands.add_parser('check-python-policy')
-    _add_root(python_parser)
-    python_parser.set_defaults(handler=_python)
-
-    changelog_parser = commands.add_parser('check-release-changelog')
-    _add_root(changelog_parser)
-    changelog_parser.add_argument('release')
-    changelog_parser.add_argument('--changelog', type=Path)
-    changelog_parser.set_defaults(handler=_changelog)
-
-    all_parser = commands.add_parser('check-all')
-    _add_root(all_parser)
-    all_parser.set_defaults(handler=_all)
-    hosted_parser = commands.add_parser(
-        'audit-github-settings',
-        help='Explicit read-only hosted drift audit (requires gh)',
-    )
-    _add_root(hosted_parser)
-    hosted_parser.add_argument('--format', choices=('text', 'json'), default='text')
     return parser
 
 

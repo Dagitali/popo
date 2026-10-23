@@ -7,9 +7,14 @@ Load opt-in required-file and language-neutral header contracts.
 from dataclasses import dataclass
 from pathlib import Path
 from string import Formatter
-from typing import cast
 
-from ._common import ConfigurationError, read_popo, read_string, require_table
+from ._common import (
+    ConfigurationError,
+    read_popo,
+    read_string,
+    read_strings,
+    require_table,
+)
 
 # SECTION: DATA CLASSES
 
@@ -46,7 +51,9 @@ class HeaderRule:
 
 @dataclass(frozen=True, slots=True)
 class HeaderException:
-    """Preserve matched files without reading contents, with a stated reason."""
+    """
+    Preserve matched files without reading contents, with a stated reason.
+    """
 
     patterns: tuple[str, ...]
     reason: str
@@ -54,7 +61,9 @@ class HeaderException:
 
 @dataclass(frozen=True, slots=True)
 class HeadersConfig:
-    """Store consumer identity, ordered rules and explicit preservation policy."""
+    """
+    Store consumer identity, ordered rules and explicit preservation policy.
+    """
 
     root: Path
     project: str
@@ -89,7 +98,7 @@ def _paths(
     patterns: bool,
 ) -> tuple[str, ...]:
     """Validate portable root-relative paths without filesystem access."""
-    result = _strings(value, label)
+    result = read_strings(value, label)
     for item in result:
         if (
             Path(item).is_absolute()
@@ -100,21 +109,6 @@ def _paths(
             or (not patterns and any(token in item for token in '*?['))
         ):
             raise ConfigurationError(f'{label} must stay inside the repository')
-    return result
-
-
-def _strings(
-    value: object,
-    label: str,
-) -> tuple[str, ...]:
-    """Require unique nonempty strings rather than silently accepting typos."""
-    if not isinstance(value, list) or any(
-        not isinstance(item, str) or not item.strip() for item in value
-    ):
-        raise ConfigurationError(f'{label} must be an array of nonempty strings')
-    result = tuple(cast(list[str], value))
-    if len(set(result)) != len(result):
-        raise ConfigurationError(f'{label} contains duplicates')
     return result
 
 
@@ -207,11 +201,11 @@ def load_headers_config(
                 patterns,
                 kind,
                 _template(read_string(row, 'prefix', default='')),
-                _strings(row.get('required-text', []), 'required-text'),
+                read_strings(row.get('required-text', []), 'required-text'),
                 first,
                 first_prefix,
                 _boolean(row, 'trim-after-first-line', False),
-                _strings(row.get('preamble-prefixes', []), 'preamble-prefixes'),
+                read_strings(row.get('preamble-prefixes', []), 'preamble-prefixes'),
                 _boolean(row, 'purpose-required', True),
             ),
         )
@@ -230,7 +224,7 @@ def load_headers_config(
         if not reason.strip():
             raise ConfigurationError('header exception reason must not be blank')
         exceptions.append(HeaderException(patterns, reason))
-    ignored = _strings(
+    ignored = read_strings(
         table.get(
             'ignored-directories',
             [

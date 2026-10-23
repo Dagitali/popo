@@ -56,6 +56,23 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Keep dangling header symlinks in discovery so containment checks run before preservation
+  exceptions. Report required-file resolution/inspection errors without skipping later paths.
+- Stream XML preamble and line-comment header scanning while preserving accepted syntax and consumer
+  directives.
+- Read shared Python-policy package/Ruff metadata once and report each shared input failure once.
+- Reject unresolved workflow Python-version references even when another declaration is valid;
+  report unresolved expressions as unsupported versions instead of silently skipping them.
+- Share safe YAML loading and iterative mapping traversal across automation, actionlint and safety
+  checks. Preserve nested traversal order and avoid recursion-limit failures in parsed structures.
+- Fix safety-check crashes on recursive YAML aliases and duplicate shell-interpolation diagnostics
+  for mappings reused through aliases; continue inspecting later policy violations.
+- Consolidate CLI parser setup and configuration string-array validation, modernize type aliases,
+  and complete class-based unit suites while preserving consumer-specific policy differences.
+- Report malformed dependency project tables as diagnostics instead of raising an attribute error.
+- Require safety-exception expiry strings in canonical `YYYY-MM-DD` form; compact and ISO week dates
+  are rejected. Add regression coverage for malformed policy, hosted evidence and CLI paths.
+
 ## [0.8.0] - 2026-10-23
 
 - Add opt-in `check-required-files` and `check-file-headers` commands with consumer-owned paths,

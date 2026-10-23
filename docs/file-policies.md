@@ -30,7 +30,9 @@ required = ["README.md", "SECURITY.md", ".github/workflows/ci.yml"]
 Paths are exact root-relative POSIX filenames, not globs or directory requirements. The nonempty
 array rejects duplicates, absolute paths, parent traversal, backslashes and drive-like paths.
 `check-required-files` reports every missing/non-file entry and rejects resolved symlinks outside
-the repository. It does not prescribe filenames or infer that an existing document is correct.
+the repository. Path-resolution and inspection errors are reported alongside subsequent missing
+paths rather than stopping the check. It does not prescribe filenames or infer that an existing
+document is correct.
 
 ## Header Configuration
 
@@ -101,9 +103,10 @@ Keep language-specific abstraction/DocC checks in their existing validators.
 ## Discovery and Preservation
 
 Header discovery asks Git for tracked and unignored files, including hidden and untracked paths;
-deleted paths are not read. Git discovery has a 30-second timeout and failures remain failures. When
-Git is unavailable or the root is not a working tree, discovery falls back to local recursive files.
-`ignored-directories` names literal path components rather than substrings or globs. Defaults
+deleted paths are not read. Dangling symlinks remain in the inventory so containment checks run
+before preservation exceptions. Git discovery has a 30-second timeout and failures remain failures.
+When Git is unavailable or the root is not a working tree, discovery falls back to local recursive
+files. `ignored-directories` names literal path components rather than substrings or globs. Defaults
 exclude `.git`, `.venv`, `.build`, `.swiftpm`, `__pycache__`, `.pytest_cache`, `.mypy_cache`,
 `.ruff_cache`, `build`, `dist` and `node_modules`. An explicit list replaces these defaults.
 

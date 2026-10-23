@@ -6,6 +6,7 @@ Test Python-version consistency and workflow matrix resolution.
 
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -66,6 +67,18 @@ def policy(
         '3.13',
         workflow.parent,
     )
+
+
+@pytest.fixture(params=['${{ env.MISSING }}', '${{ matrix.missing }}'])
+def unresolved_reference(request: pytest.FixtureRequest) -> str:
+    """Supply recognized version references with no matching declaration."""
+    return str(request.param)
+
+
+# SECTION!
+
+
+# SECTION: TESTS
 
 
 class TestPythonPolicy:
@@ -278,9 +291,13 @@ class TestPythonPolicy:
             '.github/workflows/ci.yml',
             f'uses: actions/setup-python@{'a' * 40}\n{declaration}',
         )
-        assert validate(policy, running_version='3.13') == [
-            f'{path}: setup-python requires an explicit version',
-        ]
+        reference = declaration.removeprefix('python-version: ')
+        message = (
+            f'unsupported Python version {reference!r}'
+            if declaration
+            else 'setup-python requires an explicit version'
+        )
+        assert validate(policy, running_version='3.13') == [f'{path}: {message}']
 
     @pytest.mark.parametrize(
         'declaration',
@@ -362,3 +379,64 @@ class TestPythonPolicy:
         assert validate(policy, running_version='3.13') == [
             f'{path}: unsupported Python version {version!r}',
         ]
+
+
+class TestPythonPolicyInputBoundaries:
+    """Validate each declaration and inspect shared metadata consistently."""
+
+    @pytest.mark.parametrize(
+        'unresolved_first',
+        [False, True],
+        ids=['after-valid', 'before-valid'],
+    )
+    def test_unresolved_reference_cannot_hide_behind_valid_version(
+        self,
+        policy: PythonPolicyConfig,
+        write_file: FileWriter,
+        unresolved_reference: str,
+        unresolved_first: bool,
+    ) -> None:
+        """
+        Reject unresolved declarations even when another version is supported.
+        """
+        declarations = [
+            'python-version: "3.13"',
+            f'python-version: {unresolved_reference}',
+        ]
+        if unresolved_first:
+            declarations.reverse()
+        path = write_file(
+            '.github/workflows/ci.yml',
+            (f'uses: actions/setup-python@{'a' * 40}\n' + '\n'.join(declarations)),
+        )
+        assert validate(policy, running_version='3.13') == [
+            f'{path}: unsupported Python version {unresolved_reference!r}',
+        ]
+
+    @pytest.mark.parametrize('missing', [False, True], ids=['malformed', 'missing'])
+    def test_shared_metadata_failure_is_reported_once(
+        self,
+        policy: PythonPolicyConfig,
+        missing: bool,
+    ) -> None:
+        """Avoid duplicate diagnostics for one package/Ruff metadata input."""
+        if missing:
+            policy.metadata.unlink()
+        else:
+            policy.metadata.write_text('[', encoding='utf-8')
+        failures = validate(policy, running_version='3.13')
+        assert len(failures) == 1
+        assert ('does not exist' if missing else 'invalid TOML') in failures[0]
+
+    def test_shared_metadata_is_read_once(self, policy: PythonPolicyConfig) -> None:
+        """Use one observation for package, mypy and embedded Ruff settings."""
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=Path.read_text,
+        ) as reads:
+            assert validate(policy, running_version='3.13') == []
+        assert (
+            sum(call.args[0] == policy.metadata for call in reads.call_args_list) == 1
+        )

@@ -38,7 +38,8 @@ keys, malformed configuration, duplicate YAML keys, and unreadable inputs fail.
 
 `pull_request_target` and `workflow_run` are denied by default because they can create privileged
 execution boundaries. Allow only a reviewed workflow/trigger pair with a nonempty owner, reason,
-approver, and quoted ISO expiry date:
+approver, and quoted ISO expiry date in canonical `YYYY-MM-DD` form (compact and ISO week dates are
+rejected):
 
 ```toml
 [[tool.popo.safety.exceptions]]
@@ -64,6 +65,10 @@ shell expansions. Caller-supplied reusable-workflow command inputs remain intent
 are not prohibited. These bounded checks are not complete taint analysis: indirect expressions,
 alternate event contexts, and third-party action behavior require review or a dedicated security
 analyzer.
+
+Parsed YAML mappings are visited once even when shared or cyclic aliases are present. Safety checks
+continue past recursive aliases to inspect subsequent scripts and checkouts without duplicate
+diagnostics for a shared mapping. The iterative traversal does not remove YAML-parser limits.
 
 ## npm Consistency
 

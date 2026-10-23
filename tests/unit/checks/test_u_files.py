@@ -58,7 +58,9 @@ def headers(
 
 
 class TestFilePolicies:
-    """Verify all checks read synthetic files and preserve consumer contents."""
+    """
+    Verify all checks read synthetic files and preserve consumer contents.
+    """
 
     def test_required_files_report_all_failures(
         self,
@@ -476,3 +478,134 @@ class TestFilePolicies:
         (headers.root / 'sample').write_text(content, encoding='utf-8')
         rule = replace(headers.rules[0], format=kind)
         assert 'leading comment' in validate_headers(replace(headers, rules=(rule,)))[0]
+
+
+class TestHeaderDiscoveryBoundaries:
+    """
+    Cover directive and filesystem failures without touching real sources.
+    """
+
+    def test_optional_shebang(self, headers: HeadersConfig) -> None:
+        """
+        Allow a shebang before a hash header without requiring a directive.
+        """
+        (headers.root / 'sample').write_text(
+            '#!/bin/sh\n# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n',
+            encoding='utf-8',
+        )
+        assert validate_headers(headers) == []
+
+    def test_directive_requires_following_content(self, headers: HeadersConfig) -> None:
+        """Report a file containing only its configured first-line prefix."""
+        (headers.root / 'sample').write_text('#!', encoding='utf-8')
+        rule = replace(headers.rules[0], first_line_prefix='#!')
+        assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
+
+    def test_walk_failure_is_reported(self, headers: HeadersConfig) -> None:
+        """Keep recursive fallback permission failures visible to consumers."""
+
+        def walk(path: Path, *, on_error: Callable[[OSError], None]) -> object:
+            on_error(PermissionError('cannot traverse source'))
+            return iter(())
+
+        with (
+            patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError),
+            patch.object(Path, 'walk', walk),
+        ):
+            assert 'cannot traverse source' in validate_headers(headers)[0]
+
+
+class TestNonHashPreambles:
+    """Keep non-hash preamble handling independent of hash separators."""
+
+    def test_slash_preamble(self, headers: HeadersConfig) -> None:
+        """Skip a matching directive before a slash-comment source header."""
+        (headers.root / 'sample').write_text(
+            '// directive\n// sample\n// Sample\n//\n'
+            '// Copyright Sample\n//\n// Purpose.\n',
+            encoding='utf-8',
+        )
+        rule = replace(
+            headers.rules[0],
+            format='slash',
+            preamble_prefixes=('// directive',),
+        )
+        assert validate_headers(replace(headers, rules=(rule,))) == []
+
+
+class TestFileDiscoveryFailures:
+    """
+    Keep filesystem failures visible without skipping other policy checks.
+    """
+
+    @pytest.mark.parametrize('preserved', [False, True], ids=['checked', 'excepted'])
+    def test_dangling_escape_is_not_hidden(
+        self,
+        headers: HeadersConfig,
+        symlink: Callable[[Path, Path], None],
+        preserved: bool,
+    ) -> None:
+        """
+        Inspect a dangling symlink before applying preservation exceptions.
+        """
+        link = headers.root / 'escape.bin'
+        symlink(link, headers.root.parent / f'{headers.root.name}-missing-target')
+        config = replace(
+            headers,
+            exceptions=(HeaderException(('*.bin',), 'Binary'),) if preserved else (),
+        )
+        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
+            assert validate_headers(config) == [
+                'escape.bin: header source escapes repository',
+            ]
+        assert link.is_symlink()
+
+    @pytest.mark.parametrize(
+        'error',
+        [
+            PermissionError('access denied'),
+            ValueError('bad path'),
+            UnicodeError('bad encoding'),
+        ],
+    )
+    @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
+    def test_required_path_failure_does_not_stop_remaining_checks(
+        self,
+        tmp_path: Path,
+        error: Exception,
+        operation: str,
+    ) -> None:
+        """
+        Report unreadable paths and subsequent missing required files together.
+        """
+        inspect_path = getattr(Path, operation)
+
+        def inspect(path: Path, *args: object, **kwargs: object) -> object:
+            if path == tmp_path / 'unreadable':
+                raise error
+            return inspect_path(path, *args, **kwargs)
+
+        config = RequiredFilesConfig(tmp_path, ('unreadable', 'missing'))
+        with patch.object(Path, operation, inspect):
+            assert validate_required(config) == [
+                f'unreadable: {error}',
+                'missing: required file does not exist or is not a file',
+            ]
+
+
+class TestHeaderDirectoryLinks:
+    """Keep existing directory-link discovery behavior unchanged."""
+
+    def test_directory_link_is_not_a_source(
+        self,
+        headers: HeadersConfig,
+        symlink: Callable[[Path, Path], None],
+    ) -> None:
+        """
+        Inspect file links without treating a linked directory as a source file.
+        """
+        target = headers.root / 'directory'
+        target.mkdir()
+        symlink(headers.root / 'directory-link', target)
+        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
+            assert validate_headers(headers) == []

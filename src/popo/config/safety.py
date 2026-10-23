@@ -124,6 +124,8 @@ def load_safety_config(root: Path) -> SafetyConfig:
         owner, reason, approver, expiry = map(str, details)
         try:
             expires = date.fromisoformat(expiry)
+            if expires.isoformat() != expiry:
+                raise ValueError('noncanonical date')
         except ValueError as error:
             raise ConfigurationError(
                 'exception expires must be a quoted ISO date',
