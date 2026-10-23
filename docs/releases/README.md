@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.8 Series](#08-series)
 - [0.7 Series](#07-series)
 - [0.6 Series](#06-series)
 - [0.5 Series](#05-series)
@@ -32,9 +33,14 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.8 Series
+
+- [v0.8.0] — 2026-10-23: Add opt-in required-file and configurable header checks; release text
+  prepared in released form, tagging and publication pending.
+
 ## 0.7 Series
 
-- [v0.7.0] — Planned: Extend Markdown reference-label and inline-image validation.
+- [v0.7.0] — 2026-10-22: Extend Markdown reference-label and inline-image validation.
 
 ## 0.6 Series
 
@@ -175,3 +181,4 @@ prepared.
 [v0.6.5]: v0.6.5.md
 [v0.6.6]: v0.6.6.md
 [v0.7.0]: v0.7.0.md
+[v0.8.0]: v0.8.0.md
