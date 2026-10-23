@@ -46,17 +46,16 @@ def _constraint_versions(
     failures: list[str] = []
     for name, requirement in constraints.items():
         specifiers = list(requirement.specifier)
-        if requirement.url is not None or len(specifiers) != 1:
+        if (
+            requirement.url is not None
+            or len(specifiers) != 1
+            or specifiers[0].operator != '=='
+        ):
             failures.append(
                 f'{source}: constraint must use name==version: {requirement!s}',
             )
             continue
         specifier = specifiers[0]
-        if specifier.operator != '==':
-            failures.append(
-                f'{source}: constraint must use name==version: {requirement!s}',
-            )
-            continue
         versions[name] = specifier.version
     return versions, failures
 
@@ -249,7 +248,10 @@ def validate(
         document = tomllib.loads(config.metadata.read_text(encoding='utf-8'))
     except tomllib.TOMLDecodeError as error:
         return [f'{config.metadata}: invalid TOML: {error}']
-    raw_dependencies = document.get('project', {}).get('dependencies', [])
+    project = document.get('project', {})
+    if not isinstance(project, dict):
+        return [f'{config.metadata}: project must be a TOML table']
+    raw_dependencies = project.get('dependencies', [])
     if not isinstance(raw_dependencies, list) or not all(
         isinstance(value, str) for value in raw_dependencies
     ):

@@ -187,18 +187,13 @@ def validate(
                 'devDependencies',
                 'optionalDependencies',
             ):
-                expected = package.get(
-                    key,
+                default: dict[str, object] | None = (
                     {}
                     if key.endswith('Dependencies') or key == 'dependencies'
-                    else None,
+                    else None
                 )
-                observed = locked.get(
-                    key,
-                    {}
-                    if key.endswith('Dependencies') or key == 'dependencies'
-                    else None,
-                )
+                expected = package.get(key, default)
+                observed = locked.get(key, default)
                 if expected != observed:
                     failures.append(f'{label}: root {key} differs')
                 if key not in ('name', 'version'):

@@ -20,7 +20,7 @@ from ..config.hosted import HostedConfig, RepositoryPolicy, expected_checks
 # SECTION: DATA CLASSES
 
 
-Status = Literal['verified', 'missing', 'inaccessible', 'excepted']
+type Status = Literal['verified', 'missing', 'inaccessible', 'excepted']
 
 
 @dataclass(frozen=True)
@@ -60,7 +60,7 @@ class Audit:
         return json.dumps(asdict(self), indent=2)
 
 
-Fetcher = Callable[[str, bool], Response]
+type Fetcher = Callable[[str, bool], Response]
 
 
 # !SECTION
