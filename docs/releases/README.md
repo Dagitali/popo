@@ -126,8 +126,12 @@ Versioned deployment sections describe only release-specific effects and rollbac
 1. Create `docs/releases/vMAJOR.MINOR.PATCH.md` for an agreed release candidate using the [release
    notes template]. Mark untagged candidates as planned; do not infer a release number from a
    development build or a fallback version.
-2. Reconcile scope with the candidate's changes and changelog. Preserve the template's applicable
-   compatibility, support, validation, publication, rollback, and follow-up sections.
+2. Reconcile scope with the candidate's changes and changelog. Use these main sections in order:
+   Highlights, Change Scope, Compatibility and Configuration, Support Boundary, Validation,
+   Deployment and Rollback, and Known Limitations and Follow-Up. Include Breaking Changes and
+   Deprecations subsections under Compatibility and Configuration. Retain specialized subsections
+   and include all headings in the contents list. Preserve historical evidence and distinguish an
+   absence of recorded changes from a newly verified compatibility claim.
 3. Record the candidate tag without embedding a commit SHA, and distinguish completed checks from
    pending checks. Never transfer current-checkout validation results to a historical tag.
 4. Add the record to this index, newest first, using `version — YYYY-MM-DD: summary` with the date
