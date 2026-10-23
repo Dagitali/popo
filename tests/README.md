@@ -69,10 +69,11 @@ dependencies; see the [contributing guide] for isolated environments and depende
 
 ## Shared Fixtures
 
-The [test configuration] registers [artifact fixtures] as a pytest plugin. Both artifact layers
-reuse one wheel and one sdist per session, either from `--artifact-dir` or an isolated temporary
-build. The directory must contain exactly one wheel and one sdist before `twine check` runs.
-Installation tests remove source-path overrides and exercise the installed CLI outside the checkout.
+The [test configuration] registers [artifact fixtures] and shared hosted-policy fixtures as pytest
+plugins. Both artifact layers reuse one wheel and one sdist per session, either from
+`--artifact-dir` or an isolated temporary build. The directory must contain exactly one wheel and
+one sdist before `twine check` runs. Installation tests remove source-path overrides and exercise
+the installed CLI outside the checkout.
 
 Use the session-scoped `repository_root` fixture for project-level fixture needs. Keep fixtures at
 the narrowest useful scope and put cross-layer helpers in `support/`. Do not add empty layers for
@@ -90,11 +91,15 @@ put each parameter on its own line, including `self`, and retain the trailing co
 inputs that share a contract so each scenario has independent setup and failure reporting; reserve
 loops for assertions about one result. Assert specific diagnostics, not merely a nonempty result.
 The `write_file` fixture creates temporary UTF-8 repository files. Keep domain-specific policy
-fixtures local to their test module. Subprocess tests use timeouts; Make runs against a temporary
-copy of the Makefile, and Make and Git fixtures exclude inherited tool configuration where it can
-change the result. The Make runner derives configurable variables from the copied Makefile and
-strips caller overrides such as `TEST_ARGS`; pass deliberate overrides as Make command arguments
-instead.
+fixtures local to their test module unless multiple layers use them. Hosted observations live in
+`tests/support/hosted.py`, with prefixed fixture names and function scope so mutable API responses
+remain isolated. Hosted configuration cases belong in `unit/configs/`, GET-adapter and observation
+cases in `unit/checks/`, and public CLI reporting in `integration/`. Parameterized CLI-format
+fixtures cover default text, explicit text and JSON independently; invalid configuration must fail
+before the observer runs. Subprocess tests use timeouts; Make runs against a temporary copy of the
+Makefile, and Make and Git fixtures exclude inherited tool configuration where it can change the
+result. The Make runner derives configurable variables from the copied Makefile and strips caller
+overrides such as `TEST_ARGS`; pass deliberate overrides as Make command arguments instead.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
