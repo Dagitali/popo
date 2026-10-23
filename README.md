@@ -169,6 +169,9 @@ included when the consumer explicitly configures `[tool.popo.automation]`. Requi
 checks are enabled only by their consumer tables. Repository safety checks are similarly opt-in
 through `[tool.popo.safety]`; see the [safety settings reference]. Available since v0.6.0.
 
+File checks retain dangling symlinks for containment checks and report required-file path errors
+without skipping later entries. See the [file policies] guide for discovery and preservation rules.
+
 ## Configuration
 
 Configuration lives in the inspected repository's `pyproject.toml`. Paths are relative to the

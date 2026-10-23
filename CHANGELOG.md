@@ -56,6 +56,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Keep dangling header symlinks in discovery so containment checks run before preservation
+  exceptions. Report required-file resolution/inspection errors without skipping later paths.
+- Stream XML preamble and line-comment header scanning while preserving accepted syntax and consumer
+  directives.
 - Read shared Python-policy package/Ruff metadata once and report each shared input failure once.
 - Reject unresolved workflow Python-version references even when another declaration is valid;
   report unresolved expressions as unsupported versions instead of silently skipping them.
