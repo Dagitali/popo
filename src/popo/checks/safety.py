@@ -6,12 +6,11 @@ import json
 import re
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import cast
 
 import yaml
 
 from ..config.safety import SafetyConfig
-from .automation import _Loader
+from ._yaml import mapping_nodes, read_mapping
 
 # SECTION: PROTECTED FUNCTIONS
 
@@ -31,9 +30,9 @@ def _head_checkout(
     value: object,
 ) -> bool:
     """Find direct pull-request head refs passed to the checkout action."""
-    if isinstance(value, dict):
-        action = value.get('uses')
-        settings = value.get('with')
+    for node in mapping_nodes(value):
+        action = node.get('uses')
+        settings = node.get('with')
         if (
             isinstance(action, str)
             and action.startswith('actions/checkout@')
@@ -44,37 +43,25 @@ def _head_checkout(
             )
         ):
             return True
-        return any(_head_checkout(item) for item in value.values())
-    if isinstance(value, list):
-        return any(_head_checkout(item) for item in value)
     return False
 
 
 def _scripts(
     value: object,
 ) -> list[str]:
-    """Collect run commands recursively without interpreting their language."""
-    if isinstance(value, dict):
-        return [
-            script
-            for key, item in value.items()
-            for script in (
-                [item] if key == 'run' and isinstance(item, str) else _scripts(item)
-            )
-        ]
-    if isinstance(value, list):
-        return [script for item in value for script in _scripts(item)]
-    return []
+    """Collect nested run commands once without interpreting their language."""
+    return [
+        script
+        for node in mapping_nodes(value)
+        if isinstance(script := node.get('run'), str)
+    ]
 
 
 def _workflow(
     path: Path,
 ) -> dict[str, object]:
     """Parse a mapping with duplicate-key rejection and string event keys."""
-    document: object = yaml.load(path.read_text(encoding='utf-8'), Loader=_Loader)
-    if not isinstance(document, dict):
-        raise ValueError('workflow must be a mapping')
-    return cast(dict[str, object], document)
+    return read_mapping(path, label='workflow')
 
 
 # !SECTION
