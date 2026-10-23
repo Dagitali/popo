@@ -20,6 +20,8 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.8.2 - 2026-10-23](#082---2026-10-23)
+- [0.8.1 - 2026-10-23](#081---2026-10-23)
 - [0.8.0 - 2026-10-23](#080---2026-10-23)
 - [0.7.0 - 2026-10-22](#070---2026-10-22)
 - [0.6.6 - 2026-10-08](#066---2026-10-08)
@@ -56,6 +58,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+## [0.8.2] - 2026-10-23
+
+- Backfill the missing 0.8.1 changelog entry and release record, and add the 0.8.2 release record
+  and archive navigation. Preserve the immutable 0.8.1 tag and its missing-record validation gap.
+
+## [0.8.1] - 2026-10-23
+
 - Keep dangling header symlinks in discovery so containment checks run before preservation
   exceptions. Report required-file resolution/inspection errors without skipping later paths.
 - Stream XML preamble and line-comment header scanning while preserving accepted syntax and consumer
@@ -72,6 +81,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Report malformed dependency project tables as diagnostics instead of raising an attribute error.
 - Require safety-exception expiry strings in canonical `YYYY-MM-DD` form; compact and ISO week dates
   are rejected. Add regression coverage for malformed policy, hosted evidence and CLI paths.
+- Split hosted configuration, adapter and CLI tests by scope and share hosted-evidence fixtures.
+- Exercise both installed CLI entry points for passing and failing Markdown/file policies, verify
+  consumer files remain unchanged, and match reported versions to artifact filenames.
 
 ## [0.8.0] - 2026-10-23
 
@@ -429,6 +441,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.6.6]: docs/releases/v0.6.6.md
 [0.7.0]: docs/releases/v0.7.0.md
 [0.8.0]: docs/releases/v0.8.0.md
+[0.8.1]: docs/releases/v0.8.1.md
+[0.8.2]: docs/releases/v0.8.2.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
