@@ -21,6 +21,7 @@ from .checks import (
     dependencies,
     docs,
     files,
+    guardrails,
     hosted,
     python_policy,
     safety,
@@ -28,8 +29,11 @@ from .checks import (
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
 from .config.files import load_headers_config, load_required_files_config
+from .config.guardrails import load_guardrails_config
 from .config.hosted import load_hosted_config
 from .config.safety import load_safety_config
+from .config.selection import load_plan
+from .reporting import CheckResult, report_results
 from .support import report
 
 # SECTION: TYPE ALIASES
@@ -103,64 +107,6 @@ def _add_root(
         default=Path.cwd(),
         help='Repository root (default: current directory)',
     )
-
-
-def _all(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Aggregate documentation, action, dependency, and Python-policy failures.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
-        consumer repository.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Combined failures in check order and the success-only report message.
-
-    Raises
-    ------
-    ConfigurationError
-        If loading consumer configuration fails validation.
-    OSError
-        If a path cannot resolve or an input cannot be read.
-    UnicodeError
-        If an inspected input cannot be decoded as UTF-8.
-
-    Notes
-    -----
-    Load consumer configuration, then run those checks in order without
-    stopping for returned failures. Include automation contracts and safety
-    and file checks only when their configuration tables are present.
-    Exceptions still propagate. Release changelog validation requires an
-    explicit release version and is excluded. Return the diagnostics and
-    success message without printing.
-    """
-    root = args.root.resolve()
-    config = load_config(root)
-    failures = [
-        *docs.validate(root),
-        *actions.validate(root / '.github'),
-        *dependencies.validate(config.dependencies),
-        *python_policy.validate(config.python_policy),
-    ]
-    automation_config = load_automation_config(root)
-    if automation_config.configured:
-        failures.extend(automation.validate(automation_config))
-    safety_config = load_safety_config(root)
-    if safety_config.configured:
-        failures.extend(safety.validate(safety_config))
-    required = load_required_files_config(root)
-    if required is not None:
-        failures.extend(files.validate_required(required))
-    headers = load_headers_config(root)
-    if headers is not None:
-        failures.extend(files.validate_headers(headers))
-    return failures, 'all configured repository checks passed'
 
 
 def _automation(
@@ -287,6 +233,13 @@ def _docs(
         If inspected Markdown cannot be decoded as UTF-8.
     """
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
+
+
+def _guardrail_parity(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Inspect explicit local and CI invocation contracts without execution."""
+    return guardrails.validate(
+        load_guardrails_config(args.root),
+    ), 'guardrail entry points agree'
 
 
 def _python(
@@ -422,6 +375,7 @@ def create_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest='command', required=True)
 
     handlers: dict[str, Command | None] = {
+        'check-guardrail-parity': _guardrail_parity,
         'check-required-files': _required_files,
         'check-file-headers': _file_headers,
         'check-docs': _docs,
@@ -432,8 +386,9 @@ def create_parser() -> argparse.ArgumentParser:
         'check-dependency-boundaries': _dependencies,
         'check-python-policy': _python,
         'check-release-changelog': _changelog,
-        'check-all': _all,
+        'check-all': None,
         'audit-github-settings': None,
+        'explain': None,
     }
     help_text = {
         'check-automation-contracts': (
@@ -455,6 +410,13 @@ def create_parser() -> argparse.ArgumentParser:
             else commands.add_parser(name)
         )
         _add_root(subparser)
+        if name not in ('check-actionlint', 'audit-github-settings'):
+            subparser.add_argument('--format', choices=('text', 'json'), default='text')
+        if name in ('check-all', 'explain'):
+            subparser.add_argument(
+                '--profile',
+                help='Explicit configured check profile',
+            )
         if handler is not None:
             subparser.set_defaults(handler=handler)
         parsers[name] = subparser
@@ -478,6 +440,59 @@ def create_parser() -> argparse.ArgumentParser:
         default='text',
     )
     return parser
+
+
+def _selected_results(args: argparse.Namespace) -> list[CheckResult]:
+    """Execute selected offline checks and retain each check's identity.
+
+    Explicit checks or a named profile replace the baseline selection.
+    Otherwise retain documentation, action-pin, dependency and Python-policy
+    checks plus configured opt-in domains. Preserve declaration order and
+    continue after reported validation or domain configuration failures; other
+    exceptions propagate. Release checks need a version and remain separate,
+    as do external-tool and hosted checks. Constructing parsers does not run
+    validators. Reuse their argument defaults for each selected handler.
+    """
+    plan = load_plan(args.root, args.profile)
+    parser = create_parser()
+    results: list[CheckResult] = []
+    for check in plan.checks:
+        selected = parser.parse_args([check, '--root', str(args.root)])
+        results.append(_invoke(selected))
+    return results
+
+
+def _invoke(args: argparse.Namespace) -> CheckResult:
+    """
+    Convert a native check's configuration errors into identified results.
+    """
+    command = cast(Command, args.handler)
+    try:
+        failures, success = command(args)
+    except ConfigurationError as error:
+        failures, success = [f'configuration: {error}'], ''
+    return CheckResult(args.command, tuple(failures), success)
+
+
+def _explain(args: argparse.Namespace) -> int:
+    """Describe selection and provenance without running any validators."""
+    plan = load_plan(args.root, args.profile)
+    explanation = {
+        'schema_version': 1,
+        'root': str(args.root.resolve()),
+        'configuration': str(plan.source),
+        'configuration_exists': plan.source.exists(),
+        'selection': plan.reason,
+        'checks': list(plan.checks),
+    }
+    if args.format == 'json':
+        print(json.dumps(explanation))
+    else:
+        print(f'Configuration: {plan.source}')
+        print(f'Selection: {plan.reason}')
+        for check in plan.checks:
+            print(f'  {check}')
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -546,12 +561,15 @@ def main(argv: list[str] | None = None) -> int:
             yaml.YAMLError,
         ) as error:
             return report([f'actionlint: {error}'], success='')
-    command = cast(Command, args.handler)
     try:
-        failures, success = command(args)
+        if args.command == 'explain':
+            return _explain(args)
+        results = (
+            _selected_results(args) if args.command == 'check-all' else [_invoke(args)]
+        )
     except ConfigurationError as error:
-        failures, success = [f'configuration: {error}'], ''
-    return report(failures, success=success)
+        results = [CheckResult('configuration', (f'configuration: {error}',), '')]
+    return report_results(args.command, results, args.format)
 
 
 # !SECTION
