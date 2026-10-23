@@ -179,7 +179,18 @@ class TestFilePolicyConfig:
         extra : str
             Malformed header configuration overriding valid fixture fields.
         """
-        write_file('pyproject.toml', '[tool.popo.headers]\n' + extra)
+        identity = '' if extra.startswith('project =') else 'project = "Sample"\n'
+        rules = (
+            ''
+            if extra.startswith('rules =')
+            else (
+                '\n[[tool.popo.headers.rules]]\npatterns=["*"]\nformat="raw"\nprefix="X"'
+            )
+        )
+        write_file(
+            'pyproject.toml',
+            '[tool.popo.headers]\n' + identity + 'notice="Copyright"\n' + extra + rules,
+        )
         with pytest.raises(ConfigurationError):
             load_headers_config(tmp_path)
 
