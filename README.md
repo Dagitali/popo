@@ -62,6 +62,8 @@ To get started:
 - Run the same checks locally, in pre-commit hooks, and in CI.
 - Inspect the current repository or select another with `--root`.
 - Configure consumer policy independently of Popo's own development settings.
+- Receive diagnostics for malformed dependency project tables; safety approvals require quoted
+  `YYYY-MM-DD` expiry dates.
 - Validate repository files without modifying them or requiring cloud credentials.
 
 ## Release Status
