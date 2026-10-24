@@ -36,9 +36,10 @@ top-level directory.
 
 Within `tests/unit/`:
 
-- `checks/` mirrors `popo.checks`, with one test module per checker.
-- `configs/` covers `popo.config`: project loading and shared loader contracts in `test_u_project.py`,
-  and automation configuration validation in `test_u_automation.py`.
+- `checks/` mirrors `popo.checks`; larger checker suites may span focused test modules.
+- `configs/` covers `popo.config`: project loading and shared loader contracts in
+  `test_u_project.py`, with domain-specific modules for automation, files, guardrails, hosted
+  audits, safety, and selection.
 - Tests for shared support, Make, hooks, and repository workflows remain at the unit-layer root.
 
 Both subdirectories inherit the `unit` marker and shared fixtures. Checker tests may construct or
