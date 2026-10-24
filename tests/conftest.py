@@ -19,6 +19,7 @@ pytest_plugins = (
     'tests.support.artifacts',
     'tests.support.hosted',
     'tests.support.guardrails',
+    'tests.support.examples',
 )
 
 

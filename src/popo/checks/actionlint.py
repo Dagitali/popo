@@ -120,16 +120,20 @@ def run(
     Raises
     ------
     ValueError
-        Empty command, missing files, unsafe references, or duplicate keys.
+        Empty command, missing local targets, unsafe references, or duplicate
+        keys.
+    ConfigurationError
+        If loading the consumer automation policy fails validation.
     OSError, UnicodeError, yaml.YAMLError
         Source reads, temporary-file operations, process launch, or YAML fail.
 
     Notes
     -----
-    Copy only selected automation and local targets, never environments or
-    arbitrary repository files. Cleanup occurs on success and failure.
-    Execute the linter without executing workflow commands; contract
-    validation remains a separate check.
+    Copy selected automation, referenced local targets, and existing implicit
+    .github/actionlint.yaml and .github/actionlint.yml configuration, never
+    environments or arbitrary repository files. Cleanup occurs on success
+    and failure. Execute the linter without executing workflow commands;
+    contract validation remains a separate check.
     """
     root = root.resolve()
     config = load_automation_config(root)

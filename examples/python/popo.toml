@@ -1,0 +1,41 @@
+# popo.toml
+# popo/examples/python
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# One explicit consumer-owned profile for local and CI guardrails.
+
+[profiles.guardrails]
+checks = [
+  "check-docs",
+  "check-required-files",
+  "check-github-actions-pins",
+  "check-dependency-boundaries",
+  "check-python-policy",
+  "check-guardrail-parity",
+]
+
+[files]
+required = [
+  "README.md",
+  "Makefile",
+  ".pre-commit-config.yaml",
+  ".github/workflows/ci.yml",
+  "requirements-guardrails.txt",
+  "pyproject.toml",
+  ".python-version",
+  "src/guardrail_example/__init__.py",
+  "tests/test_versions.py",
+  "requirements/lowest.txt",
+]
+
+[dependencies]
+metadata = "pyproject.toml"
+requirements = "requirements/lowest.txt"
+mode = "minimum-constraints"
+
+[python-policy]
+# Defaults follow package metadata, .python-version and the declared tool policy.
+
+[guardrails]
+# Defaults inspect the guardrails Make target/profile/job and popo hook/step.

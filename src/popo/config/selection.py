@@ -38,7 +38,8 @@ CHECKS = (*BASELINE, *OPTIONAL.values())
 
 @dataclass(frozen=True, slots=True)
 class CheckPlan:
-    """Describe selected checks and their configuration provenance.
+    """
+    Describe selected checks and their configuration provenance.
 
     Attributes
     ----------
@@ -48,6 +49,11 @@ class CheckPlan:
         Unique offline check commands, in execution order.
     reason : str
         Source of selection: legacy defaults, explicit checks or named profile.
+
+    Notes
+    -----
+    These guarantees describe plans returned by :func:`load_plan`. Direct
+    construction does not validate the source path or check selection.
     """
 
     source: Path
@@ -62,7 +68,8 @@ class CheckPlan:
 
 
 def load_plan(root: Path, profile: str | None = None) -> CheckPlan:
-    """Resolve a nonempty check selection without running validators.
+    """
+    Resolve a nonempty check selection without running validators.
 
     Parameters
     ----------

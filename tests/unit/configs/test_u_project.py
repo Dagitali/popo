@@ -197,11 +197,9 @@ class TestConfiguration:
         loader : collections.abc.Callable
             Project or automation loader under test.
         content : str
-            File contents selected for the parameterized success or failure
-            scenario.
+            Invalid project configuration supplied to the loader.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Regular expression matching the expected configuration error.
         """
         write_file('pyproject.toml', content)
         with pytest.raises(ConfigurationError, match=message):
@@ -278,11 +276,9 @@ class TestConfiguration:
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
         content : str
-            File contents selected for the parameterized success or failure
-            scenario.
+            Invalid project configuration supplied to the loader.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Regular expression matching the expected configuration error.
         """
         write_file('pyproject.toml', content)
         with pytest.raises(ConfigurationError, match=message):

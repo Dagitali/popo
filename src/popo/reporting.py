@@ -45,7 +45,9 @@ def report_results(
     command : str
         Invoked public command.
     results : list[CheckResult]
-        Ordered check outcomes, including successful checks.
+        Ordered check outcomes, including successful checks. Individual-command
+        text reports require at least one result; check-all and JSON reports
+        also accept an empty list.
     output_format : str
         Parser-validated ``text`` or ``json`` output selection.
 
@@ -54,6 +56,16 @@ def report_results(
     int
         One if any result failed, otherwise zero. JSON output contains no text
         reports; existing validator messages remain intact.
+
+    Raises
+    ------
+    IndexError
+        If individual-command text reporting receives an empty result list.
+
+    Notes
+    -----
+    JSON serialization preserves supplied messages; it does not redact or
+    sanitize them. Callers own the contents of diagnostics and summaries.
     """
     failed = any(result.failures for result in results)
     if output_format == 'json':

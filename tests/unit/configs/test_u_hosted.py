@@ -11,6 +11,16 @@ import pytest
 
 from popo.config import ConfigurationError
 from popo.config.hosted import load_hosted_config
+from tests.support.files import FileWriter
+
+# SECTION: CONSTANTS
+
+
+REPOSITORY_TOML = '[[tool.popo.hosted.repositories]]\nname="owner/repo"\n'
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -19,14 +29,19 @@ class TestHostedConfiguration:
     """Reject malformed hosted configuration and ambiguous approval scopes."""
 
     @pytest.mark.parametrize(
-        'section',
-        ['repositories', 'exceptions'],
+        ('section', 'message'),
+        [
+            ('repositories', 'duplicate repository'),
+            ('exceptions', 'duplicate exception'),
+        ],
     )
     def test_duplicate_scopes(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
         hosted_exception_config: str,
         section: str,
+        message: str,
     ) -> None:
         """
         Reject duplicate repository inventory and exception scopes.
@@ -41,83 +56,127 @@ class TestHostedConfiguration:
                 '\n[[tool.popo.hosted.exceptions]]'
                 + hosted_exception_config.split('[[tool.popo.hosted.exceptions]]', 1)[1]
             )
-        (tmp_path / 'pyproject.toml').write_text(hosted_exception_config + extra)
-        with pytest.raises(ConfigurationError):
+        write_file('pyproject.toml', hosted_exception_config + extra)
+        with pytest.raises(ConfigurationError, match=message):
             load_hosted_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'config',
+        ('config', 'message'),
         [
-            '',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"',
-            '[tool.popo.hosted]\nrepositories=[]',
-            '[tool.popo.hosted]\nunknown=true',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nunknown=true',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nbranches={""=[]}',
-            '[tool.popo.hosted]\nexceptions="bad"\n'
-            'repositories=[{name="owner/repo", labels=["bug"]}]',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nlabels=[1]',
-            '[[tool.popo.hosted.repositories]]\nname="bad"',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nlabels=["bug","bug"]',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\ncodeowners="yes"',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nsettings={unknown=true}',
-            '[[tool.popo.hosted.repositories]]\nname="owner/repo"\nsettings={secret-scanning=1}',
+            ('', 'must be a TOML table'),
+            (REPOSITORY_TOML, 'at least one expectation'),
+            ('[tool.popo.hosted]\nrepositories=[]', 'nonempty array'),
+            ('[tool.popo.hosted]\nunknown=true', 'unknown hosted configuration key'),
+            (REPOSITORY_TOML + 'unknown=true', 'unknown hosted repository key'),
+            (REPOSITORY_TOML + 'branches={""=[]}', 'branch names cannot be empty'),
+            (
+                '[tool.popo.hosted]\nexceptions="bad"\n'
+                'repositories=[{name="owner/repo", labels=["bug"]}]',
+                'hosted.exceptions must be an array',
+            ),
+            (REPOSITORY_TOML + 'labels=[1]', 'array of nonempty strings'),
+            ('[[tool.popo.hosted.repositories]]\nname="bad"', 'owner/repository'),
+            (REPOSITORY_TOML + 'labels=["bug","bug"]', 'labels contains duplicates'),
+            (REPOSITORY_TOML + 'codeowners="yes"', 'codeowners must be boolean'),
+            (
+                REPOSITORY_TOML + 'settings={unknown=true}',
+                'supported boolean expectations',
+            ),
+            (
+                REPOSITORY_TOML + 'settings={secret-scanning=1}',
+                'supported boolean expectations',
+            ),
         ],
     )
     def test_invalid_config(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
         config: str,
+        message: str,
     ) -> None:
         """
         Reject absent, malformed, or unsupported hosted expectations.
         """
-        (tmp_path / 'pyproject.toml').write_text(config)
-        with pytest.raises(ConfigurationError):
+        write_file('pyproject.toml', config)
+        with pytest.raises(ConfigurationError, match=message):
             load_hosted_config(tmp_path)
 
     @pytest.mark.parametrize(
-        ('original', 'replacement'),
+        ('original', 'replacement', 'message'),
         [
-            ('owner = "owner"', 'owner = ""'),
-            ('reason = "Migration"', ''),
-            ('approved-by = "reviewer"', 'approved-by = false'),
-            ('check = "label:bug"', 'check = "label:other"'),
-            ('repository = "example/library"', 'repository = "other/repository"'),
-            ('expires = "2026-10-31"', 'expires = "20261031"'),
-            ('expires = "2026-10-31"', 'expires = "2026-02-31"'),
-            ('expires = "2026-10-31"', 'expires = 2026-10-31'),
-            ('https://example.com/review', 'http://example.com/review'),
-            ('https://example.com/review', 'https://'),
-            ('https://example.com/review', 'https://[broken'),
-            ('https://example.com/review', 'https://user:secret@example.com/review'),
+            ('owner = "owner"', 'owner = ""', 'documented string fields'),
+            ('reason = "Migration"', '', 'documented string fields'),
+            (
+                'approved-by = "reviewer"',
+                'approved-by = false',
+                'documented string fields',
+            ),
+            (
+                'check = "label:bug"',
+                'check = "label:other"',
+                'configured repository/check',
+            ),
+            (
+                'repository = "example/library"',
+                'repository = "other/repository"',
+                'configured repository/check',
+            ),
+            ('expires = "2026-10-31"', 'expires = "20261031"', 'ISO date'),
+            ('expires = "2026-10-31"', 'expires = "2026-02-31"', 'ISO date'),
+            (
+                'expires = "2026-10-31"',
+                'expires = 2026-10-31',
+                'documented string fields',
+            ),
+            (
+                'https://example.com/review',
+                'http://example.com/review',
+                'HTTPS evidence URL',
+            ),
+            ('https://example.com/review', 'https://', 'HTTPS evidence URL'),
+            (
+                'https://example.com/review',
+                'https://[broken',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://user:secret@example.com/review',
+                'HTTPS evidence URL',
+            ),
         ],
     )
     def test_invalid_exception(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
         hosted_exception_config: str,
         original: str,
         replacement: str,
+        message: str,
     ) -> None:
         """
         Reject incomplete approvals, unsafe URLs, and invalid expiry dates.
         """
-        (tmp_path / 'pyproject.toml').write_text(
+        assert original in hosted_exception_config, 'Mutation marker missing'
+        write_file(
+            'pyproject.toml',
             hosted_exception_config.replace(original, replacement),
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_hosted_config(tmp_path)
 
     def test_valid_exception(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
         hosted_exception_config: str,
     ) -> None:
         """
         Load the exact approved scope and its inclusive expiry date.
         """
-        (tmp_path / 'pyproject.toml').write_text(hosted_exception_config)
+        write_file('pyproject.toml', hosted_exception_config)
         config = load_hosted_config(tmp_path)
         assert config.exceptions[0].expires == date(2026, 10, 31)
         assert config.repositories[0].labels == ('bug',)

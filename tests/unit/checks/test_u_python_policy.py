@@ -170,11 +170,10 @@ class TestPythonPolicy:
             Repository-relative path whose contents are prepared for the
             scenario.
         content : str
-            File contents selected for the parameterized success or failure
-            scenario.
+            Replacement contents introducing a policy inconsistency or
+            malformed configuration.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected substring in at least one reported policy diagnostic.
         """
         write_file(path, content)
         assert any(

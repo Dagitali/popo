@@ -63,6 +63,11 @@ def create_parser() -> argparse.ArgumentParser:
         Parser with supported subcommands, options, and dispatch handlers.
         Constructing the parser does not run repository checks.
 
+    Raises
+    ------
+    OSError
+        If a root-option default cannot obtain the current working directory.
+
     Notes
     -----
     A subcommand is required. Each --root default captures the current working

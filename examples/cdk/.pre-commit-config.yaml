@@ -1,0 +1,18 @@
+# .pre-commit-config.yaml
+# popo/examples/cdk
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Run the same whole-repository Make target before committing.
+
+repos:
+  - repo: local
+    hooks:
+      - id: popo
+        name: Repository guardrails
+        entry: make guardrails
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+        always_run: true
+        verbose: true

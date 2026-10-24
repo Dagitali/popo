@@ -88,8 +88,7 @@ class TestMarkdownLinks:
         link : str
             Markdown link text or destination selected for the scenario.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected diagnostic text for the missing local file or anchor.
         """
         readme = write_file('README.md', f'[Missing]({link})\n')
         assert validate(tmp_path) == [f'{readme}:1: {message}: {link}']
@@ -238,11 +237,9 @@ class TestMarkdownLinks:
         link : str
             Markdown link text or destination selected for the scenario.
         target : str
-            Destination or expected configuration value selected for the
-            scenario.
+            Relative file path created to satisfy the Markdown link.
         content : str
-            File contents selected for the parameterized success or failure
-            scenario.
+            Target-file contents used to resolve the link and any fragment.
         """
         write_file('README.md', f'[Guide]({link})\n[External](HTTPS://example.com)')
         write_file(target, content)

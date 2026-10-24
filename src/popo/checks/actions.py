@@ -38,11 +38,12 @@ def is_pinned(
     Returns
     -------
     bool
-        ``True`` for a full hexadecimal commit or an exempt local/container
-        reference.
-        Self-repository references must be revision-free, nonempty paths
-        without traversal. This syntax check does not verify target existence
-        or container immutability; automation contracts check local targets.
+        ``True`` for a nonempty action name followed by ``@`` and a
+        40-character hexadecimal revision, or an exempt local/container
+        reference. Self-repository references must be revision-free, nonempty
+        paths without traversal. This syntax check does not verify target
+        existence or container immutability; automation contracts check local
+        targets.
     """
     if reference.startswith('$/'):
         path = reference[2:]

@@ -8,6 +8,15 @@ from popo.checks.guardrails import validate
 from popo.config.guardrails import GuardrailsConfig
 from tests.support.files import snapshot_files
 
+# SECTION: CONSTANTS
+
+
+NO_FILENAMES = 'pass_filenames: false'
+
+
+# !SECTION
+
+
 # SECTION: TESTS
 
 
@@ -83,42 +92,21 @@ class TestGuardrailParity:
         assert validate(guardrail_consumer) == [guardrail_diagnostics[failure]]
 
     @pytest.mark.parametrize(
-        'old,new',
-        [
-            ('entry: make guardrails', 'entry: popo check-docs'),
-            ('language: system', 'language: python'),
-            ('pass_filenames: false', 'pass_filenames: false\n        args: false'),
-            ('pass_filenames: false', 'pass_filenames: false\n        args: null'),
-            ('always_run: true', 'always_run: false'),
-            ('always_run: true', 'always_run: 1'),
-            ('pass_filenames: false', 'pass_filenames: 0'),
-            ('pass_filenames: false', 'pass_filenames: true'),
-            ('pass_filenames: false', 'pass_filenames: "false"'),
-            ('repo: local', 'repo: https://example.invalid/hooks'),
-            ('id: popo', 'id: other'),
-            ('pass_filenames: false', 'pass_filenames: false\n        args: [extra]'),
-            ('pass_filenames: false', 'pass_filenames: false\n      - id: popo'),
-        ],
-    )
-    def test_hook_drift(
-        self,
-        guardrail_consumer: GuardrailsConfig,
-        guardrail_diagnostics: dict[str, str],
-        old: str,
-        new: str,
-    ) -> None:
-        """
-        Check whole-repository hook settings and reject appended arguments.
-        """
-        path = guardrail_consumer.hooks
-        content = path.read_text(encoding='utf-8')
-        assert old in content, f'Mutation marker missing from {path}'
-        path.write_text(content.replace(old, new), encoding='utf-8')
-        assert validate(guardrail_consumer) == [guardrail_diagnostics['hook']]
-
-    @pytest.mark.parametrize(
         ('old', 'new', 'failure'),
         [
+            ('entry: make guardrails', 'entry: popo check-docs', 'hook'),
+            ('language: system', 'language: python', 'hook'),
+            (NO_FILENAMES, NO_FILENAMES + '\n        args: false', 'hook'),
+            (NO_FILENAMES, NO_FILENAMES + '\n        args: null', 'hook'),
+            ('always_run: true', 'always_run: false', 'hook'),
+            ('always_run: true', 'always_run: 1', 'hook'),
+            (NO_FILENAMES, 'pass_filenames: 0', 'hook'),
+            (NO_FILENAMES, 'pass_filenames: true', 'hook'),
+            (NO_FILENAMES, 'pass_filenames: "false"', 'hook'),
+            ('repo: local', 'repo: https://example.invalid/hooks', 'hook'),
+            ('id: popo', 'id: other', 'hook'),
+            (NO_FILENAMES, NO_FILENAMES + '\n        args: [extra]', 'hook'),
+            (NO_FILENAMES, NO_FILENAMES + '\n      - id: popo', 'hook'),
             ('id: popo', 'id: other', 'workflow'),
             ('run: make guardrails', 'run: popo check-docs', 'workflow'),
             ('run: make guardrails', 'run: []', 'workflow'),
@@ -150,7 +138,7 @@ class TestGuardrailParity:
             ('  guardrails:', '  other:', 'workflow'),
         ],
     )
-    def test_workflow_drift(
+    def test_entry_point_drift(
         self,
         guardrail_consumer: GuardrailsConfig,
         guardrail_diagnostics: dict[str, str],
@@ -158,12 +146,23 @@ class TestGuardrailParity:
         new: str,
         failure: str,
     ) -> None:
-        """Reject drift in the declared step, root or job selection."""
-        path = guardrail_consumer.workflow
+        """
+        Check whole-repository hook settings and reject appended arguments.
+
+        Reject drift in the declared workflow step, root or job selection.
+        Each mutation runs against an independent consumer fixture.
+        """
+        path = (
+            guardrail_consumer.hooks
+            if failure == 'hook'
+            else guardrail_consumer.workflow
+        )
         content = path.read_text(encoding='utf-8')
         assert old in content, f'Mutation marker missing from {path}'
         path.write_text(content.replace(old, new), encoding='utf-8')
+        before = snapshot_files(guardrail_consumer.root)
         assert validate(guardrail_consumer) == [guardrail_diagnostics[failure]]
+        assert snapshot_files(guardrail_consumer.root) == before
 
     @pytest.mark.parametrize(
         ('content', 'parse_error'),
@@ -216,19 +215,20 @@ class TestGuardrailParity:
             assert failure.startswith('guardrail parity: ')
             assert str(path) in failure
 
-
-class TestOptionalHookArguments:
-    """
-    Permit an explicitly empty argument list without weakening type checks.
-    """
-
     def test_empty_arguments(
         self,
         guardrail_consumer: GuardrailsConfig,
     ) -> None:
-        """An empty list preserves the canonical Make invocation."""
+        """
+        An empty list preserves the canonical Make invocation.
+
+        Permit an explicitly empty argument list without weakening type checks.
+        """
         path = guardrail_consumer.hooks
-        path.write_text(path.read_text() + '        args: []\n', encoding='utf-8')
+        path.write_text(
+            path.read_text(encoding='utf-8') + '        args: []\n',
+            encoding='utf-8',
+        )
         assert validate(guardrail_consumer) == []
 
 

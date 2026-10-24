@@ -92,7 +92,10 @@ configured; see the [release policy].
 - Dated semantic-version entries in a changelog.
 
 Guardrail parity keeps reading Make recipes across non-recipe comments, accepting comment-only
-separators without allowing them to hide extra commands.
+separators without allowing them to hide extra commands. The runnable [consumer examples] cover AWS
+CDK (Python only), Python, and Swiftrepositories, each with its own explicit policy, Make target,
+local Git hook and CI workflow. Shared installed-artifact tests exercise the actual callers and
+intentional drift while retaining language-specific dependency and Python-policy checks.
 
 Python-policy checks report unresolved environment or matrix version references even alongside valid
 declarations; package and embedded Ruff settings are validated from the same metadata read.
@@ -450,6 +453,7 @@ the [release policy].
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md
 [safety settings reference]: docs/repository-safety.md
+[consumer examples]: examples/README.md
 [References]: https://github.com/Dagitali/engineering/blob/main/REFERENCES.md
 [Developer onboarding]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
 [Learnings]: https://github.com/Dagitali/engineering/blob/main/learnings/python-and-repository-tooling.md

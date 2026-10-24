@@ -58,7 +58,8 @@ class HeaderRule:
     first_line, first_line_prefix : str
         Mutually exclusive exact or prefix requirements for a leading line.
     trim_after_first_line : bool
-        Whether to skip blank lines after the required leading line.
+        Whether to strip consecutive newline characters after the required
+        leading line. Whitespace-only lines containing spaces are retained.
     preamble_prefixes : tuple[str, ...]
         Ordered optional line prefixes to skip before extracting the header.
     purpose_required : bool

@@ -36,8 +36,12 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.9 Series
 
+- [v0.9.1] — 2026-10-24: Add AWS CDK (in Python), Python, and Swift consumer examples, strengthen
+  regression tests, and correct source/test docstrings; release text prepared, validation blocked by
+  an existing test failure; untagged and unpublished.
 - [v0.9.0] — 2026-10-24: Add standalone policy, named check profiles, JSON/explanation output and
-  local/CI guardrail parity; tagging and publication pending.
+  local/CI guardrail parity; local annotated tag present, publication not established by this
+  archive.
 
 ## 0.8 Series
 
@@ -198,3 +202,4 @@ prepared.
 [v0.8.1]: v0.8.1.md
 [v0.8.2]: v0.8.2.md
 [v0.9.0]: v0.9.0.md
+[v0.9.1]: v0.9.1.md
