@@ -59,8 +59,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+TBD
+
 ## [0.9.0] - 2026-10-24
 
+- Correct Markdown-check coverage, policy-source and reporting descriptions, source ownership,
+  hosted-audit guidance, and preparation-time release status; clarify docstrings and dot-file
+  headers.
 - Add standalone `popo.toml`, explicit offline check selection and named profiles so Swift, CDK and
   other consumers can use shared checks without Python project metadata; retain legacy defaults.
 - Add `explain` for check-selection provenance and versioned JSON results for native offline checks.

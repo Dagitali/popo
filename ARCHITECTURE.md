@@ -50,7 +50,8 @@ flowchart LR
 | Configuration | `src/popo/config/` | Load consumer settings and domain-specific defaults |
 | Validators | `src/popo/checks/` | Inspect files and return findings |
 | Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
-| Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report results |
+| Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report text results |
+| Native reporting | `src/popo/reporting.py` | Preserve check identities and emit aggregate text or versioned JSON |
 | Package contract | `src/popo/__init__.py`, `src/popo/py.typed` | Version lookup, intentional exports, and typing marker |
 | Verification | `tests/` | Unit, CLI integration, distribution, and clean-install contracts |
 | Documentation | Root Markdown and `docs/` | Public guidance, examples, runbooks, and historical records |
@@ -61,7 +62,8 @@ Python versions, and tool configuration belong in `pyproject.toml`.
 ## Execution Flow
 
 1. Parse a command and its options, including the inspected root.
-2. Load standalone `popo.toml`, otherwise `[tool.popo]` in `pyproject.toml`, and resolve check selection.
+2. For commands that need policy, load standalone `popo.toml`, otherwise `[tool.popo]` in
+   `pyproject.toml`. Resolve check selection for `check-all` and `explain`.
 3. Inspect supported files and collect diagnostics without rewriting inputs.
 4. Report `PASS` or `FAIL` and return the command's documented status.
 
@@ -94,11 +96,13 @@ establish that repository automation ran or that hosted rules enforce its result
 
 ## Trust Boundaries
 
-Checks inspect files without executing referenced automation or fetching remote code. Guardrail
-parity inspects a declared literal Make/hook/workflow invocation chain; it does not prove arbitrary
-shell equivalence or hosted execution. This does not make Popo a general filesystem sandbox or a
-complete parser for every format. Consumers choose the checkout, execution environment, permissions,
-and policy. See the [security policy] for limitations.
+Offline checks inspect files without executing referenced automation or fetching remote code. The
+explicit hosted audit makes authenticated GitHub GET requests; the actionlint adapter launches an
+already-installed external validator in a disposable compatibility tree. Guardrail parity inspects a
+declared literal Make/hook/workflow invocation chain; it does not prove arbitrary shell equivalence
+or hosted execution. This does not make Popo a general filesystem sandbox or a complete parser for
+every format. Consumers choose the checkout, execution environment, permissions, and policy. See the
+[security policy] for limitations.
 
 Source checks, artifact validation, and external publication are separate activities. The [workflow
 map] describes the configured automation; the [release policy] owns publication safeguards.

@@ -107,14 +107,15 @@ cross-layer namespace collisions; see [test layout] for discovery and selection.
 ## Architecture
 
 Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
-configuration for checks that need it, and dispatches to the relevant checker. Checkers inspect
-repository files and return findings; shared reporting prints `PASS` or `FAIL` messages and returns
-an exit status of `0` for a successful check or `1` for reported failures. Invalid command-line
-arguments are handled separately by the argument parser.
+configuration for checks that need it, and dispatches through native adapters to the relevant
+checker. Checkers inspect repository files and return findings; shared reporting prints text
+`PASS`/`FAIL` messages or versioned JSON and returns `0` for successful native checks or `1` for
+reported failures. Invalid command-line arguments are handled separately by the argument parser.
+External actionlint and hosted-audit commands retain their separate reporting contracts.
 
 Configuration models and loaders live in the `popo.config` subpackage, organized by dependency,
-Python-policy, and automation settings. Existing `popo.config` imports remain available through
-explicit package exports.
+Python-policy, automation, file/header, safety, hosted-audit, guardrail, and selection settings.
+Existing `popo.config` imports remain available through explicit package exports.
 
 Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
 without embedding a consumer's build or deployment process. See [Architecture] for component
@@ -125,7 +126,7 @@ ownership and [Design] for compatibility and evolution rules.
 - Python 3.13 or 3.14 (`.python-version` selects Python 3.13 for compatible local
   version managers).
 - `packaging>=26.3,<27`, installed automatically with Popo; older versions are not supported.
-- `PyYAML>=6.0.3,<7`, installed automatically for automation-contract parsing.
+- `PyYAML>=6.0.3,<7`, installed automatically for YAML-based checks.
 - Make and a POSIX-compatible shell for the development targets; see the
   [contributing guide] for Windows setup.
 - No cloud account or credentials are required to run repository checks.
