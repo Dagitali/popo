@@ -5,12 +5,30 @@ Test dependency lower bounds, exact matching, and policy failures.
 """
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from popo.checks.dependencies import validate
 from popo.config import DependencyConfig, DependencyMode
 from tests.support.files import FileWriter
+
+# SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='mode',
+    params=['exact', 'minimum-constraints'],
+)
+def comparison_mode_fixture(
+    request: pytest.FixtureRequest,
+) -> DependencyMode:
+    """Select each comparison policy with independent temporary inputs."""
+    return cast(DependencyMode, request.param)
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -31,19 +49,21 @@ class TestDependencyPolicy:
         self,
         write_file: FileWriter,
         project: str,
+        mode: DependencyMode,
     ) -> None:
         """
         Report malformed project tables instead of crashing during lookup.
         """
         metadata = write_file('pyproject.toml', f'project = {project}')
         requirements = write_file('requirements.txt', '')
-        assert validate(DependencyConfig(metadata, requirements, 'exact')) == [
+        assert validate(DependencyConfig(metadata, requirements, mode)) == [
             f'{metadata}: project must be a TOML table',
         ]
 
     def test_commented_directive_retains_line_number(
         self,
         write_file: FileWriter,
+        mode: DependencyMode,
     ) -> None:
         """
         Comments must not enable installer directives or hide their location.
@@ -52,13 +72,15 @@ class TestDependencyPolicy:
         ----------
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
+        mode : DependencyMode
+            Dependency comparison policy selected for the scenario.
         """
         metadata = write_file('pyproject.toml', '[project]\ndependencies = []')
         requirements = write_file(
             'requirements.txt',
             '# heading\n-r other.txt # include\n',
         )
-        assert validate(DependencyConfig(metadata, requirements, 'exact')) == [
+        assert validate(DependencyConfig(metadata, requirements, mode)) == [
             f"{requirements}:2: installer directives are not supported: '-r other.txt'",
         ]
 
@@ -164,8 +186,7 @@ class TestDependencyPolicy:
         mode : DependencyMode
             Dependency comparison policy selected for the scenario.
         message : str | None
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected diagnostic substring; ``None`` selects a successful case.
         """
         metadata = write_file(
             'pyproject.toml',
@@ -182,10 +203,6 @@ class TestDependencyPolicy:
     @pytest.mark.parametrize(
         'suffix',
         [' # minimum', '\t# minimum', '   # note # more'],
-    )
-    @pytest.mark.parametrize(
-        'mode',
-        ['exact', 'minimum-constraints'],
     )
     def test_inline_comments(
         self,
@@ -230,6 +247,7 @@ class TestDependencyPolicy:
         write_file: FileWriter,
         content: str,
         message: str,
+        mode: DependencyMode,
     ) -> None:
         """
         Verify invalid dependency metadata produces the expected diagnostic.
@@ -242,19 +260,23 @@ class TestDependencyPolicy:
             File contents selected for the parameterized success or failure
             scenario.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected diagnostic substring for malformed metadata.
+        mode : DependencyMode
+            Dependency comparison policy selected for the scenario.
         """
         config = DependencyConfig(
             write_file('pyproject.toml', content),
             write_file('requirements.txt', ''),
-            'exact',
+            mode,
         )
-        assert message in validate(config)[0]
+        failures = validate(config)
+        assert len(failures) == 1
+        assert message in failures[0]
 
     def test_missing_files(
         self,
         tmp_path: Path,
+        mode: DependencyMode,
     ) -> None:
         """
         Verify absent dependency metadata and constraints each produce a
@@ -264,9 +286,11 @@ class TestDependencyPolicy:
         ----------
         tmp_path : pathlib.Path
             Temporary directory for isolated test inputs.
+        mode : DependencyMode
+            Dependency comparison policy selected for the scenario.
         """
         paths = (tmp_path / 'pyproject.toml', tmp_path / 'requirements.txt')
-        assert validate(DependencyConfig(*paths, 'exact')) == [
+        assert validate(DependencyConfig(*paths, mode)) == [
             f'dependency-policy file does not exist: {path}' for path in paths
         ]
 
