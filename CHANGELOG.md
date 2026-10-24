@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.9.0 - 2026-10-24](#090---2026-10-24)
 - [0.8.2 - 2026-10-23](#082---2026-10-23)
 - [0.8.1 - 2026-10-23](#081---2026-10-23)
 - [0.8.0 - 2026-10-23](#080---2026-10-23)
@@ -57,6 +58,30 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+TBD
+
+## [0.9.0] - 2026-10-24
+
+- Correct Markdown-check coverage, policy-source and reporting descriptions, source ownership,
+  hosted-audit guidance, and preparation-time release status; clarify docstrings and dot-file
+  headers.
+- Add standalone `popo.toml`, explicit offline check selection and named profiles so Swift, CDK and
+  other consumers can use shared checks without Python project metadata; retain legacy defaults.
+- Add `explain` for check-selection provenance and versioned JSON results for native offline checks.
+  Keep individual check identities and continue after per-domain configuration failures.
+- Add opt-in `check-guardrail-parity` to inspect an explicit Make/profile, whole-repository local
+  pre-commit hook and CI-step invocation contract without executing consumer commands.
+- Separate native check adapters from CLI parsing and share their dispatch registry; run selected
+  checks directly instead of rebuilding and reparsing the CLI. Preserve command defaults and
+  diagnostic contracts, and collect pre-commit hook matches in one traversal.
+- Keep inspecting Make recipes across non-recipe comments: accept comments before a valid recipe and
+  reject extra commands previously hidden after comment separators.
+- Align autopep8 with Ruff by ignoring `E203`, preventing commit-time formatting conflicts on
+  complex slices.
+- Expand independent default/text/JSON and installed guardrail scenarios for Make, hook and
+  workflow drift; share diagnostic and byte-snapshot fixtures. Split Markdown tests by target,
+  reference/image and syntax scope while retaining existing cases and documentation.
 
 ## [0.8.2] - 2026-10-23
 
@@ -443,6 +468,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.8.0]: docs/releases/v0.8.0.md
 [0.8.1]: docs/releases/v0.8.1.md
 [0.8.2]: docs/releases/v0.8.2.md
+[0.9.0]: docs/releases/v0.9.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

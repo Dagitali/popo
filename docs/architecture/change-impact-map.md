@@ -25,10 +25,10 @@ Paths below are relative to the repository root.
 
 | Changed surface | Evidence to inspect | Focused validation | Documentation to review |
 | --- | --- | --- | --- |
-| Commands, flags, dispatch | `src/popo/cli.py`, `tests/integration/test_i_cli.py` | `make test-integration` | README quickstart, configuration, changelog |
+| Commands, flags, dispatch | `src/popo/cli.py`, `src/popo/_commands.py`, `tests/integration/` | `make test-unit test-integration` | README quickstart, configuration, changelog |
 | Configuration keys or defaults | `src/popo/config/`, `tests/unit/configs/`, `tests/unit/checks/test_u_automation.py` | Unit and CLI integration tests | Configuration reference, README examples, release notes |
 | Checker behavior | `src/popo/checks/`, corresponding unit suite | Matching unit suite and CLI integration tests | Checker scope, configuration, compatibility notes |
-| Shared reporting or file discovery | `src/popo/support.py`, callers, support tests | All affected checkers and CLI tests | Architecture overview, diagnostics, documented exclusions |
+| Shared reporting or file discovery | `src/popo/support.py`, `src/popo/reporting.py`, callers, support tests | All affected checkers and CLI tests | Architecture overview, diagnostics, documented exclusions |
 | Public exports or typing | `src/popo/__init__.py`, `src/popo/py.typed`, artifact tests | Typecheck and distribution tests | API notes, public docstrings, release notes |
 | Dependencies or Python support | `pyproject.toml`, `requirements/lowest.txt`, `.python-version`, CI matrix | Dependency/Python policy and boundary tests | README requirements, testing, changelog |
 | Make targets or test selection | `Makefile`, `tests/conftest.py`, Make tests, CI callers | Changed target and `make check` | Contributor guide, tests overview, onboarding |

@@ -46,10 +46,12 @@ flowchart LR
 | Component | Source | Responsibility |
 | --- | --- | --- |
 | Entry points | `src/popo/__main__.py`, `src/popo/cli.py` | Parse commands, select roots, dispatch checks, and return statuses |
+| Native commands | `src/popo/_commands.py` | Adapt offline checks and share their handler registry between individual and aggregate dispatch |
 | Configuration | `src/popo/config/` | Load consumer settings and domain-specific defaults |
 | Validators | `src/popo/checks/` | Inspect files and return findings |
 | Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
-| Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report results |
+| Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report text results |
+| Native reporting | `src/popo/reporting.py` | Preserve check identities and emit aggregate text or versioned JSON |
 | Package contract | `src/popo/__init__.py`, `src/popo/py.typed` | Version lookup, intentional exports, and typing marker |
 | Verification | `tests/` | Unit, CLI integration, distribution, and clean-install contracts |
 | Documentation | Root Markdown and `docs/` | Public guidance, examples, runbooks, and historical records |
@@ -60,21 +62,27 @@ Python versions, and tool configuration belong in `pyproject.toml`.
 ## Execution Flow
 
 1. Parse a command and its options, including the inspected root.
-2. Load the applicable consumer settings from that root's `pyproject.toml`.
+2. For commands that need policy, load standalone `popo.toml`, otherwise `[tool.popo]` in
+   `pyproject.toml`. Resolve check selection for `check-all` and `explain`.
 3. Inspect supported files and collect diagnostics without rewriting inputs.
 4. Report `PASS` or `FAIL` and return the command's documented status.
 
-`check-all` runs the baseline checks and includes automation contracts when their configuration
-table is present. Release-changelog validation requires an explicit version and remains separate.
-Configuration failures are reported; some I/O and decoding exceptions propagate. The [configuration
-reference] and source docstrings describe individual command boundaries.
+`check-all` runs an explicit selection or profile when supplied; otherwise it retains baseline
+checks and configured opt-in domains. `explain` reports this selection without invoking validators.
+Native offline reporting supports text and versioned JSON with ordered check identities. Aggregate
+execution uses the same native adapters directly, without rebuilding the CLI parser; adapters own
+defaults for optional check-specific arguments. Release-changelog validation requires an explicit
+version and remains separate. Configuration failures are reported; some I/O and decoding exceptions
+propagate. The [configuration reference] and source docstrings describe individual command
+boundaries.
 
 ## Optional Integrations
 
 Consumers can invoke individual checks from their existing hooks or CI and select their own roots
-and policy values. Automation contracts join `check-all` only when `[tool.popo.automation]` is
-present; standalone invocation remains available without that table. The [adoption playbook]
-explains how to evaluate a checker alongside existing controls before replacing them.
+and policy values. Explicit selections can include automation contracts without a table, retaining
+standalone workflow defaults. Legacy aggregate defaults include automation only when its table is
+present. The [adoption playbook] explains how to evaluate a checker alongside existing controls
+before replacing them.
 
 Popo's contributor Make targets and hooks describe this repository's development environment.
 Consumers need not adopt its branch names, dependency ranges, coverage policy, or release process.
@@ -88,9 +96,13 @@ establish that repository automation ran or that hosted rules enforce its result
 
 ## Trust Boundaries
 
-Checks inspect files without executing referenced automation or fetching remote code. This does not
-make Popo a general filesystem sandbox or a complete parser for every format. Consumers choose the
-checkout, execution environment, permissions, and policy. See the [security policy] for limitations.
+Offline checks inspect files without executing referenced automation or fetching remote code. The
+explicit hosted audit makes authenticated GitHub GET requests; the actionlint adapter launches an
+already-installed external validator in a disposable compatibility tree. Guardrail parity inspects a
+declared literal Make/hook/workflow invocation chain; it does not prove arbitrary shell equivalence
+or hosted execution. This does not make Popo a general filesystem sandbox or a complete parser for
+every format. Consumers choose the checkout, execution environment, permissions, and policy. See the
+[security policy] for limitations.
 
 Source checks, artifact validation, and external publication are separate activities. The [workflow
 map] describes the configured automation; the [release policy] owns publication safeguards.

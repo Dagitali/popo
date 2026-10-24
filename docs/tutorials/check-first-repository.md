@@ -44,9 +44,10 @@ Create a new disposable folder using your editor or file manager. Add these two 
   `guide.md#overview` (the usual bracketed label followed by a parenthesized destination).
 - `guide.md`: A Markdown heading `# Overview` followed by a short paragraph.
 
-Use an inline link for this exercise; reference-definition destinations are also checked. The
-checker does not detect undefined reference labels or validate inline image links. A successful
-check does not establish external URL availability or the factual accuracy of the text.
+Use an inline link for this exercise; inline images and single-line reference-definition
+destinations are also checked. Undefined full/collapsed reference labels fail; shortcut references
+are not fully parsed. A successful check does not establish external URL availability or the factual
+accuracy of the text.
 
 ## Run the Check
 
@@ -74,9 +75,10 @@ reported and verified the mismatch. Keep this experiment out of real consumer fi
 
 Use the [configuration reference] to choose checks that fit the consumer. For example, action-pin
 validation is useful for a repository using GitHub Actions regardless of its implementation
-language. Dependency and Python-policy checks have Python-specific inputs; `check-all` includes them
-and is not an automatic next step for this documentation-only folder. Release-changelog validation
-is separate and requires a release version.
+language. Dependency and Python-policy checks have Python-specific inputs and belong to the default
+`check-all` selection. For this documentation-only folder, keep using `check-docs` or configure an
+explicit check selection or named profile in `popo.toml`. Release-changelog validation is separate
+and requires a release version.
 
 Once a check works locally, run the same command in the consumer's existing CI after installing
 Popo. Preserve its exit status so a reported failure fails the step; introducing CI is a separate

@@ -6,79 +6,21 @@ Command-line interface for popo.
 
 import argparse
 import json
-from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
 import yaml
 
 from . import __version__
-from .checks import (
-    actionlint,
-    actions,
-    automation,
-    changelog,
-    dependencies,
-    docs,
-    files,
-    hosted,
-    python_policy,
-    safety,
-)
-from .config import ConfigurationError, load_config
-from .config.automation import load_automation_config
-from .config.files import load_headers_config, load_required_files_config
+from ._commands import NATIVE_HANDLERS, Command
+from .checks import actionlint, hosted
+from .config import ConfigurationError
 from .config.hosted import load_hosted_config
-from .config.safety import load_safety_config
+from .config.selection import load_plan
+from .reporting import CheckResult, report_results
 from .support import report
 
-# SECTION: TYPE ALIASES
-
-
-type Command = Callable[[argparse.Namespace], tuple[list[str], str]]
-
-
-# !SECTION
-
-
 # SECTION: PROTECTED FUNCTIONS
-
-
-def _actions(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Return action-pin failures and the success message without printing.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments with ``root`` (:class:`pathlib.Path`) and
-        ``automation_directory`` (:class:`pathlib.Path` or ``None``).
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Validation failures and the message to use only when no failures exist.
-
-    Raises
-    ------
-    OSError
-        If a discovered automation file cannot be read or a path cannot
-        resolve.
-    UnicodeError
-        If automation text cannot be decoded as UTF-8.
-
-    Notes
-    -----
-    Default to ``.github`` under the resolved root. An explicit relative
-    ``automation_directory`` is resolved against the process working directory,
-    not against ``args.root``.
-    """
-    directory = args.automation_directory
-    if directory is None:
-        directory = args.root.resolve() / '.github'
-    return actions.validate(directory.resolve()), 'remote actions are immutably pinned'
 
 
 def _add_root(
@@ -103,290 +45,6 @@ def _add_root(
         default=Path.cwd(),
         help='Repository root (default: current directory)',
     )
-
-
-def _all(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Aggregate documentation, action, dependency, and Python-policy failures.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
-        consumer repository.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Combined failures in check order and the success-only report message.
-
-    Raises
-    ------
-    ConfigurationError
-        If loading consumer configuration fails validation.
-    OSError
-        If a path cannot resolve or an input cannot be read.
-    UnicodeError
-        If an inspected input cannot be decoded as UTF-8.
-
-    Notes
-    -----
-    Load consumer configuration, then run those checks in order without
-    stopping for returned failures. Include automation contracts and safety
-    and file checks only when their configuration tables are present.
-    Exceptions still propagate. Release changelog validation requires an
-    explicit release version and is excluded. Return the diagnostics and
-    success message without printing.
-    """
-    root = args.root.resolve()
-    config = load_config(root)
-    failures = [
-        *docs.validate(root),
-        *actions.validate(root / '.github'),
-        *dependencies.validate(config.dependencies),
-        *python_policy.validate(config.python_policy),
-    ]
-    automation_config = load_automation_config(root)
-    if automation_config.configured:
-        failures.extend(automation.validate(automation_config))
-    safety_config = load_safety_config(root)
-    if safety_config.configured:
-        failures.extend(safety.validate(safety_config))
-    required = load_required_files_config(root)
-    if required is not None:
-        failures.extend(files.validate_required(required))
-    headers = load_headers_config(root)
-    if headers is not None:
-        failures.extend(files.validate_headers(headers))
-    return failures, 'all configured repository checks passed'
-
-
-def _automation(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Dispatch configured automation validation through the public CLI.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed ``root`` and ``pins_only`` options.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Contract diagnostics and the success message.
-
-    Raises
-    ------
-    ConfigurationError
-        Invalid consumer configuration, reported by :func:`main`.
-    """
-    config = load_automation_config(args.root)
-    return automation.validate(
-        config,
-        pins_only=args.pins_only,
-    ), 'automation contracts are valid'
-
-
-def _changelog(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Return release-heading failures and the success message without printing.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed ``root`` (:class:`pathlib.Path`), ``release`` (:class:`str`),
-        and ``changelog`` (:class:`pathlib.Path` or ``None``).
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Changelog diagnostics and the success-only report message. Invalid
-        release syntax is returned as a diagnostic, not raised as
-        :exc:`ValueError`.
-
-    Raises
-    ------
-    OSError
-        If the changelog path cannot resolve or the file cannot be read.
-    UnicodeError
-        If the changelog cannot be decoded as UTF-8.
-
-    Notes
-    -----
-    Default to CHANGELOG.md under the resolved root. An explicit relative
-    changelog path is resolved against the process working directory instead.
-    """
-    path = args.changelog
-    if path is None:
-        path = args.root.resolve() / 'CHANGELOG.md'
-    version = args.release.removeprefix('v')
-    return (
-        changelog.validate(path.resolve(), args.release),
-        f'changelog contains a dated section for {version}',
-    )
-
-
-def _dependencies(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Load dependency policy and return failures with its success message.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
-        consumer repository.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Dependency diagnostics and the message to use only on success.
-
-    Raises
-    ------
-    ConfigurationError
-        If loading consumer configuration fails validation.
-    OSError
-        If the root cannot resolve or an input cannot be read.
-    UnicodeError
-        If an input cannot be decoded as UTF-8.
-    """
-    config = load_config(args.root.resolve()).dependencies
-    return dependencies.validate(config), 'dependency boundaries are synchronized'
-
-
-def _docs(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Check the resolved root's Markdown and return failures and success text.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
-        consumer repository.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Markdown diagnostics and the message to use only on success.
-
-    Raises
-    ------
-    OSError
-        If a path cannot resolve or inspected Markdown cannot be read.
-    UnicodeError
-        If inspected Markdown cannot be decoded as UTF-8.
-    """
-    return docs.validate(args.root.resolve()), 'local Markdown links are valid'
-
-
-def _python(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Load Python policy and return failures with its success message.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments containing ``root`` (:class:`pathlib.Path`), the
-        consumer repository.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Python-policy diagnostics and the message to use only on success.
-
-    Raises
-    ------
-    ConfigurationError
-        If loading consumer configuration fails validation.
-    OSError
-        If the root cannot resolve or an input cannot be read.
-    UnicodeError
-        If an input cannot be decoded as UTF-8.
-    """
-    config = load_config(args.root.resolve()).python_policy
-    return python_policy.validate(config), 'Python policy is consistent'
-
-
-def _safety(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Dispatch opt-in read-only safety validation.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed consumer root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Diagnostics and success-only message.
-    """
-    config = load_safety_config(args.root)
-    if not config.configured:
-        raise ConfigurationError('check-repository-safety requires tool.popo.safety')
-    return safety.validate(config), 'configured repository safety checks passed'
-
-
-def _required_files(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Dispatch configured required-file validation.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed consumer root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Failures and a success-only summary.
-
-    Raises
-    ------
-    ConfigurationError
-        If the policy is absent or malformed.
-    """
-    config = load_required_files_config(args.root)
-    if config is None:
-        raise ConfigurationError('check-required-files requires tool.popo.files')
-    return files.validate_required(config), 'required files are present'
-
-
-def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Dispatch configured header validation.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed consumer root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Failures and a success-only summary.
-
-    Raises
-    ------
-    ConfigurationError
-        If the policy is absent or malformed.
-    """
-    config = load_headers_config(args.root)
-    if config is None:
-        raise ConfigurationError('check-file-headers requires tool.popo.headers')
-    return files.validate_headers(config), 'configured file headers are valid'
 
 
 # !SECTION
@@ -422,18 +80,11 @@ def create_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest='command', required=True)
 
     handlers: dict[str, Command | None] = {
-        'check-required-files': _required_files,
-        'check-file-headers': _file_headers,
-        'check-docs': _docs,
-        'check-github-actions-pins': _actions,
-        'check-automation-contracts': _automation,
-        'check-repository-safety': _safety,
+        **NATIVE_HANDLERS,
         'check-actionlint': None,
-        'check-dependency-boundaries': _dependencies,
-        'check-python-policy': _python,
-        'check-release-changelog': _changelog,
-        'check-all': _all,
+        'check-all': None,
         'audit-github-settings': None,
+        'explain': None,
     }
     help_text = {
         'check-automation-contracts': (
@@ -455,6 +106,13 @@ def create_parser() -> argparse.ArgumentParser:
             else commands.add_parser(name)
         )
         _add_root(subparser)
+        if name not in ('check-actionlint', 'audit-github-settings'):
+            subparser.add_argument('--format', choices=('text', 'json'), default='text')
+        if name in ('check-all', 'explain'):
+            subparser.add_argument(
+                '--profile',
+                help='Explicit configured check profile',
+            )
         if handler is not None:
             subparser.set_defaults(handler=handler)
         parsers[name] = subparser
@@ -480,6 +138,64 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _selected_results(args: argparse.Namespace) -> list[CheckResult]:
+    """Execute selected offline checks and retain each check's identity.
+
+    Explicit checks or a named profile replace the baseline selection.
+    Otherwise retain documentation, action-pin, dependency and Python-policy
+    checks plus configured opt-in domains. Preserve declaration order and
+    continue after reported validation or domain configuration failures; other
+    exceptions propagate. Release checks need a version and remain separate,
+    as do external-tool and hosted checks. Constructing parsers does not run
+    validators. Native adapters supply their own optional argument defaults,
+    so aggregate execution does not reconstruct or reparse command lines.
+    """
+    plan = load_plan(args.root, args.profile)
+    return [
+        _invoke(
+            argparse.Namespace(
+                command=check,
+                root=args.root,
+                handler=NATIVE_HANDLERS[check],
+            ),
+        )
+        for check in plan.checks
+    ]
+
+
+def _invoke(args: argparse.Namespace) -> CheckResult:
+    """
+    Convert a native check's configuration errors into identified results.
+    """
+    command = cast(Command, args.handler)
+    try:
+        failures, success = command(args)
+    except ConfigurationError as error:
+        failures, success = [f'configuration: {error}'], ''
+    return CheckResult(args.command, tuple(failures), success)
+
+
+def _explain(args: argparse.Namespace) -> int:
+    """Describe selection and provenance without running any validators."""
+    plan = load_plan(args.root, args.profile)
+    explanation = {
+        'schema_version': 1,
+        'root': str(args.root.resolve()),
+        'configuration': str(plan.source),
+        'configuration_exists': plan.source.exists(),
+        'selection': plan.reason,
+        'checks': list(plan.checks),
+    }
+    if args.format == 'json':
+        print(json.dumps(explanation))
+    else:
+        print(f'Configuration: {plan.source}')
+        print(f'Selection: {plan.reason}')
+        for check in plan.checks:
+            print(f'  {check}')
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Run a popo command.
@@ -493,8 +209,9 @@ def main(argv: list[str] | None = None) -> int:
     Returns
     -------
     int
-        Zero for a successful check or one for reported validation and
-        configuration failures. Results are printed through shared reporting.
+        Zero for a successful check or explanation, or one for reported
+        validation and configuration failures. Native check results use shared
+        text or JSON reporting; explanation reports selection without checks.
         check-actionlint instead returns the exact external validator status.
         audit-github-settings returns one for drift or inaccessible evidence;
         approved, unexpired exceptions do not fail the audit.
@@ -509,9 +226,9 @@ def main(argv: list[str] | None = None) -> int:
     Notes
     -----
     :exc:`~popo.config.ConfigurationError` is converted to a reported failure.
-    Other exceptions, including file-read and decoding errors, propagate. Check
-    reports go to standard output; :mod:`argparse` handles its own help and
-    error streams.
+    Native adapters may return I/O and decoding errors as diagnostics;
+    uncaught exceptions propagate. Check reports go to standard output;
+    :mod:`argparse` handles its own help and error streams.
     check-actionlint reports source/tool errors as status one and preserves
     the external linter's streams and exact returned exit status.
     audit-github-settings is an explicit network operation, excluded from
@@ -546,12 +263,15 @@ def main(argv: list[str] | None = None) -> int:
             yaml.YAMLError,
         ) as error:
             return report([f'actionlint: {error}'], success='')
-    command = cast(Command, args.handler)
     try:
-        failures, success = command(args)
+        if args.command == 'explain':
+            return _explain(args)
+        results = (
+            _selected_results(args) if args.command == 'check-all' else [_invoke(args)]
+        )
     except ConfigurationError as error:
-        failures, success = [f'configuration: {error}'], ''
-    return report(failures, success=success)
+        results = [CheckResult('configuration', (f'configuration: {error}',), '')]
+    return report_results(args.command, results, args.format)
 
 
 # !SECTION

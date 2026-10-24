@@ -18,32 +18,15 @@ from tests.support.files import FileWriter
 # SECTION: FIXTURES
 
 
-@pytest.fixture(
-    params=[
-        pytest.param(None, id='default-text'),
-        pytest.param('text', id='explicit-text'),
-        pytest.param('json', id='json'),
-    ],
-)
-def audit_format(request: pytest.FixtureRequest) -> str | None:
-    """
-    Exercise default and explicit report formats with independent consumers.
-    """
-    return None if request.param is None else str(request.param)
-
-
-@pytest.fixture
-def audit_arguments(
+@pytest.fixture(name='audit_arguments')
+def audit_arguments_fixture(
     tmp_path: Path,
-    audit_format: str | None,
+    format_arguments: tuple[str, ...],
 ) -> list[str]:
     """
     Build the selected format's public CLI arguments for a fresh consumer.
     """
-    arguments = ['audit-github-settings', '--root', str(tmp_path)]
-    if audit_format is not None:
-        arguments.extend(['--format', audit_format])
-    return arguments
+    return ['audit-github-settings', '--root', str(tmp_path), *format_arguments]
 
 
 # !SECTION
@@ -68,7 +51,7 @@ class TestHostedCommandLine:
         capsys: pytest.CaptureFixture[str],
         hosted_exception_config: str,
         github_responses: dict[str, Response],
-        audit_format: str | None,
+        cli_format: str | None,
         denied: bool,
     ) -> None:
         """
@@ -93,7 +76,7 @@ class TestHostedCommandLine:
         streams = capsys.readouterr()
         assert streams.err == ''
         expected = 'inaccessible' if denied else 'verified'
-        if audit_format == 'json':
+        if cli_format == 'json':
             findings = json.loads(streams.out)['findings']
             assert [item['status'] for item in findings] == [expected]
             assert findings[0]['repository'] == 'example/library'
@@ -107,7 +90,7 @@ class TestHostedCommandLine:
         audit_arguments: list[str],
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
-        audit_format: str | None,
+        cli_format: str | None,
     ) -> None:
         """Report malformed configuration before invoking the audit adapter."""
         observer = Mock(side_effect=AssertionError('must not audit invalid policy'))
@@ -116,7 +99,7 @@ class TestHostedCommandLine:
         observer.assert_not_called()
         streams = capsys.readouterr()
         assert streams.err == ''
-        if audit_format == 'json':
+        if cli_format == 'json':
             assert json.loads(streams.out)['error'].startswith('configuration: ')
         else:
             assert streams.out.startswith('FAIL: configuration: ')

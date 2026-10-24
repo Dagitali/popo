@@ -44,8 +44,10 @@ statuses, callers, and required CI results before retiring anything.
 4. Keep build, deployment, credentials, dependency-update decisions, and CI ownership in the
    consumer. Record who approves policy changes and maintains the chosen tool revision.
 
-`check-all` includes dependency and Python-policy validation; it is not a configurable subset of
-checks. Release-changelog validation remains a separate command with an explicit version argument.
+`check-all` retains dependency and Python-policy validation by default. Select an explicit check
+list or named profile for Swift, CDK or other consumers; see [shared guardrails]. Standalone
+`popo.toml` avoids requiring Python project metadata for language-neutral checks. Release-changelog
+validation remains a separate command with an explicit version argument.
 
 ## Capture the Existing Baseline
 
@@ -55,7 +57,7 @@ Include small positive and deliberately failing fixtures for each policy being r
 
 Compare Popo against those same inputs. Classify each mismatch as a configuration difference,
 intentional policy change, unsupported behavior, or defect. For example, the current Markdown check
-does not detect undefined reference labels or validate inline image links or external URLs. Keep
+validates inline images and full/collapsed reference labels, while external URLs remain unchecked. Keep
 existing coverage for requirements it does not implement; a passing Popo check is not proof of
 behavioral equivalence.
 
@@ -101,6 +103,7 @@ platform, or policy.
 
 [installation instructions]: ../../README.md#installation
 [configuration reference]: ../CONFIGURATION.md
+[shared guardrails]: ../guardrails.md
 [first-check tutorial]: ../tutorials/check-first-repository.md
 [interface checklist]: https://github.com/Dagitali/engineering/blob/main/interfaces/evolution-checklist.md
 [incident runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/repository-ci-incident.md

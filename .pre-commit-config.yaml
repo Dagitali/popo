@@ -7,13 +7,13 @@
 #
 # Pre-commit is a multi-language package manager and hook orchestrator that
 # runs configured checks before code is committed or pushed. This configuration
-# defines the hooks that are installed and run locally to catch issues. It
-# enables code reviews to focus on design and implementation quality by
-# automating checks for formatting, syntax, metadata, and repository hygiene
-# issues.
+# defines the hooks used after an explicit `pre-commit install`, or when run
+# manually. Some hooks rewrite files. It enables code reviews to focus on
+# design and implementation quality by automating checks for formatting,
+# syntax, metadata, and repository hygiene issues.
 #
 # Responsibilities
-# - Install and run local commit-message, pre-commit, and pre-push hooks.
+# - Configure commit-message, pre-commit, and pre-push hook installation.
 # - Catch formatting, syntax, metadata, and repository-hygiene issues before
 #   code review.
 # - Keep local checks aligned with the repository's CI quality gates where
@@ -24,7 +24,8 @@
 #   `pyproject.toml`.
 # - Local system hooks delegate interpreter selection to Make; install
 #   development tools before using them, as documented in CONTRIBUTING.md.
-# - Keep branch and commit-message hooks aligned with repository policy;
+# - Keep protected-branch and commit-message hooks aligned with repository
+#policy;
 #   hosted PR routing is configurable rather than implicitly GitFlow.
 # - Prefer targeted hook exclusions over broad disables when generated or
 #   nonstandard files need special handling.
@@ -66,7 +67,7 @@ repos:
 
   ### Git ###
 
-  # Conventional commits / branch naming
+  # Conventional commit messages
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.19.2
     hooks:

@@ -67,18 +67,22 @@ After installing development dependencies, run from the repository root:
 make docs-markdown
 ```
 
-This checks local inline-link and reference-definition destinations, heading anchors, and explicit
-HTML anchors. It does not detect undefined reference labels or validate inline image links, external
-URL availability, or factual accuracy. Review those separately. Popo does not currently configure a
-Sphinx site or HTML/EPUB build targets. Markdown is the maintained documentation format; do not copy
-generated output from another project.
+This checks local inline-link, inline-image, and single-line reference-definition destinations,
+heading anchors, and explicit HTML anchors. Undefined full/collapsed reference labels and
+conflicting reference destinations also fail. Shortcut references and nested or escaped link syntax
+are not fully parsed. External URL availability and factual accuracy require separate review. Popo
+does not currently configure a Sphinx site or HTML/EPUB build targets. Markdown is the maintained
+documentation format; do not copy generated output from another project.
 
 ## Guides
 
 - [Repository safety]: Opt-in offline workflow trust boundaries and npm root consistency.
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
-- [Configuration reference]: Input paths, dependency modes, Python-policy defaults, automation
+- [Configuration reference]: Policy sources, check selection, profiles, output formats, domain
   settings, and CLI scope.
+- [File policies]: Opt-in required paths and configurable source-header contracts.
+- [Shared guardrails]: One explicit check profile delegated through Make, pre-commit, and CI.
+- [Hosted settings audit]: Explicit GitHub expectations and the limits of GET-only evidence.
 - [Adoption playbook]: Consumer setup, behavioral comparison, CI integration, and migration safeguards.
 - [Change-impact map]: Source ownership, verification, and documentation affected by a change.
 - [Change management]: Classify work and connect implementation, documentation, and release evidence.
@@ -122,6 +126,9 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Architecture notes]: architecture/README.md
 [Change-impact map]: architecture/change-impact-map.md
 [engineering guidance]: engineering.md
+[File policies]: file-policies.md
+[Shared guardrails]: guardrails.md
+[Hosted settings audit]: hosted-audit.md
 [Development documentation]: https://github.com/Dagitali/engineering/blob/main/development/README.md
 [agent workflow]: https://github.com/Dagitali/engineering/blob/main/development/agent-assisted-workflow.md
 [Developer onboarding]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md

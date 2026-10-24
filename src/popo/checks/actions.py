@@ -72,8 +72,8 @@ def validate(
     -------
     list[str]
         Human-readable failures; empty when every checked remote reference has
-        a non-empty action name and a full commit SHA. Local and container
-        references are exempt from this check.
+        a nonempty action name and a full commit SHA, and self references pass
+        syntax checks. Local and container references are exempt.
 
     Raises
     ------
@@ -87,9 +87,10 @@ def validate(
     Scan YAML files recursively using a line-based pattern, not a YAML parser.
     Require a nonempty action name and a 40-character hexadecimal revision;
     do not verify action existence, commit authenticity, or complete reference
-    syntax. References beginning with ``./`` or ``docker://`` are exempt,
-    so success does not establish container-image immutability. No network
-    requests are made.
+    syntax. References beginning with ``./`` or ``docker://`` are exempt;
+    ``$/`` references must satisfy :func:`is_pinned` syntax checks. Success
+    does not establish target existence or container-image immutability.
+    No network requests are made.
     """
 
     if not automation_directory.is_dir():

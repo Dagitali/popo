@@ -42,6 +42,7 @@ class TestGitHubReadAdapter:
         paginate: bool,
         expected: object,
     ) -> None:
+        """Preserve GET boundaries and sanitize parsed or failed responses."""
         runner = Mock(
             return_value=subprocess.CompletedProcess([], returncode, stdout, stderr),
         )
@@ -68,6 +69,7 @@ class TestGitHubReadAdapter:
         monkeypatch: pytest.MonkeyPatch,
         error: Exception,
     ) -> None:
+        """Return unavailable evidence when the CLI cannot launch or finish."""
         monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error))
         assert _github_get('repos/example/library').error
 

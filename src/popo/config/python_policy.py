@@ -75,7 +75,7 @@ def parse_python_policy(
     root : pathlib.Path
         Repository root used to resolve configured relative paths.
     popo : dict[str, object]
-        Parsed tool.popo settings.
+        Parsed Popo settings from the selected policy source.
     dependencies : DependencyConfig
         Selected metadata supplying default Python requirements and paths.
 

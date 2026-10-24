@@ -49,8 +49,10 @@ system-level instructions take precedence.
 ## Repository Map
 
 - `src/popo/cli.py` owns command parsing, dispatch, and exit behavior.
+- `src/popo/_commands.py` owns native offline adapters, defaults, and their shared registry.
 - `src/popo/config/` owns configuration models, shared parsing, and domain defaults.
-- `src/popo/checks/` owns read-only validators; `src/popo/support.py` owns shared reporting.
+- `src/popo/checks/` owns read-only validators; `src/popo/support.py` owns discovery and text reporting.
+- `src/popo/reporting.py` owns structured native-check results and text/JSON output.
 - `tests/unit/` and `tests/integration/` cover the default deterministic suite.
 - `tests/meta/` and `tests/e2e/` cover opt-in artifacts and installed commands.
 - `tests/support/` contains shared fixtures, not another test layer.

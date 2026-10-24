@@ -31,16 +31,39 @@ class ConfigurationError(ValueError):
 # SECTION: FUNCTIONS
 
 
-def read_popo(
-    root: Path,
-) -> dict[str, object]:
-    """
-    Read the optional root metadata and require tool.popo to be a table.
+def configuration_path(root: Path) -> Path:
+    """Select standalone consumer policy before Python project metadata.
 
     Parameters
     ----------
     root : pathlib.Path
-        Repository directory containing optional pyproject.toml metadata.
+        Consumer repository root.
+
+    Returns
+    -------
+    pathlib.Path
+        Existing or symlinked ``popo.toml``, otherwise ``pyproject.toml``.
+        A dangling standalone symlink remains selected so reading fails rather
+        than silently falling back. Selection never merges or creates files.
+    """
+    standalone = root / 'popo.toml'
+    return (
+        standalone
+        if standalone.exists() or standalone.is_symlink()
+        else root / 'pyproject.toml'
+    )
+
+
+def read_popo(
+    root: Path,
+) -> dict[str, object]:
+    """
+    Read standalone policy or optional Python metadata without merging.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Repository containing optional popo.toml or pyproject.toml policy.
 
     Returns
     -------
@@ -50,17 +73,19 @@ def read_popo(
     Raises
     ------
     ConfigurationError
-        If root TOML is invalid or tool or tool.popo is not a table.
+        If selected TOML is invalid or tool or tool.popo is not a table.
     OSError, UnicodeError
-        If existing metadata cannot be read or decoded as UTF-8.
+        If selected configuration cannot be read or decoded as UTF-8.
     """
-    path = root / 'pyproject.toml'
+    path = configuration_path(root)
     document: dict[str, object] = {}
-    if path.is_file():
+    if path.exists() or path.is_symlink():
         try:
             document = tomllib.loads(path.read_text(encoding='utf-8'))
         except tomllib.TOMLDecodeError as error:
             raise ConfigurationError(f'{path}: invalid TOML: {error}') from error
+    if path.name == 'popo.toml':
+        return document
     tool = require_table(document.get('tool', {}), name='tool')
     return require_table(tool.get('popo', {}), name='tool.popo')
 
