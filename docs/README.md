@@ -46,6 +46,7 @@ branch-protection and release policies.
 | Install and run the CLI | [Project overview] |
 | Try a check and diagnose a failure | [First repository tutorial] |
 | Configure a consumer repository | [Configuration reference] |
+| Run Swift, Python or CDK guardrails through local and CI callers | [consumer examples] |
 | Adopt checks or replace local scripts | [Adoption playbook] |
 | Change a public interface | [Interface evolution] |
 | Scope implementation and review work | [Change-impact map] |
@@ -120,6 +121,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Branch protection]: ../CONTRIBUTING.md#protected-branches-and-pr-routing
 [release policy]: ../CONTRIBUTING.md#release-policy
 [Project overview]: ../README.md
+[consumer examples]: ../examples/README.md
 [Tests overview]: ../tests/README.md
 [Configuration reference]: CONFIGURATION.md
 [API notes]: api/README.md
