@@ -1,7 +1,7 @@
 """
 :mod:`popo.config.automation` module.
 
-Load optional consumer automation contracts from pyproject.toml.
+Load optional consumer automation contracts from the selected policy file.
 """
 
 from dataclasses import dataclass
@@ -30,7 +30,7 @@ class AutomationConfig:
         Exact ref tokens allowed only in templates referencing existing self
         targets.
     configured : bool
-        Whether the consumer opted in through tool.popo.automation.
+        Whether the selected policy source contains an automation table.
     """
 
     root: Path
@@ -55,7 +55,8 @@ def load_automation_config(root: Path) -> AutomationConfig:
     Parameters
     ----------
     root : pathlib.Path
-        Consumer root containing optional pyproject.toml.
+        Consumer root containing optional standalone (e.g., popo.toml) or
+        Python-based (i.e., pyproject.toml) policy.
 
     Returns
     -------

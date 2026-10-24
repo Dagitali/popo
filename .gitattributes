@@ -13,7 +13,7 @@
 #
 # Responsibilities
 # - Define Git attributes by path pattern.
-# - Normalize text files consistently across platforms.
+# - Auto-detect text paths and normalize their checkout line endings to LF.
 # - Reduce line-ending churn in diffs and generated patches.
 #
 # Maintainer Notes

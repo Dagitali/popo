@@ -15,7 +15,11 @@ from tests.support.files import FileWriter
 
 TESTS_ROOT = Path(__file__).parent
 TEST_LAYERS = frozenset({'unit', 'integration', 'meta', 'e2e'})
-pytest_plugins = ('tests.support.artifacts', 'tests.support.hosted')
+pytest_plugins = (
+    'tests.support.artifacts',
+    'tests.support.hosted',
+    'tests.support.guardrails',
+)
 
 
 # !SECTION

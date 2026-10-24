@@ -127,8 +127,9 @@ def run(
     Notes
     -----
     Copy only selected automation and local targets, never environments or
-    arbitrary repository files. Cleanup occurs on success and failure. This
-    Run the linter, not workflow code or a substitute contract checker.
+    arbitrary repository files. Cleanup occurs on success and failure.
+    Execute the linter without executing workflow commands; contract
+    validation remains a separate check.
     """
     root = root.resolve()
     config = load_automation_config(root)

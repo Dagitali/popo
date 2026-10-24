@@ -4,6 +4,7 @@
 Exercise installed commands outside the checkout in clean environments.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -13,6 +14,9 @@ from pathlib import Path
 import pytest
 from packaging.utils import parse_sdist_filename, parse_wheel_filename
 from packaging.version import Version
+
+from popo.config.guardrails import GuardrailsConfig
+from tests.support.files import snapshot_files
 
 # SECTION: DATA CLASSES
 
@@ -399,12 +403,101 @@ reason = "Synthetic policy fixture"
         source = tmp_path / 'required.txt'
         if valid or command == 'check-file-headers':
             source.write_text('HEADER' if valid else 'INVALID', encoding='utf-8')
-        original = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+        original = snapshot_files(tmp_path)
         result = installation.run(command, '--root', str(tmp_path), module=use_module)
         assert result.returncode == (0 if valid else 1), result.stdout + result.stderr
         assert ('PASS:' if valid else 'FAIL:') in result.stdout
         assert result.stderr == ''
-        assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == original
+        assert snapshot_files(tmp_path) == original
+
+
+class TestInstalledSelection:
+    """
+    Verify language-neutral plans through isolated installed entry points.
+    """
+
+    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
+    def test_standalone_profile(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        use_module: bool,
+        valid: bool,
+    ) -> None:
+        """
+        Select docs without Python metadata and preserve the consumer bytes.
+        """
+        policy = tmp_path / 'popo.toml'
+        policy.write_text('[profiles.docs]\nchecks=["check-docs"]\n', encoding='utf-8')
+        readme = tmp_path / 'README.md'
+        readme.write_text(
+            '# Consumer' if valid else '[missing](absent)',
+            encoding='utf-8',
+        )
+        original = snapshot_files(tmp_path)
+        arguments = ['--root', str(tmp_path), '--profile', 'docs', '--format', 'json']
+        explanation = installation.run('explain', *arguments, module=use_module)
+        assert explanation.returncode == 0, explanation.stdout + explanation.stderr
+        assert explanation.stderr == ''
+        assert json.loads(explanation.stdout)['checks'] == ['check-docs']
+        result = installation.run('check-all', *arguments, module=use_module)
+        assert result.returncode == int(not valid), result.stdout + result.stderr
+        assert result.stderr == ''
+        report = json.loads(result.stdout)
+        assert report['schema_version'] == 1
+        assert report['passed'] is valid
+        assert report['checks'][0]['check'] == 'check-docs'
+        assert snapshot_files(tmp_path) == original
+
+    def test_guardrail_contract(
+        self,
+        installation: Installation,
+        guardrail_consumer: GuardrailsConfig,
+        guardrail_failure: str | None,
+        guardrail_arguments: tuple[str, ...],
+        use_module: bool,
+    ) -> None:
+        """Inspect profile wiring from installed packages without running Make.
+
+        Each command and matching/Make/hook/workflow scenario owns a fresh
+        consumer, including the exact profile delegated to Make. Preserve all
+        consumer bytes and assert the specific diagnostic from each artifact.
+        """
+        root = guardrail_consumer.root
+        original = snapshot_files(root)
+        result = installation.run(
+            *guardrail_arguments,
+            '--root',
+            str(root),
+            '--format',
+            'json',
+            module=use_module,
+        )
+        assert result.returncode == int(guardrail_failure is not None), (
+            result.stdout + result.stderr
+        )
+        assert result.stderr == ''
+        report = json.loads(result.stdout)
+        assert report['passed'] is (guardrail_failure is None)
+        checks = report['checks']
+        assert [check['check'] for check in checks] == (
+            ['check-docs', 'check-guardrail-parity']
+            if '--profile' in guardrail_arguments
+            else ['check-guardrail-parity']
+        )
+        assert all(check['passed'] for check in checks[:-1])
+        assert checks[-1]['passed'] is (guardrail_failure is None)
+        assert checks[-1]['diagnostics'] == (
+            []
+            if guardrail_failure is None
+            else [
+                {
+                    'severity': 'error',
+                    'message': guardrail_failure,
+                },
+            ]
+        )
+        assert snapshot_files(root) == original
 
 
 # !SECTION

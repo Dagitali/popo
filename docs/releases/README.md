@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.9 Series](#09-series)
 - [0.8 Series](#08-series)
 - [0.7 Series](#07-series)
 - [0.6 Series](#06-series)
@@ -33,13 +34,18 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.9 Series
+
+- [v0.9.0] — 2026-10-24: Add standalone policy, named check profiles, JSON/explanation output and
+  local/CI guardrail parity; tagging and publication pending.
+
 ## 0.8 Series
 
 - [v0.8.2] — 2026-10-23: Repair 0.8.1 release history and index both records.
 - [v0.8.1] — 2026-10-23: Refactor policy checks and suites; retrospective record, tagged tree
   lacks dated release records.
-- [v0.8.0] — 2026-10-23: Add opt-in required-file and configurable header checks; release text
-  prepared in released form, tagging and publication pending.
+- [v0.8.0] — 2026-10-23: Add opt-in required-file and configurable header checks; local annotated
+  tag present, publication not established by this archive.
 
 ## 0.7 Series
 
@@ -191,3 +197,4 @@ prepared.
 [v0.8.0]: v0.8.0.md
 [v0.8.1]: v0.8.1.md
 [v0.8.2]: v0.8.2.md
+[v0.9.0]: v0.9.0.md

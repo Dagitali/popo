@@ -25,8 +25,9 @@ implementation is described by the [README]; version-specific scope and validati
 
 ## Current Foundations
 
-- Read-only Markdown, action-pin, automation-contract, dependency, Python-policy, and changelog
-  checks.
+- Read-only Markdown, action-pin, automation-contract, dependency, Python-policy, changelog,
+  file/header, repository-safety, and guardrail-parity checks.
+- Explicit hosted settings audits, separate from offline checks and routine validation.
 - Consumer-owned configuration, typed implementation, and a shared CLI for local and CI use.
 - Unit/integration gates plus explicit distribution and clean-install tests.
 - Dependency-boundary CI, optional audits, SBOM generation, and guarded GitHub publication.

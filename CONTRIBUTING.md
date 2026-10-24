@@ -182,6 +182,9 @@ are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markd
 `fix` applies Ruff fixes, while `fmt` aliases the existing `format` target. `lint` continues to
 check both lint and formatting.
 
+Ruff owns Python formatting. The compatibility autopep8 hook reads `[tool.autopep8]` in
+`pyproject.toml`, which ignores `E203` so it does not undo Ruff's complex-slice spacing.
+
 Override `PYTHON` to select an interpreter; tool commands such as `RUFF` and `PYTEST` are also
 overridable. Pass focused pytest options with `TEST_ARGS`, for example:
 
@@ -382,7 +385,7 @@ Verify claims against executable sources before updating the maintained guides:
 | --- | --- | --- |
 | Package metadata, dependencies, Python support | `pyproject.toml` | [README], this guide, [test layout] |
 | Contributor commands and environment selection | `Makefile` | [README], this guide, [agent instructions], [test layout] |
-| CLI behavior, configuration, diagnostics, exit codes | `src/popo/cli.py`, `src/popo/config/`, check implementations and tests | [README], [changelog] |
+| CLI behavior, configuration, diagnostics, exit codes | `src/popo/cli.py`, `src/popo/_commands.py`, `src/popo/reporting.py`, `src/popo/config/`, check implementations and tests | [README], [changelog] |
 | Test layers, fixtures, and selection | `tests/conftest.py`, `tests/support/`, pytest configuration | [test layout], this guide, [agent instructions] |
 | Workflow triggers, checks, permissions, artifacts | `.github/workflows/`, setup action | [branch-protection guide], this guide, [release policy] |
 | Versioning and release validation | `pyproject.toml`, `Makefile`, CD workflow | [release policy], [release notes template], [changelog] |

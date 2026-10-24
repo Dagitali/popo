@@ -111,6 +111,29 @@ class TestLocalHooks:
         assert hook.get('pass_filenames', True) is True
         assert hook['types_or'] == ['python', 'pyi']
 
+    def test_autopep8_preserves_ruff_slice_spacing(
+        self,
+        hook_config: dict[str, Any],
+        repository_root: Path,
+    ) -> None:
+        """Keep autopep8's slice-spacing fix from undoing Ruff formatting."""
+        metadata = tomllib.loads(
+            (repository_root / 'pyproject.toml').read_text(encoding='utf-8'),
+        )
+        hook = next(
+            hook
+            for repo in hook_config['repos']
+            for hook in repo['hooks']
+            if hook['id'] == 'autopep8'
+        )
+        ignored = set(metadata['tool']['autopep8']['ignore'])
+        assert {'E203', 'E226', 'E24', 'W50', 'W690'} <= ignored
+        assert not any(arg.startswith('--ignore') for arg in hook['args'])
+        assert (
+            f'--max-line-length={metadata['tool']['ruff']['line-length']}'
+            in hook['args']
+        )
+
     @pytest.mark.parametrize(
         ('hook_id', 'entry', 'stage'),
         [

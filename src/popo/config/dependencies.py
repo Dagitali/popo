@@ -113,7 +113,7 @@ def parse_dependencies(
     root : pathlib.Path
         Repository root used for layout detection and relative paths.
     popo : dict[str, object]
-        Parsed tool.popo settings.
+        Parsed Popo settings from the selected policy source.
 
     Returns
     -------

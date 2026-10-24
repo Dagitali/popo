@@ -23,6 +23,8 @@
 #   this repository.
 # - Keep Makefile indentation tab-based; GNU Make recipe lines require tabs.
 # - Keep Python indentation aligned with the formatter and lint configuration.
+# - These are editor defaults; formatters and repository checks remain
+#   authoritative for their supported files.
 #
 # References
 # - EditorConfig file format reference:

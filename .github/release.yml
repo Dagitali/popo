@@ -13,7 +13,9 @@
 # - GitHub applies exclusions before categories.
 # - Categories are evaluated in order; unmatched changes appear under
 #   "Other Changes" through the catch-all category.
-# - Keep labels synchronized with issue forms and pull-request conventions.
+# - Keep category labels aligned with issue forms and pull-request labeling
+#   conventions; this file does not create labels or configure inherited issue
+#   forms.
 #
 # References
 # - GitHub automatically generated release notes:

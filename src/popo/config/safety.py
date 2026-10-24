@@ -68,7 +68,8 @@ def load_safety_config(root: Path) -> SafetyConfig:
     Parameters
     ----------
     root : pathlib.Path
-        Consumer containing optional ``tool.popo.safety`` metadata.
+        Consumer containing optional safety settings in the selected policy
+        source.
 
     Returns
     -------
@@ -79,6 +80,8 @@ def load_safety_config(root: Path) -> SafetyConfig:
     ------
     ConfigurationError
         Unknown keys, unsafe paths, malformed pairs, or invalid exceptions.
+    OSError, UnicodeError
+        If the selected configuration cannot be read or decoded as UTF-8.
     """
     root = root.resolve()
     popo = read_popo(root)

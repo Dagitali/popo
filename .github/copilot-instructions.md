@@ -1,6 +1,6 @@
 <!--
 copilot-instructions.md
-popo
+popo/.github
 
 Copyright © 2026 Dagitali LLC. All rights reserved.
 

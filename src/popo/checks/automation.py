@@ -100,11 +100,10 @@ def _composite(
     Notes
     -----
     Non-composite runtimes return after validating name, description, and the
-    runs
-    mapping. This helper does not validate the complete action schema or
-    execute steps.
-    It does not mutate ``data``; :func:`~popo.checks.automation.validate`
-    converts its errors into per-file diagnostics.
+    runs mapping. This helper does not validate the complete action schema or
+    execute steps. It does not mutate ``data``;
+    :func:`~popo.checks.automation.validate` converts its errors into per-file
+    diagnostics.
     """
     for key in ('name', 'description'):
         if not isinstance(data.get(key), str) or not data[key]:
@@ -194,10 +193,8 @@ def _metadata(
     Notes
     -----
     Missing optional arrays default to empty lists. Compile patterns without
-    matching
-    files, evaluating automation, or changing either file. These errors
-    propagate here
-    and are converted into diagnostics by
+    matching files, evaluating automation, or changing either file. These
+    errors propagate here and are converted into diagnostics by
     :func:`~popo.checks.automation.validate`.
     """
     metadata = _inside(root, path.with_suffix('.properties.json'))

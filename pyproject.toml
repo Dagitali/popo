@@ -136,6 +136,10 @@ markers = [
   "e2e: installed package workflows through the public CLI",
 ]
 
+[tool.autopep8]
+# Preserve autopep8 defaults and let Ruff own complex-slice spacing (E203).
+ignore = ["E203", "E226", "E24", "W50", "W690"]
+
 [tool.ruff]
 target-version = "py313"
 line-length = 88

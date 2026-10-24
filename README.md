@@ -82,12 +82,17 @@ configured; see the [release policy].
   applies only to Markdown; generated and vendored sources such as `node_modules` are excluded;
 - Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
   policies];
+- Language-neutral standalone policy, explicit check profiles, JSON results and local/CI guardrail
+  parity; see the [guardrail guide];
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows, including
   inline and block-list version matrices; and
 - Dated semantic-version entries in a changelog.
+
+Guardrail parity keeps reading Make recipes across non-recipe comments, accepting comment-only
+separators without allowing them to hide extra commands.
 
 Python-policy checks report unresolved environment or matrix version references even alongside valid
 declarations; package and embedded Ruff settings are validated from the same metadata read.
@@ -102,14 +107,15 @@ cross-layer namespace collisions; see [test layout] for discovery and selection.
 ## Architecture
 
 Local commands, hooks, and CI invoke the same CLI. It selects the repository root, loads consumer
-configuration for checks that need it, and dispatches to the relevant checker. Checkers inspect
-repository files and return findings; shared reporting prints `PASS` or `FAIL` messages and returns
-an exit status of `0` for a successful check or `1` for reported failures. Invalid command-line
-arguments are handled separately by the argument parser.
+configuration for checks that need it, and dispatches through native adapters to the relevant
+checker. Checkers inspect repository files and return findings; shared reporting prints text
+`PASS`/`FAIL` messages or versioned JSON and returns `0` for successful native checks or `1` for
+reported failures. Invalid command-line arguments are handled separately by the argument parser.
+External actionlint and hosted-audit commands retain their separate reporting contracts.
 
 Configuration models and loaders live in the `popo.config` subpackage, organized by dependency,
-Python-policy, and automation settings. Existing `popo.config` imports remain available through
-explicit package exports.
+Python-policy, automation, file/header, safety, hosted-audit, guardrail, and selection settings.
+Existing `popo.config` imports remain available through explicit package exports.
 
 Keeping command dispatch, configuration, checks, and reporting separate allows reusable validation
 without embedding a consumer's build or deployment process. See [Architecture] for component
@@ -120,7 +126,7 @@ ownership and [Design] for compatibility and evolution rules.
 - Python 3.13 or 3.14 (`.python-version` selects Python 3.13 for compatible local
   version managers).
 - `packaging>=26.3,<27`, installed automatically with Popo; older versions are not supported.
-- `PyYAML>=6.0.3,<7`, installed automatically for automation-contract parsing.
+- `PyYAML>=6.0.3,<7`, installed automatically for YAML-based checks.
 - Make and a POSIX-compatible shell for the development targets; see the
   [contributing guide] for Windows setup.
 - No cloud account or credentials are required to run repository checks.
@@ -148,6 +154,8 @@ Run a check from the repository it should inspect:
 
 ```console
 popo check-docs
+popo explain
+popo check-guardrail-parity
 popo check-required-files
 popo check-file-headers
 popo check-github-actions-pins
@@ -163,19 +171,23 @@ popo check-all
 Every command accepts `--root`. The equivalent module entry point is
 `python -m popo`.
 
-`check-all` runs the documentation, action-pin, dependency, and Python-policy checks. Release
-changelog validation is separate and requires the release version to check. Automation contracts are
-included when the consumer explicitly configures `[tool.popo.automation]`. Required-file and header
-checks are enabled only by their consumer tables. Repository safety checks are similarly opt-in
-through `[tool.popo.safety]`; see the [safety settings reference]. Available since v0.6.0.
+`check-all` defaults to the documentation, action-pin, dependency, and Python-policy checks.
+Explicit `checks` or `--profile NAME` replace that selection; see the [guardrail guide] for Swift,
+CDK and other consumers. Native offline commands accept `--format json`; `popo explain` describes
+the selection without running checks. Release changelog validation is separate and requires the
+release version to check. Automation contracts are included when the consumer explicitly configures
+`[tool.popo.automation]`. Required-file and header checks are enabled only by their consumer tables.
+Repository safety checks are similarly opt-in through `[tool.popo.safety]`; see the [safety settings
+reference]. Available since v0.6.0.
 
 File checks retain dangling symlinks for containment checks and report required-file path errors
 without skipping later entries. See the [file policies] guide for discovery and preservation rules.
 
 ## Configuration
 
-Configuration lives in the inspected repository's `pyproject.toml`. Paths are relative to the
-repository root.
+Consumer policy can live in standalone `popo.toml` or `[tool.popo]` in `pyproject.toml`. Standalone
+policy takes precedence without merging; paths remain relative to the inspected root. Python package
+metadata remains in `pyproject.toml`. See the [guardrail guide] for language-neutral usage.
 
 ```toml
 [tool.popo.dependencies]
@@ -433,6 +445,7 @@ the [release policy].
 [API guidance]: docs/api/README.md
 [engineering guidance]: docs/engineering.md
 [file policies]: docs/file-policies.md
+[guardrail guide]: docs/guardrails.md
 [hosted audit guide]: docs/hosted-audit.md
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md

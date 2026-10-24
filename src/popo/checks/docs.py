@@ -242,9 +242,9 @@ def validate(
     Returns
     -------
     list[str]
-        Missing-root, missing-target, missing-anchor, or repository-escape
-        diagnostics, retaining the source path and original line number for
-        links.
+        Missing-root, missing-target, missing-anchor, repository-escape, or
+        invalid-reference diagnostics. Link and reference diagnostics retain
+        the source path and original line number.
 
     Raises
     ------
@@ -257,13 +257,13 @@ def validate(
     -----
     Inspect inline links/images and single-line reference definitions outside
     fenced code, HTML comments, and inline code. Accept heading and explicit
-    HTML anchors without requiring HTML tags. Normalize reference labels with
-    whitespace folding and case folding; reject conflicting destinations and
-    undefined full or collapsed reference uses. Shortcut reference syntax and
-    nested/escaped link syntax are not fully parsed. External URLs are skipped
-    without network requests. Fragments are validated only for Markdown
-    targets; other local targets are checked for existence. Files are never
-    modified.
+    HTML anchors; headings do not require explicit HTML tags. Normalize
+    reference labels with whitespace folding and case folding; reject
+    conflicting destinations and undefined full or collapsed reference uses.
+    Shortcut reference syntax and nested/escaped link syntax are not fully
+    External URLs are skipped without network requests. Fragments are validated
+    only for Markdown targets; other local targets are checked for existence.
+    Files are never modified.
     Check reference definitions even when unused. Accept existing directory
     links without fragments; resolve directory fragments through README.md.
     Decode local URL paths and reject destinations whose resolved paths fall

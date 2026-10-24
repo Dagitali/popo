@@ -78,6 +78,9 @@ def _repository(
     findings: list[Finding] = []
 
     def add(check: str, state: bool | None, detail: str, endpoint: str) -> None:
+        """
+        Record unknown evidence separately from a confirmed match or drift.
+        """
         findings.append(
             Finding(
                 policy.name,
