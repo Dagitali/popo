@@ -1,6 +1,10 @@
 <!--
 repository-safety.md
-Read-only local safety policy
+popo/docs
+
+Copyright © 2026 Dagitali LLC. All rights reserved.
+
+Read-only local safety policy.
 
 Maintainer Notes
 - Keep generic checks separate from consumer policy and hosted evidence.
