@@ -1,9 +1,10 @@
 ---
 applyTo: "**/*.mmd,**/*.mermaid,**/*.md"
 ---
+
 <!--
 mermaid.instructions.md
-popo
+popo/.github/instructions
 
 Copyright © 2026 Dagitali LLC. All rights reserved.
 
