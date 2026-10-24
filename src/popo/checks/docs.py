@@ -59,7 +59,7 @@ def _anchors(
     Returns
     -------
     set[str]
-        Lowercase heading slugs and recognized HTML anchor names or IDs.
+        Lowercase heading slugs and lowercased HTML anchor names or IDs.
         Repeated heading slugs receive ``-1``, ``-2``, and later suffixes;
         explicit anchors do not increment heading-duplicate counters.
 
@@ -103,7 +103,8 @@ def _content_lines(
     Yields
     ------
     tuple[int, str]
-        Original one-based line number and line text without its newline.
+        Original one-based line number and visible text without its newline
+        or HTML comment spans. Text on either side of a comment is joined.
 
     Raises
     ------

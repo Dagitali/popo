@@ -73,7 +73,8 @@ def read_popo(
     Raises
     ------
     ConfigurationError
-        If selected TOML is invalid or tool or tool.popo is not a table.
+        If selected TOML is invalid, or Python metadata contains a non-table
+        tool or tool.popo value. Standalone policy is returned at its root.
     OSError, UnicodeError
         If selected configuration cannot be read or decoded as UTF-8.
     """

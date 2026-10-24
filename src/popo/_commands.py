@@ -95,6 +95,9 @@ def _automation(
     ------
     ConfigurationError
         Invalid consumer configuration, reported by :func:`~popo.cli.main`.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
     """
     config = load_automation_config(args.root)
     return automation.validate(
@@ -169,6 +172,9 @@ def _dependencies(
         If the root cannot resolve or an input cannot be read.
     UnicodeError
         If an input cannot be decoded as UTF-8.
+    ValueError
+        If the shared configuration loader cannot express dependency metadata
+        relative to the consumer root, such as an absolute path outside it.
     """
     config = load_config(args.root.resolve()).dependencies
     return dependencies.validate(config), 'dependency boundaries are synchronized'
@@ -197,12 +203,40 @@ def _docs(
         If a path cannot resolve or inspected Markdown cannot be read.
     UnicodeError
         If inspected Markdown cannot be decoded as UTF-8.
+    ValueError
+        If a Markdown destination is rejected by URL parsing, such as an
+        invalid bracketed host. This error propagates rather than becoming
+        a validation diagnostic.
     """
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
 
 def _guardrail_parity(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Inspect explicit local and CI invocation contracts without execution."""
+    """
+    Inspect explicit local and CI invocation contracts without execution.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root used to load the parity contract.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Contract diagnostics and a success-only summary. File, decoding, YAML
+        and value errors caught by the validator are returned as diagnostics.
+
+    Raises
+    ------
+    ConfigurationError
+        If the parity policy is absent or malformed, paths or identifiers are
+        unsafe, or the selected profile is invalid.
+    OSError
+        If the consumer root or configured paths cannot resolve, or consumer
+        configuration cannot be read.
+    UnicodeError
+        If consumer configuration cannot be decoded as UTF-8.
+    """
     return guardrails.validate(
         load_guardrails_config(args.root),
     ), 'guardrail entry points agree'
@@ -233,6 +267,9 @@ def _python(
         If the root cannot resolve or an input cannot be read.
     UnicodeError
         If an input cannot be decoded as UTF-8.
+    ValueError
+        If the shared configuration loader cannot express dependency metadata
+        relative to the consumer root, such as an absolute path outside it.
     """
     config = load_config(args.root.resolve()).python_policy
     return python_policy.validate(config), 'Python policy is consistent'
@@ -253,6 +290,14 @@ def _safety(
     -------
     tuple[list[str], str]
         Diagnostics and success-only message.
+
+    Raises
+    ------
+    ConfigurationError
+        If safety policy is absent or malformed.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
     """
     config = load_safety_config(args.root)
     if not config.configured:
@@ -278,6 +323,9 @@ def _required_files(args: argparse.Namespace) -> tuple[list[str], str]:
     ------
     ConfigurationError
         If the policy is absent or malformed.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
     """
     config = load_required_files_config(args.root)
     if config is None:
@@ -303,6 +351,9 @@ def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
     ------
     ConfigurationError
         If the policy is absent or malformed.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
     """
     config = load_headers_config(args.root)
     if config is None:
