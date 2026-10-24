@@ -55,7 +55,9 @@ class TestGuardrailConfiguration:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
-        """The delegated profile may inspect its own inert invocation contract."""
+        """
+        The delegated profile may inspect its own inert invocation contract.
+        """
         write_file(
             'popo.toml',
             '[profiles.guardrails]\nchecks=["check-guardrail-parity"]\n[guardrails]',

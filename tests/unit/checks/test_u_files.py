@@ -505,6 +505,7 @@ class TestHeaderDiscoveryBoundaries:
         """Keep recursive fallback permission failures visible to consumers."""
 
         def walk(path: Path, *, on_error: Callable[[OSError], None]) -> object:
+            """Simulate a traversal failure through the supplied callback."""
             on_error(PermissionError('cannot traverse source'))
             return iter(())
 
@@ -581,6 +582,7 @@ class TestFileDiscoveryFailures:
         inspect_path = getattr(Path, operation)
 
         def inspect(path: Path, *args: object, **kwargs: object) -> object:
+            """Fail one fixture path while retaining normal inspection."""
             if path == tmp_path / 'unreadable':
                 raise error
             return inspect_path(path, *args, **kwargs)
@@ -602,7 +604,8 @@ class TestHeaderDirectoryLinks:
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Inspect file links without treating a linked directory as a source file.
+        Inspect file links without treating a linked directory as a source
+        file.
         """
         target = headers.root / 'directory'
         target.mkdir()

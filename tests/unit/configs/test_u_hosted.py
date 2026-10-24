@@ -28,6 +28,9 @@ class TestHostedConfiguration:
         hosted_exception_config: str,
         section: str,
     ) -> None:
+        """
+        Reject duplicate repository inventory and exception scopes.
+        """
         if section == 'repositories':
             extra = (
                 '\n[[tool.popo.hosted.repositories]]\n'
@@ -66,6 +69,9 @@ class TestHostedConfiguration:
         tmp_path: Path,
         config: str,
     ) -> None:
+        """
+        Reject absent, malformed, or unsupported hosted expectations.
+        """
         (tmp_path / 'pyproject.toml').write_text(config)
         with pytest.raises(ConfigurationError):
             load_hosted_config(tmp_path)
@@ -94,6 +100,9 @@ class TestHostedConfiguration:
         original: str,
         replacement: str,
     ) -> None:
+        """
+        Reject incomplete approvals, unsafe URLs, and invalid expiry dates.
+        """
         (tmp_path / 'pyproject.toml').write_text(
             hosted_exception_config.replace(original, replacement),
         )
@@ -105,6 +114,9 @@ class TestHostedConfiguration:
         tmp_path: Path,
         hosted_exception_config: str,
     ) -> None:
+        """
+        Load the exact approved scope and its inclusive expiry date.
+        """
         (tmp_path / 'pyproject.toml').write_text(hosted_exception_config)
         config = load_hosted_config(tmp_path)
         assert config.exceptions[0].expires == date(2026, 10, 31)

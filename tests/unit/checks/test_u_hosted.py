@@ -50,6 +50,9 @@ class TestHostedObservations:
         github_responses: dict[str, Response],
         http_status: int | None,
     ) -> None:
+        """
+        Keep failed security requests inaccessible regardless of HTTP status.
+        """
         github_responses['repos/example/library/private-vulnerability-reporting'] = (
             Response(
                 error='GET failed',
@@ -81,6 +84,10 @@ class TestHostedObservations:
         expires: date,
         expected: str,
     ) -> None:
+        """
+        Distinguish approved drift, expired exceptions, and unavailable
+        evidence.
+        """
         github_responses['repos/example/library/private-vulnerability-reporting'] = (
             Response(
                 {'enabled': enabled},
@@ -106,6 +113,9 @@ class TestHostedObservations:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
     ) -> None:
+        """
+        Reject scalar check contexts as inaccessible protection evidence.
+        """
         github_responses['repos/example/library/branches/main/protection'] = Response(
             {
                 'required_status_checks': {'contexts': 'quality'},
@@ -177,6 +187,9 @@ class TestHostedObservations:
         check: str,
         status: str,
     ) -> None:
+        """
+        Distinguish missing policy from malformed or incomplete API evidence.
+        """
         github_responses['repos/example/library' + suffix] = Response(data)
         assert audit_statuses(hosted_policy, github_responses)[check] == status
 
@@ -185,6 +198,9 @@ class TestHostedObservations:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
     ) -> None:
+        """
+        Treat an omitted security field as inaccessible evidence.
+        """
         github_responses['repos/example/library'] = Response({'default_branch': 'main'})
         assert (
             audit_statuses(hosted_policy, github_responses)['secret-scanning']
@@ -195,6 +211,9 @@ class TestHostedObservations:
         self,
         hosted_policy: RepositoryPolicy,
     ) -> None:
+        """
+        Report every configured expectation when repository access fails.
+        """
         result = audit(
             HostedConfig((hosted_policy,), ()),
             lambda path, pages: Response(error='404'),
@@ -207,6 +226,9 @@ class TestHostedObservations:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
     ) -> None:
+        """
+        Accept effective-rule evidence when legacy protection is absent.
+        """
         github_responses['repos/example/library/branches/main/protection'] = Response(
             'Branch not protected',
             '404',
@@ -236,6 +258,9 @@ class TestHostedObservations:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
     ) -> None:
+        """
+        Keep an ambiguous legacy 404 distinct from confirmed absence.
+        """
         github_responses['repos/example/library/branches/main/protection'] = Response(
             error='404',
             status=404,
@@ -250,6 +275,9 @@ class TestHostedObservations:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
     ) -> None:
+        """
+        Verify every expectation against complete deterministic observations.
+        """
         assert set(audit_statuses(hosted_policy, github_responses).values()) == {
             'verified',
         }

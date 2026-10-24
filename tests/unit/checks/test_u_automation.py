@@ -325,8 +325,7 @@ class TestTemplateContracts:
     ) -> None:
         """
         Verify invalid template metadata fails full checking but passes
-        pins-only
-        mode.
+        pins-only mode.
 
         Parameters
         ----------
@@ -374,8 +373,7 @@ class TestTemplateContracts:
     ) -> None:
         """
         Verify placeholder exemptions depend on template scope and existing
-        self
-        targets.
+        self targets.
 
         Parameters
         ----------
