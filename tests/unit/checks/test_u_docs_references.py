@@ -44,11 +44,10 @@ class TestMarkdownReferencesAndImages:
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
         target : str
-            Destination or expected configuration value selected for the
-            scenario.
+            Destination of an unused reference definition that must fail
+            validation.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected diagnostic text for the broken reference destination.
         """
         readme = write_file('README.md', f'# Project\n\n[unused]: {target}\n')
         assert validate(tmp_path) == [f'{readme}:3: {message}: {target}']

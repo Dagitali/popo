@@ -14,6 +14,13 @@ from tests.support.files import FileWriter
 # SECTION: TESTS
 
 
+@pytest.mark.parametrize(
+    ('filename', 'prefix'),
+    [
+        pytest.param('popo.toml', '[automation]\n', id='standalone'),
+        pytest.param('pyproject.toml', '[tool.popo.automation]\n', id='pyproject'),
+    ],
+)
 class TestAutomationConfiguration:
     """Validate consumer automation configuration settings."""
 
@@ -21,31 +28,42 @@ class TestAutomationConfiguration:
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        filename: str,
+        prefix: str,
     ) -> None:
         """Preserve automation's intentional duplicate-array compatibility."""
         write_file(
-            'pyproject.toml',
-            '[tool.popo.automation]\nworkflow-globs=["ci.yml", "ci.yml"]',
+            filename,
+            prefix + 'workflow-globs=["ci.yml", "ci.yml"]',
         )
         assert load_automation_config(tmp_path).workflow_globs == ('ci.yml', 'ci.yml')
 
     @pytest.mark.parametrize(
-        'setting',
+        ('setting', 'message'),
         [
-            'unknown = []',
-            'workflow-globs = "x"',
-            'action-globs = [1]',
-            'yaml-globs = ["../x"]',
-            'template-globs = ["/absolute"]',
-            'local-repositories = ["owner"]',
-            'template-placeholder-refs = ["a/b"]',
+            ('unknown = []', 'unknown tool.popo.automation setting'),
+            ('workflow-globs = "x"', 'workflow-globs must be an array'),
+            ('action-globs = [1]', 'action-globs must be an array'),
+            ('yaml-globs = ["../x"]', 'yaml-globs must stay inside'),
+            ('template-globs = ["/absolute"]', 'template-globs must stay inside'),
+            (
+                'local-repositories = ["owner"]',
+                'local-repositories must contain owner/repo',
+            ),
+            (
+                'template-placeholder-refs = ["a/b"]',
+                'template placeholders must be exact ref tokens',
+            ),
         ],
     )
     def test_invalid_configuration(
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        filename: str,
+        prefix: str,
         setting: str,
+        message: str,
     ) -> None:
         """
         Verify automation loading rejects unsupported keys, types, and unsafe
@@ -59,9 +77,15 @@ class TestAutomationConfiguration:
             UTF-8 writer creating parent directories in ``tmp_path``.
         setting : str
             Automation TOML setting selected to exercise invalid configuration.
+        filename : str
+            Standalone or Python metadata policy filename.
+        prefix : str
+            Table header appropriate to the selected policy source.
+        message : str
+            Diagnostic identifying the invalid setting.
         """
-        write_file('pyproject.toml', '[tool.popo.automation]\n' + setting)
-        with pytest.raises(ConfigurationError):
+        write_file(filename, prefix + setting)
+        with pytest.raises(ConfigurationError, match=message):
             load_automation_config(tmp_path)
 
 

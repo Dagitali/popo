@@ -36,7 +36,25 @@ class Finding:
 
 @dataclass(frozen=True)
 class Response:
-    """Represent a parsed API response without retaining credentials."""
+    """
+    Represent API data or a failure returned by the read-only adapter.
+
+    Attributes
+    ----------
+    data : typing.Any
+        Parsed successful response, or recognized absence evidence on failure.
+        Defaults to None; data is retained without copying or sanitizing it.
+    error : str
+        Adapter-provided failure description; empty for successful responses.
+    status : int or None
+        HTTP status extracted from a failed CLI response, when available.
+
+    Notes
+    -----
+    Direct construction performs no validation or credential redaction. The
+    default adapter supplies sanitized failure text, and audit findings select
+    narrow observations rather than serializing this response in full.
+    """
 
     data: Any = None
     error: str = ''
@@ -56,7 +74,20 @@ class Audit:
         return any(item.status in {'missing', 'inaccessible'} for item in self.findings)
 
     def to_json(self) -> str:
-        """Serialize only the sanitized report, never full API responses."""
+        """
+        Serialize the timestamp and findings, excluding API response data.
+
+        Returns
+        -------
+        str
+            Indented JSON containing the audit dataclass fields.
+
+        Notes
+        -----
+        Findings produced by :func:`audit` contain selected observations.
+        Serialization performs no additional sanitization or redaction of
+        caller-constructed findings.
+        """
         return json.dumps(asdict(self), indent=2)
 
 
@@ -367,7 +398,9 @@ def audit(
     config : HostedConfig
         Validated expectations, supplied by the consuming repository.
     get : callable, optional
-        Read-only API adapter; deterministic tests supply an in-memory fake.
+        Read-only API adapter accepting an endpoint and pagination flag, and
+        returning a Response. Defaults to the authenticated GitHub CLI adapter;
+        deterministic tests supply an in-memory fake.
     today : datetime.date or None, optional
         UTC date for exception expiry; defaults to the current UTC date.
 
@@ -380,6 +413,10 @@ def audit(
 
     Notes
     -----
+    Errors raised by a custom API adapter propagate; the default adapter
+    returns unavailable evidence for launch, timeout, decoding and API errors.
+    The supplied today value controls expiry only; observed_at always records
+    the actual current UTC time.
     Approval URLs are recorded attestations, not independently authenticated
     approvals. This audit does not prove notification delivery, check-source
     identity, bypass restrictions, or successful caller execution.

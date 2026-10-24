@@ -91,8 +91,10 @@ than constructors or shared mutable class state. For functions and methods with 
 put each parameter on its own line, including `self`, and retain the trailing comma. Parameterize
 inputs that share a contract so each scenario has independent setup and failure reporting; reserve
 loops for assertions about one result. Assert specific diagnostics, not merely a nonempty result.
-The `write_file` fixture creates temporary UTF-8 repository files. Keep domain-specific policy
-fixtures local to their test module unless multiple layers use them. Hosted observations live in
+For mutation cases, verify the source marker exists before replacing it. Compare file-byte snapshots
+when checking that validation preserves consumer inputs, including rejected configurations. The
+`write_file` fixture creates temporary UTF-8 repository files. Keep domain-specific policy fixtures
+local to their test module unless multiple layers use them. Hosted observations live in
 `tests/support/hosted.py`, with prefixed fixture names and function scope so mutable API responses
 remain isolated. Hosted configuration cases belong in `unit/configs/`, GET-adapter and observation
 cases in `unit/checks/`, and public CLI reporting in `integration/`. Parameterized CLI-format
@@ -101,7 +103,10 @@ hosted and native commands; invalid configuration must fail before the observer 
 tests use timeouts; Make runs against a temporary copy of the Makefile, and Make and Git fixtures
 exclude inherited tool configuration where it can change the result. The Make runner derives
 configurable variables from the copied Makefile and strips caller overrides such as `TEST_ARGS`;
-pass deliberate overrides as Make command arguments instead.
+pass deliberate overrides as Make command arguments instead. Header-policy unit fixtures simulate
+missing Git by default, with explicit subprocess outcomes for inventory cases. Actionlint unit tests
+inspect the temporary source view during the mocked tool call and check cleanup after successful
+execution, tool failure, and process-launch failure.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
@@ -110,6 +115,26 @@ policies through both interfaces. Passing and failing file-policy scenarios use 
 and compare all input bytes after checking. Version output must equal the selected artifact filename
 version rather than merely parse as a version. Coverage is diagnostic; no reduced threshold masks
 regressions.
+
+`e2e/conftest.py` supplies artifact installations shared by the e2e modules, with the process helper
+in `support/installation.py`. `make test-installation` selects the entire e2e directory, including
+the [consumer examples]. `support/examples.py` parameterizes Swift, Python and Python CDK consumers,
+copies their maintained inputs and supplies independent drift cases to integration and installed
+execution tests. Each consumer's own pinned hook runner is selected for that example. The latter
+install the example's pinned pre-commit runner alongside the wheel or sdist under test, put
+installed commands on PATH, and clear inherited Make/Git/hook overrides. Each case owns a disposable
+consumer.
+
+Consumer adoption tests execute Make, a Git commit through an actually installed pre-commit hook,
+and the workflow step's command locally. Matching cases pass; documentation failures fail every
+caller; recipe, hook-argument, CI-command and working-directory drift fail Make and Git-hook
+execution with specific diagnostics. Source-byte comparisons exclude disposable Git metadata and
+keep tool caches outside consumers. These tests require Git, Make and a POSIX shell and run on
+Linux/macOS; Windows skips these examples while retaining native installed-CLI tests. Integration
+tests also reject changed Python-version and dependency declarations in Python/CDK consumers while
+their wiring remains valid. Application tests and CDK synthesis are separate optional commands in
+each example. Local execution does not establish hosted workflow results, installation from the
+examples' Git pins, or branch enforcement.
 
 Guardrail contract fixtures live in `tests/support/guardrails.py` and serve configuration, checker
 and CLI tests. Cases cover non-Python consumers, explicit profiles, structured results, root
@@ -152,5 +177,6 @@ python -m pytest --cov=popo --cov-branch --cov-report=term-missing
 See the [contributing guide] for setup and dependency prerequisites.
 
 [contributing guide]: ../CONTRIBUTING.md
+[consumer examples]: ../examples/README.md
 [test configuration]: conftest.py
 [artifact fixtures]: support/artifacts.py

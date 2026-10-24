@@ -1,0 +1,8 @@
+# requirements.txt
+# popo/examples/cdk
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Pinned application dependencies, separate from the shared guardrail tools.
+aws-cdk-lib==2.271.0
+constructs==10.5.0

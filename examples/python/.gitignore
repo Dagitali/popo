@@ -1,0 +1,11 @@
+# .gitignore
+# popo/examples/python
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Keep local Python environments and application output out of this consumer.
+.venv/
+__pycache__/
+*.egg-info/
+build/
+dist/

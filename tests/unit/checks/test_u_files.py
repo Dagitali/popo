@@ -8,7 +8,7 @@ import subprocess
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -24,9 +24,10 @@ from tests.support.files import FileWriter
 # SECTION: FIXTURES
 
 
-@pytest.fixture
-def headers(
+@pytest.fixture(name='headers')
+def headers_fixture(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> HeadersConfig:
     """
     Provide a synthetic consumer header policy with no repository coupling.
@@ -35,12 +36,18 @@ def headers(
     ----------
     tmp_path : pathlib.Path
         Isolated source root.
+    monkeypatch : pytest.MonkeyPatch
+        Isolate discovery from installed Git and inherited Git configuration.
 
     Returns
     -------
     HeadersConfig
         Ordered hash-comment rule with identity and purpose requirements.
     """
+    monkeypatch.setattr(
+        'popo.checks.files.subprocess.run',
+        Mock(side_effect=FileNotFoundError('Git unavailable in fixture')),
+    )
     return HeadersConfig(
         tmp_path,
         'Sample',
@@ -265,9 +272,18 @@ class TestFilePolicies:
         config = replace(headers, rules=(replace(headers.rules[0], format='raw'),))
         assert message in validate_headers(config)[0]
 
+    @pytest.mark.parametrize(
+        ('content', 'message'),
+        [
+            pytest.param(b'def invalid:', 'invalid Python', id='invalid-python'),
+            pytest.param(b'\xff\xfe', 'decode', id='undecodable-source'),
+        ],
+    )
     def test_invalid_python_and_binary_without_exception(
         self,
         headers: HeadersConfig,
+        content: bytes,
+        message: str,
     ) -> None:
         """
         Fail malformed Python and undecodable source instead of
@@ -277,13 +293,18 @@ class TestFilePolicies:
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
+        content : bytes
+            Malformed or undecodable source written independently per case.
+        message : str
+            Expected diagnostic for the rejected source.
         """
         source = headers.root / 'sample'
-        source.write_text('def invalid:', encoding='utf-8')
+        source.write_bytes(content)
         config = replace(headers, rules=(replace(headers.rules[0], format='python'),))
-        assert 'invalid Python' in validate_headers(config)[0]
-        source.write_bytes(b'\xff\xfe')
-        assert validate_headers(config)
+        failures = validate_headers(config)
+        assert len(failures) == 1
+        assert message in failures[0]
+        assert source.read_bytes() == content
 
     def test_exception_unknown_format_and_ignored_artifacts(
         self,
@@ -331,7 +352,6 @@ class TestFilePolicies:
     def test_escaping_header_symlink_even_with_exception(
         self,
         headers: HeadersConfig,
-        write_file: FileWriter,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
@@ -341,8 +361,6 @@ class TestFilePolicies:
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
-        write_file : FileWriter
-            UTF-8 writer creating synthetic policy inputs.
         symlink : collections.abc.Callable
             Platform-aware creator for synthetic symbolic links.
         """
@@ -355,7 +373,10 @@ class TestFilePolicies:
         )
         assert 'escapes' in validate_headers(config)[0]
 
-    def test_discovery_timeout_is_failure(self, headers: HeadersConfig) -> None:
+    def test_discovery_timeout_is_failure(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
         Bound Git discovery and retain timeout failures as diagnostics.
 
@@ -396,7 +417,10 @@ class TestFilePolicies:
             assert '--exclude-standard' in run.call_args.args[0]
             assert run.call_args.kwargs['timeout'] == 30
 
-    def test_broken_git_inventory_fails(self, headers: HeadersConfig) -> None:
+    def test_broken_git_inventory_fails(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
         Report a broken repository rather than silently changing discovery.
 
@@ -406,7 +430,13 @@ class TestFilePolicies:
             Synthetic consumer root and header policy.
         """
         (headers.root / '.git').mkdir()
-        assert 'Git source inventory failed' in validate_headers(headers)[0]
+        with patch(
+            'popo.checks.files.subprocess.run',
+            return_value=subprocess.CompletedProcess([], 128, '', 'broken repository'),
+        ):
+            assert validate_headers(headers) == [
+                'header source discovery failed: Git source inventory failed',
+            ]
 
     def test_missing_git_uses_local_discovery(self, headers: HeadersConfig) -> None:
         """

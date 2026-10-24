@@ -1,7 +1,7 @@
 """
 :mod:`tests.support.artifacts` module.
 
-Build distributions once, or select the artifacts provided by CI.
+Build distributions once per session, or select caller-supplied artifacts.
 """
 
 import subprocess

@@ -55,7 +55,7 @@ class TestChangelog:
             File contents selected for the parameterized success or failure
             scenario.
         expected : list[str]
-            Exact expected validator result or command text for the scenario.
+            Exact expected diagnostics; an empty list means validation passes.
         release : str
             Release-version string supplied to changelog validation.
         """

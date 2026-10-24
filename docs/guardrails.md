@@ -17,6 +17,11 @@ Define a consumer-owned check profile once, invoke it through Make, and delegate
 hook and CI step to that target. Popo inspects the wiring without executing consumer commands. This
 works for Swift, Python, CDK and other repositories; Python remains Popo's execution runtime.
 
+For complete runnable consumers, use the [consumer examples] for Swift, Python and Python CDK. Each
+is independently copyable and includes application tests, shared local/CI tool inputs, a full CI
+workflow, and deliberate drift exercises. Python and CDK add their own dependency and Python
+policies. The fragments below explain the shared contract; each example provides setup instructions.
+
 - [Consumer Policy](#consumer-policy)
 - [Make Target](#make-target)
 - [Pre-Commit Hook](#pre-commit-hook)
@@ -139,5 +144,6 @@ Named profiles are local policy selections. Shared remote policy bundles, worksp
 Swift/CDK semantic adapters, SARIF, toolchain reconciliation and generalized exceptions remain
 future work; this foundation does not silently enable them.
 
+[consumer examples]: ../examples/README.md
 [configuration reference]: CONFIGURATION.md#check-selection
 [output contract]: CONFIGURATION.md#output-and-explanation

@@ -1,0 +1,29 @@
+# popo.toml
+# popo/examples/swift
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# One consumer-owned profile for local and CI guardrails.
+
+[profiles.guardrails]
+checks = [
+  "check-docs",
+  "check-required-files",
+  "check-github-actions-pins",
+  "check-guardrail-parity",
+]
+
+[files]
+required = [
+  "README.md",
+  "Package.swift",
+  "Sources/GuardrailExample/Greeting.swift",
+  "Tests/GuardrailExampleTests/GreetingTests.swift",
+  "Makefile",
+  ".pre-commit-config.yaml",
+  ".github/workflows/ci.yml",
+  "requirements-guardrails.txt",
+]
+
+[guardrails]
+# Defaults inspect the guardrails Make target/profile/job and popo hook/step.

@@ -5,10 +5,6 @@ Exercise installed commands outside the checkout in clean environments.
 """
 
 import json
-import os
-import subprocess
-import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -17,90 +13,7 @@ from packaging.version import Version
 
 from popo.config.guardrails import GuardrailsConfig
 from tests.support.files import snapshot_files
-
-# SECTION: DATA CLASSES
-
-
-@dataclass(frozen=True, slots=True)
-class Installation:
-    """
-    Represent an isolated artifact installation for public CLI tests.
-
-    Attributes
-    ----------
-    python : pathlib.Path
-        Interpreter in the temporary installation's virtual environment.
-    command : pathlib.Path
-        Installed popo console-script executable.
-    directory : pathlib.Path
-        Subprocess working directory outside the source checkout.
-    environment : dict[str, str]
-        Environment passed to subprocesses, with PYTHONPATH/PYTHONHOME removed
-        by the installation fixture.
-
-    Notes
-    -----
-    The dataclass is frozen and slotted; it does not create the environment or
-    validate paths. Freezing prevents attribute rebinding but does not make the
-    environment dictionary immutable.
-    """
-
-    python: Path
-    command: Path
-    directory: Path
-    environment: dict[str, str]
-
-    def run(
-        self,
-        *arguments: str,
-        module: bool = False,
-    ) -> subprocess.CompletedProcess[str]:
-        """
-        Run the installed console script or module and capture its result.
-
-        Parameters
-        ----------
-        *arguments : str
-            CLI arguments appended to the chosen entry point.
-        module : bool, optional
-            Use the installation's Python interpreter with -m popo when
-            ``True``; otherwise invoke its console script. Defaults to
-            ``False``.
-
-        Returns
-        -------
-        subprocess.CompletedProcess[str]
-            Exit status and captured text output, including unsuccessful CLI
-            exits.
-
-        Raises
-        ------
-        subprocess.TimeoutExpired
-            If the process exceeds 30 seconds.
-        OSError, UnicodeError
-            If startup fails or captured output cannot be decoded.
-
-        Notes
-        -----
-        Use :attr:`Installation.directory` and
-        :attr:`Installation.environment`. Nonzero statuses are returned for
-        scenario assertions instead of raising
-        :exc:`~subprocess.CalledProcessError`.
-        """
-        prefix = [str(self.python), '-m', 'popo'] if module else [str(self.command)]
-        return subprocess.run(
-            [*prefix, *arguments],
-            cwd=self.directory,
-            env=self.environment,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-
-
-# !SECTION
-
+from tests.support.installation import Installation
 
 # SECTION: FIXTURES
 
@@ -128,77 +41,6 @@ def artifact_version_fixture(
     if artifact.suffix == '.whl':
         return parse_wheel_filename(artifact.name)[1]
     return parse_sdist_filename(artifact.name)[1]
-
-
-@pytest.fixture(
-    name='installation',
-    scope='module',
-)
-def installation_fixture(
-    artifact: Path,
-    tmp_path_factory: pytest.TempPathFactory,
-) -> Installation:
-    """
-    Install a built artifact once per module in a separate virtual environment.
-
-    Parameters
-    ----------
-    artifact : pathlib.Path
-        Wheel or sdist selected by the shared parameterized artifact fixture.
-    tmp_path_factory : pytest.TempPathFactory
-        Factory creating the temporary directory for this installation.
-
-    Returns
-    -------
-    Installation
-        Interpreter, console script, working directory, and sanitized
-        environment after virtual-environment creation, pip installation, and
-        pip check.
-
-    Raises
-    ------
-    subprocess.CalledProcessError
-        If environment creation, artifact installation, or dependency checking
-        exits unsuccessfully.
-    subprocess.TimeoutExpired
-        If creation/checking exceeds 60 seconds or installation exceeds 300.
-    OSError
-        If directory creation or subprocess startup fails.
-
-    Notes
-    -----
-    Remove PYTHONPATH and PYTHONHOME from the inherited environment to avoid
-    source-import overrides. :mod:`pip` may download runtime or build
-    requirements. All installed-CLI scenarios in the module share this fixture
-    for each artifact; their consumer repositories remain independent.
-    """
-    directory = tmp_path_factory.mktemp('installed')
-    environment = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in {'PYTHONPATH', 'PYTHONHOME'}
-    }
-    venv = directory / 'venv'
-    bin_dir = venv / ('Scripts' if os.name == 'nt' else 'bin')
-    python = bin_dir / ('python.exe' if os.name == 'nt' else 'python')
-    for command, timeout in (
-        ([sys.executable, '-m', 'venv', str(venv)], 60),
-        ([str(python), '-m', 'pip', 'install', str(artifact)], 300),
-        ([str(python), '-m', 'pip', 'check'], 60),
-    ):
-        subprocess.run(
-            command,
-            cwd=directory,
-            env=environment,
-            check=True,
-            timeout=timeout,
-        )
-    return Installation(
-        python,
-        bin_dir / ('popo.exe' if os.name == 'nt' else 'popo'),
-        directory,
-        environment,
-    )
 
 
 # !SECTION
@@ -337,8 +179,7 @@ class TestInstalledCLI:
         status : int
             Expected process or CLI exit status.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected standard-output substring for the supplied exit status.
         """
         readme = tmp_path / 'README.md'
         readme.write_text(content, encoding='utf-8')

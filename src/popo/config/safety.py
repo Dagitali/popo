@@ -14,7 +14,8 @@ from ._common import ConfigurationError, read_popo, require_table
 
 @dataclass(frozen=True, slots=True)
 class SafetyConfig:
-    """Store validated consumer safety policy.
+    """
+    Store validated consumer safety policy.
 
     Attributes
     ----------
@@ -27,7 +28,11 @@ class SafetyConfig:
     npm_pairs : tuple[tuple[str, str], ...]
         Manifest and lockfile pairs, including copied source manifests.
     configured : bool
-        Whether the consumer opted into aggregate validation.
+        Whether the selected consumer policy declares a safety table.
+
+    Notes
+    -----
+    Direct construction does not validate paths, pairs, or exception records.
     """
 
     root: Path
