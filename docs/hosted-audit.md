@@ -1,6 +1,10 @@
 <!--
-docs/hosted-audit.md
-Popo hosted settings audit
+hosted-audit.md
+popo/docs
+
+Copyright © 2026 Dagitali LLC. All rights reserved.
+
+Consumer-owned hosted expectations and limits of GitHub API evidence.
 
 Responsibilities
 - Document explicit hosted expectations and limits of API evidence.
@@ -13,8 +17,8 @@ Maintainer Notes
 
 The opt-in `audit-github-settings` command compares configured expectations with GitHub API
 observations. Public policy files do not establish enforcement. The command requires authenticated
-`gh` access to github.com and is not included in `check-all`, tests, or ordinary `make check`. This
-capability is unreleased; use the development checkout until a reviewed Popo release includes it.
+`gh` access to github.com. Neither `check-all` nor ordinary `make check` invokes the live audit;
+deterministic tests cover it using simulated API responses without credentials or network access.
 
 - [Configuration](#configuration)
 - [Evidence and Access](#evidence-and-access)
@@ -22,7 +26,9 @@ capability is unreleased; use the development checkout until a reviewed Popo rel
 
 ## Configuration
 
-Add explicit inventory to the consuming repository's pyproject.toml:
+Add explicit inventory to the consuming repository's `pyproject.toml` as below, or use `[hosted]`
+and `[[hosted.repositories]]` in standalone `popo.toml`. The [configuration reference] defines
+policy source precedence; the two files are never merged.
 
 ```toml
 [tool.popo.hosted]
@@ -105,6 +111,7 @@ Inaccessible findings can never be excepted. The approval URL and approver are n
 this audit; repository review must establish their legitimacy. Do not put confidential approval
 details or vulnerability reports into public configuration.
 
+[configuration reference]: CONFIGURATION.md
 [legacy protection]: https://docs.github.com/en/rest/branches/branch-protection
 [repository API]: https://docs.github.com/en/rest/repos/repos#get-a-repository
 [branch rules]: https://docs.github.com/en/rest/repos/rules

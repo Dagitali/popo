@@ -30,6 +30,7 @@ are resolved against that root. See the [configuration example] for a Python sta
 - [Python-Policy Settings](#python-policy-settings)
 - [Automation Settings](#automation-settings)
 - [File Policy Settings](#file-policy-settings)
+- [Repository Safety Settings](#repository-safety-settings)
 - [Hosted Audit Settings](#hosted-audit-settings)
 - [Command Boundaries](#command-boundaries)
 - [Validation Rules](#validation-rules)
@@ -49,8 +50,9 @@ order. Reported failures and per-domain configuration failures do not hide later
 Unhandled filesystem and decoding errors retain their command-specific propagation boundaries.
 
 Without explicit selection, legacy baseline checks remain enabled and configured optional domains
-join them. Explicit selection can omit configured domains; unselected domain settings are not
-validated by execution. A selected file/header/safety check still requires its own configuration.
+join them. Explicit selection can omit configured domains; their settings are generally not loaded.
+Dependency and Python-policy settings share a loader, so either selected check validates both
+domains' configuration. A selected file/header/safety check still requires its own configuration.
 Automation retains its standalone workflow defaults. External actionlint, hosted auditing and
 version-dependent release validation remain explicit commands, outside aggregate selection.
 
@@ -168,12 +170,20 @@ supplies identity, ordered comment rules and explicit preservation exceptions fo
 `check-all`; an explicit command fails if its own table is absent. See [file policies] for the
 complete schema, matching rules and source-discovery boundaries.
 
+## Repository Safety Settings
+
+`[safety]` (or `[tool.popo.safety]`) configures workflow discovery patterns, reviewed
+privileged-trigger exceptions, and npm manifest/lockfile pairs. The explicit command requires this
+table; default aggregate selection includes it when configured. See [repository safety] for the
+schema, UTC expiry rules, and the limits of static workflow and dependency inspection. These checks
+do not execute workflow scripts or install npm packages.
+
 ## Hosted Audit Settings
 
 `[tool.popo.hosted]` declares explicit repository expectations and approved exception attestations.
 Only `audit-github-settings` loads it; `check-all` stays offline. See [Hosted Settings Audit] for
 the complete schema, statuses, permissions, and evidence limits. Unknown hosted keys and malformed
-or duplicate scopes fail loading rather than being silently ignored. This capability is unreleased.
+or duplicate scopes fail loading rather than being silently ignored.
 
 ## Command Boundaries
 
@@ -242,3 +252,4 @@ read-only and do not repair files or change consumer policy automatically.
 [file policies]: file-policies.md
 [guardrail guide]: guardrails.md
 [Hosted Settings Audit]: hosted-audit.md
+[repository safety]: repository-safety.md

@@ -122,9 +122,12 @@ popo check-file-headers --root .
 ```
 
 Zero means the configured boundary passed; missing policy, malformed configuration or violations
-return one. Explicit commands load only their own policy. `check-all` adds both checks when their
-tables are present, alongside its existing checks; it is not a generic task runner.
+return one. Explicit commands load only their own policy. Default `check-all` selection adds these
+checks when their respective tables are present; explicit check lists and named profiles control
+selection instead. See the [configuration reference] for standalone policy and selection rules.
 
 Before removing a consumer's local guards, translate all existing filenames, formats, directives and
 exceptions, compare positive/negative fixtures, and verify a tested released immutable pin. A
 source-checkout test does not make a capability available in an older installed release.
+
+[configuration reference]: CONFIGURATION.md
