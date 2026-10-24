@@ -215,8 +215,8 @@ def read_mapping(
     Empty YAML resolves to ``None`` and fails the mapping requirement. Read
     without modifying the file or executing referenced automation.
     :func:`~popo.checks.automation.validate` converts these errors into
-    per-file
-    diagnostics; safety and actionlint callers retain their own error handling.
+    per-file diagnostics. Safety and actionlint callers handle errors
+    separately.
     """
     value: object = yaml.load(path.read_text(encoding='utf-8'), Loader=WorkflowLoader)
     return require_mapping(value, label)

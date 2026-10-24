@@ -30,7 +30,7 @@ class AutomationConfig:
         Exact ref tokens allowed only in templates referencing existing self
         targets.
     configured : bool
-        Whether the consumer opted in through tool.popo.automation.
+        Whether the selected policy source contains an automation table.
     """
 
     root: Path

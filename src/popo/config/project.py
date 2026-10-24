@@ -65,13 +65,14 @@ def load_config(root: Path) -> ProjectConfig:
     Raises
     ------
     ConfigurationError
-        If root metadata contains invalid TOML, a required table or string has
+        If the selected policy contains invalid TOML, a table or string has
         an invalid type or value, or the dependency comparison mode is
         unsupported.
     OSError
-        If an existing metadata file cannot be read.
+        If an existing configuration or dependency metadata file cannot be
+        read.
     UnicodeError
-        If metadata cannot be decoded as UTF-8.
+        If configuration or dependency metadata cannot be decoded as UTF-8.
 
     Notes
     -----
@@ -79,12 +80,15 @@ def load_config(root: Path) -> ProjectConfig:
     referenced files; successful loading alone does not establish policy
     validity.
 
-    Missing root metadata behaves as empty configuration. Dependency-layout
+    Missing policy files behave as empty configuration. Dependency-layout
     detection supplies defaults before explicit overrides are applied. The
     default requires-python text comes from the selected dependency metadata,
     falling back to ``>=3.13`` when absent or not a string. Invalid TOML in
     separately selected dependency metadata also falls back at this stage;
-    invalid root TOML raises :exc:`~popo.config.ConfigurationError` instead.
+    invalid selected policy raises :exc:`~popo.config.ConfigurationError`
+    instead.
+    Dependency and Python settings are loaded together, so malformed settings
+    in either domain fail this loader even when only the other check is run.
 
     Preferred Python defaults to ``3.13``; mypy defaults to that preference
     and Ruff to ``py`` plus its digits. Version-file and workflow paths default

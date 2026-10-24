@@ -18,7 +18,28 @@ from ._common import ConfigurationError, read_popo, read_strings, require_table
 
 @dataclass(frozen=True)
 class RepositoryPolicy:
-    """Hold validated expectations for one GitHub repository."""
+    """
+    Hold explicit expectations for one GitHub repository.
+
+    Attributes
+    ----------
+    name : str
+        Owner/repository name on github.com.
+    settings : dict[str, bool]
+        Configured security-setting names and desired enabled states.
+    labels : tuple[str, ...]
+        Exact labels whose existence is required.
+    codeowners : bool
+        Whether to require CODEOWNERS and inspect hosted validation errors.
+    branches : dict[str, tuple[str, ...]]
+        Branch names mapped to required check contexts. Empty tuples require
+        branch protection without naming required contexts.
+
+    Notes
+    -----
+    Direct construction performs no validation. Freezing prevents attribute
+    rebinding but does not make nested dictionaries immutable.
+    """
 
     name: str
     settings: dict[str, bool]
@@ -29,7 +50,24 @@ class RepositoryPolicy:
 
 @dataclass(frozen=True)
 class ExceptionPolicy:
-    """Hold a scoped, approved, expiring deviation from an expectation."""
+    """
+    Hold a scoped approval attestation for an expiring deviation.
+
+    Attributes
+    ----------
+    repository, check : str
+        Exact repository and expected-check identifiers covered by approval.
+    owner, reason : str
+        Responsible maintainer and explanation of the deviation.
+    approved_by, approval : str
+        Approver and HTTPS evidence URL; authenticity requires human review.
+    expires : datetime.date
+        Inclusive expiry date, compared against the UTC calendar date.
+
+    Notes
+    -----
+    Direct construction does not validate or authenticate the attestation.
+    """
 
     repository: str
     check: str
@@ -42,7 +80,20 @@ class ExceptionPolicy:
 
 @dataclass(frozen=True)
 class HostedConfig:
-    """Group repository expectations and explicit exception records."""
+    """
+    Group repository expectations and explicit exception records.
+
+    Attributes
+    ----------
+    repositories : tuple[RepositoryPolicy, ...]
+        Explicit audit inventory in declaration order.
+    exceptions : tuple[ExceptionPolicy, ...]
+        Scoped attestations applied only to confirmed missing expectations.
+
+    Notes
+    -----
+    Construction does not validate policy or contact GitHub.
+    """
 
     repositories: tuple[RepositoryPolicy, ...]
     exceptions: tuple[ExceptionPolicy, ...]
@@ -91,8 +142,8 @@ def load_hosted_config(
     Parameters
     ----------
     root : pathlib.Path
-        Repository containing hosted settings (``[tool.popo.hosted]``) in the
-        selected policy source (e.g., popo.toml or pyproject.toml).
+        Repository containing ``[hosted]`` in standalone ``popo.toml`` or
+        ``[tool.popo.hosted]`` in ``pyproject.toml``.
 
     Returns
     -------

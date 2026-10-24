@@ -52,9 +52,8 @@ def report_results(
     Returns
     -------
     int
-        One if any result failed, otherwise zero. JSON does not mix text
-        reports
-        into standard output; existing validator messages remain intact.
+        One if any result failed, otherwise zero. JSON output contains no text
+        reports; existing validator messages remain intact.
     """
     failed = any(result.failures for result in results)
     if output_format == 'json':

@@ -42,8 +42,9 @@ def configuration_path(root: Path) -> Path:
     Returns
     -------
     pathlib.Path
-        Existing ``popo.toml`` or the fallback ``pyproject.toml`` path.
-        Selection never merges the two files or creates missing files.
+        Existing or symlinked ``popo.toml``, otherwise ``pyproject.toml``.
+        A dangling standalone symlink remains selected so reading fails rather
+        than silently falling back. Selection never merges or creates files.
     """
     standalone = root / 'popo.toml'
     return (
@@ -74,7 +75,7 @@ def read_popo(
     ConfigurationError
         If selected TOML is invalid or tool or tool.popo is not a table.
     OSError, UnicodeError
-        If existing metadata cannot be read or decoded as UTF-8.
+        If selected configuration cannot be read or decoded as UTF-8.
     """
     path = configuration_path(root)
     document: dict[str, object] = {}

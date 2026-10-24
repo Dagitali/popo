@@ -21,7 +21,20 @@ from ._common import (
 
 @dataclass(frozen=True, slots=True)
 class RequiredFilesConfig:
-    """Store a resolved consumer root and exact required relative filenames."""
+    """
+    Store a consumer root and exact required relative filenames.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Consumer boundary, resolved by the configuration loader.
+    required : tuple[str, ...]
+        Exact root-relative POSIX filenames, without glob expansion.
+
+    Notes
+    -----
+    Direct construction does not validate paths or inspect files.
+    """
 
     root: Path
     required: tuple[str, ...]
@@ -29,13 +42,34 @@ class RequiredFilesConfig:
 
 @dataclass(frozen=True, slots=True)
 class HeaderRule:
-    """Describe first-match patterns, comment syntax and literal templates.
+    """
+    Describe first-match patterns, comment syntax and literal templates.
+
+    Attributes
+    ----------
+    patterns : tuple[str, ...]
+        Case-sensitive fnmatch patterns for root-relative POSIX paths.
+    format : str
+        Header extraction format, such as python, hash, or html.
+    prefix : str
+        Literal header template with supported identity substitutions.
+    required_text : tuple[str, ...]
+        Literal substrings required in the header remainder.
+    first_line, first_line_prefix : str
+        Mutually exclusive exact or prefix requirements for a leading line.
+    trim_after_first_line : bool
+        Whether to skip blank lines after the required leading line.
+    preamble_prefixes : tuple[str, ...]
+        Ordered optional line prefixes to skip before extracting the header.
+    purpose_required : bool
+        Whether a nonempty purpose paragraph must follow the expanded prefix.
 
     Notes
     -----
-    Prefix fields enforce executable directives before extracting a header.
+    Leading-line fields preserve directives before extracting a header.
     Template substitutions are limited to filename, module, project and notice.
     Required text and purpose checks apply after the expanded header prefix.
+    Direct construction does not validate formats, patterns, or templates.
     """
 
     patterns: tuple[str, ...]
@@ -53,6 +87,17 @@ class HeaderRule:
 class HeaderException:
     """
     Preserve matched files without reading contents, with a stated reason.
+
+    Attributes
+    ----------
+    patterns : tuple[str, ...]
+        Case-sensitive root-relative preservation patterns.
+    reason : str
+        Consumer explanation for preserving matching files.
+
+    Notes
+    -----
+    Exceptions do not bypass path-containment checks.
     """
 
     patterns: tuple[str, ...]
@@ -63,6 +108,23 @@ class HeaderException:
 class HeadersConfig:
     """
     Store consumer identity, ordered rules and explicit preservation policy.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Consumer boundary, resolved by the configuration loader.
+    project, notice : str
+        Consumer-owned identity values available to header templates.
+    rules : tuple[HeaderRule, ...]
+        Ordered rules; the first matching rule applies.
+    exceptions : tuple[HeaderException, ...]
+        Preservation patterns considered before rules, after containment.
+    ignored_directories : tuple[str, ...]
+        Exact path components omitted from source discovery.
+
+    Notes
+    -----
+    Direct construction does not validate policy or inspect source files.
     """
 
     root: Path
@@ -144,7 +206,8 @@ def load_headers_config(
     Parameters
     ----------
     root : pathlib.Path
-        Consumer root containing optional tool.popo.headers settings.
+        Consumer root with optional headers settings in the selected policy
+        source.
 
     Returns
     -------
@@ -272,7 +335,8 @@ def load_required_files_config(
     Parameters
     ----------
     root : pathlib.Path
-        Consumer root containing optional tool.popo.files settings.
+        Consumer root with optional files settings in the selected policy
+        source.
 
     Returns
     -------

@@ -226,9 +226,9 @@ def validate(
     Notes
     -----
     Exact mode compares normalized requirement declarations.
-    Minimum-constraints
-    mode compares declared lower bounds with exact fixture pins. Neither mode
-    installs packages or verifies the currently installed dependency versions.
+    Minimum-constraints mode compares declared lower bounds with exact fixture
+    pins. Neither mode installs packages or verifies the currently installed
+    dependency versions.
 
     Only project.dependencies is inspected, not optional dependencies or
     dependency groups. Environment markers are not evaluated: exact mode

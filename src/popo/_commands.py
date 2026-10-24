@@ -46,7 +46,8 @@ def _actions(
     ----------
     args : argparse.Namespace
         Parsed arguments with ``root`` (:class:`pathlib.Path`) and
-        ``automation_directory`` (:class:`pathlib.Path` or ``None``).
+        an optional ``automation_directory`` (:class:`pathlib.Path` or
+        ``None``); absence uses the default discovery directory.
 
     Returns
     -------
@@ -77,12 +78,13 @@ def _automation(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
     """
-    Dispatch configured automation validation through the public CLI.
+    Return configured automation diagnostics without printing.
 
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed ``root`` and ``pins_only`` options.
+        Parsed ``root`` and optional ``pins_only`` options. An absent
+        ``pins_only`` option defaults to false for aggregate execution.
 
     Returns
     -------

@@ -209,8 +209,9 @@ def main(argv: list[str] | None = None) -> int:
     Returns
     -------
     int
-        Zero for a successful check or one for reported validation and
-        configuration failures. Results are printed through shared reporting.
+        Zero for a successful check or explanation, or one for reported
+        validation and configuration failures. Native check results use shared
+        text or JSON reporting; explanation reports selection without checks.
         check-actionlint instead returns the exact external validator status.
         audit-github-settings returns one for drift or inaccessible evidence;
         approved, unexpired exceptions do not fail the audit.
@@ -225,9 +226,9 @@ def main(argv: list[str] | None = None) -> int:
     Notes
     -----
     :exc:`~popo.config.ConfigurationError` is converted to a reported failure.
-    Other exceptions, including file-read and decoding errors, propagate. Check
-    reports go to standard output; :mod:`argparse` handles its own help and
-    error streams.
+    Native adapters may return I/O and decoding errors as diagnostics;
+    uncaught exceptions propagate. Check reports go to standard output;
+    :mod:`argparse` handles its own help and error streams.
     check-actionlint reports source/tool errors as status one and preserves
     the external linter's streams and exact returned exit status.
     audit-github-settings is an explicit network operation, excluded from

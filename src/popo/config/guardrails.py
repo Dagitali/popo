@@ -12,7 +12,28 @@ from .selection import load_plan
 
 @dataclass(frozen=True, slots=True)
 class GuardrailsConfig:
-    """Store root-confined inputs and literal invocation identifiers."""
+    """
+    Store root-confined inputs and literal invocation identifiers.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Resolved consumer repository boundary.
+    makefile, hooks, workflow : pathlib.Path
+        Resolved input paths confined to root; existence is checked later.
+    target : str
+        Literal Make target delegating to the selected Popo profile.
+    hook : str
+        Unique local pre-commit hook ID that invokes the Make target.
+    job, step : str
+        Workflow job and step IDs identifying the CI invocation.
+    profile : str
+        Explicit profile whose check selection was validated during loading.
+
+    Notes
+    -----
+    Direct construction does not validate paths, identifiers, or profiles.
+    """
 
     root: Path
     makefile: Path
