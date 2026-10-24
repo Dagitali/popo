@@ -20,7 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [\[0.9.1\] - 2026-10-24](#091---2026-10-24)
+- [0.9.1 - 2026-10-24](#091---2026-10-24)
 - [0.9.0 - 2026-10-24](#090---2026-10-24)
 - [0.8.2 - 2026-10-23](#082---2026-10-23)
 - [0.8.1 - 2026-10-23](#081---2026-10-23)
@@ -73,6 +73,15 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   source bytes; retain deterministic CLI coverage and Python/CDK declaration-drift tests.
 - Share installed-artifact helpers and include all e2e suites in `make test-installation`; keep
   POSIX example execution separate from Windows native-CLI coverage.
+- Consolidate guardrail drift cases and hook metadata setup; reuse UTF-8 fixture writers and
+  strengthen configuration-error and input-preservation assertions.
+- Extend dependency-policy cases across both comparison modes and automation configuration cases
+  across standalone and Python metadata sources. Isolate header-policy tests from installed Git.
+- Inspect actionlint's temporary source view during mocked execution and cover tool failure and
+  launch cleanup; release validation identifies an unresolved missing fixture in the launch test.
+- Correct source and test docstrings for exception propagation, returned diagnostics, fixture scope,
+  pin syntax, header handling, configuration guarantees, and serialization behavior. Document
+  existing URL-parsing and external-metadata path errors without changing runtime behavior.
 
 ## [0.9.0] - 2026-10-24
 
@@ -482,6 +491,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.8.1]: docs/releases/v0.8.1.md
 [0.8.2]: docs/releases/v0.8.2.md
 [0.9.0]: docs/releases/v0.9.0.md
+[0.9.1]: docs/releases/v0.9.1.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
