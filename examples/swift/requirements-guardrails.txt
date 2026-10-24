@@ -1,0 +1,9 @@
+# requirements-guardrails.txt
+# popo/examples/swift
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Shared local/CI tool inputs. Review immutable pins before adopting.
+# Popo revision associated with v0.9.0; no package-index ownership assumption.
+popo @ git+https://github.com/Dagitali/popo.git@1b86ba438ecd6491aec8ef9697516ee0055919b8
+pre-commit==4.6.2
