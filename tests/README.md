@@ -103,7 +103,10 @@ hosted and native commands; invalid configuration must fail before the observer 
 tests use timeouts; Make runs against a temporary copy of the Makefile, and Make and Git fixtures
 exclude inherited tool configuration where it can change the result. The Make runner derives
 configurable variables from the copied Makefile and strips caller overrides such as `TEST_ARGS`;
-pass deliberate overrides as Make command arguments instead.
+pass deliberate overrides as Make command arguments instead. Header-policy unit fixtures simulate
+missing Git by default, with explicit subprocess outcomes for inventory cases. Actionlint unit tests
+inspect the temporary source view during the mocked tool call and check cleanup after successful
+execution, tool failure, and process-launch failure.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
