@@ -44,8 +44,8 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 - [v0.8.2] — 2026-10-23: Repair 0.8.1 release history and index both records.
 - [v0.8.1] — 2026-10-23: Refactor policy checks and suites; retrospective record, tagged tree
   lacks dated release records.
-- [v0.8.0] — 2026-10-23: Add opt-in required-file and configurable header checks; release text
-  prepared in released form, tagging and publication pending.
+- [v0.8.0] — 2026-10-23: Add opt-in required-file and configurable header checks; local annotated
+  tag present, publication not established by this archive.
 
 ## 0.7 Series
 
