@@ -14,6 +14,30 @@ import yaml
 # SECTION: FIXTURES
 
 
+@pytest.fixture(name='project_metadata', scope='module')
+def project_metadata_fixture(repository_root: Path) -> dict[str, Any]:
+    """
+    Parse canonical package and tool metadata once for hook contracts.
+
+    Parameters
+    ----------
+    repository_root : pathlib.Path
+        Checkout containing the canonical pyproject.toml.
+
+    Returns
+    -------
+    dict[str, typing.Any]
+        Parsed TOML metadata, treated as read-only by consuming tests.
+
+    Raises
+    ------
+    OSError, tomllib.TOMLDecodeError
+        If the metadata cannot be read or parsed.
+    """
+    with (repository_root / 'pyproject.toml').open('rb') as stream:
+        return tomllib.load(stream)
+
+
 @pytest.fixture(
     name='hook_config',
     scope='module',
@@ -77,7 +101,7 @@ class TestLocalHooks:
     def test_ruff_hooks(
         self,
         hook_config: dict[str, Any],
-        repository_root: Path,
+        project_metadata: dict[str, Any],
         hook_id: str,
         entry: str,
     ) -> None:
@@ -88,19 +112,16 @@ class TestLocalHooks:
         ----------
         hook_config : dict[str, typing.Any]
             Parsed pre-commit configuration.
-        repository_root : pathlib.Path
-            Checkout containing canonical dependency metadata.
+        project_metadata : dict[str, typing.Any]
+            Canonical package and tool configuration.
         hook_id : str
             Local Ruff hook to inspect.
         entry : str
             Expected interpreter and Ruff invocation.
         """
-        metadata = tomllib.loads(
-            (repository_root / 'pyproject.toml').read_text(encoding='utf-8'),
-        )
         ruff_requirement = next(
             value
-            for value in metadata['project']['optional-dependencies']['dev']
+            for value in project_metadata['project']['optional-dependencies']['dev']
             if value.startswith('ruff>=')
         )
         hook = hook_config['local_hooks'][hook_id]
@@ -114,23 +135,20 @@ class TestLocalHooks:
     def test_autopep8_preserves_ruff_slice_spacing(
         self,
         hook_config: dict[str, Any],
-        repository_root: Path,
+        project_metadata: dict[str, Any],
     ) -> None:
         """Keep autopep8's slice-spacing fix from undoing Ruff formatting."""
-        metadata = tomllib.loads(
-            (repository_root / 'pyproject.toml').read_text(encoding='utf-8'),
-        )
         hook = next(
             hook
             for repo in hook_config['repos']
             for hook in repo['hooks']
             if hook['id'] == 'autopep8'
         )
-        ignored = set(metadata['tool']['autopep8']['ignore'])
+        ignored = set(project_metadata['tool']['autopep8']['ignore'])
         assert {'E203', 'E226', 'E24', 'W50', 'W690'} <= ignored
         assert not any(arg.startswith('--ignore') for arg in hook['args'])
         assert (
-            f'--max-line-length={metadata['tool']['ruff']['line-length']}'
+            f'--max-line-length={project_metadata['tool']['ruff']['line-length']}'
             in hook['args']
         )
 
