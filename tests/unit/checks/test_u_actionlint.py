@@ -159,6 +159,7 @@ class TestActionlintSourceView:
         assert not Path(runner.call_args.kwargs['cwd']).exists()
         assert snapshot_files(tmp_path) == original
 
+    @pytest.mark.usefixtures('linter_repository')
     def test_launch_failure_cleans_view(
         self,
         tmp_path: Path,
