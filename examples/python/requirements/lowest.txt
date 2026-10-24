@@ -1,0 +1,7 @@
+# lowest.txt
+# popo/examples/python/requirements
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Exact minimum runtime dependency for the consumer's bounded declaration.
+packaging==26.3
