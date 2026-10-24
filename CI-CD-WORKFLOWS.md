@@ -62,6 +62,11 @@ guide] defines required-check activation.
 
 CI runs the default quality gate and artifact checks on Python 3.13 and 3.14, exercises both
 lowest/newest dependency boundaries, reports coverage, and tests installations on macOS and Windows.
+Artifact tests on Linux/macOS also exercise the [consumer examples] for Swift, Python and Python CDK
+through Make, an installed Git hook, and each workflow's command using wheel and sdist
+installations. Windows keeps native installed-CLI coverage and skips these POSIX examples. Executing
+the workflow command locally does not establish that the consumer workflow ran on GitHub.
+
 CI may download dependencies; it does not deploy resources or publish packages. Local validation
 does not establish hosted platform success.
 
@@ -126,5 +131,6 @@ local results.
 [Security]: .github/workflows/security.yml
 [branch-protection guide]: CONTRIBUTING.md#protected-branches-and-pr-routing
 [release policy]: CONTRIBUTING.md#release-policy
+[consumer examples]: examples/README.md
 [required-check runbook]: https://github.com/Dagitali/engineering/blob/main/runbooks/update-required-checks.md
 [testing guide]: https://github.com/Dagitali/engineering/blob/main/testing/python.md

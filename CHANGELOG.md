@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.9.1\] - 2026-10-24](#091---2026-10-24)
 - [0.9.0 - 2026-10-24](#090---2026-10-24)
 - [0.8.2 - 2026-10-23](#082---2026-10-23)
 - [0.8.1 - 2026-10-23](#081---2026-10-23)
@@ -59,7 +60,19 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
-TBD
+## [0.9.1] - 2026-10-24
+
+- Add independently runnable consumer examples under `examples/swift/`, `examples/python/` and
+  `examples/cdk/`, with one explicit Popo profile shared by Make, pre-commit and a complete CI
+  workflow. Shorten the original Swift example path and retain conventional Markdown filenames.
+- Keep Python minimum dependency constraints and exact Python CDK pins distinct; both examples check
+  declared Python/tool policy. Application tests and local CDK synthesis remain separate from
+  credential-free, read-only guardrail execution.
+- Parameterize actual Make, installed Git-hook and workflow-command acceptance tests across all
+  three examples using wheels and sdists. Detect policy failures, entry-point drift and unchanged
+  source bytes; retain deterministic CLI coverage and Python/CDK declaration-drift tests.
+- Share installed-artifact helpers and include all e2e suites in `make test-installation`; keep
+  POSIX example execution separate from Windows native-CLI coverage.
 
 ## [0.9.0] - 2026-10-24
 
