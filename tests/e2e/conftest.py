@@ -25,7 +25,7 @@ def installation_fixture(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Installation:
     """
-    Install a built artifact once per module in a separate virtual environment.
+    Install each selected artifact once per module in its own environment.
 
     Parameters
     ----------

@@ -46,7 +46,7 @@ def example_consumer_fixture(
     example_name: str,
 ) -> Path:
     """
-    Provide an independent copy of every example input, including dot-files.
+    Copy maintained inputs and dot-files, excluding local Git and build state.
 
     Parameters
     ----------
@@ -55,7 +55,7 @@ def example_consumer_fixture(
     tmp_path : pathlib.Path
         Per-test temporary directory outside the example.
     example_name : str
-        Consumer type selected independently for each example.
+        Consumer type selected by the module-scoped example parameter.
 
     Returns
     -------

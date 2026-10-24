@@ -32,7 +32,26 @@ def linter_repository_fixture(
     write_file: FileWriter,
 ) -> Path:
     """
-    Provide both supported implicit config names with duplicate input paths.
+    Create a workflow and one parameter-selected implicit linter config.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Selected config basename, actionlint.yml or actionlint.yaml.
+    write_file : FileWriter
+        UTF-8 writer for the test's temporary consumer repository.
+
+    Returns
+    -------
+    pathlib.Path
+        Config file under .github; ci.yml is created in the consumer root.
+        Duplicate workflow arguments are supplied by the consuming test, not
+        this fixture.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If fixture files cannot be created or encoded.
     """
     config = write_file(f'.github/{request.param}', 'self-hosted-runner: [custom]')
     write_file(

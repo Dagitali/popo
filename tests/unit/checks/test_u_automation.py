@@ -526,8 +526,7 @@ class TestAutomationDiscovery:
         source : str
             YAML document text selected for the validation scenario.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected substring in the single invalid-document diagnostic.
         """
         write_file('.github/workflows/ci.yml', source)
         failures = validate(AutomationConfig(tmp_path))

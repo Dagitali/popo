@@ -213,8 +213,7 @@ class TestCommandLine:
         status : int
             Expected process or CLI exit status.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected standard-output substring for the supplied exit status.
         """
         write_file(path, content)
         monkeypatch.chdir(tmp_path)
@@ -304,8 +303,8 @@ class TestCommandLine:
         status : int
             Expected process or CLI exit status.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected output substring on stdout for informational exits or
+            stderr for parser errors.
         capsys : pytest.CaptureFixture[str]
             Capture in-process CLI output and errors.
         """

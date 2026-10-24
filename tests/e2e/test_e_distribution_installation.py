@@ -179,8 +179,7 @@ class TestInstalledCLI:
         status : int
             Expected process or CLI exit status.
         message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
+            Expected standard-output substring for the supplied exit status.
         """
         readme = tmp_path / 'README.md'
         readme.write_text(content, encoding='utf-8')

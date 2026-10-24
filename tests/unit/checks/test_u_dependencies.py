@@ -257,8 +257,7 @@ class TestDependencyPolicy:
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
         content : str
-            File contents selected for the parameterized success or failure
-            scenario.
+            Malformed TOML or dependency-array contents to reject.
         message : str
             Expected diagnostic substring for malformed metadata.
         mode : DependencyMode

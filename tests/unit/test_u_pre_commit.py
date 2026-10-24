@@ -31,7 +31,7 @@ def project_metadata_fixture(repository_root: Path) -> dict[str, Any]:
 
     Raises
     ------
-    OSError, tomllib.TOMLDecodeError
+    OSError, UnicodeError, tomllib.TOMLDecodeError
         If the metadata cannot be read or parsed.
     """
     with (repository_root / 'pyproject.toml').open('rb') as stream:
