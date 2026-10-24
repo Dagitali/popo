@@ -17,6 +17,7 @@ import pytest
 from popo.checks.actions import is_pinned
 from popo.checks.automation import validate
 from popo.config.automation import AutomationConfig
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -25,7 +26,7 @@ class TestSelfReferences:
     """Group isolated regression scenarios for self references."""
 
     @pytest.mark.parametrize(
-        'reference,inputs,message',
+        ('reference', 'inputs', 'message'),
         [
             ('$/actions/test', 'required: value', ''),
             ('$/actions/test@main', 'required: value', 'invalid self'),
@@ -40,6 +41,7 @@ class TestSelfReferences:
     def test_native_self_contracts(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
         symlink: Callable[[Path, Path], None],
         reference: str,
         inputs: str,
@@ -52,26 +54,24 @@ class TestSelfReferences:
         the tree's parent but never writes there. Validation leaves source
         intact.
         """
-        action = tmp_path / 'actions/test/action.yml'
-        action.parent.mkdir(parents=True)
-        action.write_text(
+        write_file(
+            'actions/test/action.yml',
             'name: Test\ndescription: Test\ninputs:\n'
             '  required: {required: true}\nruns:\n'
             '  using: composite\n  steps: [{run: echo ok, shell: bash}]\n',
         )
         if reference == '$/actions/escape':
             symlink(tmp_path / 'actions/escape', tmp_path.parent)
-        workflow = tmp_path / '.github/workflows/probe.yml'
-        workflow.parent.mkdir(parents=True)
         original = (
             f'jobs:\n  probe:\n    steps: [{{uses: "{reference}", with: {{{inputs}}}}}]'
         )
-        workflow.write_text(original)
+        write_file('.github/workflows/probe.yml', original)
+        before = snapshot_files(tmp_path)
         failures = validate(AutomationConfig(tmp_path))
         assert bool(failures) == bool(message), failures
         if message:
             assert message in failures[0]
-        assert workflow.read_text() == original
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'reference',
