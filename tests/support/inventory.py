@@ -7,6 +7,8 @@ Create small committed Git repositories for source-inventory acceptance tests.
 import subprocess
 from pathlib import Path
 
+# SECTION: FUNCTIONS
+
 
 def git(
     root: Path,
@@ -90,3 +92,6 @@ def repository(
     (root / 'a_b.txt').write_text('unstaged edit', encoding='utf-8')
     (root / 'untracked.txt').write_text('not inventoried', encoding='utf-8')
     return commit
+
+
+# !SECTION
