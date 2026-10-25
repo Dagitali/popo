@@ -13,11 +13,13 @@ Maintainer Notes
 
 # Configuration Reference
 
-Popo reads standalone `popo.toml` when present, otherwise `[tool.popo]` from `pyproject.toml` in the
-inspected root. Standalone settings use the file's top level: `[files]` corresponds to
-`[tool.popo.files]`. The selected source is authoritative: settings are not merged, and malformed
-standalone policy never falls back to Python metadata. Python package metadata remains in
-`pyproject.toml`; standalone policy does not replace the inputs of Python-specific validators.
+Commands that load consumer policy read standalone `popo.toml` when present, otherwise `[tool.popo]`
+from `pyproject.toml` in the inspected root. Standalone settings use the file's top level: `[files]`
+corresponds to `[tool.popo.files]`. The selected source is authoritative: settings are not merged,
+and malformed standalone policy never falls back to Python metadata. Python package metadata remains
+in `pyproject.toml`; standalone policy does not replace the inputs of Python-specific validators.
+
+`source-inventory` uses CLI arguments and committed Git objects without loading consumer policy.
 
 Select the root with `--root`; otherwise it uses the working directory. Relative configured paths
 are resolved against that root. See the [configuration example] for a Python starting point and the
@@ -180,12 +182,16 @@ do not execute workflow scripts or install npm packages.
 
 ## Hosted Audit Settings
 
-`[tool.popo.hosted]` declares explicit repository expectations and approved exception attestations.
+`[hosted]` (or `[tool.popo.hosted]`) declares explicit repository expectations and approved
+exception attestations.
 Only `audit-github-settings` loads it; `check-all` stays offline. See [Hosted Settings Audit] for
 the complete schema, statuses, permissions, and evidence limits. Unknown hosted keys and malformed
 or duplicate scopes fail loading rather than being silently ignored.
 
 ## Command Boundaries
+
+`source-inventory` is a standalone evidence generator requiring an explicit revision; it is not
+selectable in profiles and does not use native check-result JSON. See [source inventories].
 
 Python-policy workflow inspection resolves literal versions, simple environment references, and
 matrix references backed by inline lists or contiguous block lists. Block-list entries may be quoted
@@ -253,3 +259,4 @@ read-only and do not repair files or change consumer policy automatically.
 [guardrail guide]: guardrails.md
 [Hosted Settings Audit]: hosted-audit.md
 [repository safety]: repository-safety.md
+[source inventories]: source-inventory.md

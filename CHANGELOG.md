@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [\[0.10.0\] - 2026-10-25](#0100---2026-10-25)
 - [0.9.1 - 2026-10-24](#091---2026-10-24)
 - [0.9.0 - 2026-10-24](#090---2026-10-24)
 - [0.8.2 - 2026-10-23](#082---2026-10-23)
@@ -60,6 +61,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+## [0.10.0] - 2026-10-25
+
+- Add explicit `source-inventory --revision` generation in plain JSON or source-only SPDX 2.3,
+  sharing committed-blob collection, revision identity and checksum logic without consumer writes.
+  Reject unsupported submodules, preserve symlink text, ignore checkout edits and require a
+  top-level working-tree root. Keep generation outside check profiles and release approval.
+
 ## [0.9.1] - 2026-10-24
 
 - Add independently runnable consumer examples under `examples/swift/`, `examples/python/` and
@@ -78,7 +86,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Extend dependency-policy cases across both comparison modes and automation configuration cases
   across standalone and Python metadata sources. Isolate header-policy tests from installed Git.
 - Inspect actionlint's temporary source view during mocked execution and cover tool failure and
-  launch cleanup; release validation identifies an unresolved missing fixture in the launch test.
+  launch cleanup; restore the launch test's workflow fixture dependency.
 - Correct source and test docstrings for exception propagation, returned diagnostics, fixture scope,
   pin syntax, header handling, configuration guarantees, and serialization behavior. Document
   existing URL-parsing and external-metadata path errors without changing runtime behavior.

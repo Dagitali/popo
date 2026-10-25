@@ -14,6 +14,7 @@ from packaging.version import Version
 from popo.config.guardrails import GuardrailsConfig
 from tests.support.files import snapshot_files
 from tests.support.installation import Installation
+from tests.support.inventory import repository
 
 # SECTION: FIXTURES
 
@@ -59,6 +60,53 @@ class TestInstalledCLI:
     per-test temporary directories. Exercise both console and module entry
     points, exit statuses, output channels, and read-only checker behavior.
     """
+
+    @pytest.mark.parametrize('format_', ['json', 'spdx'])
+    def test_source_inventory(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        use_module: bool,
+        format_: str,
+    ) -> None:
+        """
+        Inventory committed bytes through installed console and module commands.
+
+        Parameters
+        ----------
+        installation : Installation
+            Isolated wheel or sdist installation outside the checkout.
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        use_module : bool
+            Whether to invoke the module instead of the console executable.
+        format_ : str
+            Selected plain JSON or source-only SPDX representation.
+        """
+        commit = repository(tmp_path)
+        before = snapshot_files(tmp_path)
+        result = installation.run(
+            'source-inventory',
+            '--root',
+            str(tmp_path),
+            '--revision',
+            'fixture-tag',
+            '--name',
+            'Consumer',
+            '--format',
+            format_,
+            module=use_module,
+        )
+        assert result.returncode == 0, result.stderr
+        report = json.loads(result.stdout)
+        assert len(report['files']) == 2
+        assert (
+            report.get('revision') == commit
+            if format_ == 'json'
+            else report['spdxVersion'] == 'SPDX-2.3'
+        )
+        assert result.stderr == ''
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         ('reference', 'status'),
