@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.10 Series](#010-series)
 - [0.9 Series](#09-series)
 - [0.8 Series](#08-series)
 - [0.7 Series](#07-series)
@@ -34,11 +35,16 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.10 Series
+
+- [v0.10.0] — planned, prepared 2026-10-25: Add explicit committed-source inventories in JSON and
+  source-only SPDX 2.3; released-form record, tagging and publication not performed.
+
 ## 0.9 Series
 
 - [v0.9.1] — 2026-10-24: Add AWS CDK (in Python), Python, and Swift consumer examples, strengthen
-  regression tests, and correct source/test docstrings; release text prepared, validation blocked by
-  an existing test failure; untagged and unpublished.
+  regression tests, and correct source/test docstrings; local annotated tag present, publication
+  not established by this archive.
 - [v0.9.0] — 2026-10-24: Add standalone policy, named check profiles, JSON/explanation output and
   local/CI guardrail parity; local annotated tag present, publication not established by this
   archive.
@@ -172,6 +178,7 @@ prepared.
 [v0.1.3]: v0.1.3.md
 [v0.1.4]: v0.1.4.md
 [v0.1.5]: v0.1.5.md
+[v0.10.0]: v0.10.0.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md

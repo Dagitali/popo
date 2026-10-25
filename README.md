@@ -76,6 +76,7 @@ configured; see the [release policy].
 
 ## Features
 
+- Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];
 - Local Markdown inline links/images, reference definitions, and heading or explicit HTML anchors,
   with undefined full/collapsed labels and conflicting definitions rejected. Fenced/inline code
   and HTML comments are excluded, targets cannot escape the repository, and fragment validation
@@ -153,7 +154,7 @@ For an editable installation with development tools, see [Development](#developm
 
 ## Quickstart
 
-Run a check from the repository it should inspect:
+Run a command from the repository it should inspect:
 
 ```console
 popo check-docs
@@ -169,6 +170,7 @@ popo check-dependency-boundaries
 popo check-python-policy
 popo check-release-changelog v1.2.3
 popo check-all
+popo source-inventory --revision HEAD --name Example > source-inventory.json
 ```
 
 Every command accepts `--root`. The equivalent module entry point is
@@ -453,6 +455,7 @@ the [release policy].
 [Adoption playbook]: docs/playbooks/adopt-popo.md
 [release archive]: docs/releases/README.md
 [safety settings reference]: docs/repository-safety.md
+[source inventories]: docs/source-inventory.md
 [consumer examples]: examples/README.md
 [References]: https://github.com/Dagitali/engineering/blob/main/REFERENCES.md
 [Developer onboarding]: https://github.com/Dagitali/engineering/blob/main/development/onboarding.md
