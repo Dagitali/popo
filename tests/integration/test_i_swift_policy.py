@@ -94,10 +94,6 @@ class TestSwiftPolicyCommands:
         assert report['checks'][0]['diagnostics'][0]['message'].startswith(
             'configuration:',
         )
-        report = json.loads(capsys.readouterr().out)
-        assert report['checks'][0]['diagnostics'][0]['message'].startswith(
-            'configuration:',
-        )
 
 
 # !SECTION
