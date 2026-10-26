@@ -29,6 +29,17 @@ SECTION_PATTERNS = {
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _parameters(
+    doc: str,
+) -> set[str]:
+    """Read grouped and variadic names from the NumPy Parameters section."""
+    return {
+        name.strip().lstrip('*')
+        for names in PARAMETER_PATTERN.findall(_section(doc, 'Parameters'))
+        for name in names.split(',')
+    }
+
+
 def _section(
     doc: str,
     name: str,
@@ -40,17 +51,6 @@ def _section(
     remainder = doc[match.end() :]
     end = SECTION_END_PATTERN.search(remainder)
     return remainder[: end.start() if end else len(remainder)].strip()
-
-
-def _parameters(
-    doc: str,
-) -> set[str]:
-    """Read grouped and variadic names from the NumPy Parameters section."""
-    return {
-        name.strip().lstrip('*')
-        for names in PARAMETER_PATTERN.findall(_section(doc, 'Parameters'))
-        for name in names.split(',')
-    }
 
 
 # !SECTION

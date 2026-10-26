@@ -74,42 +74,6 @@ def _body(
         pending.extend(ast.iter_child_nodes(current))
 
 
-def _parameter_lines(
-    node: ast.FunctionDef | ast.AsyncFunctionDef,
-    parameters: list[ast.arg],
-) -> bool:
-    """
-    Check physical parameter/default spans, preserving the self exception.
-    """
-    if not parameters or (len(parameters) == 1 and parameters[0].arg == 'self'):
-        return True
-    args = node.args
-    positional = [*args.posonlyargs, *args.args]
-    defaults = [
-        *zip(
-            positional[len(positional) - len(args.defaults) :],
-            args.defaults,
-            strict=True,
-        ),
-        *(
-            (arg, default)
-            for arg, default in zip(args.kwonlyargs, args.kw_defaults, strict=True)
-            if default is not None
-        ),
-    ]
-    return (
-        len({arg.lineno for arg in parameters}) == len(parameters)
-        and all(
-            arg.lineno > node.lineno and arg.lineno == arg.end_lineno
-            for arg in parameters
-        )
-        and all(
-            arg.lineno == default.lineno == default.end_lineno
-            for arg, default in defaults
-        )
-    )
-
-
 def _callable(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> Declaration:
@@ -150,6 +114,42 @@ def _callable(
         ),
         node.returns is not None
         and all(arg.annotation is not None for arg in parameters),
+    )
+
+
+def _parameter_lines(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    parameters: list[ast.arg],
+) -> bool:
+    """
+    Check physical parameter/default spans, preserving the self exception.
+    """
+    if not parameters or (len(parameters) == 1 and parameters[0].arg == 'self'):
+        return True
+    args = node.args
+    positional = [*args.posonlyargs, *args.args]
+    defaults = [
+        *zip(
+            positional[len(positional) - len(args.defaults) :],
+            args.defaults,
+            strict=True,
+        ),
+        *(
+            (arg, default)
+            for arg, default in zip(args.kwonlyargs, args.kw_defaults, strict=True)
+            if default is not None
+        ),
+    ]
+    return (
+        len({arg.lineno for arg in parameters}) == len(parameters)
+        and all(
+            arg.lineno > node.lineno and arg.lineno == arg.end_lineno
+            for arg in parameters
+        )
+        and all(
+            arg.lineno == default.lineno == default.end_lineno
+            for arg, default in defaults
+        )
     )
 
 

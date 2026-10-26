@@ -25,20 +25,6 @@ TOOLS_HEADER_PATTERN = re.compile(
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _read(
-    path: Path,
-    root: Path,
-) -> tuple[str | None, list[str]]:
-    """Read one confined UTF-8 input, redacting filesystem error details."""
-    relative = path.relative_to(root).as_posix()
-    try:
-        if not path.resolve().is_relative_to(root):
-            return None, [f'{relative}: Swift policy input escapes repository root']
-        return path.read_text(encoding='utf-8'), []
-    except (OSError, UnicodeError, ValueError):
-        return None, [f'{relative}: cannot read Swift policy input']
-
-
 def _local_observations(
     config: SwiftPolicyConfig,
 ) -> tuple[list[VersionObservation], list[str]]:
@@ -65,6 +51,20 @@ def _local_observations(
             VersionObservation(path, 'local declaration', text.strip(), kind),
         )
     return observations, failures
+
+
+def _read(
+    path: Path,
+    root: Path,
+) -> tuple[str | None, list[str]]:
+    """Read one confined UTF-8 input, redacting filesystem error details."""
+    relative = path.relative_to(root).as_posix()
+    try:
+        if not path.resolve().is_relative_to(root):
+            return None, [f'{relative}: Swift policy input escapes repository root']
+        return path.read_text(encoding='utf-8'), []
+    except (OSError, UnicodeError, ValueError):
+        return None, [f'{relative}: cannot read Swift policy input']
 
 
 def _workflow_observations(

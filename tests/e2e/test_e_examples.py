@@ -148,6 +148,19 @@ def entry_point_fixture(
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _consumer_sources(
+    root: Path,
+) -> dict[Path, bytes]:
+    """
+    Compare consumer source bytes separately from disposable Git metadata.
+    """
+    return {
+        path: value
+        for path, value in snapshot_files(root).items()
+        if '.git' not in path.parts
+    }
+
+
 def _run_consumer(
     tools: Installation,
     root: Path,
@@ -191,19 +204,6 @@ def _run_consumer(
         directory=root,
         timeout=60,
     )
-
-
-def _consumer_sources(
-    root: Path,
-) -> dict[Path, bytes]:
-    """
-    Compare consumer source bytes separately from disposable Git metadata.
-    """
-    return {
-        path: value
-        for path, value in snapshot_files(root).items()
-        if '.git' not in path.parts
-    }
 
 
 # !SECTION

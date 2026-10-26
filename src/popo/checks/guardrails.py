@@ -15,57 +15,6 @@ from ._yaml import WorkflowLoader
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _items(
-    value: object,
-) -> list[object]:
-    """Read list-valued YAML fields without iterating scalars or mappings."""
-    return cast(list[object], value) if isinstance(value, list) else []
-
-
-def _mapping(
-    value: object,
-) -> dict[str, object]:
-    """Treat unexpected YAML shapes as absent contract fields."""
-    return cast(dict[str, object], value) if isinstance(value, dict) else {}
-
-
-def _read_yaml(
-    path: Path,
-) -> dict[str, object]:
-    """
-    Read safe YAML with duplicate-key rejection and literal workflow keys.
-    """
-    return _mapping(yaml.load(path.read_text(encoding='utf-8'), Loader=WorkflowLoader))
-
-
-def _make(
-    config: GuardrailsConfig,
-) -> list[str]:
-    """
-    Require one literal target with one canonical profile invocation.
-
-    Non-recipe Make comments and blank lines do not terminate a recipe block.
-    Tab-prefixed comments remain recipe entries under this literal contract.
-    """
-    lines = config.makefile.read_text(encoding='utf-8').splitlines()
-    targets = [i for i, line in enumerate(lines) if line == f'{config.target}:']
-    command = f'popo check-all --profile {config.profile}'
-    if len(targets) != 1:
-        return [f'{config.makefile}: require one literal {config.target}: target']
-    recipe: list[str] = []
-    for line in lines[targets[0] + 1 :]:
-        if not line.strip() or line.lstrip(' ').startswith('#'):
-            continue
-        if not line.startswith('\t'):
-            break
-        recipe.append(line.strip().removeprefix('@'))
-    if recipe != [command]:
-        return [
-            f'{config.makefile}: {config.target} recipe must be exactly {command!r}',
-        ]
-    return []
-
-
 def _hooks(
     config: GuardrailsConfig,
 ) -> list[str]:
@@ -99,6 +48,57 @@ def _hooks(
         f'make {config.target} with always_run=true and pass_filenames=false, '
         'without args',
     ]
+
+
+def _items(
+    value: object,
+) -> list[object]:
+    """Read list-valued YAML fields without iterating scalars or mappings."""
+    return cast(list[object], value) if isinstance(value, list) else []
+
+
+def _make(
+    config: GuardrailsConfig,
+) -> list[str]:
+    """
+    Require one literal target with one canonical profile invocation.
+
+    Non-recipe Make comments and blank lines do not terminate a recipe block.
+    Tab-prefixed comments remain recipe entries under this literal contract.
+    """
+    lines = config.makefile.read_text(encoding='utf-8').splitlines()
+    targets = [i for i, line in enumerate(lines) if line == f'{config.target}:']
+    command = f'popo check-all --profile {config.profile}'
+    if len(targets) != 1:
+        return [f'{config.makefile}: require one literal {config.target}: target']
+    recipe: list[str] = []
+    for line in lines[targets[0] + 1 :]:
+        if not line.strip() or line.lstrip(' ').startswith('#'):
+            continue
+        if not line.startswith('\t'):
+            break
+        recipe.append(line.strip().removeprefix('@'))
+    if recipe != [command]:
+        return [
+            f'{config.makefile}: {config.target} recipe must be exactly {command!r}',
+        ]
+    return []
+
+
+def _mapping(
+    value: object,
+) -> dict[str, object]:
+    """Treat unexpected YAML shapes as absent contract fields."""
+    return cast(dict[str, object], value) if isinstance(value, dict) else {}
+
+
+def _read_yaml(
+    path: Path,
+) -> dict[str, object]:
+    """
+    Read safe YAML with duplicate-key rejection and literal workflow keys.
+    """
+    return _mapping(yaml.load(path.read_text(encoding='utf-8'), Loader=WorkflowLoader))
 
 
 def _workflow(

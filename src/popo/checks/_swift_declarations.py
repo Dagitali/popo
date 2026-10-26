@@ -166,80 +166,6 @@ def lexical_view(
     return ''.join(result), documentation
 
 
-def _parts(
-    text: str,
-) -> list[tuple[int, str]]:
-    """Split parameters at outer commas, respecting type/default delimiters."""
-    parts: list[tuple[int, str]] = []
-    stack: list[str] = []
-    start, default = 0, False
-    pairs = {')': '(', ']': '[', '}': '{', '>': '<'}
-    for index, char in enumerate(text):
-        if char in '([{' or (char == '<' and not default):
-            stack.append(char)
-        elif (
-            char in pairs
-            and not (char == '>' and index and text[index - 1] == '-')
-            and stack
-            and stack[-1] == pairs[char]
-        ):
-            stack.pop()
-        elif not stack:
-            if char == '=':
-                default = True
-            elif char == ',':
-                parts.append((start, text[start:index]))
-                start, default = index + 1, False
-    parts.append((start, text[start:]))
-    return [(start, part) for start, part in parts if part.strip()]
-
-
-def _signature(
-    code: str,
-    position: int,
-) -> tuple[tuple[str, ...] | None, str, bool, int]:
-    """Extract balanced parameter text and a bounded post-signature tail."""
-    opening = code.find('(', position)
-    if opening < 0 or any(char in code[position:opening] for char in '{};'):
-        return None, '', False, position
-    depth, end = 1, opening + 1
-    while end < len(code) and depth:
-        depth += (code[end] == '(') - (code[end] == ')')
-        end += 1
-    if depth:
-        return None, '', False, position
-    names: list[str] = []
-    parameters = _parts(code[opening + 1 : end - 1])
-    for _, parameter in parameters:
-        # Deliberately accept named arguments, not arbitrary signature syntax.
-        prefix, colon, _ = parameter.partition(':')
-        identifiers = PARAMETER_NAME_PATTERN.findall(prefix)
-        if not colon or not identifiers or '(' in prefix:
-            return None, '', False, position
-        if identifiers[-1] != '_':
-            names.append(identifiers[-1])
-    stop = end
-    while stop < len(code) and code[stop] not in '{};':
-        if code[stop] == '\n':
-            following = code[stop + 1 :].lstrip()
-            tail = code[end:stop].rstrip()
-            if not following.startswith(('async', 'throws', 'rethrows', '->', 'where')):
-                if not tail.endswith(('->', ',', 'where')):
-                    break
-        stop += 1
-    positions = [
-        opening + 1 + start + len(part) - len(part.lstrip())
-        for start, part in parameters
-    ]
-    line_numbers = [code.count('\n', 0, offset) for offset in positions]
-    separate = (
-        len(set(line_numbers)) == len(parameters)
-        and all(number > code.count('\n', 0, position) for number in line_numbers)
-        and all('\n' not in part.strip() for _, part in parameters)
-    )
-    return tuple(names), code[end:stop], separate, stop
-
-
 def _declarations(
     code: str,
 ) -> Iterator[_Syntax]:
@@ -315,6 +241,80 @@ def _declarations(
             elif char == '}' and scopes:
                 scopes.pop()
         offset += len(line)
+
+
+def _parts(
+    text: str,
+) -> list[tuple[int, str]]:
+    """Split parameters at outer commas, respecting type/default delimiters."""
+    parts: list[tuple[int, str]] = []
+    stack: list[str] = []
+    start, default = 0, False
+    pairs = {')': '(', ']': '[', '}': '{', '>': '<'}
+    for index, char in enumerate(text):
+        if char in '([{' or (char == '<' and not default):
+            stack.append(char)
+        elif (
+            char in pairs
+            and not (char == '>' and index and text[index - 1] == '-')
+            and stack
+            and stack[-1] == pairs[char]
+        ):
+            stack.pop()
+        elif not stack:
+            if char == '=':
+                default = True
+            elif char == ',':
+                parts.append((start, text[start:index]))
+                start, default = index + 1, False
+    parts.append((start, text[start:]))
+    return [(start, part) for start, part in parts if part.strip()]
+
+
+def _signature(
+    code: str,
+    position: int,
+) -> tuple[tuple[str, ...] | None, str, bool, int]:
+    """Extract balanced parameter text and a bounded post-signature tail."""
+    opening = code.find('(', position)
+    if opening < 0 or any(char in code[position:opening] for char in '{};'):
+        return None, '', False, position
+    depth, end = 1, opening + 1
+    while end < len(code) and depth:
+        depth += (code[end] == '(') - (code[end] == ')')
+        end += 1
+    if depth:
+        return None, '', False, position
+    names: list[str] = []
+    parameters = _parts(code[opening + 1 : end - 1])
+    for _, parameter in parameters:
+        # Deliberately accept named arguments, not arbitrary signature syntax.
+        prefix, colon, _ = parameter.partition(':')
+        identifiers = PARAMETER_NAME_PATTERN.findall(prefix)
+        if not colon or not identifiers or '(' in prefix:
+            return None, '', False, position
+        if identifiers[-1] != '_':
+            names.append(identifiers[-1])
+    stop = end
+    while stop < len(code) and code[stop] not in '{};':
+        if code[stop] == '\n':
+            following = code[stop + 1 :].lstrip()
+            tail = code[end:stop].rstrip()
+            if not following.startswith(('async', 'throws', 'rethrows', '->', 'where')):
+                if not tail.endswith(('->', ',', 'where')):
+                    break
+        stop += 1
+    positions = [
+        opening + 1 + start + len(part) - len(part.lstrip())
+        for start, part in parameters
+    ]
+    line_numbers = [code.count('\n', 0, offset) for offset in positions]
+    separate = (
+        len(set(line_numbers)) == len(parameters)
+        and all(number > code.count('\n', 0, position) for number in line_numbers)
+        and all('\n' not in part.strip() for _, part in parameters)
+    )
+    return tuple(names), code[end:stop], separate, stop
 
 
 def parse(

@@ -32,15 +32,6 @@ SINGULAR_PARAMETER_PATTERN = re.compile(r'(?im)^[ \t]*-[ \t]*Parameter[ \t]+`?(\
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _section(
-    doc: str,
-    name: str,
-) -> str:
-    """Read a DocC list field through the next recognized contract field."""
-    match = FIELD_PATTERNS[name].search(doc)
-    return match[1].strip() if match else ''
-
-
 def _parameters(
     doc: str,
 ) -> set[str]:
@@ -48,6 +39,15 @@ def _parameters(
     names = set(SINGULAR_PARAMETER_PATTERN.findall(doc))
     names.update(PARAMETER_PATTERN.findall(_section(doc, 'Parameters')))
     return names
+
+
+def _section(
+    doc: str,
+    name: str,
+) -> str:
+    """Read a DocC list field through the next recognized contract field."""
+    match = FIELD_PATTERNS[name].search(doc)
+    return match[1].strip() if match else ''
 
 
 # SECTION: FUNCTIONS

@@ -103,6 +103,81 @@ type Fetcher = Callable[[str, bool], Response]
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _github_get(
+    endpoint: str,
+    paginate: bool = False,
+) -> Response:
+    """
+    Fetch one GitHub endpoint using the authenticated GitHub CLI.
+
+    Parameters
+    ----------
+    endpoint : str
+        Internally constructed repository API path, not an arbitrary URL.
+    paginate : bool, optional
+        Fetch all pages and combine array responses.
+
+    Returns
+    -------
+    Response
+        Parsed data or a sanitized failure. Authentication, launch, timeout,
+        API, and malformed JSON errors remain unavailable evidence.
+
+    Notes
+    -----
+    Explicitly uses GET and github.com. Credentials are managed by ``gh``;
+    no token is read or printed by Popo. Subprocesses have a bounded timeout.
+    """
+    command = [
+        'gh',
+        'api',
+        '--hostname',
+        'github.com',
+        '--method',
+        'GET',
+        '-H',
+        'Accept: application/vnd.github+json',
+        '-H',
+        'X-GitHub-Api-Version: 2026-03-10',
+        endpoint,
+    ]
+    if paginate:
+        command.extend(['--paginate', '--slurp'])
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired, UnicodeError):
+        return Response(error='GitHub CLI unavailable, timed out, or undecodable')
+    if result.returncode:
+        match = re.search(r'\(HTTP (\d{3})\)', result.stderr)
+        status = int(match[1]) if match else None
+        # Retain only a recognized absence message, never arbitrary API text.
+        try:
+            body = json.loads(result.stdout)
+        except (ValueError, TypeError):
+            body = None
+        message = (
+            'Branch not protected'
+            if isinstance(body, dict) and body.get('message') == 'Branch not protected'
+            else None
+        )
+        return Response(
+            data=message,
+            error=f'GitHub GET failed (HTTP {status or 'unknown'})',
+            status=status,
+        )
+    try:
+        data = json.loads(result.stdout)
+        if paginate:
+            if not isinstance(data, list) or any(
+                not isinstance(page, list) for page in data
+            ):
+                return Response(error='unexpected paginated response')
+            data = [item for page in data for item in page]
+        return Response(data=data)
+    except ValueError:
+        return Response(error='invalid JSON response')
+
+
 def _repository(
     policy: RepositoryPolicy,
     get: Fetcher,
@@ -312,81 +387,6 @@ def _repository(
 
 
 # !SECTION
-
-
-def _github_get(
-    endpoint: str,
-    paginate: bool = False,
-) -> Response:
-    """
-    Fetch one GitHub endpoint using the authenticated GitHub CLI.
-
-    Parameters
-    ----------
-    endpoint : str
-        Internally constructed repository API path, not an arbitrary URL.
-    paginate : bool, optional
-        Fetch all pages and combine array responses.
-
-    Returns
-    -------
-    Response
-        Parsed data or a sanitized failure. Authentication, launch, timeout,
-        API, and malformed JSON errors remain unavailable evidence.
-
-    Notes
-    -----
-    Explicitly uses GET and github.com. Credentials are managed by ``gh``;
-    no token is read or printed by Popo. Subprocesses have a bounded timeout.
-    """
-    command = [
-        'gh',
-        'api',
-        '--hostname',
-        'github.com',
-        '--method',
-        'GET',
-        '-H',
-        'Accept: application/vnd.github+json',
-        '-H',
-        'X-GitHub-Api-Version: 2026-03-10',
-        endpoint,
-    ]
-    if paginate:
-        command.extend(['--paginate', '--slurp'])
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.TimeoutExpired, UnicodeError):
-        return Response(error='GitHub CLI unavailable, timed out, or undecodable')
-    if result.returncode:
-        match = re.search(r'\(HTTP (\d{3})\)', result.stderr)
-        status = int(match[1]) if match else None
-        # Retain only a recognized absence message, never arbitrary API text.
-        try:
-            body = json.loads(result.stdout)
-        except (ValueError, TypeError):
-            body = None
-        message = (
-            'Branch not protected'
-            if isinstance(body, dict) and body.get('message') == 'Branch not protected'
-            else None
-        )
-        return Response(
-            data=message,
-            error=f'GitHub GET failed (HTTP {status or 'unknown'})',
-            status=status,
-        )
-    try:
-        data = json.loads(result.stdout)
-        if paginate:
-            if not isinstance(data, list) or any(
-                not isinstance(page, list) for page in data
-            ):
-                return Response(error='unexpected paginated response')
-            data = [item for page in data for item in page]
-        return Response(data=data)
-    except ValueError:
-        return Response(error='invalid JSON response')
 
 
 # SECTION: FUNCTIONS

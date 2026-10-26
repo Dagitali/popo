@@ -218,6 +218,36 @@ def _docs(
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
 
+def _file_headers(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch configured header validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Failures and a success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        If the policy is absent or malformed.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
+    """
+    config = load_headers_config(args.root)
+    if config is None:
+        raise ConfigurationError('check-file-headers requires tool.popo.headers')
+    return files.validate_headers(config), 'configured file headers are valid'
+
+
 def _guardrail_parity(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
@@ -249,6 +279,17 @@ def _guardrail_parity(
     return guardrails.validate(
         load_guardrails_config(args.root),
     ), 'guardrail entry points agree'
+
+
+def _logs(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """Dispatch explicit artifact inspection without revealing log contents."""
+    config = load_source_check(args.root, 'logs')
+    return logs.validate(
+        config,
+        getattr(args, 'log_root', None),
+    ), 'configured logs passed'
 
 
 def _python(
@@ -284,34 +325,12 @@ def _python(
     return python_policy.validate(config), 'Python policy is consistent'
 
 
-def _safety(
+def _python_source(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
-    """
-    Dispatch opt-in read-only safety validation.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed consumer root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Diagnostics and success-only message.
-
-    Raises
-    ------
-    ConfigurationError
-        If safety policy is absent or malformed.
-    OSError, UnicodeError
-        If consumer configuration cannot be read or decoded, or its root
-        cannot resolve. Validator-caught file errors remain diagnostics.
-    """
-    config = load_safety_config(args.root)
-    if not config.configured:
-        raise ConfigurationError('check-repository-safety requires tool.popo.safety')
-    return safety.validate(config), 'configured repository safety checks passed'
+    """Dispatch explicitly configured, read-only Python source checks."""
+    config = load_source_check(args.root, 'python-source')
+    return python_source.validate(config), 'configured Python source checks passed'
 
 
 def _required_files(
@@ -344,11 +363,11 @@ def _required_files(
     return files.validate_required(config), 'required files are present'
 
 
-def _file_headers(
+def _safety(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
     """
-    Dispatch configured header validation.
+    Dispatch opt-in read-only safety validation.
 
     Parameters
     ----------
@@ -358,28 +377,20 @@ def _file_headers(
     Returns
     -------
     tuple[list[str], str]
-        Failures and a success-only summary.
+        Diagnostics and success-only message.
 
     Raises
     ------
     ConfigurationError
-        If the policy is absent or malformed.
+        If safety policy is absent or malformed.
     OSError, UnicodeError
         If consumer configuration cannot be read or decoded, or its root
         cannot resolve. Validator-caught file errors remain diagnostics.
     """
-    config = load_headers_config(args.root)
-    if config is None:
-        raise ConfigurationError('check-file-headers requires tool.popo.headers')
-    return files.validate_headers(config), 'configured file headers are valid'
-
-
-def _python_source(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """Dispatch explicitly configured, read-only Python source checks."""
-    config = load_source_check(args.root, 'python-source')
-    return python_source.validate(config), 'configured Python source checks passed'
+    config = load_safety_config(args.root)
+    if not config.configured:
+        raise ConfigurationError('check-repository-safety requires tool.popo.safety')
+    return safety.validate(config), 'configured repository safety checks passed'
 
 
 def _swift_policy(
@@ -419,17 +430,6 @@ def _swift_source(
     """Dispatch explicitly configured, read-only Swift source checks."""
     config = load_source_check(args.root, 'swift-source')
     return swift_source.validate(config), 'configured Swift source checks passed'
-
-
-def _logs(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """Dispatch explicit artifact inspection without revealing log contents."""
-    config = load_source_check(args.root, 'logs')
-    return logs.validate(
-        config,
-        getattr(args, 'log_root', None),
-    ), 'configured logs passed'
 
 
 # !SECTION
