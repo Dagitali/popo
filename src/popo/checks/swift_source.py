@@ -4,11 +4,13 @@
 Inspect Swift source conventions through bounded lexical declaration checks.
 """
 
+from pathlib import Path
+
 from popo.config.source_checks import SourceCheckConfig
 
 from ._source_declarations import SourceFacts
-from ._source_documentation import guide_findings, limits
-from ._source_inputs import discover, read_source
+from ._source_documentation import limits
+from ._source_validation import validate_sources
 from ._swift_declarations import CALLABLE_KINDS, Declaration, parse
 from ._swift_documentation import documentation_findings
 
@@ -61,6 +63,39 @@ def _convention_findings(
     return failures
 
 
+def _source_findings(
+    config: SourceCheckConfig,
+    path: Path,
+    source: str,
+) -> list[str]:
+    """
+    Collect Swift size, documentation and convention findings for one file.
+
+    Parameters
+    ----------
+    config : SourceCheckConfig
+        Consumer-owned limits, documentation and convention settings.
+    path : pathlib.Path
+        Selected readable file inside the configured repository root.
+    source : str
+        UTF-8 source text to inspect without executing consumer code.
+
+    Returns
+    -------
+    list[str]
+        File-limit, documentation and convention findings in that order.
+        Parsing uses the bounded Swift lexical subset, not compiler validation.
+    """
+    failures: list[str] = []
+    relative = path.relative_to(config.root).as_posix()
+    lines = source.splitlines()
+    parsed = parse(source)
+    failures.extend(limits(config, path, lines, parsed.documentation_lines))
+    failures.extend(documentation_findings(parsed, config, relative))
+    failures.extend(_convention_findings(parsed, config, relative))
+    return failures
+
+
 # !SECTION
 
 
@@ -71,17 +106,17 @@ def validate(
     config: SourceCheckConfig,
 ) -> list[str]:
     """
-    Return source-size, documentation, guide and callable findings.
+    Return source-convention findings without executing inspected modules.
 
     Parameters
     ----------
     config : SourceCheckConfig
-        Validated Swift source selection and convention switches.
+        Swift source paths and opt-in convention settings.
 
     Returns
     -------
     list[str]
-        Relative locations and rule descriptions without source excerpts.
+        Location and rule diagnostics, never source or exception contents.
 
     Notes
     -----
@@ -96,20 +131,7 @@ def validate(
     unsupported recognized signatures explicitly. Compiler and DocC validation
     remain separate responsibilities; no consumer code or tools are executed.
     """
-    paths, failures = discover(config)
-    failures.extend(guide_findings(config, paths))
-    for path in paths:
-        source, errors = read_source(path, config.root)
-        failures.extend(errors)
-        if source is None:
-            continue
-        relative = path.relative_to(config.root).as_posix()
-        lines = source.splitlines()
-        parsed = parse(source)
-        failures.extend(limits(config, path, lines, parsed.documentation_lines))
-        failures.extend(documentation_findings(parsed, config, relative))
-        failures.extend(_convention_findings(parsed, config, relative))
-    return failures
+    return validate_sources(config, _source_findings)
 
 
 # !SECTION

@@ -4,13 +4,15 @@
 Inspect configured Python conventions through ASTs without importing code.
 """
 
+from pathlib import Path
+
 from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import NOMINAL_KINDS, Declaration, parse
 from ._python_documentation import documentation_findings
 from ._source_declarations import SourceFacts
-from ._source_documentation import guide_findings, limits
-from ._source_inputs import discover, read_source
+from ._source_documentation import limits
+from ._source_validation import validate_sources
 
 # SECTION: PROTECTED FUNCTIONS
 
@@ -55,6 +57,45 @@ def _convention_findings(
     return failures
 
 
+def _source_findings(
+    config: SourceCheckConfig,
+    path: Path,
+    source: str,
+) -> list[str]:
+    """
+    Collect Python size, documentation and convention findings for one file.
+
+    Parameters
+    ----------
+    config : SourceCheckConfig
+        Consumer-owned limits, documentation and convention settings.
+    path : pathlib.Path
+        Selected readable file inside the configured repository root.
+    source : str
+        UTF-8 source text to inspect without executing consumer code.
+
+    Returns
+    -------
+    list[str]
+        File-limit, documentation and convention findings in that order.
+        Invalid Python syntax yields file-limit findings followed by a syntax
+        diagnostic.
+    """
+    failures: list[str] = []
+    relative = path.relative_to(config.root).as_posix()
+    lines = source.splitlines()
+    try:
+        parsed = parse(source)
+    except SyntaxError as error:
+        failures.extend(limits(config, path, lines, ()))
+        failures.append(f'{relative}:{error.lineno}: invalid Python source')
+        return failures
+    failures.extend(limits(config, path, lines, parsed.documentation_lines))
+    failures.extend(documentation_findings(parsed, config, relative))
+    failures.extend(_convention_findings(parsed, config, relative))
+    return failures
+
+
 # !SECTION
 
 
@@ -77,25 +118,7 @@ def validate(
     list[str]
         Location and rule diagnostics, never source or exception contents.
     """
-    paths, failures = discover(config)
-    failures.extend(guide_findings(config, paths))
-    for path in paths:
-        source, errors = read_source(path, config.root)
-        failures.extend(errors)
-        if source is None:
-            continue
-        relative = path.relative_to(config.root).as_posix()
-        lines = source.splitlines()
-        try:
-            parsed = parse(source)
-        except SyntaxError as error:
-            failures.extend(limits(config, path, lines, ()))
-            failures.append(f'{relative}:{error.lineno}: invalid Python source')
-            continue
-        failures.extend(limits(config, path, lines, parsed.documentation_lines))
-        failures.extend(documentation_findings(parsed, config, relative))
-        failures.extend(_convention_findings(parsed, config, relative))
-    return failures
+    return validate_sources(config, _source_findings)
 
 
 # !SECTION
