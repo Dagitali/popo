@@ -45,9 +45,9 @@ class PythonPolicyConfig:
 
     Notes
     -----
-    :func:`~popo.config.load_config` bases relative configured paths on the
-    repository root. Construction does not read files or validate versions and
-    policy syntax.
+    Both the independent loader and :func:`~popo.config.load_config` base
+    relative configured paths on the repository root. Direct construction does
+    not read files or validate settings or version syntax.
     """
 
     metadata: Path
@@ -126,6 +126,8 @@ def parse_python_policy(
         If project or policy tables, or configured strings, are invalid.
     OSError, UnicodeError
         If existing dependency metadata cannot be read or decoded as UTF-8.
+    ValueError
+        Selected dependency metadata cannot be expressed relative to root.
 
     Notes
     -----

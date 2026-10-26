@@ -32,7 +32,7 @@ VERSION_PATTERN = re.compile(r'(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?', r
 @dataclass(frozen=True, slots=True)
 class SwiftPolicyConfig:
     """
-    Store validated compiler selections and declaration locations.
+    Store immutable expected Swift policy and its declaration locations.
 
     Attributes
     ----------
@@ -100,7 +100,40 @@ def load_swift_policy_config(
         Consumer configuration cannot be read/decoded or root cannot resolve.
     """
     root = root.resolve()
-    table = require_table(read_popo(root).get('swift-policy'), name='swift-policy')
+    return parse_swift_policy(root, read_popo(root))
+
+
+def parse_swift_policy(
+    root: Path,
+    popo: dict[str, object],
+) -> SwiftPolicyConfig:
+    """
+    Validate explicit Swift settings, then apply declaration-path defaults.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Resolved repository root used to join configured relative paths.
+    popo : dict[str, object]
+        Parsed Popo settings from the selected policy source.
+
+    Returns
+    -------
+    SwiftPolicyConfig
+        Internally consistent stable compiler policy and confined path syntax.
+
+    Raises
+    ------
+    ConfigurationError
+        Missing/unknown settings, malformed values, unsupported versions,
+        duplicate normalized compilers, or inconsistent minimum/preference.
+
+    Notes
+    -----
+    Parsing does not read declaration files or infer Python metadata defaults.
+    Existence and resolved containment are checked by validation.
+    """
+    table = require_table(popo.get('swift-policy'), name='swift-policy')
     defaults = {
         'preferred-version': '',
         'tools-version': '',
