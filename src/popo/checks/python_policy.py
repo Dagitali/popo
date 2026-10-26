@@ -16,6 +16,8 @@ from packaging.version import InvalidVersion, Version
 from popo.config import PythonPolicyConfig
 from popo.support import automation_paths
 
+from ._toolchain_policy import workflow_observations
+
 # SECTION: CONSTANTS
 
 
@@ -223,10 +225,14 @@ def validate(
     Metadata specifier text, mypy and Ruff settings, and the stripped version
     file are compared exactly with configured expectations. Runtime and
     resolved workflow versions are tested for membership in the configured
-    specifier set. Workflow resolution is text-based and supports literals,
+    specifier set. Default workflow resolution uses text and supports literals,
     inline lists, environment references, and inline or contiguous block-list
     matrices; it does not evaluate arbitrary expressions or model job-local
-    YAML scope. Unresolved environment and matrix references produce version
+    YAML scope. Optional scoped mode uses the shared strict YAML observer,
+    requires version inputs per file, and reports unresolved declarations or
+    unsupported matrices without guessing. Workflow read/decode errors become
+    diagnostics in scoped mode; legacy text mode propagates them.
+    Unresolved environment and matrix references produce version
     diagnostics even when other declarations resolve. Shared package/Ruff
     metadata is read once per validation, including a single parse diagnostic.
     """
@@ -294,15 +300,26 @@ def validate(
             f'workflow directory does not exist: {config.workflow_directory}',
         )
         return failures
-    for path in automation_paths(config.workflow_directory):
-        content = path.read_text(encoding='utf-8')
-        configured = [
-            resolved
-            for raw in map(_normalize_scalar, WORKFLOW_VERSION_PATTERN.findall(content))
-            for resolved in (_resolve_versions(raw, content) or (raw,))
-        ]
-        if 'actions/setup-python@' in content and not configured:
-            failures.append(f'{path}: setup-python requires an explicit version')
+    paths = automation_paths(config.workflow_directory)
+    if config.workflow_parser == 'scoped' and not paths:
+        failures.append('no Python policy workflows found')
+    for path in paths:
+        if config.workflow_parser == 'scoped':
+            observations, errors = workflow_observations(path, 'python-version')
+            failures.extend(f'{path}: {error}' for error in errors)
+            configured = [observation.value for observation in observations]
+        else:
+            content = path.read_text(encoding='utf-8')
+            configured = [
+                resolved
+                for raw in map(
+                    _normalize_scalar,
+                    WORKFLOW_VERSION_PATTERN.findall(content),
+                )
+                for resolved in (_resolve_versions(raw, content) or (raw,))
+            ]
+            if 'actions/setup-python@' in content and not configured:
+                failures.append(f'{path}: setup-python requires an explicit version')
         for value in configured:
             try:
                 accepted = Version(value) in supported

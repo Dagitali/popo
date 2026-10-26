@@ -7,9 +7,10 @@ Python-policy settings and defaults derived from dependency metadata.
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal, cast
 
-from ._common import read_string, require_table
-from .dependencies import DependencyConfig
+from ._common import ConfigurationError, read_popo, read_string, require_table
+from .dependencies import DependencyConfig, parse_dependencies
 
 # SECTION: DATA CLASSES
 
@@ -38,6 +39,9 @@ class PythonPolicyConfig:
         Exact expected mypy Python-version setting.
     workflow_directory : pathlib.Path
         Directory searched recursively for YAML version declarations.
+    workflow_parser : {'text', 'scoped'}
+        Legacy text resolution by default, or strict scoped YAML observations.
+        Scoped mode requires selected version inputs in each workflow file.
 
     Notes
     -----
@@ -54,6 +58,7 @@ class PythonPolicyConfig:
     ruff_target_version: str
     mypy_python_version: str
     workflow_directory: Path
+    workflow_parser: Literal['text', 'scoped'] = 'text'
 
 
 # !SECTION
@@ -114,6 +119,9 @@ def parse_python_policy(
         name='tool.popo.python-policy',
     )
     python_version = read_string(python_table, 'python-version', default='3.13')
+    workflow_parser = read_string(python_table, 'workflow-parser', default='text')
+    if workflow_parser not in {'text', 'scoped'}:
+        raise ConfigurationError('workflow-parser must be text or scoped')
     return PythonPolicyConfig(
         metadata=root
         / read_string(
@@ -151,7 +159,39 @@ def parse_python_policy(
             'workflow-directory',
             default='.github/workflows',
         ),
+        workflow_parser=cast(Literal['text', 'scoped'], workflow_parser),
     )
+
+
+def load_python_policy_config(
+    root: Path,
+) -> PythonPolicyConfig:
+    """
+    Load Python policy through its own entry point with legacy defaults.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Consumer root with standalone or embedded configuration.
+
+    Returns
+    -------
+    PythonPolicyConfig
+        The same settings/defaults as the aggregate project loader. Dependency
+        layout still supplies Python metadata defaults for compatibility.
+
+    Raises
+    ------
+    ConfigurationError
+        Invalid selected configuration, dependency defaults or Python policy.
+    OSError, UnicodeError
+        Configuration/default metadata cannot be read or decoded.
+    ValueError
+        Selected dependency metadata cannot be expressed relative to root.
+    """
+    root = root.resolve()
+    settings = read_popo(root)
+    return parse_python_policy(root, settings, parse_dependencies(root, settings))
 
 
 # !SECTION

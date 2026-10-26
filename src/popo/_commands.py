@@ -19,14 +19,17 @@ from .checks import (
     python_policy,
     python_source,
     safety,
-    swift_documentation,
+    swift_policy,
+    swift_source,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
 from .config.files import load_headers_config, load_required_files_config
 from .config.guardrails import load_guardrails_config
+from .config.python_policy import load_python_policy_config
 from .config.safety import load_safety_config
 from .config.source_checks import load_source_check
+from .config.swift_policy import load_swift_policy_config
 
 # SECTION: TYPE ALIASES
 
@@ -275,7 +278,7 @@ def _python(
         If the shared configuration loader cannot express dependency metadata
         relative to the consumer root, such as an absolute path outside it.
     """
-    config = load_config(args.root.resolve()).python_policy
+    config = load_python_policy_config(args.root.resolve())
     return python_policy.validate(config), 'Python policy is consistent'
 
 
@@ -368,13 +371,42 @@ def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
 def _python_source(args: argparse.Namespace) -> tuple[list[str], str]:
     """Dispatch explicitly configured, read-only Python source checks."""
     config = load_source_check(args.root, 'python-source')
-    return python_source.validate(config), 'configured Python conventions passed'
+    return python_source.validate(config), 'configured Python source checks passed'
 
 
-def _swift_documentation(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Dispatch explicitly configured Swift documentation checks."""
-    config = load_source_check(args.root, 'swift-documentation')
-    return swift_documentation.validate(config), 'configured Swift documentation passed'
+def _swift_policy(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Check Swift declarations with an optional explicit compiler observation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Consumer root and optional compiler_version string. Aggregate checks
+        omit the observation and do not invoke Swift to infer one.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Declaration/runtime-observation diagnostics and success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        If the opt-in Swift policy is absent or invalid.
+    OSError, UnicodeError
+        If loading consumer configuration fails; inspected input errors are
+        returned as diagnostics by the validator.
+    """
+    config = load_swift_policy_config(args.root)
+    return swift_policy.validate(
+        config,
+        compiler_version=getattr(args, 'compiler_version', None),
+    ), 'Swift toolchain declarations are consistent'
+
+
+def _swift_source(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Dispatch explicitly configured, read-only Swift source checks."""
+    config = load_source_check(args.root, 'swift-source')
+    return swift_source.validate(config), 'configured Swift source checks passed'
 
 
 def _logs(args: argparse.Namespace) -> tuple[list[str], str]:
@@ -395,7 +427,8 @@ def _logs(args: argparse.Namespace) -> tuple[list[str], str]:
 # Registry of native command handlers.
 NATIVE_HANDLERS: dict[str, Command] = {
     'check-python-source': _python_source,
-    'check-swift-documentation': _swift_documentation,
+    'check-swift-source': _swift_source,
+    'check-swift-policy': _swift_policy,
     'check-logs': _logs,
     'check-guardrail-parity': _guardrail_parity,
     'check-required-files': _required_files,

@@ -18,10 +18,23 @@ DOMAINS: dict[str, dict[str, object]] = {
         'annotations': False,
         'parameter-lines': False,
         'alphabetical-methods': False,
-        'docstring-width': 79,
-        'max-module-lines': 1000,
+        'documentation-width': 79,
+        'max-file-lines': 1000,
+        'file-overviews': False,
+        'declaration-docs': False,
+        'parameter-docs': False,
+        'return-docs': False,
+        'raises-docs': False,
+        'source-guide': '',
     },
-    'swift-documentation': {
+    'swift-source': {
+        'max-file-lines': 1000,
+        'documentation-width': 79,
+        'member-docs': False,
+        'parameter-lines': False,
+        'parameter-docs': False,
+        'return-docs': False,
+        'raises-docs': False,
         'file-overviews': True,
         'declaration-docs': True,
         'declaration-spacing': True,
@@ -112,7 +125,7 @@ def load_source_check(
             raise ConfigurationError(f'{domain}.{key}: invalid setting type')
         if type(value) is int and value < 1:
             raise ConfigurationError(f'{domain}.{key}: expected a positive integer')
-    if domain == 'swift-documentation':
+    if 'source-guide' in settings:
         guide = Path(str(settings['source-guide']))
         if guide.is_absolute() or '..' in guide.parts:
             raise ConfigurationError('source-guide must stay inside root')

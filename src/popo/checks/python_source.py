@@ -4,11 +4,59 @@
 Inspect configured Python conventions through ASTs without importing code.
 """
 
-import ast
-
 from popo.config.source_checks import SourceCheckConfig
 
+from ._python_declarations import NOMINAL_KINDS, Declaration, parse
+from ._python_documentation import documentation_findings
+from ._source_declarations import SourceFacts
+from ._source_documentation import guide_findings, limits
 from ._source_inputs import discover, read_source
+
+# SECTION: PROTECTED FUNCTIONS
+
+
+def _convention_findings(
+    source: SourceFacts[Declaration],
+    config: SourceCheckConfig,
+    relative: str,
+) -> list[str]:
+    """
+    Check Python annotation, instance-method order and signature layout.
+
+    Parameters
+    ----------
+    source : SourceFacts[Declaration]
+        Observations from parse; no additional AST traversal occurs here.
+    config : SourceCheckConfig
+        Consumer-owned annotation, ordering and parameter-layout switches.
+    relative : str
+        Repository-relative filename for location-only diagnostics.
+
+    Returns
+    -------
+    list[str]
+        Enabled rule violations without identifiers or source excerpts.
+    """
+    failures: list[str] = []
+    for declaration in source.declarations:
+        facts = declaration.facts
+        location = f'{relative}:{facts.line}'
+        if facts.kind in NOMINAL_KINDS:
+            if config.settings[
+                'alphabetical-methods'
+            ] and declaration.instance_methods != tuple(
+                sorted(declaration.instance_methods),
+            ):
+                failures.append(f'{location}: instance methods not alphabetical')
+        elif config.settings['annotations'] and not declaration.annotated:
+            failures.append(f'{location}: missing signature annotations')
+        if config.settings['parameter-lines'] and not facts.parameter_lines:
+            failures.append(f'{location}: parameters require separate lines')
+    return failures
+
+
+# !SECTION
+
 
 # SECTION: FUNCTIONS
 
@@ -30,7 +78,7 @@ def validate(
         Location and rule diagnostics, never source or exception contents.
     """
     paths, failures = discover(config)
-    options = config.settings
+    failures.extend(guide_findings(config, paths))
     for path in paths:
         source, errors = read_source(path, config.root)
         failures.extend(errors)
@@ -38,95 +86,15 @@ def validate(
             continue
         relative = path.relative_to(config.root).as_posix()
         lines = source.splitlines()
-        if len(lines) > int(str(options['max-module-lines'])):
-            failures.append(f'{relative}: module exceeds configured line limit')
         try:
-            tree = ast.parse(source)
+            parsed = parse(source)
         except SyntaxError as error:
+            failures.extend(limits(config, path, lines, ()))
             failures.append(f'{relative}:{error.lineno}: invalid Python source')
             continue
-        for node in ast.walk(tree):
-            if (
-                isinstance(
-                    node,
-                    (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
-                )
-                and ast.get_docstring(node, clean=False) is not None
-            ):
-                doc = node.body[0]
-                for number in range(doc.lineno, (doc.end_lineno or doc.lineno) + 1):
-                    if len(lines[number - 1]) > int(str(options['docstring-width'])):
-                        failures.append(f'{relative}:{number}: docstring line too long')
-            if isinstance(node, ast.ClassDef) and options['alphabetical-methods']:
-                names = [
-                    member.name
-                    for member in node.body
-                    if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-                    and (
-                        member_parameters := [
-                            *member.args.posonlyargs,
-                            *member.args.args,
-                        ]
-                    )
-                    and member_parameters[0].arg == 'self'
-                ]
-                if names != sorted(names):
-                    failures.append(
-                        f'{relative}:{node.lineno}: instance methods not alphabetical',
-                    )
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            args = node.args
-            parameters = [
-                *args.posonlyargs,
-                *args.args,
-                *args.kwonlyargs,
-                *filter(None, (args.vararg, args.kwarg)),
-            ]
-            if options['annotations'] and (
-                node.returns is None
-                or any(arg.annotation is None for arg in parameters)
-            ):
-                failures.append(
-                    f'{relative}:{node.lineno}: missing signature annotations',
-                )
-            if (
-                not options['parameter-lines']
-                or not parameters
-                or (len(parameters) == 1 and parameters[0].arg == 'self')
-            ):
-                continue
-            positional = [*args.posonlyargs, *args.args]
-            defaults = [
-                *zip(
-                    positional[len(positional) - len(args.defaults) :],
-                    args.defaults,
-                    strict=True,
-                ),
-                *(
-                    (arg, default)
-                    for arg, default in zip(
-                        args.kwonlyargs,
-                        args.kw_defaults,
-                        strict=True,
-                    )
-                    if default is not None
-                ),
-            ]
-            if (
-                len({arg.lineno for arg in parameters}) != len(parameters)
-                or any(
-                    arg.lineno <= node.lineno or arg.lineno != arg.end_lineno
-                    for arg in parameters
-                )
-                or any(
-                    arg.lineno != default.lineno or arg.lineno != default.end_lineno
-                    for arg, default in defaults
-                )
-            ):
-                failures.append(
-                    f'{relative}:{node.lineno}: parameters require separate lines',
-                )
+        failures.extend(limits(config, path, lines, parsed.documentation_lines))
+        failures.extend(documentation_findings(parsed, config, relative))
+        failures.extend(_convention_findings(parsed, config, relative))
     return failures
 
 

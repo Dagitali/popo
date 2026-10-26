@@ -182,6 +182,10 @@ def create_parser() -> argparse.ArgumentParser:
             subparser.set_defaults(handler=handler)
         parsers[name] = subparser
 
+    parsers['check-swift-policy'].add_argument(
+        '--compiler-version',
+        help='Explicit observed Swift compiler version (never inferred)',
+    )
     parsers['check-logs'].add_argument(
         '--log-root',
         type=Path,

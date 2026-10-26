@@ -29,21 +29,32 @@ def discover(
     Returns
     -------
     tuple[list[pathlib.Path], list[str]]
-        Confined files and diagnostics containing no source contents.
+        Confined files and diagnostics containing no source contents. Root
+        resolution, discovery and per-file inspection errors become redacted
+        diagnostics rather than propagating.
     """
-    boundary = (root or config.root).resolve()
+    try:
+        boundary = (root or config.root).resolve()
+    except (OSError, ValueError):
+        return [], ['cannot resolve selected input root']
     paths: set[Path] = set()
     failures = []
     for pattern in config.include:
         matches = []
-        for path in boundary.glob(pattern):
-            relative = path.relative_to(boundary).as_posix()
-            if any(fnmatchcase(relative, rule) for rule in config.exclude):
-                continue
-            if not path.resolve().is_relative_to(boundary):
-                failures.append(f'{relative}: input escapes selected root')
-            elif path.is_file():
-                matches.append(path)
+        try:
+            for path in boundary.glob(pattern):
+                relative = path.relative_to(boundary).as_posix()
+                if any(fnmatchcase(relative, rule) for rule in config.exclude):
+                    continue
+                try:
+                    if not path.resolve().is_relative_to(boundary):
+                        failures.append(f'{relative}: input escapes selected root')
+                    elif path.is_file():
+                        matches.append(path)
+                except (OSError, ValueError):
+                    failures.append(f'{relative}: cannot inspect selected input')
+        except (OSError, ValueError):
+            failures.append('cannot discover configured source inputs')
         if not matches:
             failures.append(f'no inputs match: {pattern}')
         paths.update(matches)
