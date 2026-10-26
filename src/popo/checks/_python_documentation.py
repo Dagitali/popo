@@ -10,7 +10,7 @@ from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import CALLABLE_KINDS, Declaration
 from ._source_declarations import SourceFacts
-from ._source_documentation import contract_findings
+from ._source_documentation import CallableDocumentation, contract_findings
 
 # SECTION: CONSTANTS
 
@@ -29,10 +29,57 @@ SECTION_PATTERNS = {
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _documentation(
+    doc: str,
+    return_section: str,
+) -> CallableDocumentation:
+    """
+    Collect callable documentation evidence using the language's markup.
+
+    Parameters
+    ----------
+    doc : str
+        Cleaned NumPy docstring supplied by the declaration collector.
+    return_section : str
+        Required conceptual section: Returns, Yields, or empty when unneeded.
+
+    Returns
+    -------
+    CallableDocumentation
+        Documented parameter names and content-bearing result/exception
+        sections. An absent requirement does not request result evidence.
+
+    Notes
+    -----
+    Grouped and variadic names come from Parameters; the declaration selects
+    Returns or Yields, and Raises supplies exception evidence. Section content
+    is inspected without validating prose, types or exception escape behavior.
+    """
+    return CallableDocumentation(
+        frozenset(_parameters(doc)),
+        bool(_section(doc, return_section)) if return_section else False,
+        bool(_section(doc, 'Raises')),
+    )
+
+
 def _parameters(
     doc: str,
 ) -> set[str]:
-    """Read grouped and variadic names from the NumPy Parameters section."""
+    """
+    Extract documented parameter names using the language's notation.
+
+    Parameters
+    ----------
+    doc : str
+        Cleaned NumPy docstring containing an optional Parameters section.
+
+    Returns
+    -------
+    set[str]
+        Case-sensitive grouped and variadic names, without leading stars.
+        Missing sections yield an empty set; descriptions and types are not
+        validated. Names are compared with receiver-excluded syntax facts.
+    """
     return {
         name.strip().lstrip('*')
         for names in PARAMETER_PATTERN.findall(_section(doc, 'Parameters'))
@@ -44,7 +91,27 @@ def _section(
     doc: str,
     name: str,
 ) -> str:
-    """Extract a NumPy section through the next underlined section heading."""
+    """
+    Extract content from one recognized documentation section.
+
+    Parameters
+    ----------
+    doc : str
+        Cleaned NumPy docstring; section headings are case-sensitive.
+    name : str
+        Supported section name from SECTION_PATTERNS.
+
+    Returns
+    -------
+    str
+        Stripped content through the next underlined section heading, or an
+        empty string for a missing section. Unrelated sections end the span.
+
+    Raises
+    ------
+    KeyError
+        If name is not a supported section name.
+    """
     match = SECTION_PATTERNS[name].search(doc)
     if match is None:
         return ''
@@ -64,7 +131,8 @@ def documentation_findings(
     config: SourceCheckConfig,
     relative: str,
 ) -> list[str]:
-    """Check overview/declaration presence and NumPy callable sections.
+    """
+    Check overview/declaration presence and NumPy callable sections.
 
     Parameters
     ----------
@@ -105,11 +173,7 @@ def documentation_findings(
                     facts,
                     config,
                     relative,
-                    _parameters(doc),
-                    bool(_section(doc, facts.return_section))
-                    if facts.return_section
-                    else False,
-                    bool(_section(doc, 'Raises')),
+                    _documentation(doc, facts.return_section),
                 ),
             )
     return failures

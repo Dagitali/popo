@@ -1,17 +1,52 @@
 """
 :mod:`popo.checks._source_documentation` module.
 
-Share source-size, documentation-width and guide checks across languages.
+Share callable evidence, source-size, documentation-width and guide checks.
 """
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
 from ._source_declarations import DeclarationFacts
 from ._source_inputs import read_source
+
+# SECTION: DATA CLASSES
+
+
+@dataclass(frozen=True, slots=True)
+class CallableDocumentation:
+    """
+    Store parsed parameter, result and exception documentation evidence.
+
+    Attributes
+    ----------
+    parameter_names : frozenset[str]
+        Documented names normalized by the language's markup interpreter;
+        spelling remains case-sensitive. This does not validate descriptions.
+    return_documented : bool
+        Whether notation for the required return/yield section has content.
+        This observation is interpreted alongside declaration requirements.
+    raises_documented : bool
+        Whether the language's exception section/field has content.
+
+    Notes
+    -----
+    NumPy sections and DocC fields remain separate syntaxes. This immutable
+    record contains their comparable observations, not signature requirements,
+    source locations, prose-quality judgments or inferred exception behavior.
+    """
+
+    parameter_names: frozenset[str] = frozenset()
+    return_documented: bool = False
+    raises_documented: bool = False
+
+
+# !SECTION
+
 
 # SECTION: FUNCTIONS
 
@@ -20,9 +55,7 @@ def contract_findings(
     facts: DeclarationFacts,
     config: SourceCheckConfig,
     relative: str,
-    parameters: set[str],
-    returns: bool,
-    raises: bool,
+    documentation: CallableDocumentation,
 ) -> list[str]:
     """
     Compare shared requirements with language-specific documentation facts.
@@ -36,10 +69,9 @@ def contract_findings(
         Explicit parameter, return and exception documentation switches.
     relative : str
         Repository-relative filename used only to label findings.
-    parameters : set[str]
-        Names found in the language's documentation parameter notation.
-    returns, raises : bool
-        Whether the required return and exception sections have content.
+    documentation : CallableDocumentation
+        Parsed names and content-bearing result/exception notation from the
+        language's markup interpreter; requirements remain in facts.
 
     Returns
     -------
@@ -52,15 +84,19 @@ def contract_findings(
     rules = (
         (
             'parameter-docs',
-            not set(facts.parameter_names) <= parameters,
+            not set(facts.parameter_names) <= documentation.parameter_names,
             'parameter documentation incomplete',
         ),
         (
             'return-docs',
-            bool(facts.return_section) and not returns,
+            bool(facts.return_section) and not documentation.return_documented,
             'return documentation missing',
         ),
-        ('raises-docs', facts.raises and not raises, 'raises documentation missing'),
+        (
+            'raises-docs',
+            facts.raises and not documentation.raises_documented,
+            'raises documentation missing',
+        ),
     )
     return [
         f'{location}: {message}'
