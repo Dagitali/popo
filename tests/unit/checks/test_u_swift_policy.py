@@ -16,7 +16,9 @@ from tests.support.files import snapshot_files
 
 
 class TestSwiftPolicy:
-    """Keep package minimums, preferred compilers and observed versions distinct."""
+    """
+    Keep package minimums, preferred compilers and observed versions distinct.
+    """
 
     @pytest.mark.parametrize('observed', [None, '6.1.2', '6.2.0'])
     def test_consistent_declarations(
@@ -62,68 +64,112 @@ class TestSwiftPolicy:
         assert any(message in item for item in failures)
         assert 'PRIVATE SECRET' not in '\n'.join(failures)
 
-    @pytest.mark.parametrize('observed', ['6.3.0', '6.1-SNAPSHOT'])
+    @pytest.mark.parametrize(
+        'observed,message',
+        [
+            ('6.3.0', 'compiler version is not supported by policy'),
+            ('6.1-SNAPSHOT', 'invalid stable Swift version'),
+        ],
+    )
     def test_bad_observed_compiler(
         self,
         swift_policy_consumer: Path,
         observed: str,
+        message: str,
     ) -> None:
         failures = validate(
             load_swift_policy_config(swift_policy_consumer),
             compiler_version=observed,
         )
-        assert len(failures) == 1
-        assert failures[0].startswith('--compiler-version:')
+        assert failures == [f'--compiler-version: {message}']
 
-    def test_preferred_ci_membership_is_configurable(
+    @pytest.mark.parametrize('require_preferred', [False, True])
+    @pytest.mark.parametrize('ci_version', ['6.2.0', '6.3.0'])
+    @pytest.mark.parametrize('observed', [None, '6.1.2'])
+    def test_ci_policy_is_independent_of_caller_observations(
         self,
         swift_policy_consumer: Path,
+        require_preferred: bool,
+        ci_version: str,
+        observed: str | None,
     ) -> None:
+        """
+        Keep caller observations distinct from actual workflow declarations.
+        """
         root = swift_policy_consumer
         workflow = root / '.github/workflows/ci.yml'
+        source = workflow.read_text(encoding='utf-8')
+        marker = '["6.1.2", "6.2.0"]'
+        assert marker in source
         workflow.write_text(
-            workflow.read_text().replace('["6.1.2", "6.2.0"]', '["6.2.0"]'),
+            source.replace(marker, f'["{ci_version}"]'),
             encoding='utf-8',
         )
-        config = load_swift_policy_config(root)
-        assert validate(config) == [
-            'Swift CI declarations do not include the preferred compiler',
-        ]
-        assert validate(replace(config, require_preferred_in_ci=False)) == []
-
-    @pytest.mark.parametrize('ci_version', ['6.2.0', '6.3.0'])
-    def test_explicit_compiler_cannot_supply_missing_ci_preference(
-        self,
-        swift_policy_consumer: Path,
-        ci_version: str,
-    ) -> None:
-        """Keep caller observations distinct from actual workflow declarations."""
-        workflow = swift_policy_consumer / '.github/workflows/ci.yml'
-        workflow.write_text(
-            workflow.read_text().replace('["6.1.2", "6.2.0"]', f'["{ci_version}"]'),
-            encoding='utf-8',
+        config = replace(
+            load_swift_policy_config(root),
+            require_preferred_in_ci=require_preferred,
         )
-        failures = validate(
-            load_swift_policy_config(swift_policy_consumer),
-            compiler_version='6.1.2',
-        )
-        assert failures[-1] == (
-            'Swift CI declarations do not include the preferred compiler'
-        )
-        assert len(failures) == (2 if ci_version == '6.3.0' else 1)
+        expected = []
+        if ci_version == '6.3.0':
+            expected.append(
+                '.github/workflows/ci.yml: jobs.swift.steps[0].with.swift-version: '
+                'compiler version is not supported by policy',
+            )
+        if require_preferred:
+            expected.append(
+                'Swift CI declarations do not include the preferred compiler',
+            )
+        before = snapshot_files(root)
+        assert validate(config, compiler_version=observed) == expected
+        assert snapshot_files(root) == before
 
     @pytest.mark.parametrize(
         'path',
         ['.swift-version', 'Package.swift', '.github/workflows/ci.yml'],
     )
+    @pytest.mark.parametrize('state', ['missing', 'decode', 'permission'])
     def test_missing_and_unreadable_inputs(
         self,
         swift_policy_consumer: Path,
+        monkeypatch: pytest.MonkeyPatch,
         path: str,
+        state: str,
     ) -> None:
+        """
+        Reject each inaccessible declaration without revealing private data.
+        """
         root = swift_policy_consumer
-        (root / path).unlink()
-        assert validate(load_swift_policy_config(root))
+        config = load_swift_policy_config(root)
+        target = root / path
+        if state == 'missing':
+            target.unlink()
+        elif state == 'decode':
+            target.write_bytes(b'PRIVATE\xff')
+        else:
+            original = Path.read_text
+
+            def read(
+                selected: Path,
+                encoding: str | None = None,
+                errors: str | None = None,
+            ) -> str:
+                if selected == target:
+                    raise PermissionError('PRIVATE PERMISSION DETAILS')
+                return original(selected, encoding=encoding, errors=errors)
+
+            monkeypatch.setattr(Path, 'read_text', read)
+        if path.startswith('.github/'):
+            expected = (
+                'no Swift policy workflows match: .github/workflows/ci.yml'
+                if state == 'missing'
+                else '.github/workflows/ci.yml: '
+                'cannot read a valid workflow version declaration'
+            )
+        else:
+            expected = f'{path}: cannot read Swift policy input'
+        before = snapshot_files(root)
+        assert validate(config) == [expected]
+        assert snapshot_files(root) == before
 
     @pytest.mark.parametrize(
         'path',
@@ -145,18 +191,30 @@ class TestSwiftPolicy:
             'escapes repository' in f for f in validate(load_swift_policy_config(root))
         )
 
+    @pytest.mark.parametrize('operation', ['resolve', 'glob'])
+    @pytest.mark.parametrize('error', [OSError, ValueError])
     def test_root_and_workflow_inspection_errors_are_redacted(
         self,
         swift_policy_consumer: Path,
+        operation: str,
+        error: type[Exception],
     ) -> None:
-        config = load_swift_policy_config(swift_policy_consumer)
-        with patch.object(Path, 'resolve', side_effect=ValueError('PRIVATE')):
+        """Isolate discovery failures and suppress raw exception details."""
+        root = swift_policy_consumer
+        config = load_swift_policy_config(root)
+        before = snapshot_files(root)
+        with patch.object(Path, operation, side_effect=error('PRIVATE')):
             findings = validate(config)
-        assert findings
-        assert 'PRIVATE' not in '\n'.join(findings)
-        with patch.object(Path, 'glob', side_effect=OSError('PRIVATE')):
-            findings = validate(config)
-        assert 'cannot discover Swift policy workflows' in findings
+        assert findings == (
+            [
+                '.swift-version: cannot read Swift policy input',
+                'Package.swift: cannot read Swift policy input',
+                'cannot resolve Swift policy workflow',
+            ]
+            if operation == 'resolve'
+            else ['cannot discover Swift policy workflows']
+        )
+        assert snapshot_files(root) == before
 
 
 # !SECTION

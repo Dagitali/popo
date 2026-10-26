@@ -9,7 +9,9 @@ from tests.support.files import FileWriter
 
 
 class TestWorkflowVersions:
-    """Resolve only explicit literals, scoped env values and simple matrices."""
+    """
+    Resolve only explicit literals, scoped env values and simple matrices.
+    """
 
     @pytest.mark.parametrize('key', ['python-version', 'swift-version'])
     @pytest.mark.parametrize(
@@ -68,7 +70,11 @@ jobs:
         write_file: FileWriter,
         source: str,
     ) -> None:
-        _, errors = workflow_observations(write_file('ci.yml', source), 'swift-version')
+        values, errors = workflow_observations(
+            write_file('ci.yml', source),
+            'swift-version',
+        )
+        assert values == ()
         assert errors == ['cannot read a valid workflow version declaration']
 
     @pytest.mark.parametrize(
@@ -91,9 +97,11 @@ jobs:
             f'jobs: {{ build: {{ with: {{ swift-version: {value} }} }} }}',
         )
         observations, errors = workflow_observations(path, 'swift-version')
-        assert not observations
-        assert len(errors) == 1
-        assert 'unresolved or unsupported' in errors[0]
+        assert observations == ()
+        assert errors == [
+            'jobs.build.with.swift-version: '
+            'unresolved or unsupported version declaration',
+        ]
 
     @pytest.mark.parametrize(
         'matrix',
@@ -121,7 +129,12 @@ jobs:
       swift-version: ${{{{ matrix.tool }}}}
 """,
         )
-        assert workflow_observations(path, 'swift-version')[1]
+        observations, errors = workflow_observations(path, 'swift-version')
+        assert observations == ()
+        assert errors == [
+            'jobs.build.with.swift-version: '
+            'unresolved or unsupported version declaration',
+        ]
 
     def test_job_scopes_do_not_leak(
         self,
@@ -138,9 +151,13 @@ jobs:
 """,
         )
         values, errors = workflow_observations(path, 'swift-version')
-        assert len(values) == 1
-        assert len(errors) == 1
-        assert errors[0].startswith('jobs.second.with.swift-version:')
+        assert [(item.location, item.value) for item in values] == [
+            ('jobs.first.with.swift-version', '6.1.2'),
+        ]
+        assert errors == [
+            'jobs.second.with.swift-version: '
+            'unresolved or unsupported version declaration',
+        ]
 
 
 # !SECTION

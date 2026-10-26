@@ -12,7 +12,7 @@ import pytest
 
 from popo.checks.python_policy import validate
 from popo.config import PythonPolicyConfig
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -75,7 +75,7 @@ def unresolved_reference(request: pytest.FixtureRequest) -> str:
     return str(request.param)
 
 
-# SECTION!
+# !SECTION
 
 
 # SECTION: TESTS
@@ -444,16 +444,28 @@ class TestPythonPolicyInputBoundaries:
 class TestScopedPythonPolicy:
     """Opt into scoped observations without changing legacy text defaults."""
 
-    def test_scoped_workflow_and_independent_loader(
+    @pytest.mark.parametrize(
+        'scenario,message',
+        [
+            ('matrix', None),
+            ('missing-declarations', 'no explicit python-version declarations'),
+            ('missing-workflow', 'no Python policy workflows found'),
+        ],
+    )
+    def test_scoped_workflow_declarations(
         self,
         policy: PythonPolicyConfig,
         tmp_path: Path,
+        scenario: str,
+        message: str | None,
     ) -> None:
-        from popo.config.python_policy import load_python_policy_config
-
+        """Validate each scoped observation case with independent inputs."""
         workflow = policy.workflow_directory / 'ci.yml'
-        workflow.write_text(
-            """jobs:
+        if scenario == 'missing-workflow':
+            workflow.unlink()
+        else:
+            source = (
+                """jobs:
   build:
     strategy:
       matrix:
@@ -461,19 +473,21 @@ class TestScopedPythonPolicy:
     steps:
       - with:
           python-version: ${{ matrix.python }}
-""",
-            encoding='utf-8',
+"""
+                if scenario == 'matrix'
+                else 'jobs: {}'
+            )
+            workflow.write_text(source, encoding='utf-8')
+        expected = []
+        if message is not None:
+            expected = [
+                f'{workflow}: {message}'
+                if scenario == 'missing-declarations'
+                else message,
+            ]
+        before = snapshot_files(tmp_path)
+        assert (
+            validate(replace(policy, workflow_parser='scoped'), running_version='3.13')
+            == expected
         )
-        config = replace(policy, workflow_parser='scoped')
-        assert validate(config, running_version='3.13') == []
-        workflow.write_text('jobs: {}', encoding='utf-8')
-        assert any(
-            'no explicit python-version' in f
-            for f in validate(config, running_version='3.13')
-        )
-        workflow.unlink()
-        assert 'no Python policy workflows found' in validate(
-            config,
-            running_version='3.13',
-        )
-        assert load_python_policy_config(tmp_path).workflow_parser == 'text'
+        assert snapshot_files(tmp_path) == before
