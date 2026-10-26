@@ -28,7 +28,7 @@ def _convention_findings(
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Observations from parse; no additional AST traversal occurs here.
+        Collected declaration facts; no source is parsed again here.
     config : SourceCheckConfig
         Consumer-owned annotation, ordering and parameter-layout switches.
     relative : str
@@ -117,6 +117,17 @@ def validate(
     -------
     list[str]
         Location and rule diagnostics, never source or exception contents.
+
+    Notes
+    -----
+    Parse Python ASTs without importing or executing inspected modules. Invalid
+    syntax produces a location-only diagnostic after physical file-limit
+    checks; documentation and convention checks are skipped for that file.
+    Interpret documentation as NumPy-style docstrings. Annotation completeness,
+    instance-method ordering and parameter layout are separately opt-in.
+    File-overview and declaration-documentation requirements follow the
+    consumer's settings. This check does not perform type checking or execute
+    examples; those remain separate responsibilities.
     """
     return validate_sources(config, _source_findings)
 

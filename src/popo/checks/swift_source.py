@@ -28,7 +28,7 @@ def _convention_findings(
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Observations from parse; no signatures are rescanned here.
+        Collected declaration facts; no source is parsed again here.
     config : SourceCheckConfig
         Callable documentation and parameter-layout switches.
     relative : str
@@ -122,8 +122,9 @@ def validate(
     -----
     Mask nested comments and ordinary, multiline and raw strings before
     recognizing line-leading declarations. Triple-slash comments attach across
-    attribute-only lines. Nominal declarations retain their original policy;
-    member documentation and callable contract rules are separately opt-in.
+    attribute-only lines. Nominal documentation follows the consumer's
+    declaration-docs setting; member documentation and callable contract rules
+    are separately opt-in.
     Named function, init and subscript signatures use balanced parentheses.
     Documentation names use internal parameters and DocC list fields. This
     lexical subset does not validate Swift syntax, operator signatures, regex
