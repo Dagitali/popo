@@ -11,6 +11,8 @@ from typing import Self
 import pytest
 
 from popo.cli import main
+from popo.config.selection import load_plan
+from tests.support.files import snapshot_files
 
 # SECTION: TESTS
 
@@ -23,14 +25,15 @@ class TestSourceCommands:
         (
             ('check-python-source', 'python-source', 'rule.py', 'x = 1'),
             (
-                'check-swift-documentation',
-                'swift-documentation',
+                'check-swift-source',
+                'swift-source',
                 'Rule.swift',
                 '/// File and rule overview.\nstruct Rule {}',
             ),
             ('check-logs', 'logs', 'console.log', 'Clean startup'),
         ),
     )
+    @pytest.mark.parametrize('selection', ['individual', 'profile', 'explicit'])
     def test_individual_and_profile_dispatch(
         self: Self,
         tmp_path: Path,
@@ -39,6 +42,9 @@ class TestSourceCommands:
         domain: str,
         filename: str,
         source: str,
+        selection: str,
+        cli_format: str | None,
+        format_arguments: tuple[str, ...],
     ) -> None:
         extra = '\npatterns = { failure = "FORBIDDEN" }' if domain == 'logs' else ''
         (tmp_path / 'popo.toml').write_text(
@@ -46,18 +52,43 @@ class TestSourceCommands:
             f'[{domain}]\ninclude = ["{filename}"]{extra}',
         )
         (tmp_path / filename).write_text(source)
-        for arguments in ([command], ['check-all', '--profile', 'selected']):
-            assert main([*arguments, '--root', str(tmp_path), '--format', 'json']) == 0
-            report = json.loads(capsys.readouterr().out)
+        assert command in load_plan(tmp_path).checks
+        if selection == 'explicit':
+            policy = tmp_path / 'popo.toml'
+            policy.write_text(
+                f'checks=["{command}"]\n' + policy.read_text(),
+                encoding='utf-8',
+            )
+        arguments = (
+            [command]
+            if selection == 'individual'
+            else ['check-all', '--profile', 'selected']
+            if selection == 'profile'
+            else ['check-all']
+        )
+        before = snapshot_files(tmp_path)
+        assert main([*arguments, '--root', str(tmp_path), *format_arguments]) == 0
+        output = capsys.readouterr()
+        assert output.err == ''
+        if cli_format == 'json':
+            report = json.loads(output.out)
             assert report['passed']
             assert report['checks'][0]['check'] == command
+        else:
+            assert output.out.startswith('PASS: ')
+        assert snapshot_files(tmp_path) == before
         (tmp_path / filename).unlink()
-        assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
-        assert not json.loads(capsys.readouterr().out)['passed']
+        assert main([*arguments, '--root', str(tmp_path), *format_arguments]) == 1
+        output = capsys.readouterr()
+        assert output.err == ''
+        if cli_format == 'json':
+            assert not json.loads(output.out)['passed']
+        else:
+            assert 'FAIL:' in output.out
 
     @pytest.mark.parametrize(
         'command',
-        ('check-python-source', 'check-swift-documentation', 'check-logs'),
+        ('check-python-source', 'check-swift-source', 'check-logs'),
     )
     def test_absent_configuration_reports_failure(
         self: Self,
