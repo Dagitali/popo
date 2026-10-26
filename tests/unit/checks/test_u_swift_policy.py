@@ -91,6 +91,27 @@ class TestSwiftPolicy:
         ]
         assert validate(replace(config, require_preferred_in_ci=False)) == []
 
+    @pytest.mark.parametrize('ci_version', ['6.2.0', '6.3.0'])
+    def test_explicit_compiler_cannot_supply_missing_ci_preference(
+        self,
+        swift_policy_consumer: Path,
+        ci_version: str,
+    ) -> None:
+        """Keep caller observations distinct from actual workflow declarations."""
+        workflow = swift_policy_consumer / '.github/workflows/ci.yml'
+        workflow.write_text(
+            workflow.read_text().replace('["6.1.2", "6.2.0"]', f'["{ci_version}"]'),
+            encoding='utf-8',
+        )
+        failures = validate(
+            load_swift_policy_config(swift_policy_consumer),
+            compiler_version='6.1.2',
+        )
+        assert failures[-1] == (
+            'Swift CI declarations do not include the preferred compiler'
+        )
+        assert len(failures) == (2 if ci_version == '6.3.0' else 1)
+
     @pytest.mark.parametrize(
         'path',
         ['.swift-version', 'Package.swift', '.github/workflows/ci.yml'],

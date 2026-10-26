@@ -157,6 +157,32 @@ class TestPythonDocumentation:
         assert len(findings) == 1
         assert expected in findings[0]
 
+    @pytest.mark.parametrize(
+        'annotation',
+        ['None', 'NoReturn', 'Never', 'typing.NoReturn', 'typing.Never'],
+    )
+    @pytest.mark.parametrize('quoted', [False, True])
+    @pytest.mark.parametrize('body', ['pass', 'return 1'])
+    def test_nonvalue_return_annotations(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        annotation: str,
+        quoted: bool,
+        body: str,
+    ) -> None:
+        """Treat forward references equally while retaining explicit returns."""
+        write_file(
+            'popo.toml',
+            '[python-source]\ninclude=["*.py"]\nreturn-docs=true',
+        )
+        result_type = repr(annotation) if quoted else annotation
+        write_file('sample.py', f'def f() -> {result_type}: {body}')
+        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
+        assert findings == (
+            ['sample.py:1: return documentation missing'] if body == 'return 1' else []
+        )
+
     def test_complete_contracts_and_nested_scope(
         self: Self,
         write_file: FileWriter,

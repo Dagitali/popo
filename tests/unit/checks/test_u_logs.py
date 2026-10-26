@@ -41,6 +41,28 @@ class TestRedactedLogs:
         log.unlink()
         assert logs.validate(config, boundary)
 
+    @pytest.mark.parametrize('error', [OSError, ValueError])
+    @pytest.mark.parametrize('root_override', [False, True])
+    def test_root_resolution_failures_are_redacted(
+        self: Self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        error: type[Exception],
+        root_override: bool,
+    ) -> None:
+        """Report inaccessible input roots without exposing exception details."""
+        (tmp_path / 'popo.toml').write_text(
+            '[logs]\ninclude=["*.log"]\npatterns={warning="WARNING"}',
+        )
+        config = load_source_check(tmp_path, 'logs')
+
+        def fail_resolution(path: Path) -> Path:
+            raise error('PRIVATE ROOT')
+
+        monkeypatch.setattr(Path, 'resolve', fail_resolution)
+        root = tmp_path / 'artifacts' if root_override else None
+        assert logs.validate(config, root) == ['cannot resolve selected input root']
+
     @pytest.mark.parametrize('patterns', ('{}', '{ bad = "" }', '{ "bad\\nID" = "x" }'))
     def test_invalid_patterns(
         self: Self,
