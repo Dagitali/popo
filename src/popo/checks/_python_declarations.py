@@ -78,8 +78,24 @@ class Declaration:
 def _body(
     node: _CallableSyntax,
 ) -> Iterator[ast.AST]:
-    """
-    Walk a callable body without attributing nested callables' contracts.
+    """Walk a callable body without attributing nested callables' contracts.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Function or async-function node whose own body supplies requirements.
+
+    Yields
+    ------
+    ast.AST
+        Body nodes outside nested function, async-function, class and lambda
+        scopes. Traversal collects facts; it does not model execution order.
+
+    Notes
+    -----
+    Python has native body nodes to inspect. Swift's bounded front end instead
+    derives callable contracts from signatures and tracks lexical scope while
+    discovering declarations; it does not infer exceptions from body text.
     """
     pending: list[ast.AST] = list(node.body)
     while pending:
@@ -94,24 +110,59 @@ def _body(
 
 
 def _declaration(
-    node: _CallableSyntax,
+    syntax: _DeclarationSyntax,
 ) -> Declaration:
     """
-    Extract each signature and explicit return/yield/raise requirement once.
+    Convert one declaration's native syntax into facts and observations.
+
+    Parameters
+    ----------
+    syntax : _DeclarationSyntax
+        Class, function or async-function node from _declaration_syntax.
+
+    Returns
+    -------
+    Declaration
+        Shared documentation/signature facts and Python annotation/order facts.
+        Classes retain their direct self-receiver methods. Callables retain
+        signature annotations and explicit return/yield/raise requirements.
+
+    Notes
+    -----
+    Native AST arguments already represent parsed signatures. Body analysis
+    excludes nested definitions; explicit raises include locally caught ones.
+    Type annotations are observed, not resolved or validated.
     """
-    args = node.args
+    if isinstance(syntax, ast.ClassDef):
+        methods = tuple(
+            member.name
+            for member in syntax.body
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and (parameters := [*member.args.posonlyargs, *member.args.args])
+            and parameters[0].arg == 'self'
+        )
+        return Declaration(
+            DeclarationFacts(
+                syntax.lineno,
+                'class',
+                ast.get_docstring(syntax) or '',
+                (),
+            ),
+            instance_methods=methods,
+        )
+    args = syntax.args
     positional = [*args.posonlyargs, *args.args]
-    parameters = _parameters(node)
+    parameters = _parameters(syntax)
     names = [arg.arg for arg in parameters]
     if positional and positional[0].arg in {'self', 'cls'}:
         names.remove(positional[0].arg)
-    result_type = node.returns
+    result_type = syntax.returns
     annotation = ast.unparse(result_type) if result_type is not None else ''
     if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
         annotation = result_type.value
     returns = annotation not in NONVALUE_RETURN_TYPES
     yields = raises = False
-    for item in _body(node):
+    for item in _body(syntax):
         if isinstance(item, (ast.Yield, ast.YieldFrom)):
             yields = True
         elif isinstance(item, ast.Raise):
@@ -122,15 +173,15 @@ def _declaration(
             )
     return Declaration(
         DeclarationFacts(
-            node.lineno,
+            syntax.lineno,
             'function',
-            ast.get_docstring(node) or '',
+            ast.get_docstring(syntax) or '',
             tuple(names),
             'Yields' if yields else 'Returns' if returns else '',
             raises,
-            _parameter_lines(node, parameters),
+            _parameter_lines(syntax, parameters),
         ),
-        node.returns is not None
+        syntax.returns is not None
         and all(arg.annotation is not None for arg in parameters),
     )
 
@@ -176,26 +227,8 @@ def _declarations(
         Callable requirements exclude nested bodies; classes retain only their
         directly declared self-receiver methods for ordering checks.
     """
-    for node in syntax:
-        if isinstance(node, ast.ClassDef):
-            methods = tuple(
-                member.name
-                for member in node.body
-                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and (parameters := [*member.args.posonlyargs, *member.args.args])
-                and parameters[0].arg == 'self'
-            )
-            yield Declaration(
-                DeclarationFacts(
-                    node.lineno,
-                    'class',
-                    ast.get_docstring(node) or '',
-                    (),
-                ),
-                instance_methods=methods,
-            )
-        else:
-            yield _declaration(node)
+    for item in syntax:
+        yield _declaration(item)
 
 
 def _parameter_lines(

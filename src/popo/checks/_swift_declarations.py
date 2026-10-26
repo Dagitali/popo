@@ -99,6 +99,54 @@ class Declaration:
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _declaration(
+    syntax: _DeclarationSyntax,
+    lines: list[str],
+    documentation: set[int],
+) -> Declaration:
+    """
+    Convert one declaration's lexical syntax into facts and observations.
+
+    Parameters
+    ----------
+    syntax : _DeclarationSyntax
+        Nominal, member or callable record from _declaration_syntax.
+    lines : list[str]
+        Original source lines used to retain documentation text and spacing.
+    documentation : set[int]
+        One-based triple-slash documentation lines from lexical masking.
+
+    Returns
+    -------
+    Declaration
+        Shared documentation/signature facts and Swift attachment/spacing
+        facts. Documentation attaches across attribute-only lines; unsupported
+        callable signatures retain None names for explicit diagnostics.
+
+    Notes
+    -----
+    Bounded signature facts were collected lexically. Unlike Python's AST body
+    analysis, Swift return and raise requirements come from signature syntax;
+    declaration conversion neither compiles code nor infers body semantics.
+    """
+    start = syntax.attachment_start
+    while start and start in documentation:
+        start -= 1
+    doc = '\n'.join(
+        line.lstrip()[3:] for line in lines[start : syntax.attachment_start]
+    )
+    facts = DeclarationFacts(
+        syntax.line,
+        syntax.kind,
+        doc,
+        syntax.parameter_names,
+        'Returns' if syntax.returns else '',
+        syntax.raises,
+        syntax.parameter_lines,
+    )
+    return Declaration(facts, start + 1, not start or not lines[start - 1].strip())
+
+
 def _declaration_syntax(
     code: str,
 ) -> Iterator[_DeclarationSyntax]:
@@ -202,22 +250,7 @@ def _declarations(
         callable signatures retain None names for explicit diagnostics.
     """
     for item in syntax:
-        start = item.attachment_start
-        while start and start in documentation:
-            start -= 1
-        doc = '\n'.join(
-            line.lstrip()[3:] for line in lines[start : item.attachment_start]
-        )
-        facts = DeclarationFacts(
-            item.line,
-            item.kind,
-            doc,
-            item.parameter_names,
-            'Returns' if item.returns else '',
-            item.raises,
-            item.parameter_lines,
-        )
-        yield Declaration(facts, start + 1, not start or not lines[start - 1].strip())
+        yield _declaration(item, lines, documentation)
 
 
 def _parameter_lines(
@@ -226,7 +259,8 @@ def _parameter_lines(
     parameters_start: int,
     parameters: list[tuple[int, str]],
 ) -> bool:
-    """Check physical parameter/default spans using lexical source offsets.
+    """
+    Check physical parameter/default spans using lexical source offsets.
 
     Parameters
     ----------
