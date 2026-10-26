@@ -28,7 +28,8 @@ TOOLS_HEADER_PATTERN = re.compile(
 def _local_observations(
     config: SwiftPolicyConfig,
 ) -> tuple[list[VersionObservation], list[str]]:
-    """Read local selections and the first-line manifest minimum, not code."""
+    """
+    Read local selections and the first-line manifest minimum, not code."""
     observations: list[VersionObservation] = []
     failures: list[str] = []
     for path, kind in ((config.version_file, 'preferred'), (config.manifest, 'tools')):
@@ -57,7 +58,8 @@ def _read(
     path: Path,
     root: Path,
 ) -> tuple[str | None, list[str]]:
-    """Read one confined UTF-8 input, redacting filesystem error details."""
+    """
+    Read one confined UTF-8 input, redacting filesystem error details."""
     relative = path.relative_to(root).as_posix()
     try:
         if not path.resolve().is_relative_to(root):
@@ -70,7 +72,8 @@ def _read(
 def _workflow_observations(
     config: SwiftPolicyConfig,
 ) -> tuple[list[VersionObservation], list[str]]:
-    """Discover confined workflows and collect scoped compiler declarations."""
+    """
+    Discover confined workflows and collect scoped compiler declarations."""
     failures: list[str] = []
     paths: set[Path] = set()
     for pattern in config.workflow_globs:
@@ -113,7 +116,7 @@ def validate(
     compiler_version: str | None = None,
 ) -> list[str]:
     """
-    Collect declaration drift and optionally compare explicit compiler data.
+    Collect declaration drift and optionally compare a Swift compiler version.
 
     Parameters
     ----------
@@ -129,6 +132,13 @@ def validate(
         Location-based diagnostics for missing, unsafe, malformed, unresolved
         or inconsistent inputs. Input I/O/decode/YAML/version errors are
         returned as findings. Configuration loading happens separately.
+
+    Raises
+    ------
+    ValueError
+        Configured compiler, preferred or tools versions have invalid syntax
+        when direct construction bypasses the configuration parser. Invalid
+        observed versions instead produce diagnostics.
 
     Notes
     -----

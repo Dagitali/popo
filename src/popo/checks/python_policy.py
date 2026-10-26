@@ -191,7 +191,7 @@ def validate(
     running_version: str | None = None,
 ) -> list[str]:
     """
-    Return Python-policy inconsistencies.
+    Collect declaration drift and compare the Python runtime version.
 
     Parameters
     ----------
