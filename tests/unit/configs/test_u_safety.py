@@ -6,6 +6,7 @@
 Exercise safety configuration boundaries and explicit opt-in behavior.
 """
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -127,6 +128,8 @@ class TestSafetyConfiguration:
         )
         config = load_safety_config(tmp_path)
         assert config.configured
+        assert config.exceptions[0].expires == date(2026, 10, 8)
+        assert config.exceptions[0].approver == 'reviewer'
         assert config.npm_pairs == (('package.json', 'package-lock.json'),)
         assert config.exceptions[0][:5] == (
             'ci.yml',
