@@ -423,6 +423,32 @@ class TestSourceParity:
         )
         assert snapshot_files(tmp_path) == before
 
+    def test_diagnostic_order_across_selected_files(
+        self: Self,
+        source_case: SourceCase,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        """Report discovery and guide failures before sorted file findings."""
+        domain, filename, validate = source_case
+        suffix = Path(filename).suffix
+        first, last = f'a{suffix}', f'z{suffix}'
+        write_file(
+            'popo.toml',
+            f'[{domain}]\ninclude=["*{suffix}", "missing{suffix}"]\n'
+            'file-overviews=true\nsource-guide="Guide.md"',
+        )
+        write_file(last, 'value = 1')
+        write_file(first, '').write_bytes(b'\xff')
+        before = snapshot_files(tmp_path)
+        assert validate(load_source_check(tmp_path, domain)) == [
+            f'no inputs match: missing{suffix}',
+            'Guide.md: cannot read UTF-8 input',
+            f'{first}: cannot read UTF-8 input',
+            f'{last}: missing file overview',
+        ]
+        assert snapshot_files(tmp_path) == before
+
     def test_documentation_width_and_guide(
         self: Self,
         source_case: SourceCase,
