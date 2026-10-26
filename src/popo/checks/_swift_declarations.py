@@ -73,7 +73,8 @@ class _Syntax:
 
 @dataclass(frozen=True, slots=True)
 class Declaration:
-    """Keep shared facts and Swift-only documentation attachment details.
+    """
+    Keep shared facts and Swift-only documentation attachment details.
 
     Attributes
     ----------
@@ -320,7 +321,8 @@ def _signature(
 def parse(
     source: str,
 ) -> SourceFacts[Declaration]:
-    """Collect immutable Swift observations from a bounded lexical view.
+    """
+    Collect immutable Swift observations from a bounded lexical view.
 
     Parameters
     ----------

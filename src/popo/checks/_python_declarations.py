@@ -162,7 +162,8 @@ def _parameter_lines(
 def parse(
     source: str,
 ) -> SourceFacts[Declaration]:
-    """Parse Python and collect immutable source/declaration observations.
+    """
+    Parse Python and collect immutable source/declaration observations.
 
     Parameters
     ----------
