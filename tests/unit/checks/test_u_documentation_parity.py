@@ -9,10 +9,15 @@ from pathlib import Path
 
 import pytest
 
-from popo.checks import _python_documentation, _swift_documentation
+from popo.checks import (
+    _python_declarations,
+    _python_documentation,
+    _swift_declarations,
+    _swift_documentation,
+)
 from popo.checks._source_declarations import DeclarationFacts
 from popo.checks._source_documentation import CallableDocumentation, contract_findings
-from popo.config.source_checks import SourceCheckConfig
+from popo.config.source_checks import DOMAINS, SourceCheckConfig
 
 # SECTION: TYPE ALIASES
 
@@ -154,6 +159,49 @@ class TestCallableDocumentation:
         }[style]
         assert interpret(doc, '') == CallableDocumentation(
             frozenset({'args', 'kwargs'}),
+        )
+
+
+class TestDeclarationDocumentation:
+    """
+    Preserve language-specific presence switches at the declaration boundary.
+    """
+
+    @pytest.mark.parametrize('nominal', [False, True])
+    @pytest.mark.parametrize('required', [False, True])
+    @pytest.mark.parametrize('documented', [False, True])
+    def test_presence_policy_uses_the_correct_switch(
+        self,
+        documentation_case: DocumentationCase,
+        tmp_path: Path,
+        nominal: bool,
+        required: bool,
+        documented: bool,
+    ) -> None:
+        """Keep nominal/member policies independent with exact diagnostics."""
+        style, _ = documentation_case
+        domain = 'python-source' if style == 'numpy' else 'swift-source'
+        settings = {
+            key: False if type(value) is bool else value
+            for key, value in DOMAINS[domain].items()
+        }
+        doc = 'Details.' if documented else ''
+        if style == 'numpy':
+            settings['declaration-docs'] = required
+            facts = DeclarationFacts(5, 'class' if nominal else 'function', doc, ())
+            declaration = _python_declarations.Declaration(facts)
+            check = _python_documentation._declaration_findings
+        else:
+            settings['declaration-docs'] = required if nominal else not required
+            settings['member-docs'] = not required if nominal else required
+            facts = DeclarationFacts(5, 'struct' if nominal else 'func', doc, ())
+            declaration = _swift_declarations.Declaration(facts, 1, True)
+            check = _swift_documentation._declaration_findings
+        config = SourceCheckConfig(tmp_path, domain, (), (), settings)
+        assert check(declaration, config, 'sample') == (
+            ['sample:5: missing declaration documentation']
+            if required and not documented
+            else []
         )
 
 
