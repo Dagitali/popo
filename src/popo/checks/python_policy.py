@@ -43,6 +43,23 @@ def _local_findings(
     """
     Compare local metadata, tool settings and the preferred version file.
 
+    Parameters
+    ----------
+    config : popo.config.PythonPolicyConfig
+        Expected consumer policy and local declaration paths.
+
+    Returns
+    -------
+    list[str]
+        Local declaration findings, in metadata, Ruff and version-file order.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        An existing input cannot be read or decoded as UTF-8.
+
+    Notes
+    -----
     Read shared package/Ruff metadata once, reporting a single parse failure.
     Missing files and invalid TOML become findings; read/decode errors
     propagate.
@@ -248,6 +265,25 @@ def _workflow_findings(
     """
     Collect workflow declaration and version-range findings in file order.
 
+    Parameters
+    ----------
+    config : popo.config.PythonPolicyConfig
+        Expected consumer policy, workflow directory and parser selection.
+    supported : packaging.specifiers.SpecifierSet
+        Accepted versions parsed from the consumer's requires-python policy.
+
+    Returns
+    -------
+    list[str]
+        Discovery, declaration and version findings, in workflow file order.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        A workflow cannot be read or decoded as UTF-8 in legacy text mode.
+
+    Notes
+    -----
     Keep each file's parse findings before its unsupported-version findings.
     Legacy text mode propagates read/decode errors and requires inputs only
     when a setup-python action marker is present. Scoped mode reports

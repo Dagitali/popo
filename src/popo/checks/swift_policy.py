@@ -31,6 +31,23 @@ def _local_observations(
     """
     Collect local compiler and first-line manifest minimum observations.
 
+    Parameters
+    ----------
+    config : popo.config.swift_policy.SwiftPolicyConfig
+        Expected consumer policy and local declaration paths.
+
+    Returns
+    -------
+    tuple[list[VersionObservation], list[str]]
+        Collected declarations and input findings, in configured input order.
+
+    Raises
+    ------
+    ValueError
+        A local declaration path is lexically outside the configured root.
+
+    Notes
+    -----
     Keep preferred compiler and tools minimum as distinct observation kinds.
     Return missing, unsafe, unreadable or malformed-header inputs as findings;
     version syntax and equality are checked later. No manifest code is run.
@@ -66,9 +83,24 @@ def _read_text(
     """
     Read one confined UTF-8 input, redacting filesystem error details.
 
-    Return text and no findings on success, or None and a diagnostic for an
-    escaping path or a read/decode/resolution error. The path must be lexically
-    inside root; direct construction with an outside path raises ValueError.
+    Parameters
+    ----------
+    path : pathlib.Path
+        UTF-8 version file or package manifest to read without modification.
+    root : pathlib.Path
+        Repository root for confinement checks.
+
+    Returns
+    -------
+    tuple[str or None, list[str]]
+        Text and no findings on success, or None and a diagnostic for an
+        escaping path or a read/decode/resolution error.
+
+    Raises
+    ------
+    ValueError
+        The input path is lexically outside root, which can occur when direct
+        construction bypasses the configuration parser.
     """
     relative = path.relative_to(root).as_posix()
     try:
@@ -85,6 +117,19 @@ def _workflow_observations(
     """
     Discover confined workflows and collect scoped compiler observations.
 
+    Parameters
+    ----------
+    config : popo.config.swift_policy.SwiftPolicyConfig
+        Expected consumer policy, workflow globs and version input key.
+
+    Returns
+    -------
+    tuple[list[VersionObservation], list[str]]
+        Collected declarations and discovery/input findings. Observations are
+        ordered by sorted file path and then by declaration traversal order.
+
+    Notes
+    -----
     Deduplicate and sort files selected by explicit consumer globs. Return
     discovery, containment and scoped YAML errors as findings; version syntax,
     membership and preferred compiler coverage are checked later. No workflow
