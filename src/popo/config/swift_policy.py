@@ -1,7 +1,7 @@
 """
 :mod:`popo.config.swift_policy` module.
 
-Load explicit Swift compiler policy independently of Python metadata.
+Swift-policy settings and explicit defaults independent of Python metadata.
 """
 
 import re
@@ -40,12 +40,17 @@ class SwiftPolicyConfig:
         Resolved consumer root, independent of Popo's Python runtime policy.
     compiler_versions : tuple[str, ...]
         Explicit supported stable compiler versions, not version ranges.
-    preferred_version, tools_version : str
-        Expected local compiler selection and package minimum tools version.
-        These are distinct concepts and need not be equal.
-    manifest, version_file : pathlib.Path
-        Root-relative input locations joined to root; existence and resolved
-        containment are checked by validation.
+    preferred_version : str
+        Expected local compiler selection, normalized to numeric components
+        during comparison; not necessarily equal to the tools minimum.
+    tools_version : str
+        Expected package minimum tools version, compared independently of the
+        preferred compiler; not a Swift language-mode setting.
+    manifest : pathlib.Path
+        Package manifest whose literal first line declares the tools minimum.
+        Its contents are read without executing package code.
+    version_file : pathlib.Path
+        File declaring the preferred local compiler version.
     workflow_globs : tuple[str, ...]
         Nonempty relative workflow selection; every pattern must match.
     workflow_version_key : str
@@ -55,8 +60,10 @@ class SwiftPolicyConfig:
 
     Notes
     -----
-    Direct construction does not validate settings or inspect files. No
-    language-mode or deployment-target equivalence is inferred.
+    The loader bases relative configured paths on the repository root.
+    Existence and resolved containment are checked by validation. Direct
+    construction does not read files or validate settings or version syntax.
+    No language-mode or deployment-target equivalence is inferred.
     """
 
     root: Path
@@ -79,12 +86,13 @@ class SwiftPolicyConfig:
 def load_swift_policy_config(
     root: Path,
 ) -> SwiftPolicyConfig:
-    """Load an opt-in Swift policy without reading or executing its inputs.
+    """
+    Load Swift policy from the selected consumer configuration.
 
     Parameters
     ----------
     root : pathlib.Path
-        Consumer root with [swift-policy] or [tool.popo.swift-policy].
+        Consumer root with standalone or embedded configuration.
 
     Returns
     -------
@@ -98,6 +106,12 @@ def load_swift_policy_config(
         duplicate normalized compilers, or inconsistent minimum/preference.
     OSError, UnicodeError
         Consumer configuration cannot be read/decoded or root cannot resolve.
+
+    Notes
+    -----
+    Require explicit Swift policy settings in the selected configuration.
+    Declaration files are not read or executed, and Python metadata is not
+    used to derive defaults.
     """
     root = root.resolve()
     return parse_swift_policy(root, read_popo(root))

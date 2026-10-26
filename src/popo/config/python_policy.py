@@ -71,7 +71,7 @@ def load_python_policy_config(
     root: Path,
 ) -> PythonPolicyConfig:
     """
-    Load Python policy through its own entry point with legacy defaults.
+    Load Python policy from the selected consumer configuration.
 
     Parameters
     ----------
@@ -92,6 +92,12 @@ def load_python_policy_config(
         Configuration/default metadata cannot be read or decoded.
     ValueError
         Selected dependency metadata cannot be expressed relative to root.
+
+    Notes
+    -----
+    Preserve dependency-derived defaults even when Python policy is omitted.
+    Selected dependency metadata is read to derive defaults; workflow and
+    version-file declarations are not read or executed here.
     """
     root = root.resolve()
     settings = read_popo(root)
@@ -109,7 +115,7 @@ def parse_python_policy(
     Parameters
     ----------
     root : pathlib.Path
-        Repository root used to resolve configured relative paths.
+        Repository root used to join configured relative paths.
     popo : dict[str, object]
         Parsed Popo settings from the selected policy source.
     dependencies : DependencyConfig
