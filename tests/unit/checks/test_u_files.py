@@ -19,7 +19,7 @@ from popo.config.files import (
     HeadersConfig,
     RequiredFilesConfig,
 )
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -64,7 +64,7 @@ def headers_fixture(
 # SECTION: TESTS
 
 
-class TestFilePolicies:
+class TestRequiredFilePolicies:
     """
     Verify all checks read synthetic files and preserve consumer contents.
     """
@@ -87,8 +87,10 @@ class TestFilePolicies:
         failures = validate_required(
             RequiredFilesConfig(tmp_path, ('present', 'directory', 'absent')),
         )
-        assert len(failures) == 2
-        assert all(name in '\n'.join(failures) for name in ('directory', 'absent'))
+        assert failures == [
+            'directory: required file does not exist or is not a file',
+            'absent: required file does not exist or is not a file',
+        ]
 
     def test_escaping_required_symlinks(
         self,
@@ -115,6 +117,10 @@ class TestFilePolicies:
         assert (
             'escapes' in validate_required(RequiredFilesConfig(root, ('required',)))[0]
         )
+
+
+class TestHeaderPolicies:
+    """Check header syntax and rule order with independent consumer inputs."""
 
     @pytest.mark.parametrize(
         ('kind', 'content'),
@@ -157,8 +163,9 @@ class TestFilePolicies:
         source = headers.root / 'sample'
         source.write_text(content, encoding='utf-8')
         rule = replace(headers.rules[0], format=kind)
+        original = snapshot_files(headers.root)
         assert validate_headers(replace(headers, rules=(rule,))) == []
-        assert source.read_text(encoding='utf-8') == content
+        assert snapshot_files(headers.root) == original
 
     @pytest.mark.parametrize(
         ('first', 'prefix', 'trim', 'before'),
@@ -169,6 +176,7 @@ class TestFilePolicies:
             ('', '# ', True, '# Article\n\n'),
         ],
     )
+    @pytest.mark.parametrize('present', [True, False], ids=['present', 'missing'])
     def test_required_directives(
         self,
         headers: HeadersConfig,
@@ -176,6 +184,7 @@ class TestFilePolicies:
         prefix: str,
         trim: bool,
         before: str,
+        present: bool,
     ) -> None:
         """
         Require configured directives and preserve their first-line
@@ -193,6 +202,8 @@ class TestFilePolicies:
             Whether blank lines after the directive may be removed.
         before : str
             Executable or consumer directive placed before the header.
+        present : bool
+            Include the required directive, or test its absence independently.
         """
         body = 'sample\nSample\n\nCopyright Sample\n\nPurpose.'
         source = headers.root / 'sample'
@@ -204,14 +215,22 @@ class TestFilePolicies:
             trim_after_first_line=trim,
         )
         config = replace(headers, rules=(rule,))
-        source.write_text(before + body, encoding='utf-8')
-        assert validate_headers(config) == []
-        source.write_text(body, encoding='utf-8')
-        assert 'directive' in validate_headers(config)[0]
+        source.write_text((before if present else '') + body, encoding='utf-8')
+        original = snapshot_files(headers.root)
+        assert validate_headers(config) == (
+            []
+            if present
+            else ['sample: required first-line directive is missing or malformed']
+        )
+        assert snapshot_files(headers.root) == original
 
+    @pytest.mark.parametrize('preamble', [False, True])
+    @pytest.mark.parametrize('notes', ['Maintainer Notes', 'Notes'])
     def test_optional_schema_preamble_and_required_notes(
         self,
         headers: HeadersConfig,
+        preamble: bool,
+        notes: str,
     ) -> None:
         """
         Keep schema directives above hash headers and require
@@ -221,10 +240,14 @@ class TestFilePolicies:
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
+        preamble : bool
+            Include or omit the optional schema directive.
+        notes : str
+            Correct maintainer heading or an independently invalid heading.
         """
         body = (
             '# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n#\n'
-            '# Maintainer Notes\n# - Keep checks read-only.\n'
+            f'# {notes}\n# - Keep checks read-only.\n'
         )
         rule = replace(
             headers.rules[0],
@@ -233,13 +256,15 @@ class TestFilePolicies:
         )
         config = replace(headers, rules=(rule,))
         source = headers.root / 'sample'
-        source.write_text(
-            '# yaml-language-server: schema\n#\n' + body,
-            encoding='utf-8',
+        directive = '# yaml-language-server: schema\n#\n' if preamble else ''
+        source.write_text(directive + body, encoding='utf-8')
+        original = snapshot_files(headers.root)
+        assert validate_headers(config) == (
+            []
+            if notes == 'Maintainer Notes'
+            else ['sample: required header text is missing']
         )
-        assert validate_headers(config) == []
-        source.write_text(body.replace('Maintainer Notes', 'Notes'), encoding='utf-8')
-        assert 'required header text' in validate_headers(config)[0]
+        assert snapshot_files(headers.root) == original
 
     @pytest.mark.parametrize(
         ('content', 'message'),
@@ -332,7 +357,12 @@ class TestFilePolicies:
         assert len(failures) == 1
         assert '.hidden: unclassified' in failures[0]
 
-    def test_rule_order_and_optional_purpose(self, headers: HeadersConfig) -> None:
+    @pytest.mark.parametrize('specific_first', [True, False])
+    def test_rule_order_and_optional_purpose(
+        self,
+        headers: HeadersConfig,
+        specific_first: bool,
+    ) -> None:
         """
         Apply the first matching rule and permit explicit purpose
         exceptions.
@@ -341,13 +371,21 @@ class TestFilePolicies:
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
+        specific_first : bool
+            Place the purpose-exempt rule before or after the generic rule.
         """
         (headers.root / 'sample').write_text('literal', encoding='utf-8')
         specific = HeaderRule(('sample',), 'raw', 'literal', purpose_required=False)
-        assert (
-            validate_headers(replace(headers, rules=(specific, *headers.rules))) == []
+        rules = (
+            (specific, *headers.rules) if specific_first else (*headers.rules, specific)
         )
-        assert validate_headers(replace(headers, rules=(*headers.rules, specific)))
+        original = snapshot_files(headers.root)
+        assert validate_headers(replace(headers, rules=rules)) == (
+            []
+            if specific_first
+            else ['sample: header does not match configured identity/prefix']
+        )
+        assert snapshot_files(headers.root) == original
 
     def test_escaping_header_symlink_even_with_exception(
         self,
@@ -438,7 +476,10 @@ class TestFilePolicies:
                 'header source discovery failed: Git source inventory failed',
             ]
 
-    def test_missing_git_uses_local_discovery(self, headers: HeadersConfig) -> None:
+    def test_missing_git_uses_local_discovery(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
         Support a non-Git consumer without requiring a Git installation.
 
@@ -448,10 +489,14 @@ class TestFilePolicies:
             Synthetic consumer root and header policy.
         """
         (headers.root / 'sample').write_text('missing header', encoding='utf-8')
-        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
-            assert 'identity' in validate_headers(headers)[0]
+        assert validate_headers(headers) == [
+            'sample: header does not match configured identity/prefix',
+        ]
 
-    def test_read_failures_are_reported(self, headers: HeadersConfig) -> None:
+    def test_read_failures_are_reported(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
         Keep unreadable source files from passing header validation.
 
@@ -465,7 +510,10 @@ class TestFilePolicies:
         with patch.object(Path, 'read_text', side_effect=error):
             assert 'unreadable source' in validate_headers(headers)[0]
 
-    def test_binary_exception_is_not_decoded(self, headers: HeadersConfig) -> None:
+    def test_binary_exception_is_not_decoded(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
         Preserve exempt source bytes without opening their text contents.
 
@@ -515,7 +563,10 @@ class TestHeaderDiscoveryBoundaries:
     Cover directive and filesystem failures without touching real sources.
     """
 
-    def test_optional_shebang(self, headers: HeadersConfig) -> None:
+    def test_optional_shebang(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
         Allow a shebang before a hash header without requiring a directive.
         """
@@ -525,31 +576,43 @@ class TestHeaderDiscoveryBoundaries:
         )
         assert validate_headers(headers) == []
 
-    def test_directive_requires_following_content(self, headers: HeadersConfig) -> None:
+    def test_directive_requires_following_content(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """Report a file containing only its configured first-line prefix."""
         (headers.root / 'sample').write_text('#!', encoding='utf-8')
         rule = replace(headers.rules[0], first_line_prefix='#!')
         assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
 
-    def test_walk_failure_is_reported(self, headers: HeadersConfig) -> None:
+    def test_walk_failure_is_reported(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """Keep recursive fallback permission failures visible to consumers."""
 
-        def walk(path: Path, *, on_error: Callable[[OSError], None]) -> object:
+        def walk(
+            path: Path,
+            *,
+            on_error: Callable[[OSError], None],
+        ) -> object:
             """Simulate a traversal failure through the supplied callback."""
             on_error(PermissionError('cannot traverse source'))
             return iter(())
 
-        with (
-            patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError),
-            patch.object(Path, 'walk', walk),
-        ):
-            assert 'cannot traverse source' in validate_headers(headers)[0]
+        with patch.object(Path, 'walk', walk):
+            assert validate_headers(headers) == [
+                'header source discovery failed: cannot traverse source',
+            ]
 
 
 class TestNonHashPreambles:
     """Keep non-hash preamble handling independent of hash separators."""
 
-    def test_slash_preamble(self, headers: HeadersConfig) -> None:
+    def test_slash_preamble(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """Skip a matching directive before a slash-comment source header."""
         (headers.root / 'sample').write_text(
             '// directive\n// sample\n// Sample\n//\n'
@@ -585,10 +648,9 @@ class TestFileDiscoveryFailures:
             headers,
             exceptions=(HeaderException(('*.bin',), 'Binary'),) if preserved else (),
         )
-        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
-            assert validate_headers(config) == [
-                'escape.bin: header source escapes repository',
-            ]
+        assert validate_headers(config) == [
+            'escape.bin: header source escapes repository',
+        ]
         assert link.is_symlink()
 
     @pytest.mark.parametrize(
@@ -611,7 +673,11 @@ class TestFileDiscoveryFailures:
         """
         inspect_path = getattr(Path, operation)
 
-        def inspect(path: Path, *args: object, **kwargs: object) -> object:
+        def inspect(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> object:
             """Fail one fixture path while retaining normal inspection."""
             if path == tmp_path / 'unreadable':
                 raise error
@@ -640,5 +706,4 @@ class TestHeaderDirectoryLinks:
         target = headers.root / 'directory'
         target.mkdir()
         symlink(headers.root / 'directory-link', target)
-        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
-            assert validate_headers(headers) == []
+        assert validate_headers(headers) == []
