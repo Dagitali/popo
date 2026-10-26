@@ -202,6 +202,34 @@ class TestSourceConventions:
         with pytest.raises(ConfigurationError, match='unknown settings'):
             load_source_check(tmp_path, domain)
 
+    @pytest.mark.parametrize('multiline', [False, True])
+    def test_signature_observation_names_and_layout(
+        self: Self,
+        source_case: SourceCase,
+        multiline: bool,
+    ) -> None:
+        """
+        Keep signature record roles aligned across native and lexical input.
+        """
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            parameters = '\n    value: int,\n' if multiline else 'value: int'
+            source = f'def f({parameters}) -> int: return value'
+            syntax = ast.parse(source).body[0]
+            assert isinstance(syntax, ast.FunctionDef)
+            signature = _python_declarations._signature(syntax)
+            assert signature.annotated
+            assert signature.returns
+        else:
+            parameters = '\n    value: Int\n' if multiline else 'value: Int'
+            source = f'func f({parameters}) -> Int {{ value }}'
+            code, _ = _swift_declarations.lexical_view(source)
+            signature = _swift_declarations._signature(code, len('func'))
+            assert signature.tail.strip() == '-> Int'
+            assert code[signature.end] == '{'
+        assert signature.parameter_names == ('value',)
+        assert signature.parameter_lines is multiline
+
     @pytest.mark.parametrize('kind', ['nominal', 'callable'])
     def test_single_declaration_conversion(
         self: Self,
