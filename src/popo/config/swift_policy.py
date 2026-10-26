@@ -122,12 +122,13 @@ def parse_swift_policy(
     popo: dict[str, object],
 ) -> SwiftPolicyConfig:
     """
-    Validate explicit Swift settings, then apply declaration-path defaults.
+    Parse explicit Swift settings with declaration-path defaults.
 
     Parameters
     ----------
     root : pathlib.Path
-        Resolved repository root used to join configured relative paths.
+        Repository root used to join configured relative paths; the loader
+        supplies a resolved root.
     popo : dict[str, object]
         Parsed Popo settings from the selected policy source.
 
@@ -144,8 +145,13 @@ def parse_swift_policy(
 
     Notes
     -----
-    Parsing does not read declaration files or infer Python metadata defaults.
-    Existence and resolved containment are checked by validation.
+    Require an explicit policy table and reject unknown settings. Validate
+    stable numeric compiler versions, preference membership and tools-minimum
+    compatibility before constructing the model. Unlike Python policy parsing,
+    no dependency metadata is read and no compiler selection is inferred.
+
+    Parsing checks relative path syntax without reading declaration files.
+    Existence and resolved containment are checked by the policy checker.
     """
     table = require_table(popo.get('swift-policy'), name='swift-policy')
     defaults = {
@@ -195,15 +201,15 @@ def parse_swift_policy(
     if not IDENTIFIER_PATTERN.fullmatch(values['workflow-version-key']):
         raise ConfigurationError('workflow-version-key must be a literal identifier')
     return SwiftPolicyConfig(
-        root,
-        versions,
-        values['preferred-version'],
-        values['tools-version'],
-        root / values['manifest'],
-        root / values['version-file'],
-        workflows,
-        values['workflow-version-key'],
-        required,
+        root=root,
+        compiler_versions=versions,
+        preferred_version=values['preferred-version'],
+        tools_version=values['tools-version'],
+        manifest=root / values['manifest'],
+        version_file=root / values['version-file'],
+        workflow_globs=workflows,
+        workflow_version_key=values['workflow-version-key'],
+        require_preferred_in_ci=required,
     )
 
 

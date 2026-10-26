@@ -110,12 +110,13 @@ def parse_python_policy(
     dependencies: DependencyConfig,
 ) -> PythonPolicyConfig:
     """
-    Derive Python defaults from selected metadata, then apply overrides.
+    Parse Python settings with dependency-derived defaults.
 
     Parameters
     ----------
     root : pathlib.Path
-        Repository root used to join configured relative paths.
+        Repository root used to join configured relative paths; the loader
+        supplies a resolved root.
     popo : dict[str, object]
         Parsed Popo settings from the selected policy source.
     dependencies : DependencyConfig
@@ -137,8 +138,13 @@ def parse_python_policy(
 
     Notes
     -----
-    Invalid TOML in dependency metadata is caught and uses default
-    requirements.
+    Missing or invalid TOML in dependency metadata uses default requirements;
+    a present non-table project value still raises ConfigurationError. Missing
+    or non-string project.requires-python falls back to >=3.13.
+
+    Preserve legacy behavior: an omitted Python policy uses defaults, unknown
+    policy keys are ignored, and configured version/specifier syntax is left
+    to the checker. This differs from explicit Swift policy validation.
     """
     metadata_document: dict[str, object] = {}
     if dependencies.metadata.is_file():
@@ -153,48 +159,48 @@ def parse_python_policy(
     if not isinstance(default_requires, str):
         default_requires = '>=3.13'
 
-    python_table = require_table(
+    table = require_table(
         popo.get('python-policy', {}),
         name='tool.popo.python-policy',
     )
-    python_version = read_string(python_table, 'python-version', default='3.13')
-    workflow_parser = read_string(python_table, 'workflow-parser', default='text')
+    python_version = read_string(table, 'python-version', default='3.13')
+    workflow_parser = read_string(table, 'workflow-parser', default='text')
     if workflow_parser not in {'text', 'scoped'}:
         raise ConfigurationError('workflow-parser must be text or scoped')
     return PythonPolicyConfig(
         metadata=root
         / read_string(
-            python_table,
+            table,
             'metadata',
             default=str(dependencies.metadata.relative_to(root)),
         ),
         requires_python=read_string(
-            python_table,
+            table,
             'requires-python',
             default=default_requires,
         ),
         python_version=python_version,
         python_version_file=root
-        / read_string(python_table, 'python-version-file', default='.python-version'),
+        / read_string(table, 'python-version-file', default='.python-version'),
         ruff_config=root
         / read_string(
-            python_table,
+            table,
             'ruff-config',
             default=str(dependencies.metadata.relative_to(root)),
         ),
         ruff_target_version=read_string(
-            python_table,
+            table,
             'ruff-target-version',
             default=f'py{python_version.replace('.', '')}',
         ),
         mypy_python_version=read_string(
-            python_table,
+            table,
             'mypy-python-version',
             default=python_version,
         ),
         workflow_directory=root
         / read_string(
-            python_table,
+            table,
             'workflow-directory',
             default='.github/workflows',
         ),
