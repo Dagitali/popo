@@ -64,59 +64,134 @@ def headers_fixture(
 # SECTION: TESTS
 
 
-class TestRequiredFilePolicies:
+class TestFileDiscoveryFailures:
     """
-    Verify all checks read synthetic files and preserve consumer contents.
+    Keep filesystem failures visible without skipping other policy checks.
     """
 
-    def test_escaping_required_symlinks(
+    @pytest.mark.parametrize('preserved', [False, True], ids=['checked', 'excepted'])
+    def test_dangling_escape_is_not_hidden(
+        self,
+        headers: HeadersConfig,
+        symlink: Callable[[Path, Path], None],
+        preserved: bool,
+    ) -> None:
+        """
+        Inspect a dangling symlink before applying preservation exceptions.
+        """
+        link = headers.root / 'escape.bin'
+        symlink(link, headers.root.parent / f'{headers.root.name}-missing-target')
+        config = replace(
+            headers,
+            exceptions=(HeaderException(('*.bin',), 'Binary'),) if preserved else (),
+        )
+        assert validate_headers(config) == [
+            'escape.bin: header source escapes repository',
+        ]
+        assert link.is_symlink()
+
+    @pytest.mark.parametrize(
+        'error',
+        [
+            PermissionError('access denied'),
+            ValueError('bad path'),
+            UnicodeError('bad encoding'),
+        ],
+    )
+    @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
+    def test_required_path_failure_does_not_stop_remaining_checks(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        error: Exception,
+        operation: str,
+    ) -> None:
+        """
+        Report unreadable paths and subsequent missing required files together.
+        """
+        inspect_path = getattr(Path, operation)
+
+        def inspect(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> object:
+            """Fail one fixture path while retaining normal inspection."""
+            if path == tmp_path / 'unreadable':
+                raise error
+            return inspect_path(path, *args, **kwargs)
+
+        config = RequiredFilesConfig(tmp_path, ('unreadable', 'missing'))
+        with patch.object(Path, operation, inspect):
+            assert validate_required(config) == [
+                f'unreadable: {error}',
+                'missing: required file does not exist or is not a file',
+            ]
+
+
+class TestHeaderDirectoryLinks:
+    """Keep existing directory-link discovery behavior unchanged."""
+
+    def test_directory_link_is_not_a_source(
+        self,
+        headers: HeadersConfig,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Reject existing symlink targets outside the configured root.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
-        write_file : FileWriter
-            UTF-8 writer creating synthetic policy inputs.
-        symlink : collections.abc.Callable
-            Platform-aware creator for synthetic symbolic links.
+        Inspect file links without treating a linked directory as a source
+        file.
         """
-        outside = write_file('outside', 'preserved')
-        root = tmp_path / 'repo'
-        root.mkdir()
-        symlink(root / 'required', outside)
-        assert (
-            'escapes' in validate_required(RequiredFilesConfig(root, ('required',)))[0]
-        )
+        target = headers.root / 'directory'
+        target.mkdir()
+        symlink(headers.root / 'directory-link', target)
+        assert validate_headers(headers) == []
 
-    def test_required_files_report_all_failures(
+
+class TestHeaderDiscoveryBoundaries:
+    """
+    Cover directive and filesystem failures without touching real sources.
+    """
+
+    def test_directive_requires_following_content(
         self,
-        tmp_path: Path,
+        headers: HeadersConfig,
+    ) -> None:
+        """Report a file containing only its configured first-line prefix."""
+        (headers.root / 'sample').write_text('#!', encoding='utf-8')
+        rule = replace(headers.rules[0], first_line_prefix='#!')
+        assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
+
+    def test_optional_shebang(
+        self,
+        headers: HeadersConfig,
     ) -> None:
         """
-        Distinguish regular files from directories and absent
-        resources.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
+        Allow a shebang before a hash header without requiring a directive.
         """
-        (tmp_path / 'present').write_text('present', encoding='utf-8')
-        (tmp_path / 'directory').mkdir()
-        failures = validate_required(
-            RequiredFilesConfig(tmp_path, ('present', 'directory', 'absent')),
+        (headers.root / 'sample').write_text(
+            '#!/bin/sh\n# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n',
+            encoding='utf-8',
         )
-        assert failures == [
-            'directory: required file does not exist or is not a file',
-            'absent: required file does not exist or is not a file',
-        ]
+        assert validate_headers(headers) == []
+
+    def test_walk_failure_is_reported(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """Keep recursive fallback permission failures visible to consumers."""
+
+        def walk(
+            path: Path,
+            *,
+            on_error: Callable[[OSError], None],
+        ) -> object:
+            """Simulate a traversal failure through the supplied callback."""
+            on_error(PermissionError('cannot traverse source'))
+            return iter(())
+
+        with patch.object(Path, 'walk', walk):
+            assert validate_headers(headers) == [
+                'header source discovery failed: cannot traverse source',
+            ]
 
 
 class TestHeaderPolicies:
@@ -558,54 +633,6 @@ class TestHeaderPolicies:
             assert run.call_args.kwargs['timeout'] == 30
 
 
-class TestHeaderDiscoveryBoundaries:
-    """
-    Cover directive and filesystem failures without touching real sources.
-    """
-
-    def test_directive_requires_following_content(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """Report a file containing only its configured first-line prefix."""
-        (headers.root / 'sample').write_text('#!', encoding='utf-8')
-        rule = replace(headers.rules[0], first_line_prefix='#!')
-        assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
-
-    def test_optional_shebang(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """
-        Allow a shebang before a hash header without requiring a directive.
-        """
-        (headers.root / 'sample').write_text(
-            '#!/bin/sh\n# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n',
-            encoding='utf-8',
-        )
-        assert validate_headers(headers) == []
-
-    def test_walk_failure_is_reported(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """Keep recursive fallback permission failures visible to consumers."""
-
-        def walk(
-            path: Path,
-            *,
-            on_error: Callable[[OSError], None],
-        ) -> object:
-            """Simulate a traversal failure through the supplied callback."""
-            on_error(PermissionError('cannot traverse source'))
-            return iter(())
-
-        with patch.object(Path, 'walk', walk):
-            assert validate_headers(headers) == [
-                'header source discovery failed: cannot traverse source',
-            ]
-
-
 class TestNonHashPreambles:
     """Keep non-hash preamble handling independent of hash separators."""
 
@@ -627,83 +654,56 @@ class TestNonHashPreambles:
         assert validate_headers(replace(headers, rules=(rule,))) == []
 
 
-class TestFileDiscoveryFailures:
+class TestRequiredFilePolicies:
     """
-    Keep filesystem failures visible without skipping other policy checks.
+    Verify all checks read synthetic files and preserve consumer contents.
     """
 
-    @pytest.mark.parametrize('preserved', [False, True], ids=['checked', 'excepted'])
-    def test_dangling_escape_is_not_hidden(
-        self,
-        headers: HeadersConfig,
-        symlink: Callable[[Path, Path], None],
-        preserved: bool,
-    ) -> None:
-        """
-        Inspect a dangling symlink before applying preservation exceptions.
-        """
-        link = headers.root / 'escape.bin'
-        symlink(link, headers.root.parent / f'{headers.root.name}-missing-target')
-        config = replace(
-            headers,
-            exceptions=(HeaderException(('*.bin',), 'Binary'),) if preserved else (),
-        )
-        assert validate_headers(config) == [
-            'escape.bin: header source escapes repository',
-        ]
-        assert link.is_symlink()
-
-    @pytest.mark.parametrize(
-        'error',
-        [
-            PermissionError('access denied'),
-            ValueError('bad path'),
-            UnicodeError('bad encoding'),
-        ],
-    )
-    @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
-    def test_required_path_failure_does_not_stop_remaining_checks(
+    def test_escaping_required_symlinks(
         self,
         tmp_path: Path,
-        error: Exception,
-        operation: str,
-    ) -> None:
-        """
-        Report unreadable paths and subsequent missing required files together.
-        """
-        inspect_path = getattr(Path, operation)
-
-        def inspect(
-            path: Path,
-            *args: object,
-            **kwargs: object,
-        ) -> object:
-            """Fail one fixture path while retaining normal inspection."""
-            if path == tmp_path / 'unreadable':
-                raise error
-            return inspect_path(path, *args, **kwargs)
-
-        config = RequiredFilesConfig(tmp_path, ('unreadable', 'missing'))
-        with patch.object(Path, operation, inspect):
-            assert validate_required(config) == [
-                f'unreadable: {error}',
-                'missing: required file does not exist or is not a file',
-            ]
-
-
-class TestHeaderDirectoryLinks:
-    """Keep existing directory-link discovery behavior unchanged."""
-
-    def test_directory_link_is_not_a_source(
-        self,
-        headers: HeadersConfig,
+        write_file: FileWriter,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Inspect file links without treating a linked directory as a source
-        file.
+        Reject existing symlink targets outside the configured root.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        write_file : FileWriter
+            UTF-8 writer creating synthetic policy inputs.
+        symlink : collections.abc.Callable
+            Platform-aware creator for synthetic symbolic links.
         """
-        target = headers.root / 'directory'
-        target.mkdir()
-        symlink(headers.root / 'directory-link', target)
-        assert validate_headers(headers) == []
+        outside = write_file('outside', 'preserved')
+        root = tmp_path / 'repo'
+        root.mkdir()
+        symlink(root / 'required', outside)
+        assert (
+            'escapes' in validate_required(RequiredFilesConfig(root, ('required',)))[0]
+        )
+
+    def test_required_files_report_all_failures(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Distinguish regular files from directories and absent
+        resources.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        """
+        (tmp_path / 'present').write_text('present', encoding='utf-8')
+        (tmp_path / 'directory').mkdir()
+        failures = validate_required(
+            RequiredFilesConfig(tmp_path, ('present', 'directory', 'absent')),
+        )
+        assert failures == [
+            'directory: required file does not exist or is not a file',
+            'absent: required file does not exist or is not a file',
+        ]

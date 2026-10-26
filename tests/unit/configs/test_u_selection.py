@@ -17,53 +17,6 @@ from tests.support.files import FileWriter
 # SECTION: TESTS
 
 
-class TestConsumerConfiguration:
-    """Keep standalone precedence deterministic and configuration read-only."""
-
-    @pytest.mark.parametrize('content', ['[', 'checks = 1\nchecks = 2'])
-    def test_invalid_standalone(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        content: str,
-    ) -> None:
-        """Malformed standalone TOML cannot silently fall back to defaults."""
-        write_file('popo.toml', content)
-        with pytest.raises(ConfigurationError, match='invalid TOML'):
-            read_popo(tmp_path)
-
-    def test_standalone_precedence(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-    ) -> None:
-        """A standalone policy does not parse or merge Python metadata."""
-        standalone = write_file('popo.toml', 'checks=["check-docs"]')
-        metadata = write_file('pyproject.toml', '[')
-        before = [p.read_bytes() for p in (standalone, metadata)]
-        assert read_popo(tmp_path) == {'checks': ['check-docs']}
-        assert load_plan(tmp_path).source == standalone
-        assert [p.read_bytes() for p in (standalone, metadata)] == before
-
-    @pytest.mark.parametrize('kind', ['directory', 'dangling'])
-    def test_unreadable_standalone(
-        self,
-        tmp_path: Path,
-        kind: str,
-        symlink: Callable[[Path, Path], None],
-    ) -> None:
-        """
-        An invalid standalone input cannot silently select another source.
-        """
-        path = tmp_path / 'popo.toml'
-        if kind == 'directory':
-            path.mkdir()
-        else:
-            symlink(path, tmp_path / 'absent')
-        with pytest.raises(OSError):
-            read_popo(tmp_path)
-
-
 class TestCheckSelection:
     """
     Validate explicit selection without imposing a language or running code.
@@ -164,6 +117,53 @@ class TestCheckSelection:
         assert load_plan(tmp_path, 'quick').checks == ('check-github-actions-pins',)
         assert load_plan(tmp_path, 'quick').reason == 'profile: quick'
         assert load_plan(tmp_path).checks == ('check-docs',)
+
+
+class TestConsumerConfiguration:
+    """Keep standalone precedence deterministic and configuration read-only."""
+
+    @pytest.mark.parametrize('content', ['[', 'checks = 1\nchecks = 2'])
+    def test_invalid_standalone(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        content: str,
+    ) -> None:
+        """Malformed standalone TOML cannot silently fall back to defaults."""
+        write_file('popo.toml', content)
+        with pytest.raises(ConfigurationError, match='invalid TOML'):
+            read_popo(tmp_path)
+
+    def test_standalone_precedence(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        """A standalone policy does not parse or merge Python metadata."""
+        standalone = write_file('popo.toml', 'checks=["check-docs"]')
+        metadata = write_file('pyproject.toml', '[')
+        before = [p.read_bytes() for p in (standalone, metadata)]
+        assert read_popo(tmp_path) == {'checks': ['check-docs']}
+        assert load_plan(tmp_path).source == standalone
+        assert [p.read_bytes() for p in (standalone, metadata)] == before
+
+    @pytest.mark.parametrize('kind', ['directory', 'dangling'])
+    def test_unreadable_standalone(
+        self,
+        tmp_path: Path,
+        kind: str,
+        symlink: Callable[[Path, Path], None],
+    ) -> None:
+        """
+        An invalid standalone input cannot silently select another source.
+        """
+        path = tmp_path / 'popo.toml'
+        if kind == 'directory':
+            path.mkdir()
+        else:
+            symlink(path, tmp_path / 'absent')
+        with pytest.raises(OSError):
+            read_popo(tmp_path)
 
 
 # !SECTION

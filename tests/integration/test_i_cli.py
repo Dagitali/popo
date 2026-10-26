@@ -354,31 +354,6 @@ reason = "Synthetic metadata"
         assert message in (captured.out if status == 0 else captured.err)
 
 
-class TestMissingOptionalPolicies:
-    """Report absent policies consistently through the public dispatcher."""
-
-    @pytest.mark.parametrize(
-        ('command', 'message'),
-        [
-            ('check-file-headers', 'requires tool.popo.headers'),
-            ('audit-github-settings', 'configuration:'),
-        ],
-    )
-    def test_missing_policy(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-        message: str,
-    ) -> None:
-        """Return a diagnostic without contacting hosted services."""
-        assert main([command, '--root', str(tmp_path)]) == 1
-        assert message in capsys.readouterr().out
-
-
-# !SECTION
-
-
 class TestHeaderPolicyCommand:
     """Exercise configured header dispatch through public CLI reporting."""
 
@@ -410,3 +385,28 @@ class TestHeaderPolicyCommand:
         write_file('sample.txt', content)
         assert main(['check-file-headers', '--root', str(tmp_path)]) == status
         assert ('PASS:' if status == 0 else 'FAIL:') in capsys.readouterr().out
+
+
+class TestMissingOptionalPolicies:
+    """Report absent policies consistently through the public dispatcher."""
+
+    @pytest.mark.parametrize(
+        ('command', 'message'),
+        [
+            ('check-file-headers', 'requires tool.popo.headers'),
+            ('audit-github-settings', 'configuration:'),
+        ],
+    )
+    def test_missing_policy(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        command: str,
+        message: str,
+    ) -> None:
+        """Return a diagnostic without contacting hosted services."""
+        assert main([command, '--root', str(tmp_path)]) == 1
+        assert message in capsys.readouterr().out
+
+
+# !SECTION

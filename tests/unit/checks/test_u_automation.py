@@ -183,55 +183,32 @@ class TestActionContracts:
         assert (validate(AutomationConfig(tmp_path)) == []) is ok
 
 
-class TestWorkflowContracts:
-    """Validate reusable workflow targets, aliases, and inputs."""
+class TestAutomationDiscovery:
+    """Validate discovery configuration and generic YAML handling."""
 
     @pytest.mark.parametrize(
-        'reference',
+        ('source', 'message'),
         [
-            'example/library/target.yml',
-            'example/library/target.yml@',
-            'example/library/target.yml@first@second',
+            ('name: one\nname: two', 'duplicate YAML key'),
+            ('[', 'while parsing'),
+            ('[]', 'document must be a mapping'),
+            ('1: value', 'keys must be strings'),
+            ('uses: false', 'uses must be a string'),
+            ('uses: upstream/action@main', 'full commit SHA'),
+            ('uses: ./missing', 'missing local automation target'),
+            ('uses: ./../outside.yml', 'path escapes repository'),
         ],
     )
-    def test_invalid_self_alias(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        reference: str,
-    ) -> None:
-        """
-        Reject self-alias references without one nonempty revision.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary consumer repository.
-        write_file : FileWriter
-            UTF-8 fixture writer.
-        reference : str
-            Invalid local repository alias reference.
-        """
-        write_file('.github/workflows/ci.yml', f'uses: {reference}')
-        config = AutomationConfig(tmp_path, local_repositories=('example/library',))
-        assert 'invalid aliased reference' in validate(config)[0]
-
-    @pytest.mark.parametrize(
-        'source',
-        [
-            'on: {push: null}',
-            'on: {workflow_call: []}',
-            'on: {workflow_call: {inputs: {x: {type: invalid}}}}',
-        ],
-    )
-    def test_invalid_workflow_target(
+    def test_bad_documents(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         source: str,
+        message: str,
     ) -> None:
         """
-        Verify local workflow calls reject missing or invalid input contracts.
+        Verify invalid YAML, references, and targets produce one file
+        diagnostic.
 
         Parameters
         ----------
@@ -241,34 +218,22 @@ class TestWorkflowContracts:
             UTF-8 writer creating parent directories in ``tmp_path``.
         source : str
             YAML document text selected for the validation scenario.
+        message : str
+            Expected substring in the single invalid-document diagnostic.
         """
-        write_file('target.yml', source)
-        write_file('.github/workflows/ci.yml', 'jobs: {call: {uses: ./target.yml}}')
-        assert validate(AutomationConfig(tmp_path))
+        write_file('.github/workflows/ci.yml', source)
+        failures = validate(AutomationConfig(tmp_path))
+        assert len(failures) == 1
+        assert message in failures[0]
 
-    @pytest.mark.parametrize(
-        ('values', 'message'),
-        [
-            ('{}', 'missing required input'),
-            ('{extra: x}', 'unknown inputs'),
-            ('{text: false}', 'wrong type'),
-            ('{text: yes, count: true}', 'wrong type'),
-            ('{text: yes, enabled: yes}', 'wrong type'),
-            ('[]', 'with must be a mapping'),
-            ('{text: yes, enabled: true, count: 2}', ''),
-            ('{text: "${{ inputs.text }}", count: "${{ inputs.count }}"}', ''),
-        ],
-    )
-    def test_workflow_inputs(
+    def test_optional_configuration(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        values: str,
-        message: str,
     ) -> None:
         """
-        Verify reusable workflow input names, required values, and supplied
-        types.
+        Verify automation opt-in and an explicit empty discovery list are
+        honored.
 
         Parameters
         ----------
@@ -276,32 +241,58 @@ class TestWorkflowContracts:
             Temporary directory for isolated test inputs.
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
-        values : str
-            YAML with mapping supplied to the local action or reusable workflow
-            call.
-        message : str
-            Expected diagnostic substring; an empty string selects a successful
-            case.
         """
-        write_file(
-            '.github/workflows/target.yml',
-            """on:
-  workflow_call:
-    inputs:
-      text: {required: true, type: string}
-      enabled: {type: boolean}
-      count: {type: number}
-""",
+        assert not load_automation_config(tmp_path).configured
+        write_file('pyproject.toml', '[tool.popo.automation]\nworkflow-globs = []')
+        config = load_automation_config(tmp_path)
+        assert config.configured
+        assert validate(config) == []
+
+    def test_overlapping_categories_fail(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Verify conflicting discovery categories produce a diagnostic.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        """
+        write_file('ci.yml', 'uses: upstream/action@main')
+        config = AutomationConfig(
+            tmp_path,
+            workflow_globs=('ci.yml',),
+            yaml_globs=('*.yml',),
         )
-        write_file(
-            '.github/workflows/caller.yml',
-            'jobs:\n  call:\n    uses: ./.github/workflows/target.yml\n'
-            f'    with: {values}\n',
+        assert any(
+            'conflicting automation categories' in item for item in validate(config)
         )
-        failures = validate(AutomationConfig(tmp_path))
-        assert bool(failures) == bool(message)
-        if message:
-            assert message in failures[0]
+
+    def test_yaml_only_and_recursive_alias(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Verify generic YAML skips pin checks and recursive aliases terminate
+        traversal.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        """
+        write_file('form.yml', 'form: &form {uses: arbitrary, nested: *form}')
+        config = AutomationConfig(tmp_path, workflow_globs=(), yaml_globs=('form.yml',))
+        assert validate(config) == []
+        assert validate(replace(config, workflow_globs=('form.yml',), yaml_globs=()))
 
 
 class TestTemplateContracts:
@@ -490,32 +481,55 @@ class TestTemplateContracts:
         assert any('escapes repository' in failure for failure in validate(config))
 
 
-class TestAutomationDiscovery:
-    """Validate discovery configuration and generic YAML handling."""
+class TestWorkflowContracts:
+    """Validate reusable workflow targets, aliases, and inputs."""
 
     @pytest.mark.parametrize(
-        ('source', 'message'),
+        'reference',
         [
-            ('name: one\nname: two', 'duplicate YAML key'),
-            ('[', 'while parsing'),
-            ('[]', 'document must be a mapping'),
-            ('1: value', 'keys must be strings'),
-            ('uses: false', 'uses must be a string'),
-            ('uses: upstream/action@main', 'full commit SHA'),
-            ('uses: ./missing', 'missing local automation target'),
-            ('uses: ./../outside.yml', 'path escapes repository'),
+            'example/library/target.yml',
+            'example/library/target.yml@',
+            'example/library/target.yml@first@second',
         ],
     )
-    def test_bad_documents(
+    def test_invalid_self_alias(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        reference: str,
+    ) -> None:
+        """
+        Reject self-alias references without one nonempty revision.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary consumer repository.
+        write_file : FileWriter
+            UTF-8 fixture writer.
+        reference : str
+            Invalid local repository alias reference.
+        """
+        write_file('.github/workflows/ci.yml', f'uses: {reference}')
+        config = AutomationConfig(tmp_path, local_repositories=('example/library',))
+        assert 'invalid aliased reference' in validate(config)[0]
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            'on: {push: null}',
+            'on: {workflow_call: []}',
+            'on: {workflow_call: {inputs: {x: {type: invalid}}}}',
+        ],
+    )
+    def test_invalid_workflow_target(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         source: str,
-        message: str,
     ) -> None:
         """
-        Verify invalid YAML, references, and targets produce one file
-        diagnostic.
+        Verify local workflow calls reject missing or invalid input contracts.
 
         Parameters
         ----------
@@ -525,78 +539,64 @@ class TestAutomationDiscovery:
             UTF-8 writer creating parent directories in ``tmp_path``.
         source : str
             YAML document text selected for the validation scenario.
+        """
+        write_file('target.yml', source)
+        write_file('.github/workflows/ci.yml', 'jobs: {call: {uses: ./target.yml}}')
+        assert validate(AutomationConfig(tmp_path))
+
+    @pytest.mark.parametrize(
+        ('values', 'message'),
+        [
+            ('{}', 'missing required input'),
+            ('{extra: x}', 'unknown inputs'),
+            ('{text: false}', 'wrong type'),
+            ('{text: yes, count: true}', 'wrong type'),
+            ('{text: yes, enabled: yes}', 'wrong type'),
+            ('[]', 'with must be a mapping'),
+            ('{text: yes, enabled: true, count: 2}', ''),
+            ('{text: "${{ inputs.text }}", count: "${{ inputs.count }}"}', ''),
+        ],
+    )
+    def test_workflow_inputs(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        values: str,
+        message: str,
+    ) -> None:
+        """
+        Verify reusable workflow input names, required values, and supplied
+        types.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        values : str
+            YAML with mapping supplied to the local action or reusable workflow
+            call.
         message : str
-            Expected substring in the single invalid-document diagnostic.
+            Expected diagnostic substring; an empty string selects a successful
+            case.
         """
-        write_file('.github/workflows/ci.yml', source)
+        write_file(
+            '.github/workflows/target.yml',
+            """on:
+  workflow_call:
+    inputs:
+      text: {required: true, type: string}
+      enabled: {type: boolean}
+      count: {type: number}
+""",
+        )
+        write_file(
+            '.github/workflows/caller.yml',
+            'jobs:\n  call:\n    uses: ./.github/workflows/target.yml\n'
+            f'    with: {values}\n',
+        )
         failures = validate(AutomationConfig(tmp_path))
-        assert len(failures) == 1
-        assert message in failures[0]
-
-    def test_optional_configuration(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify automation opt-in and an explicit empty discovery list are
-        honored.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        assert not load_automation_config(tmp_path).configured
-        write_file('pyproject.toml', '[tool.popo.automation]\nworkflow-globs = []')
-        config = load_automation_config(tmp_path)
-        assert config.configured
-        assert validate(config) == []
-
-    def test_overlapping_categories_fail(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify conflicting discovery categories produce a diagnostic.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        write_file('ci.yml', 'uses: upstream/action@main')
-        config = AutomationConfig(
-            tmp_path,
-            workflow_globs=('ci.yml',),
-            yaml_globs=('*.yml',),
-        )
-        assert any(
-            'conflicting automation categories' in item for item in validate(config)
-        )
-
-    def test_yaml_only_and_recursive_alias(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify generic YAML skips pin checks and recursive aliases terminate
-        traversal.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        write_file('form.yml', 'form: &form {uses: arbitrary, nested: *form}')
-        config = AutomationConfig(tmp_path, workflow_globs=(), yaml_globs=('form.yml',))
-        assert validate(config) == []
-        assert validate(replace(config, workflow_globs=('form.yml',), yaml_globs=()))
+        assert bool(failures) == bool(message)
+        if message:
+            assert message in failures[0]

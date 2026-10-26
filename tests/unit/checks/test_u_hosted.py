@@ -40,6 +40,111 @@ def audit_statuses(
 # SECTION: TESTS
 
 
+class TestHostedCheckEvidence:
+    """Check effective-rule availability and nonstring legacy contexts."""
+
+    @pytest.mark.parametrize(
+        ('rules', 'legacy', 'expected'),
+        [
+            (None, {}, 'inaccessible'),
+            ([], {'contexts': [1]}, 'inaccessible'),
+            (
+                [{'type': 'pull_request'}],
+                {'checks': [{'context': 'quality'}]},
+                'verified',
+            ),
+        ],
+    )
+    def test_context_evidence(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        rules: object,
+        legacy: dict[str, object],
+        expected: str,
+    ) -> None:
+        """
+        Accept valid legacy checks while rejecting incomplete typed evidence.
+        """
+        github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
+            Response(
+                rules,
+            )
+        )
+        github_responses['repos/example/library/branches/main/protection'] = Response(
+            {'required_status_checks': legacy},
+        )
+        assert (
+            audit_statuses(hosted_policy, github_responses)['branch:main:check:quality']
+            == expected
+        )
+
+
+class TestHostedEvidenceBoundaries:
+    """
+    Exercise malformed evidence and optional inventory without credentials.
+    """
+
+    @pytest.mark.parametrize(
+        'data',
+        [
+            None,
+            {},
+            {
+                'type': 'required_status_checks',
+                'parameters': {'required_status_checks': 'bad'},
+            },
+        ],
+    )
+    def test_malformed_rules(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        data: object,
+    ) -> None:
+        """
+        Keep incomplete rule evidence distinct from a confirmed missing check.
+        """
+        github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
+            Response(
+                [data],
+            )
+        )
+        assert (
+            audit_statuses(hosted_policy, github_responses)['branch:main:check:quality']
+            == 'inaccessible'
+        )
+
+    def test_optional_expectations(self) -> None:
+        """Audit a bare branch expectation without fetching unused evidence."""
+        hosted_policy = RepositoryPolicy('example/library', {}, (), False, {'main': ()})
+        github_responses = {
+            'repos/example/library': Response({}),
+            'repos/example/library/branches/main': Response({'protected': True}),
+        }
+        assert audit_statuses(hosted_policy, github_responses) == {
+            'branch:main:protected': 'verified',
+        }
+
+    @pytest.mark.parametrize(
+        'data',
+        [None, {}, {'protected': 'true'}],
+    )
+    def test_unavailable_branch(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        data: object,
+    ) -> None:
+        """
+        Require a boolean observation before classifying branch protection.
+        """
+        github_responses['repos/example/library/branches/main'] = Response(data)
+        statuses = audit_statuses(hosted_policy, github_responses)
+        assert statuses['branch:main:protected'] == 'inaccessible'
+        assert statuses['branch:main:check:quality'] == 'inaccessible'
+
+
 class TestHostedObservations:
     """Group isolated regression scenarios for hosted."""
 
@@ -284,111 +389,6 @@ class TestHostedObservations:
         assert set(audit_statuses(hosted_policy, github_responses).values()) == {
             'verified',
         }
-
-
-class TestHostedEvidenceBoundaries:
-    """
-    Exercise malformed evidence and optional inventory without credentials.
-    """
-
-    @pytest.mark.parametrize(
-        'data',
-        [
-            None,
-            {},
-            {
-                'type': 'required_status_checks',
-                'parameters': {'required_status_checks': 'bad'},
-            },
-        ],
-    )
-    def test_malformed_rules(
-        self,
-        hosted_policy: RepositoryPolicy,
-        github_responses: dict[str, Response],
-        data: object,
-    ) -> None:
-        """
-        Keep incomplete rule evidence distinct from a confirmed missing check.
-        """
-        github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
-            Response(
-                [data],
-            )
-        )
-        assert (
-            audit_statuses(hosted_policy, github_responses)['branch:main:check:quality']
-            == 'inaccessible'
-        )
-
-    def test_optional_expectations(self) -> None:
-        """Audit a bare branch expectation without fetching unused evidence."""
-        hosted_policy = RepositoryPolicy('example/library', {}, (), False, {'main': ()})
-        github_responses = {
-            'repos/example/library': Response({}),
-            'repos/example/library/branches/main': Response({'protected': True}),
-        }
-        assert audit_statuses(hosted_policy, github_responses) == {
-            'branch:main:protected': 'verified',
-        }
-
-    @pytest.mark.parametrize(
-        'data',
-        [None, {}, {'protected': 'true'}],
-    )
-    def test_unavailable_branch(
-        self,
-        hosted_policy: RepositoryPolicy,
-        github_responses: dict[str, Response],
-        data: object,
-    ) -> None:
-        """
-        Require a boolean observation before classifying branch protection.
-        """
-        github_responses['repos/example/library/branches/main'] = Response(data)
-        statuses = audit_statuses(hosted_policy, github_responses)
-        assert statuses['branch:main:protected'] == 'inaccessible'
-        assert statuses['branch:main:check:quality'] == 'inaccessible'
-
-
-class TestHostedCheckEvidence:
-    """Check effective-rule availability and nonstring legacy contexts."""
-
-    @pytest.mark.parametrize(
-        ('rules', 'legacy', 'expected'),
-        [
-            (None, {}, 'inaccessible'),
-            ([], {'contexts': [1]}, 'inaccessible'),
-            (
-                [{'type': 'pull_request'}],
-                {'checks': [{'context': 'quality'}]},
-                'verified',
-            ),
-        ],
-    )
-    def test_context_evidence(
-        self,
-        hosted_policy: RepositoryPolicy,
-        github_responses: dict[str, Response],
-        rules: object,
-        legacy: dict[str, object],
-        expected: str,
-    ) -> None:
-        """
-        Accept valid legacy checks while rejecting incomplete typed evidence.
-        """
-        github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
-            Response(
-                rules,
-            )
-        )
-        github_responses['repos/example/library/branches/main/protection'] = Response(
-            {'required_status_checks': legacy},
-        )
-        assert (
-            audit_statuses(hosted_policy, github_responses)['branch:main:check:quality']
-            == expected
-        )
 
 
 # !SECTION

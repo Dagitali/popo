@@ -18,113 +18,6 @@ from tests.support.files import FileWriter
 # SECTION: TESTS
 
 
-class TestPythonSource:
-    """Use fresh synthetic policies; never inspect host financial inputs."""
-
-    def test_annotated_multiline_signatures_and_self_exception(
-        self: Self,
-        tmp_path: Path,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            '[python-source]\ninclude = ["*.py"]\nannotations = true\n'
-            'parameter-lines = true\nalphabetical-methods = true',
-        )
-        (tmp_path / 'sample.py').write_text(
-            'from typing import Self\nclass C:\n'
-            ' def a(self: Self) -> None: pass\n'
-            ' async def b(\n  self: Self,\n  x: int = 1,\n'
-            '  /,\n  *args: int,\n  y: int = 2,\n  **kwargs: int,\n'
-            ' ) -> None: pass\n',
-        )
-        assert (
-            python_source.validate(load_source_check(tmp_path, 'python-source')) == []
-        )
-
-    @pytest.mark.parametrize('kind', ('missing', 'escaped', 'excluded', 'undecodable'))
-    def test_inputs_fail_closed(
-        self: Self,
-        tmp_path: Path,
-        kind: str,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            '[python-source]\ninclude = ["*.py"]\nexclude = ["ignored.py"]',
-        )
-        if kind == 'escaped':
-            (tmp_path / 'sample.py').symlink_to(tmp_path.parent / 'outside.py')
-        elif kind == 'excluded':
-            (tmp_path / 'ignored.py').write_text('x = 1')
-        elif kind == 'undecodable':
-            (tmp_path / 'sample.py').write_bytes(b'\xff')
-        assert python_source.validate(load_source_check(tmp_path, 'python-source'))
-
-    @pytest.mark.parametrize(
-        'settings',
-        (
-            'include = []',
-            'include = ["../outside.py"]',
-            'include = ["/outside.py"]',
-            'include = ["*.py"]\nannotations = 1',
-            'include = ["*.py"]\nmax-file-lines = 0',
-            'include = ["*.py"]\nunknown = true',
-        ),
-    )
-    def test_invalid_configuration(
-        self: Self,
-        tmp_path: Path,
-        settings: str,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text('[python-source]\n' + settings)
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'python-source')
-
-    def test_missing_policy_is_explicit(
-        self: Self,
-        tmp_path: Path,
-    ) -> None:
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'python-source')
-
-    @pytest.mark.parametrize(
-        'source,option,diagnostic',
-        (
-            ('def f(x): pass', 'annotations = true', 'missing signature'),
-            ('def f(x: int) -> None: pass', 'parameter-lines = true', 'separate lines'),
-            (
-                'class C:\n def z(self): pass\n def a(self): pass',
-                'alphabetical-methods = true',
-                'not alphabetical',
-            ),
-            (
-                '"""Long documentation"""',
-                'documentation-width = 10',
-                'documentation line',
-            ),
-            ('x = 1\ny = 2', 'max-file-lines = 1', 'file exceeds'),
-            ('def broken(', '', 'invalid Python'),
-            ('async def f(x): pass', 'annotations = true', 'missing signature'),
-            (
-                'def f(\n x: int = (\n  1\n ),\n) -> None: pass',
-                'parameter-lines = true',
-                'separate lines',
-            ),
-        ),
-    )
-    def test_python_rules(
-        self: Self,
-        tmp_path: Path,
-        source: str,
-        option: str,
-        diagnostic: str,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            '[python-source]\ninclude = ["*.py"]\n' + option,
-        )
-        (tmp_path / 'sample.py').write_text(source)
-        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
-        assert any(diagnostic in finding for finding in findings)
-        assert all(source not in finding for finding in findings)
-
-
 class TestPythonDocumentation:
     """Match NumPy sections to each callable's own AST contract."""
 
@@ -241,6 +134,113 @@ class TestPythonDocumentation:
         assert findings == (
             ['sample.py:1: return documentation missing'] if body == 'return 1' else []
         )
+
+
+class TestPythonSource:
+    """Use fresh synthetic policies; never inspect host financial inputs."""
+
+    def test_annotated_multiline_signatures_and_self_exception(
+        self: Self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            '[python-source]\ninclude = ["*.py"]\nannotations = true\n'
+            'parameter-lines = true\nalphabetical-methods = true',
+        )
+        (tmp_path / 'sample.py').write_text(
+            'from typing import Self\nclass C:\n'
+            ' def a(self: Self) -> None: pass\n'
+            ' async def b(\n  self: Self,\n  x: int = 1,\n'
+            '  /,\n  *args: int,\n  y: int = 2,\n  **kwargs: int,\n'
+            ' ) -> None: pass\n',
+        )
+        assert (
+            python_source.validate(load_source_check(tmp_path, 'python-source')) == []
+        )
+
+    @pytest.mark.parametrize('kind', ('missing', 'escaped', 'excluded', 'undecodable'))
+    def test_inputs_fail_closed(
+        self: Self,
+        tmp_path: Path,
+        kind: str,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            '[python-source]\ninclude = ["*.py"]\nexclude = ["ignored.py"]',
+        )
+        if kind == 'escaped':
+            (tmp_path / 'sample.py').symlink_to(tmp_path.parent / 'outside.py')
+        elif kind == 'excluded':
+            (tmp_path / 'ignored.py').write_text('x = 1')
+        elif kind == 'undecodable':
+            (tmp_path / 'sample.py').write_bytes(b'\xff')
+        assert python_source.validate(load_source_check(tmp_path, 'python-source'))
+
+    @pytest.mark.parametrize(
+        'settings',
+        (
+            'include = []',
+            'include = ["../outside.py"]',
+            'include = ["/outside.py"]',
+            'include = ["*.py"]\nannotations = 1',
+            'include = ["*.py"]\nmax-file-lines = 0',
+            'include = ["*.py"]\nunknown = true',
+        ),
+    )
+    def test_invalid_configuration(
+        self: Self,
+        tmp_path: Path,
+        settings: str,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text('[python-source]\n' + settings)
+        with pytest.raises(ConfigurationError):
+            load_source_check(tmp_path, 'python-source')
+
+    def test_missing_policy_is_explicit(
+        self: Self,
+        tmp_path: Path,
+    ) -> None:
+        with pytest.raises(ConfigurationError):
+            load_source_check(tmp_path, 'python-source')
+
+    @pytest.mark.parametrize(
+        'source,option,diagnostic',
+        (
+            ('def f(x): pass', 'annotations = true', 'missing signature'),
+            ('def f(x: int) -> None: pass', 'parameter-lines = true', 'separate lines'),
+            (
+                'class C:\n def z(self): pass\n def a(self): pass',
+                'alphabetical-methods = true',
+                'not alphabetical',
+            ),
+            (
+                '"""Long documentation"""',
+                'documentation-width = 10',
+                'documentation line',
+            ),
+            ('x = 1\ny = 2', 'max-file-lines = 1', 'file exceeds'),
+            ('def broken(', '', 'invalid Python'),
+            ('async def f(x): pass', 'annotations = true', 'missing signature'),
+            (
+                'def f(\n x: int = (\n  1\n ),\n) -> None: pass',
+                'parameter-lines = true',
+                'separate lines',
+            ),
+        ),
+    )
+    def test_python_rules(
+        self: Self,
+        tmp_path: Path,
+        source: str,
+        option: str,
+        diagnostic: str,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            '[python-source]\ninclude = ["*.py"]\n' + option,
+        )
+        (tmp_path / 'sample.py').write_text(source)
+        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
+        assert any(diagnostic in finding for finding in findings)
+        assert all(source not in finding for finding in findings)
 
 
 # !SECTION

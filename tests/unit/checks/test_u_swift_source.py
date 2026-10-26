@@ -82,6 +82,69 @@ class TestSwiftDocumentation:
         assert swift_source.validate(config) == []
 
 
+class TestSwiftLexicalBoundaries:
+    """Keep callable bodies, escaped strings and unsupported input bounded."""
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            'let s = "escaped \\" quote" // ordinary comment',
+            'let s = #"escaped \\#" quote"#',
+            'let s = "unterminated',
+            'let x = 1 /// trailing documentation is not an overview',
+        ],
+    )
+    def test_masked_strings_and_trailing_comments(
+        self,
+        source: str,
+    ) -> None:
+        _, documentation = lexical_view(source)
+        assert documentation == set()
+
+    def test_members_exclude_callable_and_closure_bodies(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        write_file(
+            'popo.toml',
+            '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nraises-docs=true',
+        )
+        write_file(
+            'sample.swift',
+            (
+                '/// Overview.\nstruct C {\n'
+                '\n /// Method.\n func f() -> () throws -> Void {\n'
+                '  let local = 1\n  return { throw Error() }\n }\n'
+                '\n /// Property.\n var value = {\n'
+                '  let local = 1\n  return local\n }()\n}'
+            ),
+        )
+        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            '/// Overview.\nfunc f(\n _ _: Int,\n) {}',
+            '/// Overview.\nfunc f() ->\n Void\n{}',
+            '/// Overview.\nfunc f()\nfunc g() {}',
+            '/// Overview.\nfunc f(\n values: Dictionary<String, (Int) -> Int>,\n) {}',
+        ],
+    )
+    def test_parameter_layout_subset(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        source: str,
+    ) -> None:
+        write_file(
+            'popo.toml',
+            '[swift-source]\ninclude=["*.swift"]\nparameter-lines=true',
+        )
+        write_file('sample.swift', source)
+        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
+
+
 class TestSwiftSource:
     """Check lexical contracts while retaining explicit parser boundaries."""
 
@@ -192,69 +255,6 @@ class TestSwiftSource:
     ) -> None:
         write_file('popo.toml', '[swift-source]\ninclude=["*.swift"]\nreturn-docs=true')
         write_file('sample.swift', f'/// Overview.\nfunc f() -> {result} {{}}')
-        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
-
-
-class TestSwiftLexicalBoundaries:
-    """Keep callable bodies, escaped strings and unsupported input bounded."""
-
-    @pytest.mark.parametrize(
-        'source',
-        [
-            'let s = "escaped \\" quote" // ordinary comment',
-            'let s = #"escaped \\#" quote"#',
-            'let s = "unterminated',
-            'let x = 1 /// trailing documentation is not an overview',
-        ],
-    )
-    def test_masked_strings_and_trailing_comments(
-        self,
-        source: str,
-    ) -> None:
-        _, documentation = lexical_view(source)
-        assert documentation == set()
-
-    def test_members_exclude_callable_and_closure_bodies(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-    ) -> None:
-        write_file(
-            'popo.toml',
-            '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nraises-docs=true',
-        )
-        write_file(
-            'sample.swift',
-            (
-                '/// Overview.\nstruct C {\n'
-                '\n /// Method.\n func f() -> () throws -> Void {\n'
-                '  let local = 1\n  return { throw Error() }\n }\n'
-                '\n /// Property.\n var value = {\n'
-                '  let local = 1\n  return local\n }()\n}'
-            ),
-        )
-        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
-
-    @pytest.mark.parametrize(
-        'source',
-        [
-            '/// Overview.\nfunc f(\n _ _: Int,\n) {}',
-            '/// Overview.\nfunc f() ->\n Void\n{}',
-            '/// Overview.\nfunc f()\nfunc g() {}',
-            '/// Overview.\nfunc f(\n values: Dictionary<String, (Int) -> Int>,\n) {}',
-        ],
-    )
-    def test_parameter_layout_subset(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        source: str,
-    ) -> None:
-        write_file(
-            'popo.toml',
-            '[swift-source]\ninclude=["*.swift"]\nparameter-lines=true',
-        )
-        write_file('sample.swift', source)
         assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
 
 

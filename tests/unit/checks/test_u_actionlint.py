@@ -72,6 +72,33 @@ def linter_repository_fixture(
 # SECTION: TESTS
 
 
+class TestActionlintFailures:
+    """Reject invalid invocations before launching any external validator."""
+
+    @pytest.mark.parametrize(
+        ('paths', 'command', 'message'),
+        [([], 'actionlint', 'no workflows'), (['ci.yml'], '', 'must not be empty')],
+    )
+    def test_invalid_selection(
+        self,
+        tmp_path: Path,
+        paths: list[str],
+        command: str,
+        message: str,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Return precise selection and command errors without execution."""
+        write_file('ci.yml', 'on: push')
+        runner = Mock(
+            side_effect=AssertionError('Invalid input must not launch a tool'),
+        )
+        monkeypatch.setattr(subprocess, 'run', runner)
+        with pytest.raises(ValueError, match=message):
+            run(tmp_path, paths, command)
+        runner.assert_not_called()
+
+
 class TestActionlintNormalization:
     """Group isolated regression scenarios for actionlint."""
 
@@ -99,33 +126,6 @@ class TestActionlintNormalization:
         assert data['uses'] == './actions/test'
         assert data['run'] == 'uses: $/actions/test\n'
         assert script in normalized
-
-
-class TestActionlintFailures:
-    """Reject invalid invocations before launching any external validator."""
-
-    @pytest.mark.parametrize(
-        ('paths', 'command', 'message'),
-        [([], 'actionlint', 'no workflows'), (['ci.yml'], '', 'must not be empty')],
-    )
-    def test_invalid_selection(
-        self,
-        tmp_path: Path,
-        paths: list[str],
-        command: str,
-        message: str,
-        write_file: FileWriter,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Return precise selection and command errors without execution."""
-        write_file('ci.yml', 'on: push')
-        runner = Mock(
-            side_effect=AssertionError('Invalid input must not launch a tool'),
-        )
-        monkeypatch.setattr(subprocess, 'run', runner)
-        with pytest.raises(ValueError, match=message):
-            run(tmp_path, paths, command)
-        runner.assert_not_called()
 
 
 class TestActionlintSourceView:
