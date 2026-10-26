@@ -6,6 +6,7 @@ Test Python-version consistency and workflow matrix resolution.
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Literal
 from unittest.mock import patch
 
 import pytest
@@ -384,6 +385,45 @@ class TestPythonPolicy:
 
 class TestPythonPolicyInputBoundaries:
     """Validate each declaration and inspect shared metadata consistently."""
+
+    @pytest.mark.parametrize('parser', ['text', 'scoped'])
+    def test_diagnostic_stage_and_workflow_order(
+        self,
+        policy: PythonPolicyConfig,
+        write_file: FileWriter,
+        parser: Literal['text', 'scoped'],
+    ) -> None:
+        """Preserve runtime, local and per-workflow diagnostic order."""
+        policy.python_version_file.write_text('3.12', encoding='utf-8')
+        first = write_file(
+            '.github/workflows/a.yml',
+            'jobs:\n  build:\n    steps:\n      - with:\n'
+            '          python-version: "3.12"\n',
+        )
+        middle = write_file(
+            '.github/workflows/ci.yml',
+            'name: actions/setup-python@fixture\njobs: {}\n',
+        )
+        last = write_file(
+            '.github/workflows/z.yml',
+            'jobs:\n  build:\n    steps:\n      - with:\n'
+            '          python-version: "banana"\n',
+        )
+        config = replace(policy, workflow_parser=parser)
+        before = snapshot_files(policy.metadata.parent)
+        assert validate(config, running_version='3.12') == [
+            'checker runtime: Python >=3.13,<3.15 is required; received 3.12',
+            f"{policy.python_version_file}: expected '3.13'",
+            f"{first}: unsupported Python version '3.12'",
+            f'{middle}: '
+            + (
+                'setup-python requires an explicit version'
+                if parser == 'text'
+                else 'no explicit python-version declarations'
+            ),
+            f"{last}: unsupported Python version 'banana'",
+        ]
+        assert snapshot_files(policy.metadata.parent) == before
 
     @pytest.mark.parametrize('missing', [False, True], ids=['malformed', 'missing'])
     def test_shared_metadata_failure_is_reported_once(
