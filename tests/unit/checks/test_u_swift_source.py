@@ -9,7 +9,7 @@ from typing import Self
 
 import pytest
 
-from popo.checks import swift_source
+from popo.checks import _swift_declarations, swift_source
 from popo.checks._swift_declarations import lexical_view
 from popo.config.source_checks import load_source_check
 from tests.support.files import FileWriter
@@ -143,6 +143,41 @@ class TestSwiftLexicalBoundaries:
         )
         write_file('sample.swift', source)
         assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
+
+    @pytest.mark.parametrize(
+        'text,fragments',
+        [
+            (
+                'value: (Int, Int), other: Int',
+                ('value: (Int, Int)', ' other: Int'),
+            ),
+            (
+                'value: Dictionary<String, Int> = [:], other: Int',
+                ('value: Dictionary<String, Int> = [:]', ' other: Int'),
+            ),
+            (
+                'value: Int = choose(1, 2), other: Int',
+                ('value: Int = choose(1, 2)', ' other: Int'),
+            ),
+            (
+                '\n value: Int,\n other: Int,\n',
+                ('\n value: Int', '\n other: Int'),
+            ),
+        ],
+    )
+    def test_parameter_syntax_retains_offsets_and_delimiters(
+        self: Self,
+        text: str,
+        fragments: tuple[str, ...],
+    ) -> None:
+        """
+        Retain untrimmed spans while splitting only outer parameter commas.
+        """
+        parameters = _swift_declarations._parameters(text)
+        assert tuple(parameter.text for parameter in parameters) == fragments
+        assert tuple(parameter.offset for parameter in parameters) == tuple(
+            text.index(fragment) for fragment in fragments
+        )
 
 
 class TestSwiftSource:

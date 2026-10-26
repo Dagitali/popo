@@ -231,6 +231,28 @@ class TestPythonSource:
         with pytest.raises(ConfigurationError):
             load_source_check(tmp_path, 'python-source')
 
+    def test_parameter_syntax_retains_native_nodes_and_grouping(
+        self: Self,
+    ) -> None:
+        """
+        Keep native parameter locations and the documented grouping order.
+        """
+        syntax = ast.parse(
+            'def f(value: int, /, *args: int, option: int = 0, '
+            '**kwargs: int) -> None: pass',
+        ).body[0]
+        assert isinstance(syntax, ast.FunctionDef)
+        parameters = _python_declarations._parameters(syntax)
+        assert tuple(parameter.arg for parameter in parameters) == (
+            'value',
+            'option',
+            'args',
+            'kwargs',
+        )
+        assert parameters[0] is syntax.args.posonlyargs[0]
+        assert all(isinstance(parameter, ast.arg) for parameter in parameters)
+        assert all(parameter.lineno == 1 for parameter in parameters)
+
     @pytest.mark.parametrize(
         'source,option,diagnostic',
         (
