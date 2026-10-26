@@ -21,10 +21,47 @@ from pathlib import Path
 import yaml
 
 from ..config.automation import AutomationConfig, load_automation_config
-from ._yaml import mapping_nodes, read_mapping
+from ._yaml import mapping_nodes, parse_mapping
 from .automation import _inside, _target
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _collect_sources(
+    config: AutomationConfig,
+    selected: list[Path],
+) -> dict[Path, str]:
+    """
+    Collect confined source snapshots and normalize their validated text.
+
+    Read each workflow/action once, even when referenced repeatedly or through
+    cycles. Validation and normalization share that text snapshot. Retain
+    implicit linter configuration without adding unrelated consumer files.
+    Read, decode, YAML and target errors propagate before creating the mirror.
+    """
+    root = config.root
+    sources: dict[Path, str] = {}
+    # Retain implicit consumer runner-label and ignore configuration.
+    for name in ('actionlint.yaml', 'actionlint.yml'):
+        path = root / '.github' / name
+        if path.is_file():
+            path = _inside(root, path)
+            sources[path] = path.read_text(encoding='utf-8')
+    pending = list(selected)
+    while pending:
+        path = pending.pop()
+        if path in sources:
+            continue
+        source = path.read_text(encoding='utf-8')
+        data = parse_mapping(source)
+        sources[path] = _normalize(source, config)
+        for node in mapping_nodes(data):
+            reference = node.get('uses')
+            if isinstance(reference, str):
+                target = _target(config, reference)
+                if target is not None:
+                    pending.append(target)
+    return sources
 
 
 def _normalize(
@@ -57,18 +94,14 @@ def _normalize(
                     assert target is not None
                     location = (
                         target.parent
-                        if target.name
-                        in (
-                            'action.yml',
-                            'action.yaml',
-                        )
+                        if target.name in {'action.yml', 'action.yaml'}
                         else target
                     )
                     replacement = './' + location.relative_to(config.root).as_posix()
                     start, end = value.start_mark.index, value.end_mark.index
                     # Aliases share their defining node; retain its anchor.
-                    anchor = re.match(r'&[^\s]+\s+', source[start:end])
                     fragment = source[start:end]
+                    anchor = re.match(r'&[^\s]+\s+', fragment)
                     # Preserve consumed block-scalar line breaks and locations.
                     padding = (
                         '\n' * fragment.count('\n') if fragment.endswith('\n') else ''
@@ -133,7 +166,8 @@ def run(
     .github/actionlint.yaml and .github/actionlint.yml configuration, never
     environments or arbitrary repository files. Cleanup occurs on success
     and failure. Execute the linter without executing workflow commands;
-    contract validation remains a separate check.
+    contract validation remains a separate check. Read each selected/referenced
+    automation file once; validation and normalization use the same snapshot.
     """
     root = root.resolve()
     config = load_automation_config(root)
@@ -156,26 +190,7 @@ def run(
     if '/' in command_parts[0]:
         # Keep venv symlinks intact when making executable paths absolute.
         command_parts[0] = str(Path(command_parts[0]).absolute())
-    sources: dict[Path, str] = {}
-    # Retain implicit consumer runner-label and ignore configuration.
-    for name in ('actionlint.yaml', 'actionlint.yml'):
-        path = root / '.github' / name
-        if path.is_file():
-            path = _inside(root, path)
-            sources[path] = path.read_text(encoding='utf-8')
-    pending = list(selected)
-    while pending:
-        path = pending.pop()
-        if path in sources:
-            continue
-        data = read_mapping(path)
-        sources[path] = _normalize(path.read_text(encoding='utf-8'), config)
-        for node in mapping_nodes(data):
-            reference = node.get('uses')
-            if isinstance(reference, str):
-                target = _target(config, reference)
-                if target is not None:
-                    pending.append(target)
+    sources = _collect_sources(config, selected)
     with tempfile.TemporaryDirectory(prefix='popo-actionlint-') as directory:
         mirror = Path(directory)
         for path, source in sources.items():
