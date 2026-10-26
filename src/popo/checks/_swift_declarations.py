@@ -67,6 +67,37 @@ class _DeclarationSyntax:
     parameter_lines: bool = True
 
 
+@dataclass(frozen=True, slots=True)
+class _Signature:
+    """
+    Store one callable's signature observations and lexical boundaries.
+
+    Attributes
+    ----------
+    parameter_names : tuple[str, ...] or None
+        Documentable internal names in source order, omitting unnamed
+        arguments; None marks an unsupported signature.
+    parameter_lines : bool
+        Whether parameter/default spans satisfy the physical-layout rule.
+    tail : str
+        Bounded text after the parameter list for return/throws inspection.
+    end : int
+        Offset after the bounded signature; discovery locates its body from
+        here. Unsupported signatures retain the original input position.
+
+    Notes
+    -----
+    Swift requires lexical balancing; this is not a compiler AST. Unsupported
+    signatures have None names, false layout and an empty tail. Python's
+    counterpart stores native-AST annotation facts instead of text boundaries.
+    """
+
+    parameter_names: tuple[str, ...] | None
+    parameter_lines: bool
+    tail: str
+    end: int
+
+
 # !SECTION
 
 
@@ -187,11 +218,11 @@ def _declaration_syntax(
             tail, separate = '', True
             body = code.find('{', offset + match.end())
             if kind in CALLABLE_KINDS:
-                parameters, tail, separate, stop = _signature(
-                    code,
-                    offset + match.end(),
-                )
-                body = stop
+                signature = _signature(code, offset + match.end())
+                parameters = signature.parameter_names
+                tail = signature.tail
+                separate = signature.parameter_lines
+                body = signature.end
                 while body < len(code) and code[body].isspace():
                     body += 1
                 if body == len(code) or code[body] != '{':
@@ -337,9 +368,9 @@ def _parameters(
 def _signature(
     code: str,
     position: int,
-) -> tuple[tuple[str, ...] | None, str, bool, int]:
+) -> _Signature:
     """
-    Extract balanced parameter text and a bounded post-signature tail.
+    Extract one callable's signature observations from bounded source text.
 
     Parameters
     ----------
@@ -350,10 +381,10 @@ def _signature(
 
     Returns
     -------
-    tuple[tuple[str, ...] or None, str, bool, int]
-        Internal names, trailing signature text, separate-line layout and the
-        offset after the bounded signature. Unsupported signatures return
-        None names, empty text, false layout and the original position.
+    _Signature
+        Documentable names, physical layout, trailing signature text and the
+        offset after the bounded signature. Unsupported signatures retain
+        None names, false layout, empty text and the original position.
 
     Notes
     -----
@@ -364,13 +395,13 @@ def _signature(
     """
     opening = code.find('(', position)
     if opening < 0 or any(char in code[position:opening] for char in '{};'):
-        return None, '', False, position
+        return _Signature(None, False, '', position)
     depth, end = 1, opening + 1
     while end < len(code) and depth:
         depth += (code[end] == '(') - (code[end] == ')')
         end += 1
     if depth:
-        return None, '', False, position
+        return _Signature(None, False, '', position)
     names: list[str] = []
     parameters = _parameters(code[opening + 1 : end - 1])
     for _, parameter in parameters:
@@ -378,7 +409,7 @@ def _signature(
         prefix, colon, _ = parameter.partition(':')
         identifiers = PARAMETER_NAME_PATTERN.findall(prefix)
         if not colon or not identifiers or '(' in prefix:
-            return None, '', False, position
+            return _Signature(None, False, '', position)
         if identifiers[-1] != '_':
             names.append(identifiers[-1])
     stop = end
@@ -390,10 +421,10 @@ def _signature(
                 if not tail.endswith(('->', ',', 'where')):
                     break
         stop += 1
-    return (
+    return _Signature(
         tuple(names),
-        code[end:stop],
         _parameter_lines(code, position, opening + 1, parameters),
+        code[end:stop],
         stop,
     )
 

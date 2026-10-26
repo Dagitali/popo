@@ -44,6 +44,43 @@ NONVALUE_RETURN_TYPES = frozenset(
 # !SECTION
 
 
+# SECTION: PROTECTED DATA CLASSES
+
+
+@dataclass(frozen=True, slots=True)
+class _Signature:
+    """
+    Store one callable's signature observations before body analysis.
+
+    Attributes
+    ----------
+    parameter_names : tuple[str, ...]
+        Documentable names in established AST grouping, excluding a leading
+        positional self or cls receiver.
+    parameter_lines : bool
+        Whether parameter/default spans satisfy the physical-layout rule.
+    returns : bool
+        Whether the return annotation alone requires a Returns section.
+        Explicit value returns or yields can add requirements in _declaration.
+    annotated : bool
+        Whether every parameter, including receivers, and the return have
+        annotations. Annotation contents are observed, not resolved.
+
+    Notes
+    -----
+    Native AST arguments already provide parsed syntax. This record retains
+    derived signature facts, not another syntax tree or body observations.
+    """
+
+    parameter_names: tuple[str, ...]
+    parameter_lines: bool
+    returns: bool
+    annotated: bool
+
+
+# !SECTION
+
+
 # SECTION: DATA CLASSES
 
 
@@ -129,7 +166,8 @@ def _declaration(
 
     Notes
     -----
-    Native AST arguments already represent parsed signatures. Body analysis
+    Signature observations come from _signature using native AST arguments.
+    Body analysis
     excludes nested definitions; explicit raises include locally caught ones.
     Type annotations are observed, not resolved or validated.
     """
@@ -150,17 +188,8 @@ def _declaration(
             ),
             instance_methods=methods,
         )
-    args = syntax.args
-    positional = [*args.posonlyargs, *args.args]
-    parameters = _parameters(syntax)
-    names = [arg.arg for arg in parameters]
-    if positional and positional[0].arg in {'self', 'cls'}:
-        names.remove(positional[0].arg)
-    result_type = syntax.returns
-    annotation = ast.unparse(result_type) if result_type is not None else ''
-    if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
-        annotation = result_type.value
-    returns = annotation not in NONVALUE_RETURN_TYPES
+    signature = _signature(syntax)
+    returns = signature.returns
     yields = raises = False
     for item in _body(syntax):
         if isinstance(item, (ast.Yield, ast.YieldFrom)):
@@ -176,13 +205,12 @@ def _declaration(
             syntax.lineno,
             'function',
             ast.get_docstring(syntax) or '',
-            tuple(names),
+            signature.parameter_names,
             'Yields' if yields else 'Returns' if returns else '',
             raises,
-            _parameter_lines(syntax, parameters),
+            signature.parameter_lines,
         ),
-        syntax.returns is not None
-        and all(arg.annotation is not None for arg in parameters),
+        signature.annotated,
     )
 
 
@@ -306,6 +334,50 @@ def _parameters(
         *args.kwonlyargs,
         *(arg for arg in (args.vararg, args.kwarg) if arg is not None),
     ]
+
+
+def _signature(
+    node: _CallableSyntax,
+) -> _Signature:
+    """
+    Extract one callable's signature observations from native AST nodes.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Function or async-function node with an already parsed signature.
+
+    Returns
+    -------
+    _Signature
+        Documentable names, physical layout, return-annotation requirement and
+        annotation completeness. Receiver annotations remain required even
+        though receiver names are omitted from documentation requirements.
+
+    Notes
+    -----
+    Quoted non-value return annotations follow the same rules as unquoted
+    forms. Body-derived return/yield/raise requirements belong to _declaration,
+    which uses _body to exclude nested scopes. No consumer code executes.
+    """
+    args = node.args
+    positional = [*args.posonlyargs, *args.args]
+    parameters = _parameters(node)
+    names = [arg.arg for arg in parameters]
+    if positional and positional[0].arg in {'self', 'cls'}:
+        names.remove(positional[0].arg)
+    result_type = node.returns
+    annotation = ast.unparse(result_type) if result_type is not None else ''
+    if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
+        annotation = result_type.value
+    returns = annotation not in NONVALUE_RETURN_TYPES
+    return _Signature(
+        tuple(names),
+        _parameter_lines(node, parameters),
+        returns,
+        node.returns is not None
+        and all(arg.annotation is not None for arg in parameters),
+    )
 
 
 # !SECTION
