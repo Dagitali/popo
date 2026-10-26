@@ -1,4 +1,6 @@
 """
+:mod:`tests.integration.test_i_examples` module.
+
 Validate the maintained consumer examples without tools, credentials or
 network.
 """

@@ -1,4 +1,8 @@
-"""Verify shared source-policy contracts and language-specific documentation."""
+"""
+:mod:`tests.unit.checks.test_u_source_parity` module.
+
+Verify shared source-policy contracts and language-specific documentation.
+"""
 
 from collections.abc import Callable
 from pathlib import Path
@@ -200,7 +204,9 @@ class TestSourceInputFailures:
 
 
 class TestSourceConventions:
-    """Keep common option names, diagnostics and collector contracts aligned."""
+    """
+    Keep common option names, diagnostics and collector contracts aligned.
+    """
 
     @pytest.mark.parametrize('setting', ['docstring-width=79', 'max-module-lines=1000'])
     def test_prerelease_option_names_are_rejected(

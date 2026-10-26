@@ -1,4 +1,8 @@
-"""Exercise language-neutral CLI plans and versioned offline JSON reports."""
+"""
+:mod:`tests.integration.test_i_selection` module.
+
+Exercise language-neutral CLI plans and versioned offline JSON reports.
+"""
 
 import json
 from pathlib import Path

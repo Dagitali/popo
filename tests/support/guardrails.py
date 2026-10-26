@@ -1,4 +1,8 @@
-"""Build isolated consumers with an explicit local/CI guardrail contract."""
+"""
+:mod:`tests.support.guardrails` module.
+
+Build isolated consumers with an explicit local/CI guardrail contract.
+"""
 
 from pathlib import Path
 

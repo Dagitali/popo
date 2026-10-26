@@ -1,4 +1,8 @@
-"""Provide isolated Swift toolchain declarations without executing Swift."""
+"""
+:mod:`tests.support.toolchains` module.
+
+Provide isolated Swift toolchain declarations without executing Swift.
+"""
 
 from pathlib import Path
 

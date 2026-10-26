@@ -1,4 +1,8 @@
-"""Copy maintained consumers without changing their source examples."""
+"""
+:mod:`tests.support.examples` module.
+
+Copy maintained consumers without changing their source examples.
+"""
 
 import shutil
 from pathlib import Path

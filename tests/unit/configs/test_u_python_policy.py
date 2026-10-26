@@ -1,4 +1,8 @@
-"""Verify independent Python policy loading and scoped-mode opt-in."""
+"""
+:mod:`tests.unit.configs.test_u_python_policy` module.
+
+Verify independent Python policy loading and scoped-mode opt-in.
+"""
 
 from pathlib import Path
 

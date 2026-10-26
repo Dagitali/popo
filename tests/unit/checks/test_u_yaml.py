@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.checks.test_u_yaml` module.
 
-Verify shared YAML traversal order, cycle handling and deep structures.
+Verify safe YAML parsing, traversal order, cycles and deep structures.
 """
 
 from collections.abc import Callable

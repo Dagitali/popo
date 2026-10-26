@@ -1,4 +1,8 @@
-"""Validate explicit invocation identifiers and confined contract inputs."""
+"""
+:mod:`tests.unit.configs.test_u_guardrails` module.
+
+Validate explicit invocation identifiers and confined contract inputs.
+"""
 
 from collections.abc import Callable
 from pathlib import Path

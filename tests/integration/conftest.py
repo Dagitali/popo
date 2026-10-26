@@ -1,4 +1,8 @@
-"""Share report-format selection across independent CLI integration cases."""
+"""
+:mod:`tests.integration.conftest` module.
+
+Share report-format and check-selection fixtures across CLI integration cases.
+"""
 
 from collections.abc import Callable
 from pathlib import Path

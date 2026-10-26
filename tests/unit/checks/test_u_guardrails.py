@@ -1,4 +1,8 @@
-"""Inspect local and CI guardrail contracts as inert repository data."""
+"""
+:mod:`tests.unit.checks.test_u_guardrails` module.
+
+Inspect local and CI guardrail contracts as inert repository data.
+"""
 
 from pathlib import Path
 

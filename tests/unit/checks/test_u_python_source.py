@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.checks.test_u_python_source` module.
 
-Exercise python source policy and language-specific findings.
+Exercise Python source policy and language-specific findings.
 """
 
 from pathlib import Path
@@ -171,7 +171,9 @@ class TestPythonDocumentation:
         quoted: bool,
         body: str,
     ) -> None:
-        """Treat forward references equally while retaining explicit returns."""
+        """
+        Treat forward references equally while retaining explicit returns.
+        """
         write_file(
             'popo.toml',
             '[python-source]\ninclude=["*.py"]\nreturn-docs=true',

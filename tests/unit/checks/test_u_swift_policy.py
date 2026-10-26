@@ -1,4 +1,8 @@
-"""Exercise Swift declaration drift without launching tools or manifests."""
+"""
+:mod:`tests.unit.checks.test_u_swift_policy` module.
+
+Exercise Swift declaration drift without launching tools or manifests.
+"""
 
 import subprocess
 from collections.abc import Callable

@@ -1,4 +1,7 @@
-"""Exercise example consumers through installed Make, Git-hook and CI paths.
+"""
+:mod:`tests.e2e.test_e_examples` module.
+
+Exercise example consumers through installed Make, Git-hook and CI paths.
 
 Use the same example with both wheel and source installations. Execute only
 trusted example commands in disposable repositories; never dispatch a workflow.

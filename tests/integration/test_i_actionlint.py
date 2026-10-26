@@ -7,7 +7,11 @@
 # Maintainer Notes
 # - Use a deterministic fake linter; no installations or network requests.
 
-"""Public CLI integration for actionlint's disposable compatibility view."""
+"""
+:mod:`tests.integration.test_i_actionlint` module.
+
+Public CLI integration for actionlint's disposable compatibility view.
+"""
 
 import shlex
 import sys

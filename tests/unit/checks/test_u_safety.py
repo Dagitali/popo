@@ -1,6 +1,10 @@
 # test_u_safety.py
 # Deterministic static safety regressions; never install npm dependencies.
-"""Exercise workflow trust boundaries and manifest/lockfile root drift."""
+"""
+:mod:`tests.unit.checks.test_u_safety` module.
+
+Exercise workflow trust boundaries and manifest/lockfile root drift.
+"""
 
 import json
 from collections.abc import Callable, Iterator

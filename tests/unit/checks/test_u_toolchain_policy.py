@@ -1,4 +1,8 @@
-"""Verify scoped workflow observations without cross-job value borrowing."""
+"""
+:mod:`tests.unit.checks.test_u_toolchain_policy` module.
+
+Verify scoped workflow observations without cross-job value borrowing.
+"""
 
 import pytest
 

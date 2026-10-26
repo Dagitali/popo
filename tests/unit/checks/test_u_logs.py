@@ -50,7 +50,9 @@ class TestRedactedLogs:
         error: type[Exception],
         root_override: bool,
     ) -> None:
-        """Report inaccessible input roots without exposing exception details."""
+        """
+        Report inaccessible input roots without exposing exception details.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[logs]\ninclude=["*.log"]\npatterns={warning="WARNING"}',
         )

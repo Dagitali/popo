@@ -1,4 +1,8 @@
-"""Exercise Swift toolchain policy through native CLI selection and reports."""
+"""
+:mod:`tests.integration.test_i_swift_policy` module.
+
+Exercise Swift toolchain policy through native CLI selection and reports.
+"""
 
 import json
 from collections.abc import Callable

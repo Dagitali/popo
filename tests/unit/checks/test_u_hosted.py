@@ -1,4 +1,7 @@
-"""Test hosted observations without network access or credentials.
+"""
+:mod:`tests.unit.checks.test_u_hosted` module.
+
+Test hosted observations without network access or credentials.
 
 Maintainer Notes
 ----------------

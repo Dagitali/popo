@@ -1,4 +1,8 @@
-"""Exercise consumer-language-independent configuration and check planning."""
+"""
+:mod:`tests.unit.configs.test_u_selection` module.
+
+Exercise consumer-language-independent configuration and check planning.
+"""
 
 from collections.abc import Callable
 from pathlib import Path

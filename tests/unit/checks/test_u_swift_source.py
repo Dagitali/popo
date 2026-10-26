@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.checks.test_u_swift_source` module.
 
-Exercise swift source policy and language-specific findings.
+Exercise Swift source policy and language-specific findings.
 """
 
 from pathlib import Path

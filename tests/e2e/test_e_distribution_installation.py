@@ -70,7 +70,8 @@ class TestInstalledCLI:
         format_: str,
     ) -> None:
         """
-        Inventory committed bytes through installed console and module commands.
+        Inventory committed bytes through installed console and module
+        commands.
 
         Parameters
         ----------

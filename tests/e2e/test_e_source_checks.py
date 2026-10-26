@@ -17,7 +17,9 @@ from tests.support.installation import Installation
 
 
 class TestInstalledSourceChecks:
-    """Exercise wheel/sdist console and module entry points without mutation."""
+    """
+    Exercise wheel/sdist console and module entry points without mutation.
+    """
 
     @pytest.mark.parametrize('module', (False, True), ids=('console', 'module'))
     @pytest.mark.parametrize(

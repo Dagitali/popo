@@ -7,7 +7,11 @@
 # Maintainer Notes
 # - Keep adaptation independent of tool installation and hosted execution.
 
-"""Unit coverage for the temporary actionlint source view."""
+"""
+:mod:`tests.unit.checks.test_u_actionlint` module.
+
+Unit coverage for the temporary actionlint source view.
+"""
 
 import subprocess
 from collections import Counter

@@ -1,4 +1,6 @@
 """
+:mod:`tests.integration.test_i_guardrails` module.
+
 Verify independent local/CI guardrail scenarios through public CLI output.
 """
 

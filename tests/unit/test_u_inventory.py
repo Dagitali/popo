@@ -1,7 +1,8 @@
 """
 :mod:`tests.unit.test_u_inventory` module.
 
-Validate committed source identity, checksums, containment and failure behavior.
+Validate committed source identity, checksums, containment and failure
+behavior.
 """
 
 import hashlib

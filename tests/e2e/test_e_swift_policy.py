@@ -1,4 +1,8 @@
-"""Validate installed Swift policy commands without installing Swift."""
+"""
+:mod:`tests.e2e.test_e_swift_policy` module.
+
+Validate installed Swift policy commands without installing Swift.
+"""
 
 import json
 from pathlib import Path
@@ -12,7 +16,9 @@ from tests.support.installation import Installation
 
 
 class TestInstalledSwiftPolicy:
-    """Check wheel/sdist console/module behavior and preserve consumer bytes."""
+    """
+    Check wheel/sdist console/module behavior and preserve consumer bytes.
+    """
 
     @pytest.mark.parametrize('module', [False, True], ids=['console', 'module'])
     def test_consumer_policy(
