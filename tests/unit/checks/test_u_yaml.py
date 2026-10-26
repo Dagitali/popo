@@ -5,8 +5,10 @@ Verify shared YAML traversal order, cycle handling and deep structures.
 """
 
 import pytest
+import yaml
 
-from popo.checks._yaml import mapping_nodes
+from popo.checks._yaml import mapping_nodes, parse_mapping, read_mapping
+from tests.support.files import FileWriter
 
 # SECTION: TESTS
 
@@ -46,6 +48,56 @@ class TestMappingTraversal:
         ]
         assert list(mapping_nodes(root, seen)) == []
         assert {id(root), id(root['children']), id(first), id(last)} <= seen
+
+
+class TestYamlSnapshots:
+    """Keep text and file parsing under the same safe mapping contract."""
+
+    @pytest.mark.parametrize('source', ['on: push', 'a: &a {loop: *a}'])
+    def test_mapping_inputs(
+        self,
+        write_file: FileWriter,
+        source: str,
+    ) -> None:
+        """Retain workflow event keys and safely construct cyclic aliases."""
+        path = write_file('ci.yml', source)
+        for document in (parse_mapping(source), read_mapping(path)):
+            assert isinstance(document, dict)
+            if source.startswith('on:'):
+                assert document == {'on': 'push'}
+            else:
+                child = document['a']
+                assert isinstance(child, dict)
+                assert child['loop'] is child
+
+    @pytest.mark.parametrize(
+        'source,error',
+        [
+            ('', ValueError),
+            ('[]', ValueError),
+            ('a: 1\na: 2', ValueError),
+            ('1: value', ValueError),
+            ('[', yaml.YAMLError),
+            ('!!python/object:builtins.object {}', yaml.YAMLError),
+        ],
+    )
+    def test_invalid_inputs(
+        self,
+        write_file: FileWriter,
+        source: str,
+        error: type[Exception],
+    ) -> None:
+        """Reject unsafe or malformed inputs with both parsing interfaces."""
+        path = write_file('ci.yml', source)
+        with pytest.raises(error):
+            parse_mapping(source)
+        with pytest.raises(error):
+            read_mapping(path)
+
+    def test_mapping_label_is_preserved(self) -> None:
+        """Label shape errors consistently without requiring a source file."""
+        with pytest.raises(ValueError, match='workflow must be a mapping'):
+            parse_mapping('null', label='workflow')
 
 
 # !SECTION
