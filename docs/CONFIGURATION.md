@@ -47,9 +47,12 @@ automatically. Missing profiles, duplicate names, empty arrays and unknown check
 
 Selectable commands are `check-docs`, `check-github-actions-pins`, `check-dependency-boundaries`,
 `check-python-policy`, `check-automation-contracts`, `check-repository-safety`,
-`check-required-files`, `check-file-headers` and `check-guardrail-parity`. Checks run in declared
-order. Reported failures and per-domain configuration failures do not hide later selected checks.
-Unhandled filesystem and decoding errors retain their command-specific propagation boundaries.
+`check-required-files`, `check-file-headers`, `check-guardrail-parity`, `check-python-source`,
+`check-swift-documentation` and `check-logs`. The source/log commands are unreleased additions; see
+[source and log checks](source-and-log-checks.md) for their opt-in tables and limits. Checks run in
+declared order. Reported failures and per-domain configuration failures do not hide later selected
+checks. Unhandled filesystem and decoding errors retain their command-specific propagation
+boundaries.
 
 Without explicit selection, legacy baseline checks remain enabled and configured optional domains
 join them. Explicit selection can omit configured domains; their settings are generally not loaded.
@@ -232,6 +235,10 @@ expressions or full YAML semantics.
   `check-all` and does not install tools, execute workflow commands, or access the network itself.
 - `check-dependency-boundaries` and `check-python-policy` load dependency and Python-policy
   configuration together; they do not load automation settings.
+- `check-python-source`, `check-swift-documentation` and `check-logs` inspect configured inputs
+  without executing source or native tools. `check-logs --log-root` selects an explicit artifact
+  boundary; a relative override resolves against the working directory, not `--root`. They require
+  their own opt-in policy tables; see [source and log checks](source-and-log-checks.md).
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
   `--changelog` to select another file.
 - `check-all` uses explicit checks or a named profile when supplied, otherwise legacy baseline and
