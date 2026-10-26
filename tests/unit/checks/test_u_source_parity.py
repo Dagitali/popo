@@ -86,6 +86,56 @@ class TestSourceConventions:
         assert facts.raises
         assert facts.documentation.strip() == 'Return an item.'
 
+    def test_collectors_keep_nominal_and_callable_facts(
+        self: Self,
+        source_case: SourceCase,
+    ) -> None:
+        """
+        Retain documentation, locations and language-specific observations.
+        """
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            parsed = _python_declarations.parse(
+                '"""Overview."""\n'
+                'class Container:\n'
+                '    """Container documentation."""\n'
+                '    def method(\n'
+                '        self,\n'
+                '        value: int,\n'
+                '    ) -> int:\n'
+                '        """Callable documentation."""\n'
+                '        return value\n',
+            )
+            assert parsed.declarations[0].instance_methods == ('method',)
+            assert not parsed.declarations[1].annotated
+            assert parsed.documentation_lines == (1, 3, 8)
+            expected_locations = (2, 4)
+        else:
+            parsed = _swift_declarations.parse(
+                '/// Overview.\nimport Foundation\n\n'
+                '/// Container documentation.\n@MainActor\nstruct Container {\n\n'
+                '    /// Callable documentation.\n'
+                '    @MainActor\n'
+                '    func method(\n'
+                '        value: Int\n'
+                '    ) -> Int { value }\n}\n',
+            )
+            assert parsed.declarations[0].documentation_start == 4
+            assert parsed.declarations[1].documentation_start == 8
+            assert all(item.separated for item in parsed.declarations)
+            assert parsed.documentation_lines == (1, 4, 8)
+            expected_locations = (6, 10)
+        assert parsed.has_overview
+        nominal, callable_ = (item.facts for item in parsed.declarations)
+        assert (nominal.line, callable_.line) == expected_locations
+        assert nominal.documentation.strip() == 'Container documentation.'
+        assert nominal.parameter_names == ()
+        assert callable_.documentation.strip() == 'Callable documentation.'
+        assert callable_.parameter_names == ('value',)
+        assert callable_.parameter_lines
+        assert callable_.return_section == 'Returns'
+        assert not callable_.raises
+
     def test_common_diagnostics(
         self: Self,
         source_case: SourceCase,
@@ -108,6 +158,35 @@ class TestSourceConventions:
             f'{filename}: file exceeds configured line limit',
             f'{filename}:1: documentation line too long',
         ]
+
+    def test_nested_callable_discovery_remains_language_specific(
+        self: Self,
+        source_case: SourceCase,
+    ) -> None:
+        """Keep AST nesting and lexical callable-body exclusion distinct."""
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            parsed = _python_declarations.parse(
+                'def outer() -> None:\n'
+                '    def inner(value: int, *args: int, option: int, **kwargs: int):\n'
+                '        yield value\n'
+                '        raise ValueError()\n',
+            )
+            assert len(parsed.declarations) == 2
+            inner = parsed.declarations[1].facts
+            assert inner.parameter_names == ('value', 'option', 'args', 'kwargs')
+            assert inner.return_section == 'Yields'
+            assert inner.raises
+        else:
+            parsed = _swift_declarations.parse(
+                'func outer() {\n'
+                '    func inner(value: Int) throws -> Int { value }\n}\n',
+            )
+            assert len(parsed.declarations) == 1
+        outer = parsed.declarations[0].facts
+        assert outer.parameter_names == ()
+        assert outer.return_section == ''
+        assert not outer.raises
 
     @pytest.mark.parametrize('setting', ['docstring-width=79', 'max-module-lines=1000'])
     def test_prerelease_option_names_are_rejected(
