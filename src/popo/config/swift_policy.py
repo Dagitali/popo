@@ -76,33 +76,6 @@ class SwiftPolicyConfig:
 # SECTION: FUNCTIONS
 
 
-def parse_version(
-    value: str,
-) -> tuple[int, int, int]:
-    """
-    Parse stable Swift major.minor[.patch] text without Python specifiers.
-
-    Parameters
-    ----------
-    value : str
-        Version text with optional surrounding whitespace.
-
-    Returns
-    -------
-    tuple[int, int, int]
-        Numeric components; an omitted patch means zero, not a version family.
-
-    Raises
-    ------
-    ValueError
-        Unsupported syntax, including snapshots, suffixes or leading zeroes.
-    """
-    match = VERSION_PATTERN.fullmatch(value.strip())
-    if match is None:
-        raise ValueError('expected stable Swift major.minor[.patch] version')
-    return int(match[1]), int(match[2]), int(match[3] or 0)
-
-
 def load_swift_policy_config(
     root: Path,
 ) -> SwiftPolicyConfig:
@@ -185,6 +158,33 @@ def load_swift_policy_config(
         values['workflow-version-key'],
         required,
     )
+
+
+def parse_version(
+    value: str,
+) -> tuple[int, int, int]:
+    """
+    Parse stable Swift major.minor[.patch] text without Python specifiers.
+
+    Parameters
+    ----------
+    value : str
+        Version text with optional surrounding whitespace.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        Numeric components; an omitted patch means zero, not a version family.
+
+    Raises
+    ------
+    ValueError
+        Unsupported syntax, including snapshots, suffixes or leading zeroes.
+    """
+    match = VERSION_PATTERN.fullmatch(value.strip())
+    if match is None:
+        raise ValueError('expected stable Swift major.minor[.patch] version')
+    return int(match[1]), int(match[2]), int(match[3] or 0)
 
 
 # !SECTION

@@ -19,6 +19,18 @@ from popo.config.source_checks import load_source_check
 class TestRedactedLogs:
     """Keep private lines out of both rule findings and read errors."""
 
+    @pytest.mark.parametrize('patterns', ('{}', '{ bad = "" }', '{ "bad\\nID" = "x" }'))
+    def test_invalid_patterns(
+        self: Self,
+        tmp_path: Path,
+        patterns: str,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            '[logs]\ninclude = ["*.log"]\npatterns = ' + patterns,
+        )
+        with pytest.raises(ConfigurationError):
+            load_source_check(tmp_path, 'logs')
+
     @pytest.mark.parametrize('root_override', (False, True))
     def test_named_literal_findings_and_clean_inputs(
         self: Self,
@@ -66,18 +78,6 @@ class TestRedactedLogs:
         monkeypatch.setattr(Path, 'resolve', fail_resolution)
         root = tmp_path / 'artifacts' if root_override else None
         assert logs.validate(config, root) == ['cannot resolve selected input root']
-
-    @pytest.mark.parametrize('patterns', ('{}', '{ bad = "" }', '{ "bad\\nID" = "x" }'))
-    def test_invalid_patterns(
-        self: Self,
-        tmp_path: Path,
-        patterns: str,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            '[logs]\ninclude = ["*.log"]\npatterns = ' + patterns,
-        )
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'logs')
 
 
 # !SECTION

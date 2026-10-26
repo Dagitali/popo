@@ -22,6 +22,70 @@ class TestSourceCommands:
     """Verify selection, JSON reporting and private-artifact boundaries."""
 
     @pytest.mark.parametrize(
+        'command',
+        ('check-python-source', 'check-swift-source', 'check-logs'),
+    )
+    def test_absent_configuration_reports_failure(
+        self: Self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        command: str,
+    ) -> None:
+        assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
+        report = json.loads(capsys.readouterr().out)
+        assert 'configuration:' in report['checks'][0]['diagnostics'][0]['message']
+
+    def test_aggregate_continues_after_invalid_domain_configuration(
+        self: Self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            'checks = ["check-python-source", "check-logs"]\n'
+            '[python-source]\ninclude = []\n'
+            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
+        )
+        assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
+        report = json.loads(capsys.readouterr().out)
+        assert [item['check'] for item in report['checks']] == [
+            'check-python-source',
+            'check-logs',
+        ]
+        assert all(not item['passed'] for item in report['checks'])
+
+    def test_explicit_external_log_root_redacts_financial_contents(
+        self: Self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        consumer = tmp_path / 'consumer'
+        artifact = tmp_path / 'artifacts'
+        consumer.mkdir()
+        artifact.mkdir()
+        (consumer / 'popo.toml').write_text(
+            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
+        )
+        (artifact / 'console.log').write_text('WARNING: PRIVATE BALANCE')
+        assert (
+            main(
+                [
+                    'check-logs',
+                    '--root',
+                    str(consumer),
+                    '--log-root',
+                    str(artifact),
+                    '--format',
+                    'json',
+                ],
+            )
+            == 1
+        )
+        output = capsys.readouterr().out
+        assert 'PRIVATE BALANCE' not in output
+        assert 'WARNING' not in output
+        assert 'console.log:1: warning' in output
+
+    @pytest.mark.parametrize(
         'command,domain,filename,source',
         (
             ('check-python-source', 'python-source', 'rule.py', 'x = 1'),
@@ -73,70 +137,6 @@ class TestSourceCommands:
         else:
             assert output.out.startswith('PASS: ' if present else 'FAIL: ')
         assert snapshot_files(tmp_path) == before
-
-    @pytest.mark.parametrize(
-        'command',
-        ('check-python-source', 'check-swift-source', 'check-logs'),
-    )
-    def test_absent_configuration_reports_failure(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-    ) -> None:
-        assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert 'configuration:' in report['checks'][0]['diagnostics'][0]['message']
-
-    def test_explicit_external_log_root_redacts_financial_contents(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        consumer = tmp_path / 'consumer'
-        artifact = tmp_path / 'artifacts'
-        consumer.mkdir()
-        artifact.mkdir()
-        (consumer / 'popo.toml').write_text(
-            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
-        )
-        (artifact / 'console.log').write_text('WARNING: PRIVATE BALANCE')
-        assert (
-            main(
-                [
-                    'check-logs',
-                    '--root',
-                    str(consumer),
-                    '--log-root',
-                    str(artifact),
-                    '--format',
-                    'json',
-                ],
-            )
-            == 1
-        )
-        output = capsys.readouterr().out
-        assert 'PRIVATE BALANCE' not in output
-        assert 'WARNING' not in output
-        assert 'console.log:1: warning' in output
-
-    def test_aggregate_continues_after_invalid_domain_configuration(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            'checks = ["check-python-source", "check-logs"]\n'
-            '[python-source]\ninclude = []\n'
-            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
-        )
-        assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert [item['check'] for item in report['checks']] == [
-            'check-python-source',
-            'check-logs',
-        ]
-        assert all(not item['passed'] for item in report['checks'])
 
 
 # !SECTION

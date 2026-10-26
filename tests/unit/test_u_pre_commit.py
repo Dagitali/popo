@@ -14,32 +14,6 @@ import yaml
 # SECTION: FIXTURES
 
 
-@pytest.fixture(name='project_metadata', scope='module')
-def project_metadata_fixture(
-    repository_root: Path,
-) -> dict[str, Any]:
-    """
-    Parse canonical package and tool metadata once for hook contracts.
-
-    Parameters
-    ----------
-    repository_root : pathlib.Path
-        Checkout containing the canonical pyproject.toml.
-
-    Returns
-    -------
-    dict[str, typing.Any]
-        Parsed TOML metadata, treated as read-only by consuming tests.
-
-    Raises
-    ------
-    OSError, UnicodeError, tomllib.TOMLDecodeError
-        If the metadata cannot be read or parsed.
-    """
-    with (repository_root / 'pyproject.toml').open('rb') as stream:
-        return tomllib.load(stream)
-
-
 @pytest.fixture(
     name='hook_config',
     scope='module',
@@ -77,6 +51,32 @@ def hook_config_fixture(
     return config
 
 
+@pytest.fixture(name='project_metadata', scope='module')
+def project_metadata_fixture(
+    repository_root: Path,
+) -> dict[str, Any]:
+    """
+    Parse canonical package and tool metadata once for hook contracts.
+
+    Parameters
+    ----------
+    repository_root : pathlib.Path
+        Checkout containing the canonical pyproject.toml.
+
+    Returns
+    -------
+    dict[str, typing.Any]
+        Parsed TOML metadata, treated as read-only by consuming tests.
+
+    Raises
+    ------
+    OSError, UnicodeError, tomllib.TOMLDecodeError
+        If the metadata cannot be read or parsed.
+    """
+    with (repository_root / 'pyproject.toml').open('rb') as stream:
+        return tomllib.load(stream)
+
+
 # !SECTION
 
 
@@ -91,6 +91,26 @@ class TestLocalHooks:
     -----
     Inspect configuration without installing or executing hooks.
     """
+
+    def test_autopep8_preserves_ruff_slice_spacing(
+        self,
+        hook_config: dict[str, Any],
+        project_metadata: dict[str, Any],
+    ) -> None:
+        """Keep autopep8's slice-spacing fix from undoing Ruff formatting."""
+        hook = next(
+            hook
+            for repo in hook_config['repos']
+            for hook in repo['hooks']
+            if hook['id'] == 'autopep8'
+        )
+        ignored = set(project_metadata['tool']['autopep8']['ignore'])
+        assert {'E203', 'E226', 'E24', 'W50', 'W690'} <= ignored
+        assert not any(arg.startswith('--ignore') for arg in hook['args'])
+        assert (
+            f'--max-line-length={project_metadata['tool']['ruff']['line-length']}'
+            in hook['args']
+        )
 
     @pytest.mark.parametrize(
         ('hook_id', 'entry'),
@@ -133,26 +153,6 @@ class TestLocalHooks:
         assert hook['additional_dependencies'] == [ruff_requirement]
         assert hook.get('pass_filenames', True) is True
         assert hook['types_or'] == ['python', 'pyi']
-
-    def test_autopep8_preserves_ruff_slice_spacing(
-        self,
-        hook_config: dict[str, Any],
-        project_metadata: dict[str, Any],
-    ) -> None:
-        """Keep autopep8's slice-spacing fix from undoing Ruff formatting."""
-        hook = next(
-            hook
-            for repo in hook_config['repos']
-            for hook in repo['hooks']
-            if hook['id'] == 'autopep8'
-        )
-        ignored = set(project_metadata['tool']['autopep8']['ignore'])
-        assert {'E203', 'E226', 'E24', 'W50', 'W690'} <= ignored
-        assert not any(arg.startswith('--ignore') for arg in hook['args'])
-        assert (
-            f'--max-line-length={project_metadata['tool']['ruff']['line-length']}'
-            in hook['args']
-        )
 
     @pytest.mark.parametrize(
         ('hook_id', 'entry', 'stage'),

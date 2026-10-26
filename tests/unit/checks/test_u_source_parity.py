@@ -103,28 +103,6 @@ class TestSourceParity:
             'source-guide' in f for f in validate(load_source_check(tmp_path, domain))
         )
 
-    @pytest.mark.parametrize(
-        'setting',
-        [
-            'source-guide="../Guide.md"',
-            'source-guide="/Guide.md"',
-            'parameter-docs=1',
-            'return-docs="true"',
-            'raises-docs=[]',
-        ],
-    )
-    def test_invalid_shared_options(
-        self: Self,
-        source_case: SourceCase,
-        write_file: FileWriter,
-        tmp_path: Path,
-        setting: str,
-    ) -> None:
-        domain, filename, _ = source_case
-        write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, domain)
-
     @pytest.mark.parametrize('kind', ['absent', 'decode', 'escape', 'resolve'])
     def test_guide_failures_are_diagnostics(
         self: Self,
@@ -158,6 +136,28 @@ class TestSourceParity:
             findings = validate(load_source_check(tmp_path, domain))
         assert findings
         assert 'PRIVATE' not in '\n'.join(findings)
+
+    @pytest.mark.parametrize(
+        'setting',
+        [
+            'source-guide="../Guide.md"',
+            'source-guide="/Guide.md"',
+            'parameter-docs=1',
+            'return-docs="true"',
+            'raises-docs=[]',
+        ],
+    )
+    def test_invalid_shared_options(
+        self: Self,
+        source_case: SourceCase,
+        write_file: FileWriter,
+        tmp_path: Path,
+        setting: str,
+    ) -> None:
+        domain, filename, _ = source_case
+        write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
+        with pytest.raises(ConfigurationError):
+            load_source_check(tmp_path, domain)
 
 
 class TestSourceInputFailures:
@@ -208,42 +208,6 @@ class TestSourceConventions:
     Keep common option names, diagnostics and collector contracts aligned.
     """
 
-    @pytest.mark.parametrize('setting', ['docstring-width=79', 'max-module-lines=1000'])
-    def test_prerelease_option_names_are_rejected(
-        self: Self,
-        source_case: SourceCase,
-        write_file: FileWriter,
-        tmp_path: Path,
-        setting: str,
-    ) -> None:
-        domain, filename, _ = source_case
-        write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
-        with pytest.raises(ConfigurationError, match='unknown settings'):
-            load_source_check(tmp_path, domain)
-
-    def test_common_diagnostics(
-        self: Self,
-        source_case: SourceCase,
-        write_file: FileWriter,
-        tmp_path: Path,
-    ) -> None:
-        domain, filename, validate = source_case
-        write_file(
-            'popo.toml',
-            f'[{domain}]\ninclude=["{filename}"]\n'
-            'documentation-width=10\nmax-file-lines=1\nfile-overviews=false',
-        )
-        source = (
-            '"""Long documentation."""\nx=1'
-            if domain == 'python-source'
-            else '/// Long documentation.\nlet x=1'
-        )
-        write_file(filename, source)
-        assert validate(load_source_check(tmp_path, domain)) == [
-            f'{filename}: file exceeds configured line limit',
-            f'{filename}:1: documentation line too long',
-        ]
-
     def test_collectors_extract_shared_facts_without_execution(
         self: Self,
         source_case: SourceCase,
@@ -269,6 +233,42 @@ class TestSourceConventions:
         assert facts.return_section == 'Returns'
         assert facts.raises
         assert facts.documentation.strip() == 'Return an item.'
+
+    def test_common_diagnostics(
+        self: Self,
+        source_case: SourceCase,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        domain, filename, validate = source_case
+        write_file(
+            'popo.toml',
+            f'[{domain}]\ninclude=["{filename}"]\n'
+            'documentation-width=10\nmax-file-lines=1\nfile-overviews=false',
+        )
+        source = (
+            '"""Long documentation."""\nx=1'
+            if domain == 'python-source'
+            else '/// Long documentation.\nlet x=1'
+        )
+        write_file(filename, source)
+        assert validate(load_source_check(tmp_path, domain)) == [
+            f'{filename}: file exceeds configured line limit',
+            f'{filename}:1: documentation line too long',
+        ]
+
+    @pytest.mark.parametrize('setting', ['docstring-width=79', 'max-module-lines=1000'])
+    def test_prerelease_option_names_are_rejected(
+        self: Self,
+        source_case: SourceCase,
+        write_file: FileWriter,
+        tmp_path: Path,
+        setting: str,
+    ) -> None:
+        domain, filename, _ = source_case
+        write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
+        with pytest.raises(ConfigurationError, match='unknown settings'):
+            load_source_check(tmp_path, domain)
 
 
 # !SECTION

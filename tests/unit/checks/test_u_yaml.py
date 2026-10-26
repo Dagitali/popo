@@ -84,21 +84,6 @@ class TestMappingTraversal:
 class TestYamlSnapshots:
     """Keep text and file parsing under the same safe mapping contract."""
 
-    @pytest.mark.parametrize('source', ['on: push', 'a: &a {loop: *a}'])
-    def test_mapping_inputs(
-        self,
-        parse_yaml: Callable[[str], dict[str, object]],
-        source: str,
-    ) -> None:
-        """Retain workflow event keys and safely construct cyclic aliases."""
-        document = parse_yaml(source)
-        if source.startswith('on:'):
-            assert document == {'on': 'push'}
-        else:
-            child = document['a']
-            assert isinstance(child, dict)
-            assert child['loop'] is child
-
     @pytest.mark.parametrize(
         'source,error',
         [
@@ -119,6 +104,21 @@ class TestYamlSnapshots:
         """Reject unsafe or malformed inputs with both parsing interfaces."""
         with pytest.raises(error):
             parse_yaml(source)
+
+    @pytest.mark.parametrize('source', ['on: push', 'a: &a {loop: *a}'])
+    def test_mapping_inputs(
+        self,
+        parse_yaml: Callable[[str], dict[str, object]],
+        source: str,
+    ) -> None:
+        """Retain workflow event keys and safely construct cyclic aliases."""
+        document = parse_yaml(source)
+        if source.startswith('on:'):
+            assert document == {'on': 'push'}
+        else:
+            child = document['a']
+            assert isinstance(child, dict)
+            assert child['loop'] is child
 
     def test_mapping_label_is_preserved(self) -> None:
         """Label shape errors consistently without requiring a source file."""

@@ -293,24 +293,6 @@ class TestHostedEvidenceBoundaries:
 
     @pytest.mark.parametrize(
         'data',
-        [None, {}, {'protected': 'true'}],
-    )
-    def test_unavailable_branch(
-        self,
-        hosted_policy: RepositoryPolicy,
-        github_responses: dict[str, Response],
-        data: object,
-    ) -> None:
-        """
-        Require a boolean observation before classifying branch protection.
-        """
-        github_responses['repos/example/library/branches/main'] = Response(data)
-        statuses = audit_statuses(hosted_policy, github_responses)
-        assert statuses['branch:main:protected'] == 'inaccessible'
-        assert statuses['branch:main:check:quality'] == 'inaccessible'
-
-    @pytest.mark.parametrize(
-        'data',
         [
             None,
             {},
@@ -349,6 +331,24 @@ class TestHostedEvidenceBoundaries:
         assert audit_statuses(hosted_policy, github_responses) == {
             'branch:main:protected': 'verified',
         }
+
+    @pytest.mark.parametrize(
+        'data',
+        [None, {}, {'protected': 'true'}],
+    )
+    def test_unavailable_branch(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        data: object,
+    ) -> None:
+        """
+        Require a boolean observation before classifying branch protection.
+        """
+        github_responses['repos/example/library/branches/main'] = Response(data)
+        statuses = audit_statuses(hosted_policy, github_responses)
+        assert statuses['branch:main:protected'] == 'inaccessible'
+        assert statuses['branch:main:check:quality'] == 'inaccessible'
 
 
 class TestHostedCheckEvidence:

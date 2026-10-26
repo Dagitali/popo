@@ -86,6 +86,35 @@ class TestSwiftSource:
     """Check lexical contracts while retaining explicit parser boundaries."""
 
     @pytest.mark.parametrize(
+        'parameter_docs',
+        [
+            '/// - Parameter values: Inputs.\n/// - Parameter transform: Callback.',
+            '/// - Parameters:\n///   - values: Inputs.\n///   - transform: Callback.',
+        ],
+    )
+    def test_complete_multiline_contract(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        parameter_docs: str,
+    ) -> None:
+        write_file(
+            'popo.toml',
+            '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nparameter-docs=true\nreturn-docs=true\nraises-docs=true\nparameter-lines=true',
+        )
+        source = (
+            '/// File overview.\nimport Foundation\n\n/// Transform inputs.\n'
+            + parameter_docs
+            + '\n/// - Returns: The result.\n/// - Throws: Invalid input.\n'
+            '@MainActor\nfunc transform<T>(\n'
+            ' values: Dictionary<String, Array<T>>,\n'
+            ' transform: (T, Int) -> T = { value, _ in value },\n'
+            ')\n async throws -> [T] { [] }'
+        )
+        write_file('sample.swift', source)
+        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
+
+    @pytest.mark.parametrize(
         ('source', 'option', 'expected'),
         [
             ('func f(value: Int) {}', 'member-docs', 'missing declaration'),
@@ -128,49 +157,6 @@ class TestSwiftSource:
         assert len(findings) == 1
         assert expected in findings[0]
 
-    @pytest.mark.parametrize(
-        'parameter_docs',
-        [
-            '/// - Parameter values: Inputs.\n/// - Parameter transform: Callback.',
-            '/// - Parameters:\n///   - values: Inputs.\n///   - transform: Callback.',
-        ],
-    )
-    def test_complete_multiline_contract(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        parameter_docs: str,
-    ) -> None:
-        write_file(
-            'popo.toml',
-            '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nparameter-docs=true\nreturn-docs=true\nraises-docs=true\nparameter-lines=true',
-        )
-        source = (
-            '/// File overview.\nimport Foundation\n\n/// Transform inputs.\n'
-            + parameter_docs
-            + '\n/// - Returns: The result.\n/// - Throws: Invalid input.\n'
-            '@MainActor\nfunc transform<T>(\n'
-            ' values: Dictionary<String, Array<T>>,\n'
-            ' transform: (T, Int) -> T = { value, _ in value },\n'
-            ')\n async throws -> [T] { [] }'
-        )
-        write_file('sample.swift', source)
-        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
-
-    @pytest.mark.parametrize(
-        'result',
-        ['Void', '()', 'Swift.Void', 'Never', 'Swift.Never'],
-    )
-    def test_void_results_need_no_return_documentation(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        result: str,
-    ) -> None:
-        write_file('popo.toml', '[swift-source]\ninclude=["*.swift"]\nreturn-docs=true')
-        write_file('sample.swift', f'/// Overview.\nfunc f() -> {result} {{}}')
-        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
-
     def test_strings_cannot_supply_overviews_or_declarations(
         self: Self,
         write_file: FileWriter,
@@ -194,6 +180,20 @@ class TestSwiftSource:
             'sample.swift: missing file overview',
         ]
 
+    @pytest.mark.parametrize(
+        'result',
+        ['Void', '()', 'Swift.Void', 'Never', 'Swift.Never'],
+    )
+    def test_void_results_need_no_return_documentation(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        result: str,
+    ) -> None:
+        write_file('popo.toml', '[swift-source]\ninclude=["*.swift"]\nreturn-docs=true')
+        write_file('sample.swift', f'/// Overview.\nfunc f() -> {result} {{}}')
+        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
+
 
 class TestSwiftLexicalBoundaries:
     """Keep callable bodies, escaped strings and unsupported input bounded."""
@@ -213,6 +213,27 @@ class TestSwiftLexicalBoundaries:
     ) -> None:
         _, documentation = lexical_view(source)
         assert documentation == set()
+
+    def test_members_exclude_callable_and_closure_bodies(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        write_file(
+            'popo.toml',
+            '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nraises-docs=true',
+        )
+        write_file(
+            'sample.swift',
+            (
+                '/// Overview.\nstruct C {\n'
+                '\n /// Method.\n func f() -> () throws -> Void {\n'
+                '  let local = 1\n  return { throw Error() }\n }\n'
+                '\n /// Property.\n var value = {\n'
+                '  let local = 1\n  return local\n }()\n}'
+            ),
+        )
+        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
 
     @pytest.mark.parametrize(
         'source',
@@ -234,27 +255,6 @@ class TestSwiftLexicalBoundaries:
             '[swift-source]\ninclude=["*.swift"]\nparameter-lines=true',
         )
         write_file('sample.swift', source)
-        assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
-
-    def test_members_exclude_callable_and_closure_bodies(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-    ) -> None:
-        write_file(
-            'popo.toml',
-            '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nraises-docs=true',
-        )
-        write_file(
-            'sample.swift',
-            (
-                '/// Overview.\nstruct C {\n'
-                '\n /// Method.\n func f() -> () throws -> Void {\n'
-                '  let local = 1\n  return { throw Error() }\n }\n'
-                '\n /// Property.\n var value = {\n'
-                '  let local = 1\n  return local\n }()\n}'
-            ),
-        )
         assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []
 
 

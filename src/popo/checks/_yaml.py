@@ -101,40 +101,6 @@ WorkflowLoader.add_implicit_resolver(
 # SECTION: FUNCTIONS
 
 
-def require_mapping(
-    value: object,
-    label: str,
-) -> dict[str, object]:
-    """
-    Require a dictionary and narrow its type without copying its contents.
-
-    Parameters
-    ----------
-    value : object
-        Candidate mapping; only dict instances are accepted.
-    label : str
-        Description used in a failure diagnostic.
-
-    Returns
-    -------
-    dict[str, object]
-        The original dictionary, with its type narrowed for callers.
-
-    Raises
-    ------
-    ValueError
-        If value is not a dict instance.
-
-    Notes
-    -----
-    Do not validate key or value types or mutate the dictionary. String-key
-    validation for YAML occurs in the loader.
-    """
-    if not isinstance(value, dict):
-        raise ValueError(f'{label} must be a mapping')
-    return cast(dict[str, object], value)
-
-
 def mapping_nodes(
     value: object,
     seen: set[int] | None = None,
@@ -256,6 +222,40 @@ def read_mapping(
     separately.
     """
     return parse_mapping(path.read_text(encoding='utf-8'), label=label)
+
+
+def require_mapping(
+    value: object,
+    label: str,
+) -> dict[str, object]:
+    """
+    Require a dictionary and narrow its type without copying its contents.
+
+    Parameters
+    ----------
+    value : object
+        Candidate mapping; only dict instances are accepted.
+    label : str
+        Description used in a failure diagnostic.
+
+    Returns
+    -------
+    dict[str, object]
+        The original dictionary, with its type narrowed for callers.
+
+    Raises
+    ------
+    ValueError
+        If value is not a dict instance.
+
+    Notes
+    -----
+    Do not validate key or value types or mutate the dictionary. String-key
+    validation for YAML occurs in the loader.
+    """
+    if not isinstance(value, dict):
+        raise ValueError(f'{label} must be a mapping')
+    return cast(dict[str, object], value)
 
 
 # !SECTION

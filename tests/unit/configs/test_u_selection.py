@@ -20,6 +20,18 @@ from tests.support.files import FileWriter
 class TestConsumerConfiguration:
     """Keep standalone precedence deterministic and configuration read-only."""
 
+    @pytest.mark.parametrize('content', ['[', 'checks = 1\nchecks = 2'])
+    def test_invalid_standalone(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        content: str,
+    ) -> None:
+        """Malformed standalone TOML cannot silently fall back to defaults."""
+        write_file('popo.toml', content)
+        with pytest.raises(ConfigurationError, match='invalid TOML'):
+            read_popo(tmp_path)
+
     def test_standalone_precedence(
         self,
         write_file: FileWriter,
@@ -32,18 +44,6 @@ class TestConsumerConfiguration:
         assert read_popo(tmp_path) == {'checks': ['check-docs']}
         assert load_plan(tmp_path).source == standalone
         assert [p.read_bytes() for p in (standalone, metadata)] == before
-
-    @pytest.mark.parametrize('content', ['[', 'checks = 1\nchecks = 2'])
-    def test_invalid_standalone(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        content: str,
-    ) -> None:
-        """Malformed standalone TOML cannot silently fall back to defaults."""
-        write_file('popo.toml', content)
-        with pytest.raises(ConfigurationError, match='invalid TOML'):
-            read_popo(tmp_path)
 
     @pytest.mark.parametrize('kind', ['directory', 'dangling'])
     def test_unreadable_standalone(
@@ -79,25 +79,6 @@ class TestCheckSelection:
         assert plan.source == tmp_path / 'pyproject.toml'
         assert 'legacy' in plan.reason
 
-    def test_opt_in_defaults(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-    ) -> None:
-        """Legacy defaults retain declared optional domains in stable order."""
-        write_file(
-            'popo.toml',
-            '[automation]\n[safety]\n[files]\n[headers]\n[guardrails]',
-        )
-        assert load_plan(tmp_path).checks == (
-            *BASELINE,
-            'check-automation-contracts',
-            'check-repository-safety',
-            'check-required-files',
-            'check-file-headers',
-            'check-guardrail-parity',
-        )
-
     @pytest.mark.parametrize(
         'filename,prefix',
         [('popo.toml', ''), ('pyproject.toml', '[tool.popo]\n')],
@@ -116,20 +97,6 @@ class TestCheckSelection:
         plan = load_plan(tmp_path)
         assert plan.checks == ('check-required-files', 'check-docs')
         assert plan.reason == 'explicit checks'
-
-    def test_profile(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-    ) -> None:
-        """An explicit profile replaces the default selection."""
-        write_file(
-            'popo.toml',
-            'checks=["check-docs"]\n[profiles.quick]\nchecks=["check-github-actions-pins"]',
-        )
-        assert load_plan(tmp_path, 'quick').checks == ('check-github-actions-pins',)
-        assert load_plan(tmp_path, 'quick').reason == 'profile: quick'
-        assert load_plan(tmp_path).checks == ('check-docs',)
 
     @pytest.mark.parametrize(
         'settings,profile,message',
@@ -164,6 +131,39 @@ class TestCheckSelection:
         write_file('popo.toml', settings)
         with pytest.raises(ConfigurationError, match=message):
             load_plan(tmp_path, profile)
+
+    def test_opt_in_defaults(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        """Legacy defaults retain declared optional domains in stable order."""
+        write_file(
+            'popo.toml',
+            '[automation]\n[safety]\n[files]\n[headers]\n[guardrails]',
+        )
+        assert load_plan(tmp_path).checks == (
+            *BASELINE,
+            'check-automation-contracts',
+            'check-repository-safety',
+            'check-required-files',
+            'check-file-headers',
+            'check-guardrail-parity',
+        )
+
+    def test_profile(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+    ) -> None:
+        """An explicit profile replaces the default selection."""
+        write_file(
+            'popo.toml',
+            'checks=["check-docs"]\n[profiles.quick]\nchecks=["check-github-actions-pins"]',
+        )
+        assert load_plan(tmp_path, 'quick').checks == ('check-github-actions-pins',)
+        assert load_plan(tmp_path, 'quick').reason == 'profile: quick'
+        assert load_plan(tmp_path).checks == ('check-docs',)
 
 
 # !SECTION

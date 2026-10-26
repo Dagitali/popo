@@ -12,18 +12,6 @@ import pytest
 # SECTION: FIXTURES
 
 
-@pytest.fixture(
-    name='example_name',
-    scope='module',
-    params=['swift', 'python', 'cdk'],
-)
-def example_name_fixture(
-    request: pytest.FixtureRequest,
-) -> str:
-    """Select a self-contained Swift, Python, or Python CDK consumer."""
-    return str(request.param)
-
-
 @pytest.fixture(name='example_checks')
 def example_checks_fixture(
     example_name: str,
@@ -160,6 +148,18 @@ def example_drift_fixture(
     assert source.count(before) == 1
     path.write_text(source.replace(before, after), encoding='utf-8')
     return str(diagnostic)
+
+
+@pytest.fixture(
+    name='example_name',
+    scope='module',
+    params=['swift', 'python', 'cdk'],
+)
+def example_name_fixture(
+    request: pytest.FixtureRequest,
+) -> str:
+    """Select a self-contained Swift, Python, or Python CDK consumer."""
+    return str(request.param)
 
 
 # !SECTION

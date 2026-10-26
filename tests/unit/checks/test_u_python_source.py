@@ -21,6 +21,42 @@ from tests.support.files import FileWriter
 class TestPythonSource:
     """Use fresh synthetic policies; never inspect host financial inputs."""
 
+    def test_annotated_multiline_signatures_and_self_exception(
+        self: Self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            '[python-source]\ninclude = ["*.py"]\nannotations = true\n'
+            'parameter-lines = true\nalphabetical-methods = true',
+        )
+        (tmp_path / 'sample.py').write_text(
+            'from typing import Self\nclass C:\n'
+            ' def a(self: Self) -> None: pass\n'
+            ' async def b(\n  self: Self,\n  x: int = 1,\n'
+            '  /,\n  *args: int,\n  y: int = 2,\n  **kwargs: int,\n'
+            ' ) -> None: pass\n',
+        )
+        assert (
+            python_source.validate(load_source_check(tmp_path, 'python-source')) == []
+        )
+
+    @pytest.mark.parametrize('kind', ('missing', 'escaped', 'excluded', 'undecodable'))
+    def test_inputs_fail_closed(
+        self: Self,
+        tmp_path: Path,
+        kind: str,
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            '[python-source]\ninclude = ["*.py"]\nexclude = ["ignored.py"]',
+        )
+        if kind == 'escaped':
+            (tmp_path / 'sample.py').symlink_to(tmp_path.parent / 'outside.py')
+        elif kind == 'excluded':
+            (tmp_path / 'ignored.py').write_text('x = 1')
+        elif kind == 'undecodable':
+            (tmp_path / 'sample.py').write_bytes(b'\xff')
+        assert python_source.validate(load_source_check(tmp_path, 'python-source'))
+
     @pytest.mark.parametrize(
         'settings',
         (
@@ -88,102 +124,9 @@ class TestPythonSource:
         assert any(diagnostic in finding for finding in findings)
         assert all(source not in finding for finding in findings)
 
-    def test_annotated_multiline_signatures_and_self_exception(
-        self: Self,
-        tmp_path: Path,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            '[python-source]\ninclude = ["*.py"]\nannotations = true\n'
-            'parameter-lines = true\nalphabetical-methods = true',
-        )
-        (tmp_path / 'sample.py').write_text(
-            'from typing import Self\nclass C:\n'
-            ' def a(self: Self) -> None: pass\n'
-            ' async def b(\n  self: Self,\n  x: int = 1,\n'
-            '  /,\n  *args: int,\n  y: int = 2,\n  **kwargs: int,\n'
-            ' ) -> None: pass\n',
-        )
-        assert (
-            python_source.validate(load_source_check(tmp_path, 'python-source')) == []
-        )
-
-    @pytest.mark.parametrize('kind', ('missing', 'escaped', 'excluded', 'undecodable'))
-    def test_inputs_fail_closed(
-        self: Self,
-        tmp_path: Path,
-        kind: str,
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            '[python-source]\ninclude = ["*.py"]\nexclude = ["ignored.py"]',
-        )
-        if kind == 'escaped':
-            (tmp_path / 'sample.py').symlink_to(tmp_path.parent / 'outside.py')
-        elif kind == 'excluded':
-            (tmp_path / 'ignored.py').write_text('x = 1')
-        elif kind == 'undecodable':
-            (tmp_path / 'sample.py').write_bytes(b'\xff')
-        assert python_source.validate(load_source_check(tmp_path, 'python-source'))
-
 
 class TestPythonDocumentation:
     """Match NumPy sections to each callable's own AST contract."""
-
-    @pytest.mark.parametrize(
-        ('source', 'option', 'expected'),
-        [
-            ('class C: pass', 'declaration-docs', 'missing declaration'),
-            ('def f(value): pass', 'parameter-docs', 'parameter documentation'),
-            ('def f() -> int: return 1', 'return-docs', 'return documentation'),
-            ('def f(): yield 1', 'return-docs', 'return documentation'),
-            ('def f(): raise ValueError()', 'raises-docs', 'raises documentation'),
-            (
-                'def f():\n try: pass\n except Exception: raise',
-                'raises-docs',
-                'raises documentation',
-            ),
-        ],
-    )
-    def test_missing_contracts(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        source: str,
-        option: str,
-        expected: str,
-    ) -> None:
-        write_file('popo.toml', f'[python-source]\ninclude=["*.py"]\n{option}=true')
-        write_file('sample.py', source)
-        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
-        assert len(findings) == 1
-        assert expected in findings[0]
-
-    @pytest.mark.parametrize(
-        'annotation',
-        ['None', 'NoReturn', 'Never', 'typing.NoReturn', 'typing.Never'],
-    )
-    @pytest.mark.parametrize('quoted', [False, True])
-    @pytest.mark.parametrize('body', ['pass', 'return 1'])
-    def test_nonvalue_return_annotations(
-        self: Self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        annotation: str,
-        quoted: bool,
-        body: str,
-    ) -> None:
-        """
-        Treat forward references equally while retaining explicit returns.
-        """
-        write_file(
-            'popo.toml',
-            '[python-source]\ninclude=["*.py"]\nreturn-docs=true',
-        )
-        result_type = repr(annotation) if quoted else annotation
-        write_file('sample.py', f'def f() -> {result_type}: {body}')
-        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
-        assert findings == (
-            ['sample.py:1: return documentation missing'] if body == 'return 1' else []
-        )
 
     def test_complete_contracts_and_nested_scope(
         self: Self,
@@ -240,6 +183,63 @@ class TestPythonDocumentation:
         )
         assert (
             python_source.validate(load_source_check(tmp_path, 'python-source')) == []
+        )
+
+    @pytest.mark.parametrize(
+        ('source', 'option', 'expected'),
+        [
+            ('class C: pass', 'declaration-docs', 'missing declaration'),
+            ('def f(value): pass', 'parameter-docs', 'parameter documentation'),
+            ('def f() -> int: return 1', 'return-docs', 'return documentation'),
+            ('def f(): yield 1', 'return-docs', 'return documentation'),
+            ('def f(): raise ValueError()', 'raises-docs', 'raises documentation'),
+            (
+                'def f():\n try: pass\n except Exception: raise',
+                'raises-docs',
+                'raises documentation',
+            ),
+        ],
+    )
+    def test_missing_contracts(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        source: str,
+        option: str,
+        expected: str,
+    ) -> None:
+        write_file('popo.toml', f'[python-source]\ninclude=["*.py"]\n{option}=true')
+        write_file('sample.py', source)
+        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
+        assert len(findings) == 1
+        assert expected in findings[0]
+
+    @pytest.mark.parametrize(
+        'annotation',
+        ['None', 'NoReturn', 'Never', 'typing.NoReturn', 'typing.Never'],
+    )
+    @pytest.mark.parametrize('quoted', [False, True])
+    @pytest.mark.parametrize('body', ['pass', 'return 1'])
+    def test_nonvalue_return_annotations(
+        self: Self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        annotation: str,
+        quoted: bool,
+        body: str,
+    ) -> None:
+        """
+        Treat forward references equally while retaining explicit returns.
+        """
+        write_file(
+            'popo.toml',
+            '[python-source]\ninclude=["*.py"]\nreturn-docs=true',
+        )
+        result_type = repr(annotation) if quoted else annotation
+        write_file('sample.py', f'def f() -> {result_type}: {body}')
+        findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
+        assert findings == (
+            ['sample.py:1: return documentation missing'] if body == 'return 1' else []
         )
 
 

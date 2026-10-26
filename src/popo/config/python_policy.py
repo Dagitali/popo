@@ -67,6 +67,37 @@ class PythonPolicyConfig:
 # SECTION: FUNCTIONS
 
 
+def load_python_policy_config(
+    root: Path,
+) -> PythonPolicyConfig:
+    """
+    Load Python policy through its own entry point with legacy defaults.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Consumer root with standalone or embedded configuration.
+
+    Returns
+    -------
+    PythonPolicyConfig
+        The same settings/defaults as the aggregate project loader. Dependency
+        layout still supplies Python metadata defaults for compatibility.
+
+    Raises
+    ------
+    ConfigurationError
+        Invalid selected configuration, dependency defaults or Python policy.
+    OSError, UnicodeError
+        Configuration/default metadata cannot be read or decoded.
+    ValueError
+        Selected dependency metadata cannot be expressed relative to root.
+    """
+    root = root.resolve()
+    settings = read_popo(root)
+    return parse_python_policy(root, settings, parse_dependencies(root, settings))
+
+
 def parse_python_policy(
     root: Path,
     popo: dict[str, object],
@@ -161,37 +192,6 @@ def parse_python_policy(
         ),
         workflow_parser=cast(Literal['text', 'scoped'], workflow_parser),
     )
-
-
-def load_python_policy_config(
-    root: Path,
-) -> PythonPolicyConfig:
-    """
-    Load Python policy through its own entry point with legacy defaults.
-
-    Parameters
-    ----------
-    root : pathlib.Path
-        Consumer root with standalone or embedded configuration.
-
-    Returns
-    -------
-    PythonPolicyConfig
-        The same settings/defaults as the aggregate project loader. Dependency
-        layout still supplies Python metadata defaults for compatibility.
-
-    Raises
-    ------
-    ConfigurationError
-        Invalid selected configuration, dependency defaults or Python policy.
-    OSError, UnicodeError
-        Configuration/default metadata cannot be read or decoded.
-    ValueError
-        Selected dependency metadata cannot be expressed relative to root.
-    """
-    root = root.resolve()
-    settings = read_popo(root)
-    return parse_python_policy(root, settings, parse_dependencies(root, settings))
 
 
 # !SECTION

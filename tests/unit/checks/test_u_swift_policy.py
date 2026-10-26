@@ -24,50 +24,6 @@ class TestSwiftPolicy:
     Keep package minimums, preferred compilers and observed versions distinct.
     """
 
-    @pytest.mark.parametrize('observed', [None, '6.1.2', '6.2.0'])
-    def test_consistent_declarations(
-        self,
-        swift_policy_consumer: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        observed: str | None,
-    ) -> None:
-        root = swift_policy_consumer
-        before = snapshot_files(root)
-        runner = Mock(side_effect=AssertionError('no tools may execute'))
-        monkeypatch.setattr(subprocess, 'run', runner)
-        assert validate(load_swift_policy_config(root), compiler_version=observed) == []
-        assert snapshot_files(root) == before
-        assert not (root / 'pyproject.toml').exists()
-        runner.assert_not_called()
-
-    @pytest.mark.parametrize(
-        'filename,content,message',
-        [
-            ('.swift-version', '6.2.0', 'preferred version differs'),
-            ('.swift-version', 'PRIVATE SECRET', 'invalid stable Swift version'),
-            ('Package.swift', '// swift-tools-version: 6.0\n', 'tools version differs'),
-            ('Package.swift', '', 'missing literal first-line'),
-            (
-                'Package.swift',
-                '// comment\n// swift-tools-version: 5.9',
-                'missing literal first-line',
-            ),
-            ('.github/workflows/ci.yml', 'jobs: {}', 'no explicit swift-version'),
-            ('.github/workflows/ci.yml', '[', 'cannot read a valid workflow'),
-        ],
-    )
-    def test_drift(
-        self,
-        swift_policy_consumer: Path,
-        filename: str,
-        content: str,
-        message: str,
-    ) -> None:
-        (swift_policy_consumer / filename).write_text(content, encoding='utf-8')
-        failures = validate(load_swift_policy_config(swift_policy_consumer))
-        assert any(message in item for item in failures)
-        assert 'PRIVATE SECRET' not in '\n'.join(failures)
-
     @pytest.mark.parametrize(
         'observed,message',
         [
@@ -127,6 +83,70 @@ class TestSwiftPolicy:
         assert validate(config, compiler_version=observed) == expected
         assert snapshot_files(root) == before
 
+    @pytest.mark.parametrize('observed', [None, '6.1.2', '6.2.0'])
+    def test_consistent_declarations(
+        self,
+        swift_policy_consumer: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        observed: str | None,
+    ) -> None:
+        root = swift_policy_consumer
+        before = snapshot_files(root)
+        runner = Mock(side_effect=AssertionError('no tools may execute'))
+        monkeypatch.setattr(subprocess, 'run', runner)
+        assert validate(load_swift_policy_config(root), compiler_version=observed) == []
+        assert snapshot_files(root) == before
+        assert not (root / 'pyproject.toml').exists()
+        runner.assert_not_called()
+
+    @pytest.mark.parametrize(
+        'filename,content,message',
+        [
+            ('.swift-version', '6.2.0', 'preferred version differs'),
+            ('.swift-version', 'PRIVATE SECRET', 'invalid stable Swift version'),
+            ('Package.swift', '// swift-tools-version: 6.0\n', 'tools version differs'),
+            ('Package.swift', '', 'missing literal first-line'),
+            (
+                'Package.swift',
+                '// comment\n// swift-tools-version: 5.9',
+                'missing literal first-line',
+            ),
+            ('.github/workflows/ci.yml', 'jobs: {}', 'no explicit swift-version'),
+            ('.github/workflows/ci.yml', '[', 'cannot read a valid workflow'),
+        ],
+    )
+    def test_drift(
+        self,
+        swift_policy_consumer: Path,
+        filename: str,
+        content: str,
+        message: str,
+    ) -> None:
+        (swift_policy_consumer / filename).write_text(content, encoding='utf-8')
+        failures = validate(load_swift_policy_config(swift_policy_consumer))
+        assert any(message in item for item in failures)
+        assert 'PRIVATE SECRET' not in '\n'.join(failures)
+
+    @pytest.mark.parametrize(
+        'path',
+        ['.swift-version', 'Package.swift', '.github/workflows/ci.yml'],
+    )
+    def test_escaping_links(
+        self,
+        swift_policy_consumer: Path,
+        symlink: Callable[[Path, Path], None],
+        path: str,
+    ) -> None:
+        root = swift_policy_consumer
+        outside = root.parent / 'outside-toolchain-input'
+        outside.write_text('PRIVATE', encoding='utf-8')
+        target = root / path
+        target.unlink()
+        symlink(target, outside)
+        assert any(
+            'escapes repository' in f for f in validate(load_swift_policy_config(root))
+        )
+
     @pytest.mark.parametrize(
         'path',
         ['.swift-version', 'Package.swift', '.github/workflows/ci.yml'],
@@ -174,26 +194,6 @@ class TestSwiftPolicy:
         before = snapshot_files(root)
         assert validate(config) == [expected]
         assert snapshot_files(root) == before
-
-    @pytest.mark.parametrize(
-        'path',
-        ['.swift-version', 'Package.swift', '.github/workflows/ci.yml'],
-    )
-    def test_escaping_links(
-        self,
-        swift_policy_consumer: Path,
-        symlink: Callable[[Path, Path], None],
-        path: str,
-    ) -> None:
-        root = swift_policy_consumer
-        outside = root.parent / 'outside-toolchain-input'
-        outside.write_text('PRIVATE', encoding='utf-8')
-        target = root / path
-        target.unlink()
-        symlink(target, outside)
-        assert any(
-            'escapes repository' in f for f in validate(load_swift_policy_config(root))
-        )
 
     @pytest.mark.parametrize('operation', ['resolve', 'glob'])
     @pytest.mark.parametrize('error', [OSError, ValueError])

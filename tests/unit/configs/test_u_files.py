@@ -35,64 +35,6 @@ class TestFilePolicyConfig:
         assert load_headers_config(tmp_path) is None
 
     @pytest.mark.parametrize(
-        'setting',
-        [
-            'required = []',
-            'required = "README.md"',
-            'other = []',
-            'required = ["../outside"]',
-            'required = ["/absolute"]',
-            'required = ["*.md"]',
-            'required = ["C:/outside"]',
-            'required = ["same", "same"]',
-            'required = [1]',
-        ],
-    )
-    def test_invalid_required_policy(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        setting: str,
-    ) -> None:
-        """
-        Reject empty, unsafe, ambiguous and misspelled required-file
-        inputs.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
-        write_file : FileWriter
-            UTF-8 writer creating synthetic policy inputs.
-        setting : str
-            Invalid required-file configuration supplied by the scenario.
-        """
-        write_file('pyproject.toml', '[tool.popo.files]\n' + setting)
-        with pytest.raises(ConfigurationError):
-            load_required_files_config(tmp_path)
-
-    def test_valid_required_policy(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Resolve root paths while leaving existence checks to the
-        validator.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
-        write_file : FileWriter
-            UTF-8 writer creating synthetic policy inputs.
-        """
-        write_file('pyproject.toml', '[tool.popo.files]\nrequired = ["README.md"]')
-        config = load_required_files_config(tmp_path)
-        assert config is not None and config.required == ('README.md',)
-        assert config.root == tmp_path.resolve()
-
-    @pytest.mark.parametrize(
         'extra',
         [
             'format = "unsupported"',
@@ -194,41 +136,6 @@ class TestFilePolicyConfig:
         with pytest.raises(ConfigurationError):
             load_headers_config(tmp_path)
 
-    def test_valid_header_policy(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Keep identity, ordered formats and explicit exception reasons
-        intact.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
-        write_file : FileWriter
-            UTF-8 writer creating synthetic policy inputs.
-        """
-        write_file(
-            'pyproject.toml',
-            """[tool.popo.headers]
-project = "Sample"
-notice = "Copyright"
-[[tool.popo.headers.rules]]
-patterns = ["*.py"]
-format = "python"
-prefix = "{module} {project} {notice}"
-[[tool.popo.headers.exceptions]]
-patterns = ["*.bin"]
-reason = "Binary artwork"
-""",
-        )
-        config = load_headers_config(tmp_path)
-        assert config is not None and config.project == 'Sample'
-        assert config.rules[0].format == 'python'
-        assert config.exceptions[0].reason == 'Binary artwork'
-
     @pytest.mark.parametrize(
         'entry',
         [
@@ -272,6 +179,99 @@ prefix = "HEADER"
         )
         with pytest.raises(ConfigurationError):
             load_headers_config(tmp_path)
+
+    @pytest.mark.parametrize(
+        'setting',
+        [
+            'required = []',
+            'required = "README.md"',
+            'other = []',
+            'required = ["../outside"]',
+            'required = ["/absolute"]',
+            'required = ["*.md"]',
+            'required = ["C:/outside"]',
+            'required = ["same", "same"]',
+            'required = [1]',
+        ],
+    )
+    def test_invalid_required_policy(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        setting: str,
+    ) -> None:
+        """
+        Reject empty, unsafe, ambiguous and misspelled required-file
+        inputs.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        write_file : FileWriter
+            UTF-8 writer creating synthetic policy inputs.
+        setting : str
+            Invalid required-file configuration supplied by the scenario.
+        """
+        write_file('pyproject.toml', '[tool.popo.files]\n' + setting)
+        with pytest.raises(ConfigurationError):
+            load_required_files_config(tmp_path)
+
+    def test_valid_header_policy(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Keep identity, ordered formats and explicit exception reasons
+        intact.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        write_file : FileWriter
+            UTF-8 writer creating synthetic policy inputs.
+        """
+        write_file(
+            'pyproject.toml',
+            """[tool.popo.headers]
+project = "Sample"
+notice = "Copyright"
+[[tool.popo.headers.rules]]
+patterns = ["*.py"]
+format = "python"
+prefix = "{module} {project} {notice}"
+[[tool.popo.headers.exceptions]]
+patterns = ["*.bin"]
+reason = "Binary artwork"
+""",
+        )
+        config = load_headers_config(tmp_path)
+        assert config is not None and config.project == 'Sample'
+        assert config.rules[0].format == 'python'
+        assert config.exceptions[0].reason == 'Binary artwork'
+
+    def test_valid_required_policy(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Resolve root paths while leaving existence checks to the
+        validator.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        write_file : FileWriter
+            UTF-8 writer creating synthetic policy inputs.
+        """
+        write_file('pyproject.toml', '[tool.popo.files]\nrequired = ["README.md"]')
+        config = load_required_files_config(tmp_path)
+        assert config is not None and config.required == ('README.md',)
+        assert config.root == tmp_path.resolve()
 
 
 # !SECTION

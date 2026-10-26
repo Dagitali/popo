@@ -38,6 +38,25 @@ def audit_arguments_fixture(
 class TestHostedCommandLine:
     """Verify hosted CLI dispatch and reporting using in-memory evidence."""
 
+    def test_invalid_configuration(
+        self,
+        audit_arguments: list[str],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        cli_format: str | None,
+    ) -> None:
+        """Report malformed configuration before invoking the audit adapter."""
+        observer = Mock(side_effect=AssertionError('must not audit invalid policy'))
+        monkeypatch.setattr('popo.cli.hosted.audit', observer)
+        assert main(audit_arguments) == 1
+        observer.assert_not_called()
+        streams = capsys.readouterr()
+        assert streams.err == ''
+        if cli_format == 'json':
+            assert json.loads(streams.out)['error'].startswith('configuration: ')
+        else:
+            assert streams.out.startswith('FAIL: configuration: ')
+
     @pytest.mark.parametrize(
         'denied',
         [False, True],
@@ -84,25 +103,6 @@ class TestHostedCommandLine:
         else:
             assert streams.out.startswith('GitHub settings audit: ')
             assert f'{expected}: example/library label:bug:' in streams.out
-
-    def test_invalid_configuration(
-        self,
-        audit_arguments: list[str],
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-        cli_format: str | None,
-    ) -> None:
-        """Report malformed configuration before invoking the audit adapter."""
-        observer = Mock(side_effect=AssertionError('must not audit invalid policy'))
-        monkeypatch.setattr('popo.cli.hosted.audit', observer)
-        assert main(audit_arguments) == 1
-        observer.assert_not_called()
-        streams = capsys.readouterr()
-        assert streams.err == ''
-        if cli_format == 'json':
-            assert json.loads(streams.out)['error'].startswith('configuration: ')
-        else:
-            assert streams.out.startswith('FAIL: configuration: ')
 
 
 # !SECTION

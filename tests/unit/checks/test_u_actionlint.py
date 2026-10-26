@@ -164,6 +164,24 @@ class TestActionlintSourceView:
         assert not Path(runner.call_args.kwargs['cwd']).exists()
         assert snapshot_files(tmp_path) == original
 
+    @pytest.mark.usefixtures('linter_repository')
+    def test_launch_failure_cleans_view(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Clean the temporary view when process startup raises an error."""
+        before = snapshot_files(tmp_path)
+        error = OSError('fixture launch failure')
+        runner = Mock(side_effect=error)
+        monkeypatch.setattr(subprocess, 'run', runner)
+        with pytest.raises(OSError, match='fixture launch failure') as raised:
+            run(tmp_path, ['ci.yml'], 'actionlint')
+        assert raised.value is error
+        runner.assert_called_once()
+        assert not Path(runner.call_args.kwargs['cwd']).exists()
+        assert snapshot_files(tmp_path) == before
+
     def test_validation_and_normalization_share_single_source_reads(
         self,
         tmp_path: Path,
@@ -184,16 +202,6 @@ class TestActionlintSourceView:
         reads: Counter[Path] = Counter()
         original = Path.read_text
 
-        def read_once(
-            path: Path,
-            encoding: str | None = None,
-            errors: str | None = None,
-        ) -> str:
-            if path in (workflow, action):
-                reads[path] += 1
-                assert reads[path] == 1, 'Source must not be reread after validation'
-            return original(path, encoding=encoding, errors=errors)
-
         def inspect_view(
             arguments: list[str],
             **options: object,
@@ -205,29 +213,21 @@ class TestActionlintSourceView:
             )
             return subprocess.CompletedProcess(arguments, 0, '', '')
 
+        def read_once(
+            path: Path,
+            encoding: str | None = None,
+            errors: str | None = None,
+        ) -> str:
+            if path in (workflow, action):
+                reads[path] += 1
+                assert reads[path] == 1, 'Source must not be reread after validation'
+            return original(path, encoding=encoding, errors=errors)
+
         monkeypatch.setattr(subprocess, 'run', Mock(side_effect=inspect_view))
         with monkeypatch.context() as context:
             context.setattr(Path, 'read_text', read_once)
             assert run(tmp_path, ['ci.yml', 'ci.yml']) == 0
         assert reads == {workflow: 1, action: 1}
-        assert snapshot_files(tmp_path) == before
-
-    @pytest.mark.usefixtures('linter_repository')
-    def test_launch_failure_cleans_view(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Clean the temporary view when process startup raises an error."""
-        before = snapshot_files(tmp_path)
-        error = OSError('fixture launch failure')
-        runner = Mock(side_effect=error)
-        monkeypatch.setattr(subprocess, 'run', runner)
-        with pytest.raises(OSError, match='fixture launch failure') as raised:
-            run(tmp_path, ['ci.yml'], 'actionlint')
-        assert raised.value is error
-        runner.assert_called_once()
-        assert not Path(runner.call_args.kwargs['cwd']).exists()
         assert snapshot_files(tmp_path) == before
 
 

@@ -18,27 +18,6 @@ from popo.config.swift_policy import load_swift_policy_config, parse_version
 class TestSwiftPolicyConfiguration:
     """Reject ambiguous versions, unsafe paths and inconsistent preferences."""
 
-    @pytest.mark.parametrize('embedded', [False, True], ids=['standalone', 'pyproject'])
-    def test_policy_sources(
-        self,
-        swift_policy_consumer: Path,
-        embedded: bool,
-    ) -> None:
-        root = swift_policy_consumer
-        if embedded:
-            text = (
-                (root / 'popo.toml')
-                .read_text()
-                .replace('[swift-policy]', '[tool.popo.swift-policy]')
-            )
-            (root / 'popo.toml').unlink()
-            (root / 'pyproject.toml').write_text(text, encoding='utf-8')
-        config = load_swift_policy_config(root)
-        assert config.preferred_version == '6.1.2'
-        assert config.tools_version == '5.9'
-        assert config.manifest == root / 'Package.swift'
-        assert 'check-swift-policy' in load_plan(root).checks
-
     @pytest.mark.parametrize(
         'old,new',
         [
@@ -88,6 +67,30 @@ class TestSwiftPolicyConfiguration:
         with pytest.raises(ConfigurationError):
             load_swift_policy_config(swift_policy_consumer)
 
+    def test_omitted_patch_means_zero(self) -> None:
+        assert parse_version('6.1') == parse_version('6.1.0') == (6, 1, 0)
+
+    @pytest.mark.parametrize('embedded', [False, True], ids=['standalone', 'pyproject'])
+    def test_policy_sources(
+        self,
+        swift_policy_consumer: Path,
+        embedded: bool,
+    ) -> None:
+        root = swift_policy_consumer
+        if embedded:
+            text = (
+                (root / 'popo.toml')
+                .read_text()
+                .replace('[swift-policy]', '[tool.popo.swift-policy]')
+            )
+            (root / 'popo.toml').unlink()
+            (root / 'pyproject.toml').write_text(text, encoding='utf-8')
+        config = load_swift_policy_config(root)
+        assert config.preferred_version == '6.1.2'
+        assert config.tools_version == '5.9'
+        assert config.manifest == root / 'Package.swift'
+        assert 'check-swift-policy' in load_plan(root).checks
+
     @pytest.mark.parametrize(
         'version',
         ['6.1-SNAPSHOT', '6', '06.1', '>=6.0', '6.0.0.1', ''],
@@ -98,9 +101,6 @@ class TestSwiftPolicyConfiguration:
     ) -> None:
         with pytest.raises(ValueError):
             parse_version(version)
-
-    def test_omitted_patch_means_zero(self) -> None:
-        assert parse_version('6.1') == parse_version('6.1.0') == (6, 1, 0)
 
 
 # !SECTION

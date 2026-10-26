@@ -52,55 +52,30 @@ class TestMarkdownReferencesAndImages:
         readme = write_file('README.md', f'# Project\n\n[unused]: {target}\n')
         assert validate(tmp_path) == [f'{readme}:3: {message}: {target}']
 
-    @pytest.mark.parametrize(
-        'destination',
-        ['guide.md#intro', '<guide.md#intro>', 'guide.md#intro "Guide title"'],
-    )
-    def test_reference_destinations(
+    def test_inline_images_cannot_escape_through_symlinks(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        destination: str,
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Validate definitions and optional titles without a network request.
+        Resolve image symlinks before accepting repository-local targets.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
+            Parent directory containing the repository and outside target.
         write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        destination : str
-            Reference-definition destination, optionally including brackets or
-            a title.
+            Writer supplying synthetic Markdown and image files.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware symlink creator.
         """
-        write_file(
-            'README.md',
-            f'[Guide]\n\n[Guide]: {destination}\n[web]: HTTPS://example.com',
-        )
-        write_file('guide.md', '# Intro\n')
-        assert validate(tmp_path) == []
-
-    def test_reference_destination_with_spaces(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify angle-bracket reference destinations preserve spaces and
-        fragments.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        write_file('README.md', '[guide]: <my guide.md#intro> "Title"\n')
-        write_file('my guide.md', '# Intro\n')
-        assert validate(tmp_path) == []
+        outside = write_file('outside.png', 'synthetic')
+        source = write_file('repo/README.md', '![Image](image.png)')
+        symlink(source.parent / 'image.png', outside)
+        assert validate(source.parent) == [
+            f'{source}:1: link escapes repository: image.png',
+        ]
 
     @pytest.mark.parametrize(
         ('content', 'message'),
@@ -181,30 +156,55 @@ class TestMarkdownReferencesAndImages:
         write_file('my image.png', 'synthetic')
         assert validate(tmp_path) == []
 
-    def test_inline_images_cannot_escape_through_symlinks(
+    def test_reference_destination_with_spaces(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Resolve image symlinks before accepting repository-local targets.
+        Verify angle-bracket reference destinations preserve spaces and
+        fragments.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Parent directory containing the repository and outside target.
+            Temporary directory for isolated test inputs.
         write_file : FileWriter
-            Writer supplying synthetic Markdown and image files.
-        symlink : Callable[[Path, Path], None]
-            Platform-aware symlink creator.
+            UTF-8 writer creating parent directories in ``tmp_path``.
         """
-        outside = write_file('outside.png', 'synthetic')
-        source = write_file('repo/README.md', '![Image](image.png)')
-        symlink(source.parent / 'image.png', outside)
-        assert validate(source.parent) == [
-            f'{source}:1: link escapes repository: image.png',
-        ]
+        write_file('README.md', '[guide]: <my guide.md#intro> "Title"\n')
+        write_file('my guide.md', '# Intro\n')
+        assert validate(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        'destination',
+        ['guide.md#intro', '<guide.md#intro>', 'guide.md#intro "Guide title"'],
+    )
+    def test_reference_destinations(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        destination: str,
+    ) -> None:
+        """
+        Validate definitions and optional titles without a network request.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        destination : str
+            Reference-definition destination, optionally including brackets or
+            a title.
+        """
+        write_file(
+            'README.md',
+            f'[Guide]\n\n[Guide]: {destination}\n[web]: HTTPS://example.com',
+        )
+        write_file('guide.md', '# Intro\n')
+        assert validate(tmp_path) == []
 
 
 # !SECTION

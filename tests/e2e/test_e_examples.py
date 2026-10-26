@@ -34,6 +34,29 @@ pytestmark = pytest.mark.skipif(os.name == 'nt', reason='POSIX consumer examples
 
 
 @pytest.fixture(
+    name='entry_point',
+    params=['make', 'pre-commit', 'ci'],
+)
+def entry_point_fixture(
+    request: pytest.FixtureRequest,
+) -> str:
+    """
+    Give each actual caller its own consumer, commands and outcome.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Selected Make, pre-commit, or CI-command scenario.
+
+    Returns
+    -------
+    str
+        Caller identifier used to select a trusted execution path.
+    """
+    return str(request.param)
+
+
+@pytest.fixture(
     name='guardrail_tools',
     scope='module',
 )
@@ -119,29 +142,6 @@ def guardrail_tools_fixture(
     return replace(installation, environment=environment)
 
 
-@pytest.fixture(
-    name='entry_point',
-    params=['make', 'pre-commit', 'ci'],
-)
-def entry_point_fixture(
-    request: pytest.FixtureRequest,
-) -> str:
-    """
-    Give each actual caller its own consumer, commands and outcome.
-
-    Parameters
-    ----------
-    request : pytest.FixtureRequest
-        Selected Make, pre-commit, or CI-command scenario.
-
-    Returns
-    -------
-    str
-        Caller identifier used to select a trusted execution path.
-    """
-    return str(request.param)
-
-
 # !SECTIONS
 
 
@@ -217,6 +217,23 @@ class TestExampleAdoption:
     Prove shared policy executes and reports drift without rewriting files.
     """
 
+    @pytest.mark.parametrize('entry_point', ['make', 'pre-commit'])
+    def test_detect_drift(
+        self,
+        guardrail_tools: Installation,
+        example_consumer: Path,
+        entry_point: str,
+        example_drift: str,
+    ) -> None:
+        """
+        Inspect one entry-point mismatch through independent real callers.
+        """
+        original = snapshot_files(example_consumer)
+        result = _run_consumer(guardrail_tools, example_consumer, entry_point)
+        assert result.returncode != 0, result.stdout + result.stderr
+        assert example_drift in result.stdout + result.stderr
+        assert _consumer_sources(example_consumer) == original
+
     def test_entry_points(
         self,
         guardrail_tools: Installation,
@@ -249,23 +266,6 @@ class TestExampleAdoption:
         result = _run_consumer(guardrail_tools, example_consumer, entry_point)
         assert result.returncode != 0, result.stdout + result.stderr
         assert 'local target does not exist: absent.md' in result.stdout + result.stderr
-        assert _consumer_sources(example_consumer) == original
-
-    @pytest.mark.parametrize('entry_point', ['make', 'pre-commit'])
-    def test_detect_drift(
-        self,
-        guardrail_tools: Installation,
-        example_consumer: Path,
-        entry_point: str,
-        example_drift: str,
-    ) -> None:
-        """
-        Inspect one entry-point mismatch through independent real callers.
-        """
-        original = snapshot_files(example_consumer)
-        result = _run_consumer(guardrail_tools, example_consumer, entry_point)
-        assert result.returncode != 0, result.stdout + result.stderr
-        assert example_drift in result.stdout + result.stderr
         assert _consumer_sources(example_consumer) == original
 
 

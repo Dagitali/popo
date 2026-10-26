@@ -17,6 +17,54 @@ class TestWorkflowVersions:
     Resolve only explicit literals, scoped env values and simple matrices.
     """
 
+    def test_job_scopes_do_not_leak(
+        self,
+        write_file: FileWriter,
+    ) -> None:
+        path = write_file(
+            'ci.yml',
+            """jobs:
+  first:
+    env: { TOOL: "6.1.2" }
+    with: { swift-version: "6.1.2" }
+  second:
+    with: { swift-version: "${{ env.TOOL }}" }
+""",
+        )
+        values, errors = workflow_observations(path, 'swift-version')
+        assert [(item.location, item.value) for item in values] == [
+            ('jobs.first.with.swift-version', '6.1.2'),
+        ]
+        assert errors == [
+            'jobs.second.with.swift-version: '
+            'unresolved or unsupported version declaration',
+        ]
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            '[]',
+            'jobs: []',
+            'jobs: { bad: [] }',
+            'jobs: { bad: {steps: false} }',
+            'jobs: { bad: {steps: [false]} }',
+            'jobs: { "bad id": {} }',
+            'jobs: { bad: {with: []} }',
+            'jobs: {}\njobs: {}',
+        ],
+    )
+    def test_malformed_documents(
+        self,
+        write_file: FileWriter,
+        source: str,
+    ) -> None:
+        values, errors = workflow_observations(
+            write_file('ci.yml', source),
+            'swift-version',
+        )
+        assert values == ()
+        assert errors == ['cannot read a valid workflow version declaration']
+
     @pytest.mark.parametrize('key', ['python-version', 'swift-version'])
     @pytest.mark.parametrize(
         'expression,expected',
@@ -57,57 +105,6 @@ jobs:
         )
 
     @pytest.mark.parametrize(
-        'source',
-        [
-            '[]',
-            'jobs: []',
-            'jobs: { bad: [] }',
-            'jobs: { bad: {steps: false} }',
-            'jobs: { bad: {steps: [false]} }',
-            'jobs: { "bad id": {} }',
-            'jobs: { bad: {with: []} }',
-            'jobs: {}\njobs: {}',
-        ],
-    )
-    def test_malformed_documents(
-        self,
-        write_file: FileWriter,
-        source: str,
-    ) -> None:
-        values, errors = workflow_observations(
-            write_file('ci.yml', source),
-            'swift-version',
-        )
-        assert values == ()
-        assert errors == ['cannot read a valid workflow version declaration']
-
-    @pytest.mark.parametrize(
-        'value',
-        [
-            '6.1',
-            '""',
-            '"${{ inputs.tool }}"',
-            '"${{ env.MISSING }}"',
-            '"${{ matrix.missing }}"',
-        ],
-    )
-    def test_unsupported_or_unresolved_values(
-        self,
-        write_file: FileWriter,
-        value: str,
-    ) -> None:
-        path = write_file(
-            'ci.yml',
-            f'jobs: {{ build: {{ with: {{ swift-version: {value} }} }} }}',
-        )
-        observations, errors = workflow_observations(path, 'swift-version')
-        assert observations == ()
-        assert errors == [
-            'jobs.build.with.swift-version: '
-            'unresolved or unsupported version declaration',
-        ]
-
-    @pytest.mark.parametrize(
         'matrix',
         [
             'include: [{tool: "6.1.2"}]',
@@ -140,26 +137,29 @@ jobs:
             'unresolved or unsupported version declaration',
         ]
 
-    def test_job_scopes_do_not_leak(
+    @pytest.mark.parametrize(
+        'value',
+        [
+            '6.1',
+            '""',
+            '"${{ inputs.tool }}"',
+            '"${{ env.MISSING }}"',
+            '"${{ matrix.missing }}"',
+        ],
+    )
+    def test_unsupported_or_unresolved_values(
         self,
         write_file: FileWriter,
+        value: str,
     ) -> None:
         path = write_file(
             'ci.yml',
-            """jobs:
-  first:
-    env: { TOOL: "6.1.2" }
-    with: { swift-version: "6.1.2" }
-  second:
-    with: { swift-version: "${{ env.TOOL }}" }
-""",
+            f'jobs: {{ build: {{ with: {{ swift-version: {value} }} }} }}',
         )
-        values, errors = workflow_observations(path, 'swift-version')
-        assert [(item.location, item.value) for item in values] == [
-            ('jobs.first.with.swift-version', '6.1.2'),
-        ]
+        observations, errors = workflow_observations(path, 'swift-version')
+        assert observations == ()
         assert errors == [
-            'jobs.second.with.swift-version: '
+            'jobs.build.with.swift-version: '
             'unresolved or unsupported version declaration',
         ]
 

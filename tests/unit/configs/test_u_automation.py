@@ -24,20 +24,6 @@ from tests.support.files import FileWriter
 class TestAutomationConfiguration:
     """Validate consumer automation configuration settings."""
 
-    def test_repeated_patterns_remain_supported(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        filename: str,
-        prefix: str,
-    ) -> None:
-        """Preserve automation's intentional duplicate-array compatibility."""
-        write_file(
-            filename,
-            prefix + 'workflow-globs=["ci.yml", "ci.yml"]',
-        )
-        assert load_automation_config(tmp_path).workflow_globs == ('ci.yml', 'ci.yml')
-
     @pytest.mark.parametrize(
         ('setting', 'message'),
         [
@@ -87,6 +73,20 @@ class TestAutomationConfiguration:
         write_file(filename, prefix + setting)
         with pytest.raises(ConfigurationError, match=message):
             load_automation_config(tmp_path)
+
+    def test_repeated_patterns_remain_supported(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        filename: str,
+        prefix: str,
+    ) -> None:
+        """Preserve automation's intentional duplicate-array compatibility."""
+        write_file(
+            filename,
+            prefix + 'workflow-globs=["ci.yml", "ci.yml"]',
+        )
+        assert load_automation_config(tmp_path).workflow_globs == ('ci.yml', 'ci.yml')
 
 
 # !SECTION
