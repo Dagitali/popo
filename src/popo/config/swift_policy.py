@@ -1,0 +1,186 @@
+"""Load explicit Swift compiler policy independently of Python metadata."""
+
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+from ._common import (
+    ConfigurationError,
+    read_popo,
+    read_string,
+    read_strings,
+    require_table,
+)
+
+# SECTION: CONSTANTS
+
+
+IDENTIFIER_PATTERN = re.compile(r'[A-Za-z_][A-Za-z0-9_-]*')
+VERSION_PATTERN = re.compile(r'(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?', re.ASCII)
+
+
+# !SECTION
+
+
+# SECTION: DATA CLASSES
+
+
+@dataclass(frozen=True, slots=True)
+class SwiftPolicyConfig:
+    """
+    Store validated compiler selections and declaration locations.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Resolved consumer root, independent of Popo's Python runtime policy.
+    compiler_versions : tuple[str, ...]
+        Explicit supported stable compiler versions, not version ranges.
+    preferred_version, tools_version : str
+        Expected local compiler selection and package minimum tools version.
+        These are distinct concepts and need not be equal.
+    manifest, version_file : pathlib.Path
+        Root-relative input locations joined to root; existence and resolved
+        containment are checked by validation.
+    workflow_globs : tuple[str, ...]
+        Nonempty relative workflow selection; every pattern must match.
+    workflow_version_key : str
+        Action/reusable-workflow input identifying compiler selections.
+    require_preferred_in_ci : bool
+        Whether at least one resolved CI selection must match the preference.
+
+    Notes
+    -----
+    Direct construction does not validate settings or inspect files. No
+    language-mode or deployment-target equivalence is inferred.
+    """
+
+    root: Path
+    compiler_versions: tuple[str, ...]
+    preferred_version: str
+    tools_version: str
+    manifest: Path
+    version_file: Path
+    workflow_globs: tuple[str, ...]
+    workflow_version_key: str = 'swift-version'
+    require_preferred_in_ci: bool = True
+
+
+# !SECTION
+
+
+# SECTION: FUNCTIONS
+
+
+def parse_version(
+    value: str,
+) -> tuple[int, int, int]:
+    """
+    Parse stable Swift major.minor[.patch] text without Python specifiers.
+
+    Parameters
+    ----------
+    value : str
+        Version text with optional surrounding whitespace.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        Numeric components; an omitted patch means zero, not a version family.
+
+    Raises
+    ------
+    ValueError
+        Unsupported syntax, including snapshots, suffixes or leading zeroes.
+    """
+    match = VERSION_PATTERN.fullmatch(value.strip())
+    if match is None:
+        raise ValueError('expected stable Swift major.minor[.patch] version')
+    return int(match[1]), int(match[2]), int(match[3] or 0)
+
+
+def load_swift_policy_config(
+    root: Path,
+) -> SwiftPolicyConfig:
+    """Load an opt-in Swift policy without reading or executing its inputs.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Consumer root with [swift-policy] or [tool.popo.swift-policy].
+
+    Returns
+    -------
+    SwiftPolicyConfig
+        Internally consistent stable compiler policy and confined path syntax.
+
+    Raises
+    ------
+    ConfigurationError
+        Missing/unknown settings, malformed values, unsupported versions,
+        duplicate normalized compilers, or inconsistent minimum/preference.
+    OSError, UnicodeError
+        Consumer configuration cannot be read/decoded or root cannot resolve.
+    """
+    root = root.resolve()
+    table = require_table(read_popo(root).get('swift-policy'), name='swift-policy')
+    defaults = {
+        'preferred-version': '',
+        'tools-version': '',
+        'manifest': 'Package.swift',
+        'version-file': '.swift-version',
+        'workflow-version-key': 'swift-version',
+    }
+    if (
+        table.keys()
+        - defaults.keys()
+        - {'compiler-versions', 'workflow-globs', 'require-preferred-in-ci'}
+    ):
+        raise ConfigurationError('unknown swift-policy setting')
+    versions = read_strings(table.get('compiler-versions', []), 'compiler-versions')
+    workflows = read_strings(table.get('workflow-globs', []), 'workflow-globs')
+    values = {
+        key: read_string(table, key, default=default)
+        for key, default in defaults.items()
+    }
+    required = table.get('require-preferred-in-ci', True)
+    if not versions or not workflows or type(required) is not bool:
+        raise ConfigurationError(
+            'Swift policy requires compilers, workflows and a boolean CI preference',
+        )
+    try:
+        normalized = tuple(parse_version(value) for value in versions)
+        preferred = parse_version(values['preferred-version'])
+        tools = parse_version(values['tools-version'])
+    except ValueError as error:
+        raise ConfigurationError(
+            'Swift policy requires stable numeric versions',
+        ) from error
+    if (
+        len(set(normalized)) != len(normalized)
+        or preferred not in normalized
+        or any(version < tools for version in normalized)
+    ):
+        raise ConfigurationError(
+            'Swift compiler versions, preference and tools minimum conflict',
+        )
+    for value in (*workflows, values['manifest'], values['version-file']):
+        path = Path(value)
+        if path.is_absolute() or '..' in path.parts:
+            raise ConfigurationError('Swift policy paths must stay inside root')
+    if not IDENTIFIER_PATTERN.fullmatch(values['workflow-version-key']):
+        raise ConfigurationError('workflow-version-key must be a literal identifier')
+    return SwiftPolicyConfig(
+        root,
+        versions,
+        values['preferred-version'],
+        values['tools-version'],
+        root / values['manifest'],
+        root / values['version-file'],
+        workflows,
+        values['workflow-version-key'],
+        required,
+    )
+
+
+# !SECTION
