@@ -37,7 +37,16 @@ def _convention_findings(
     Returns
     -------
     list[str]
-        Enabled rule violations without identifiers or source excerpts.
+        Enabled rule violations in declaration order, without identifiers or
+        source excerpts; empty when enabled rules are satisfied.
+
+    Notes
+    -----
+    Annotation checking requires a return annotation and annotations on every
+    parameter, including receivers; annotation types are not validated. Method
+    ordering uses the collector's instance-method names rather than all class
+    members.
+    Parameter layout uses precomputed signature facts for each declaration.
     """
     failures: list[str] = []
     for declaration in source.declarations:
@@ -68,18 +77,26 @@ def _source_findings(
     Parameters
     ----------
     config : SourceCheckConfig
-        Consumer-owned limits, documentation and convention settings.
+        Validated consumer-owned limits and documentation/convention settings.
     path : pathlib.Path
-        Selected readable file inside the configured repository root.
+        Path used for diagnostics; must be lexically inside config.root.
+        This function inspects the supplied text without reading the file.
     source : str
-        UTF-8 source text to inspect without executing consumer code.
+        Decoded source text to inspect without executing consumer code.
 
     Returns
     -------
     list[str]
-        File-limit, documentation and convention findings in that order.
+        Physical file-length and documentation-width findings, followed by
+        documentation and convention findings; empty when all checks pass.
         Invalid Python syntax yields file-limit findings followed by a syntax
-        diagnostic.
+        diagnostic. Documentation widths and declaration rules are skipped
+        when parsing fails.
+
+    Raises
+    ------
+    ValueError
+        The supplied path is not lexically inside config.root.
     """
     failures: list[str] = []
     relative = path.relative_to(config.root).as_posix()
@@ -106,17 +123,20 @@ def validate(
     config: SourceCheckConfig,
 ) -> list[str]:
     """
-    Return source-convention findings without executing inspected modules.
+    Return configured source-check findings without executing consumer code.
 
     Parameters
     ----------
     config : SourceCheckConfig
-        Python source paths and opt-in convention settings.
+        Validated Python source selection, limits, guide and rule settings.
 
     Returns
     -------
     list[str]
-        Location and rule diagnostics, never source or exception contents.
+        Discovery and guide findings, followed by read or source-rule findings
+        for each sorted selected path. Diagnostics include relative locations
+        where available, without source excerpts or exception contents. Missing
+        or unreadable inputs become findings; empty means no findings.
 
     Notes
     -----

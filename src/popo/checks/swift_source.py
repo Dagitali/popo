@@ -38,7 +38,16 @@ def _convention_findings(
     -------
     list[str]
         Unsupported recognized signatures or parameter-layout violations.
-        Python annotation and method-order rules are not imposed on Swift.
+        Findings follow declaration order; empty when enabled rules pass.
+
+    Notes
+    -----
+    Inspect recognized callables only. Unsupported parameter signatures produce
+    a finding when any of parameter-docs, return-docs, raises-docs or
+    parameter-lines is enabled. Such a finding takes precedence over parameter
+    layout.
+    With all four switches disabled this function returns no findings. Python
+    annotation and method-order rules are not imposed on Swift.
     """
     if not any(
         config.settings[key]
@@ -74,17 +83,24 @@ def _source_findings(
     Parameters
     ----------
     config : SourceCheckConfig
-        Consumer-owned limits, documentation and convention settings.
+        Validated consumer-owned limits and documentation/convention settings.
     path : pathlib.Path
-        Selected readable file inside the configured repository root.
+        Path used for diagnostics; must be lexically inside config.root.
+        This function inspects the supplied text without reading the file.
     source : str
-        UTF-8 source text to inspect without executing consumer code.
+        Decoded source text to inspect without executing consumer code.
 
     Returns
     -------
     list[str]
-        File-limit, documentation and convention findings in that order.
+        Physical file-length and documentation-width findings, followed by
+        documentation and convention findings; empty when all checks pass.
         Parsing uses the bounded Swift lexical subset, not compiler validation.
+
+    Raises
+    ------
+    ValueError
+        The supplied path is not lexically inside config.root.
     """
     failures: list[str] = []
     relative = path.relative_to(config.root).as_posix()
@@ -106,17 +122,20 @@ def validate(
     config: SourceCheckConfig,
 ) -> list[str]:
     """
-    Return source-convention findings without executing inspected modules.
+    Return configured source-check findings without executing consumer code.
 
     Parameters
     ----------
     config : SourceCheckConfig
-        Swift source paths and opt-in convention settings.
+        Validated Swift source selection, limits, guide and rule settings.
 
     Returns
     -------
     list[str]
-        Location and rule diagnostics, never source or exception contents.
+        Discovery and guide findings, followed by read or source-rule findings
+        for each sorted selected path. Diagnostics include relative locations
+        where available, without source excerpts or exception contents. Missing
+        or unreadable inputs become findings; empty means no findings.
 
     Notes
     -----
