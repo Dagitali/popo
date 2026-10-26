@@ -4,11 +4,37 @@
 Verify shared YAML traversal order, cycle handling and deep structures.
 """
 
+from collections.abc import Callable
+
 import pytest
 import yaml
 
 from popo.checks._yaml import mapping_nodes, parse_mapping, read_mapping
 from tests.support.files import FileWriter
+
+# SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='parse_yaml',
+    params=['text', 'file'],
+)
+def parse_yaml_fixture(
+    request: pytest.FixtureRequest,
+    write_file: FileWriter,
+) -> Callable[[str], dict[str, object]]:
+    """Select a parsing boundary with an independent input per scenario."""
+    if request.param == 'text':
+        return parse_mapping
+
+    def parse(source: str) -> dict[str, object]:
+        return read_mapping(write_file('ci.yml', source))
+
+    return parse
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -19,7 +45,10 @@ class TestMappingTraversal:
     """
 
     @pytest.mark.parametrize('container', ['mapping', 'sequence'])
-    def test_deep_containers(self, container: str) -> None:
+    def test_deep_containers(
+        self,
+        container: str,
+    ) -> None:
         """
         Visit mappings beyond Python's recursion limit without recursive calls.
         """
@@ -56,19 +85,17 @@ class TestYamlSnapshots:
     @pytest.mark.parametrize('source', ['on: push', 'a: &a {loop: *a}'])
     def test_mapping_inputs(
         self,
-        write_file: FileWriter,
+        parse_yaml: Callable[[str], dict[str, object]],
         source: str,
     ) -> None:
         """Retain workflow event keys and safely construct cyclic aliases."""
-        path = write_file('ci.yml', source)
-        for document in (parse_mapping(source), read_mapping(path)):
-            assert isinstance(document, dict)
-            if source.startswith('on:'):
-                assert document == {'on': 'push'}
-            else:
-                child = document['a']
-                assert isinstance(child, dict)
-                assert child['loop'] is child
+        document = parse_yaml(source)
+        if source.startswith('on:'):
+            assert document == {'on': 'push'}
+        else:
+            child = document['a']
+            assert isinstance(child, dict)
+            assert child['loop'] is child
 
     @pytest.mark.parametrize(
         'source,error',
@@ -83,16 +110,13 @@ class TestYamlSnapshots:
     )
     def test_invalid_inputs(
         self,
-        write_file: FileWriter,
+        parse_yaml: Callable[[str], dict[str, object]],
         source: str,
         error: type[Exception],
     ) -> None:
         """Reject unsafe or malformed inputs with both parsing interfaces."""
-        path = write_file('ci.yml', source)
         with pytest.raises(error):
-            parse_mapping(source)
-        with pytest.raises(error):
-            read_mapping(path)
+            parse_yaml(source)
 
     def test_mapping_label_is_preserved(self) -> None:
         """Label shape errors consistently without requiring a source file."""
