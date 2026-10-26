@@ -3,7 +3,7 @@
 """Exercise workflow trust boundaries and manifest/lockfile root drift."""
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
 
@@ -169,6 +169,82 @@ class TestWorkflowSafety:
             'escapes repository'
             in validate(SafetyConfig(root, workflows=('ci.yml',)))[0]
         )
+
+
+class TestSafetyFailureIsolation:
+    """Keep independent findings when discovery or one npm pair fails."""
+
+    @pytest.mark.parametrize('error', [PermissionError, ValueError])
+    def test_discovery_errors_do_not_skip_other_checks(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        error: type[Exception],
+    ) -> None:
+        """Retain later findings after errors during glob iteration."""
+        write_file('ci.yml', 'on: pull_request_target')
+        write_file('package.json', '{"name":"consumer"}')
+        write_file(
+            'package-lock.json',
+            '{"lockfileVersion":3,"packages":{"":{"name":"other"}}}',
+        )
+        original = Path.glob
+
+        def glob(path: Path, pattern: str) -> Iterator[Path]:
+            if pattern == 'broken*.yml':
+                raise error('PRIVATE DISCOVERY DETAILS')
+            yield from original(path, pattern)
+
+        monkeypatch.setattr(Path, 'glob', glob)
+        assert validate(
+            SafetyConfig(
+                tmp_path,
+                workflows=('broken*.yml', 'ci.yml'),
+                npm_pairs=(('package.json', 'package-lock.json'),),
+            ),
+        ) == [
+            'cannot discover safety workflows: broken*.yml',
+            'ci.yml: privileged trigger pull_request_target needs exception',
+            'package.json -> package-lock.json: root name differs',
+        ]
+
+    @pytest.mark.parametrize(
+        'dependencies,message',
+        [
+            ([], 'dependencies must be an object'),
+            ({'lib': 1}, 'dependencies specifications must be strings'),
+            ({'lib': ''}, 'dependencies specifications must be strings'),
+        ],
+    )
+    def test_npm_errors_retain_partial_and_later_pair_findings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        dependencies: object,
+        message: str,
+    ) -> None:
+        """Keep partial drift findings and inspect the next npm pair."""
+        write_file('package.json', json.dumps({'dependencies': dependencies}))
+        write_file('package-lock.json', '{"lockfileVersion":3,"packages":{"":{}}}')
+        write_file('later.json', '{"name":"consumer"}')
+        write_file(
+            'later-lock.json',
+            '{"lockfileVersion":3,"packages":{"":{"name":"other"}}}',
+        )
+        assert validate(
+            SafetyConfig(
+                tmp_path,
+                npm_pairs=(
+                    ('package.json', 'package-lock.json'),
+                    ('later.json', 'later-lock.json'),
+                ),
+            ),
+        ) == [
+            'package.json -> package-lock.json: root dependencies differs',
+            f'package.json -> package-lock.json: {message}',
+            'later.json -> later-lock.json: root name differs',
+        ]
 
 
 class TestNpmPairs:
