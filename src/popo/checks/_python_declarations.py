@@ -13,10 +13,11 @@ from ._source_declarations import DeclarationFacts, SourceFacts
 # SECTION: TYPE ALIASES
 
 
-# Native AST nodes already carry parsed declaration syntax; no wrapper is
-# needed.
+# Native AST nodes already carry parsed declaration and parameter syntax; no
+# wrappers are needed.
 type _CallableSyntax = ast.FunctionDef | ast.AsyncFunctionDef
 type _DeclarationSyntax = ast.ClassDef | _CallableSyntax
+type _ParameterSyntax = ast.arg
 
 
 # !SECTION
@@ -27,7 +28,6 @@ type _DeclarationSyntax = ast.ClassDef | _CallableSyntax
 
 CALLABLE_KINDS = frozenset({'function'})
 NOMINAL_KINDS = frozenset({'class'})
-
 NONVALUE_RETURN_TYPES = frozenset(
     {
         '',
@@ -288,7 +288,7 @@ def _file_overview(
 
 def _parameter_lines(
     node: _CallableSyntax,
-    parameters: list[ast.arg],
+    parameters: list[_ParameterSyntax],
 ) -> bool:
     """
     Check physical parameter/default spans using native AST locations.
@@ -297,8 +297,8 @@ def _parameter_lines(
     ----------
     node : _CallableSyntax
         Function or async-function node identifying the declaration line.
-    parameters : list[ast.arg]
-        Parameter nodes from _parameters; defaults come from node.args.
+    parameters : list[_ParameterSyntax]
+        Native ast.arg nodes from _parameters; defaults come from node.args.
 
     Returns
     -------
@@ -338,7 +338,7 @@ def _parameter_lines(
 
 def _parameters(
     node: _CallableSyntax,
-) -> list[ast.arg]:
+) -> list[_ParameterSyntax]:
     """
     Extract parameter syntax in the front end's established order.
 
@@ -349,8 +349,9 @@ def _parameters(
 
     Returns
     -------
-    list[ast.arg]
-        Positional-only, positional, keyword-only, vararg and kwarg nodes.
+    list[_ParameterSyntax]
+        Native ast.arg nodes for positional-only, positional, keyword-only,
+        vararg and kwarg parameters in established grouping order.
         Receiver removal and annotation/layout checks are separate operations.
         Native AST locations retain parameter and default-expression spans.
     """

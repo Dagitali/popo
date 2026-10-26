@@ -75,6 +75,32 @@ class _DeclarationSyntax:
 
 
 @dataclass(frozen=True, slots=True)
+class _ParameterSyntax:
+    """
+    Retain one parameter's lexical syntax before name/layout analysis.
+
+    Attributes
+    ----------
+    offset : int
+        Zero-based character offset within the text supplied to _parameters,
+        including any leading whitespace before this parameter.
+    text : str
+        Masked parameter text without its separating comma. Retain type/default
+        delimiters and leading whitespace for later layout checks.
+
+    Notes
+    -----
+    Nonblank fragments are retained without resolving names or types. The
+    signature helper decides whether their syntax is supported. Python's
+    counterpart aliases native ast.arg nodes, retaining AST locations instead
+    of lexical offsets and text; neither front end executes defaults.
+    """
+
+    offset: int
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
 class _Signature:
     """
     Store one callable's signature observations and lexical boundaries.
@@ -335,7 +361,7 @@ def _parameter_lines(
     code: str,
     position: int,
     parameters_start: int,
-    parameters: list[tuple[int, str]],
+    parameters: list[_ParameterSyntax],
 ) -> bool:
     """
     Check physical parameter/default spans using lexical source offsets.
@@ -348,8 +374,9 @@ def _parameter_lines(
         Declaration-keyword end offset identifying the declaration line.
     parameters_start : int
         Offset immediately after the signature's opening parenthesis.
-    parameters : list[tuple[int, str]]
-        Parameter offsets/text relative to parameters_start from _parameters.
+    parameters : list[_ParameterSyntax]
+        Lexical offset/text records relative to parameters_start from
+        _parameters.
 
     Returns
     -------
@@ -359,20 +386,23 @@ def _parameter_lines(
         Empty lists pass; Swift has no Python self-receiver exception.
     """
     positions = [
-        parameters_start + start + len(part) - len(part.lstrip())
-        for start, part in parameters
+        parameters_start
+        + parameter.offset
+        + len(parameter.text)
+        - len(parameter.text.lstrip())
+        for parameter in parameters
     ]
     line_numbers = [code.count('\n', 0, offset) for offset in positions]
     return (
         len(set(line_numbers)) == len(parameters)
         and all(number > code.count('\n', 0, position) for number in line_numbers)
-        and all('\n' not in part.strip() for _, part in parameters)
+        and all('\n' not in parameter.text.strip() for parameter in parameters)
     )
 
 
 def _parameters(
     text: str,
-) -> list[tuple[int, str]]:
+) -> list[_ParameterSyntax]:
     """
     Extract parameter syntax in the front end's established order.
 
@@ -383,12 +413,13 @@ def _parameters(
 
     Returns
     -------
-    list[tuple[int, str]]
-        Source-ordered parameter offsets and text, split only at outer commas.
+    list[_ParameterSyntax]
+        Source-ordered lexical records, split only at outer commas. Their
+        named offset/text fields preserve the original parameter spans.
         Nested type/default delimiters are retained. Name interpretation and
         physical-line checks are separate operations; this is not a Swift AST.
     """
-    parts: list[tuple[int, str]] = []
+    parts: list[_ParameterSyntax] = []
     stack: list[str] = []
     start, default = 0, False
     pairs = {')': '(', ']': '[', '}': '{', '>': '<'}
@@ -406,10 +437,10 @@ def _parameters(
             if char == '=':
                 default = True
             elif char == ',':
-                parts.append((start, text[start:index]))
+                parts.append(_ParameterSyntax(start, text[start:index]))
                 start, default = index + 1, False
-    parts.append((start, text[start:]))
-    return [(start, part) for start, part in parts if part.strip()]
+    parts.append(_ParameterSyntax(start, text[start:]))
+    return [part for part in parts if part.text.strip()]
 
 
 def _signature(
@@ -451,9 +482,9 @@ def _signature(
         return _Signature(None, False, '', position)
     names: list[str] = []
     parameters = _parameters(code[opening + 1 : end - 1])
-    for _, parameter in parameters:
+    for parameter in parameters:
         # Deliberately accept named arguments, not arbitrary signature syntax.
-        prefix, colon, _ = parameter.partition(':')
+        prefix, colon, _ = parameter.text.partition(':')
         identifiers = PARAMETER_NAME_PATTERN.findall(prefix)
         if not colon or not identifiers or '(' in prefix:
             return _Signature(None, False, '', position)
