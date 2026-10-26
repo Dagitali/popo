@@ -13,32 +13,26 @@ from ._common import ConfigurationError, read_popo, read_strings, require_table
 # SECTION: CONSTANTS
 
 
+SOURCE_DEFAULTS: dict[str, object] = {
+    'documentation-width': 79,
+    'max-file-lines': 1000,
+    'parameter-lines': False,
+    'parameter-docs': False,
+    'return-docs': False,
+    'raises-docs': False,
+    'file-overviews': False,
+    'declaration-docs': False,
+    'source-guide': '',
+}
 DOMAINS: dict[str, dict[str, object]] = {
-    'python-source': {
-        'annotations': False,
-        'parameter-lines': False,
-        'alphabetical-methods': False,
-        'documentation-width': 79,
-        'max-file-lines': 1000,
-        'file-overviews': False,
-        'declaration-docs': False,
-        'parameter-docs': False,
-        'return-docs': False,
-        'raises-docs': False,
-        'source-guide': '',
-    },
-    'swift-source': {
-        'max-file-lines': 1000,
-        'documentation-width': 79,
+    'python-source': SOURCE_DEFAULTS
+    | {'annotations': False, 'alphabetical-methods': False},
+    'swift-source': SOURCE_DEFAULTS
+    | {
         'member-docs': False,
-        'parameter-lines': False,
-        'parameter-docs': False,
-        'return-docs': False,
-        'raises-docs': False,
         'file-overviews': True,
         'declaration-docs': True,
         'declaration-spacing': True,
-        'source-guide': '',
     },
     'logs': {'patterns': {}},
 }
