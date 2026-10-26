@@ -1,14 +1,26 @@
 """
 :mod:`popo.checks._python_declarations` module.
 
-Extract Python declaration facts once through the standard-library AST.
+Collect Python declaration facts through the standard-library AST.
 """
 
 import ast
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from ._source_declarations import DeclarationFacts, SourceFacts
+
+# SECTION: TYPE ALIASES
+
+
+# Native AST nodes already carry parsed declaration syntax; no wrapper is
+# needed.
+type _CallableSyntax = ast.FunctionDef | ast.AsyncFunctionDef
+type _DeclarationSyntax = ast.ClassDef | _CallableSyntax
+
+
+# !SECTION
+
 
 # SECTION: CONSTANTS
 
@@ -38,12 +50,12 @@ NONVALUE_RETURN_TYPES = frozenset(
 @dataclass(frozen=True, slots=True)
 class Declaration:
     """
-    Keep shared facts and Python-only annotation/order observations.
+    Store shared declaration facts and Python-specific observations.
 
     Attributes
     ----------
     facts : DeclarationFacts
-        Documentation and signature requirements extracted from the AST.
+        Documentation and signature requirements from the AST front end.
     annotated : bool
         Whether all callable parameters and its return have annotations.
         True for classes, where this observation is not used.
@@ -57,11 +69,18 @@ class Declaration:
     instance_methods: tuple[str, ...] = ()
 
 
+# !SECTION
+
+
+# SECTION: PROTECTED FUNCTIONS
+
+
 def _body(
-    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    node: _CallableSyntax,
 ) -> Iterator[ast.AST]:
     """
-    Walk a callable body without attributing nested callables' contracts."""
+    Walk a callable body without attributing nested callables' contracts.
+    """
     pending: list[ast.AST] = list(node.body)
     while pending:
         current = pending.pop()
@@ -74,16 +93,15 @@ def _body(
         pending.extend(ast.iter_child_nodes(current))
 
 
-def _callable(
-    node: ast.FunctionDef | ast.AsyncFunctionDef,
+def _declaration(
+    node: _CallableSyntax,
 ) -> Declaration:
     """
     Extract each signature and explicit return/yield/raise requirement once.
     """
     args = node.args
     positional = [*args.posonlyargs, *args.args]
-    parameters = [*positional, *args.kwonlyargs]
-    parameters.extend(arg for arg in (args.vararg, args.kwarg) if arg is not None)
+    parameters = _parameters(node)
     names = [arg.arg for arg in parameters]
     if positional and positional[0].arg in {'self', 'cls'}:
         names.remove(positional[0].arg)
@@ -117,12 +135,89 @@ def _callable(
     )
 
 
+def _declaration_syntax(
+    tree: ast.Module,
+) -> Iterator[_DeclarationSyntax]:
+    """
+    Yield native declaration nodes from one breadth-first AST traversal.
+
+    Parameters
+    ----------
+    tree : ast.Module
+        Parsed Python module; no consumer code is imported or executed.
+
+    Yields
+    ------
+    _DeclarationSyntax
+        Class, function and async-function nodes, including nested
+        declarations.
+        Python supplies complete syntax nodes rather than lexical records.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, DECLARATION_NODES):
+            yield node
+
+
+def _declarations(
+    syntax: Iterable[_DeclarationSyntax],
+) -> Iterator[Declaration]:
+    """
+    Convert declaration syntax into shared facts and Python observations.
+
+    Parameters
+    ----------
+    syntax : collections.abc.Iterable[_DeclarationSyntax]
+        Native declaration nodes in discovery order.
+
+    Yields
+    ------
+    Declaration
+        Shared documentation/signature facts and Python annotation/order facts.
+        Callable requirements exclude nested bodies; classes retain only their
+        directly declared self-receiver methods for ordering checks.
+    """
+    for node in syntax:
+        if isinstance(node, ast.ClassDef):
+            methods = tuple(
+                member.name
+                for member in node.body
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and (parameters := [*member.args.posonlyargs, *member.args.args])
+                and parameters[0].arg == 'self'
+            )
+            yield Declaration(
+                DeclarationFacts(
+                    node.lineno,
+                    'class',
+                    ast.get_docstring(node) or '',
+                    (),
+                ),
+                instance_methods=methods,
+            )
+        else:
+            yield _declaration(node)
+
+
 def _parameter_lines(
-    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    node: _CallableSyntax,
     parameters: list[ast.arg],
 ) -> bool:
     """
-    Check physical parameter/default spans, preserving the self exception.
+    Check physical parameter/default spans using native AST locations.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Function or async-function node identifying the declaration line.
+    parameters : list[ast.arg]
+        Parameter nodes from _parameters; defaults come from node.args.
+
+    Returns
+    -------
+    bool
+        Whether parameters occupy distinct lines after the declaration and
+        each parameter/default remains on one physical line. Preserve Python's
+        exception for an empty list or a sole parameter named self.
     """
     if not parameters or (len(parameters) == 1 and parameters[0].arg == 'self'):
         return True
@@ -153,6 +248,33 @@ def _parameter_lines(
     )
 
 
+def _parameters(
+    node: _CallableSyntax,
+) -> list[ast.arg]:
+    """
+    Extract parameter syntax in the front end's established order.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Function or async-function AST node with an already parsed signature.
+
+    Returns
+    -------
+    list[ast.arg]
+        Positional-only, positional, keyword-only, vararg and kwarg nodes.
+        Receiver removal and annotation/layout checks are separate operations.
+        Native AST locations retain parameter and default-expression spans.
+    """
+    args = node.args
+    return [
+        *args.posonlyargs,
+        *args.args,
+        *args.kwonlyargs,
+        *(arg for arg in (args.vararg, args.kwarg) if arg is not None),
+    ]
+
+
 # !SECTION
 
 
@@ -163,7 +285,7 @@ def parse(
     source: str,
 ) -> SourceFacts[Declaration]:
     """
-    Parse Python and collect immutable source/declaration observations.
+    Collect immutable Python source and declaration facts.
 
     Parameters
     ----------
@@ -174,7 +296,8 @@ def parse(
     -------
     SourceFacts[Declaration]
         Module overview, documentation line numbers and declaration records.
-        AST traversal and parameter extraction are owned by this frontend.
+        Syntax discovery and fact construction are separate stages. The AST
+        front end owns parameter extraction and body analysis.
 
     Raises
     ------
@@ -193,39 +316,17 @@ def parse(
     """
     tree = ast.parse(source)
     documentation: set[int] = set()
-    declarations: list[Declaration] = []
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, *DECLARATION_NODES)):
-            if ast.get_docstring(node, clean=False) is not None:
-                doc = node.body[0]
-                documentation.update(
-                    range(doc.lineno, (doc.end_lineno or doc.lineno) + 1),
-                )
-        if isinstance(node, ast.ClassDef):
-            methods = tuple(
-                member.name
-                for member in node.body
-                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and (parameters := [*member.args.posonlyargs, *member.args.args])
-                and parameters[0].arg == 'self'
+    syntax = tuple(_declaration_syntax(tree))
+    for node in (tree, *syntax):
+        if ast.get_docstring(node, clean=False) is not None:
+            doc = node.body[0]
+            documentation.update(
+                range(doc.lineno, (doc.end_lineno or doc.lineno) + 1),
             )
-            declarations.append(
-                Declaration(
-                    DeclarationFacts(
-                        node.lineno,
-                        'class',
-                        ast.get_docstring(node) or '',
-                        (),
-                    ),
-                    instance_methods=methods,
-                ),
-            )
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            declarations.append(_callable(node))
     return SourceFacts(
         bool(ast.get_docstring(tree)),
         tuple(sorted(documentation)),
-        tuple(declarations),
+        tuple(_declarations(syntax)),
     )
 
 
