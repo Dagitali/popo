@@ -29,11 +29,16 @@ def _local_observations(
     config: SwiftPolicyConfig,
 ) -> tuple[list[VersionObservation], list[str]]:
     """
-    Read local selections and the first-line manifest minimum, not code."""
+    Collect local compiler and first-line manifest minimum observations.
+
+    Keep preferred compiler and tools minimum as distinct observation kinds.
+    Return missing, unsafe, unreadable or malformed-header inputs as findings;
+    version syntax and equality are checked later. No manifest code is run.
+    """
     observations: list[VersionObservation] = []
     failures: list[str] = []
     for path, kind in ((config.version_file, 'preferred'), (config.manifest, 'tools')):
-        text, errors = _read(path, config.root)
+        text, errors = _read_text(path, config.root)
         failures.extend(errors)
         if text is None:
             continue
@@ -54,12 +59,17 @@ def _local_observations(
     return observations, failures
 
 
-def _read(
+def _read_text(
     path: Path,
     root: Path,
 ) -> tuple[str | None, list[str]]:
     """
-    Read one confined UTF-8 input, redacting filesystem error details."""
+    Read one confined UTF-8 input, redacting filesystem error details.
+
+    Return text and no findings on success, or None and a diagnostic for an
+    escaping path or a read/decode/resolution error. The path must be lexically
+    inside root; direct construction with an outside path raises ValueError.
+    """
     relative = path.relative_to(root).as_posix()
     try:
         if not path.resolve().is_relative_to(root):
@@ -73,7 +83,13 @@ def _workflow_observations(
     config: SwiftPolicyConfig,
 ) -> tuple[list[VersionObservation], list[str]]:
     """
-    Discover confined workflows and collect scoped compiler declarations."""
+    Discover confined workflows and collect scoped compiler observations.
+
+    Deduplicate and sort files selected by explicit consumer globs. Return
+    discovery, containment and scoped YAML errors as findings; version syntax,
+    membership and preferred compiler coverage are checked later. No workflow
+    is run, and arbitrary expressions are not resolved.
+    """
     failures: list[str] = []
     paths: set[Path] = set()
     for pattern in config.workflow_globs:
@@ -138,7 +154,8 @@ def validate(
     ValueError
         Configured compiler, preferred or tools versions have invalid syntax
         when direct construction bypasses the configuration parser. Invalid
-        observed versions instead produce diagnostics.
+        observed versions instead produce diagnostics. A local declaration
+        path lexically outside root also propagates ValueError.
 
     Notes
     -----
