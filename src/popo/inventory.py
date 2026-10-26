@@ -12,6 +12,15 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+# SECTION: TYPE ALIASES
+
+
+type _TreeEntry = tuple[str, str, bytes]
+
+
+# !SECTION
+
+
 # SECTION: DATA CLASSES
 
 
@@ -36,6 +45,64 @@ class SourceFile:
 
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _blob_files(
+    stream: bytes,
+    entries: list[_TreeEntry],
+) -> tuple[SourceFile, ...]:
+    """
+    Validate one batch response and hash committed bytes in path order.
+
+    Parameters
+    ----------
+    stream : bytes
+        Complete cat-file batch output, including headers and separators.
+    entries : list[_TreeEntry]
+        Requested path, mode and object ID records, in batch request order.
+
+    Returns
+    -------
+    tuple[SourceFile, ...]
+        Path-sorted file records; symlink contents remain link text.
+
+    Raises
+    ------
+    ValueError
+        Headers, IDs, types, sizes or separators are malformed, or trailing
+        data remains. Messages omit raw header text and source bytes.
+    """
+    files = []
+    offset = 0
+    for path, mode, oid in entries:
+        try:
+            end = stream.index(b'\n', offset)
+            actual, kind, size_text = stream[offset:end].split()
+            size = int(size_text)
+        except ValueError as error:
+            raise ValueError('malformed Git blob response') from error
+        start = end + 1
+        stop = start + size
+        if (
+            actual != oid
+            or kind != b'blob'
+            or size < 0
+            or stream[stop : stop + 1] != b'\n'
+        ):
+            raise ValueError('malformed Git blob response')
+        contents = stream[start:stop]
+        files.append(
+            SourceFile(
+                path,
+                mode,
+                hashlib.sha1(contents, usedforsecurity=False).hexdigest(),
+                hashlib.sha256(contents).hexdigest(),
+            ),
+        )
+        offset = stop + 1
+    if offset != len(stream):
+        raise ValueError('unexpected trailing Git blob data')
+    return tuple(sorted(files, key=lambda item: item.path))
 
 
 def _git(
@@ -72,6 +139,43 @@ def _git(
     if result.returncode:
         raise ValueError(f'local Git {args[0]} failed; check repository and revision')
     return result.stdout
+
+
+def _tree_entries(
+    tree: bytes,
+) -> list[_TreeEntry]:
+    """
+    Decode selected Git tree entries without reading checkout files.
+
+    Parameters
+    ----------
+    tree : bytes
+        NUL-separated ls-tree output with root-relative UTF-8 paths.
+
+    Returns
+    -------
+    list[_TreeEntry]
+        Path, mode and blob object ID records, in tree order.
+
+    Raises
+    ------
+    ValueError
+        The tree is empty, malformed or contains unsupported entries.
+    UnicodeError
+        A path or mode cannot be decoded without replacement characters.
+    """
+    entries: list[_TreeEntry] = []
+    for entry in filter(None, tree.split(b'\0')):
+        metadata, path_bytes = entry.split(b'\t', 1)
+        mode_bytes, kind, oid = metadata.split()
+        if kind != b'blob' or mode_bytes not in (b'100644', b'100755', b'120000'):
+            raise ValueError(
+                'unsupported Git tree entry; submodules are not inventoried',
+            )
+        entries.append((path_bytes.decode('utf-8'), mode_bytes.decode(), oid))
+    if not entries:
+        raise ValueError('commit contains no source files')
+    return entries
 
 
 # !SECTION
@@ -133,47 +237,10 @@ def collect(
         .strip()
     )
     tree = _git(root, 'ls-tree', '-rz', '--full-tree', commit)
-    entries: list[tuple[str, str, bytes]] = []
-    for entry in filter(None, tree.split(b'\0')):
-        metadata, path_bytes = entry.split(b'\t', 1)
-        mode_bytes, kind, oid = metadata.split()
-        if kind != b'blob' or mode_bytes not in (b'100644', b'100755', b'120000'):
-            raise ValueError(
-                'unsupported Git tree entry; submodules are not inventoried',
-            )
-        entries.append((path_bytes.decode('utf-8'), mode_bytes.decode(), oid))
-    if not entries:
-        raise ValueError('commit contains no source files')
+    entries = _tree_entries(tree)
     object_ids = b'\n'.join(e[2] for e in entries) + b'\n'
     stream = _git(root, 'cat-file', '--batch', data=object_ids)
-    files = []
-    offset = 0
-    for path, mode, oid in entries:
-        end = stream.index(b'\n', offset)
-        actual, kind, size_text = stream[offset:end].split()
-        size = int(size_text)
-        start = end + 1
-        stop = start + size
-        if (
-            actual != oid
-            or kind != b'blob'
-            or size < 0
-            or stream[stop : stop + 1] != b'\n'
-        ):
-            raise ValueError('malformed Git blob response')
-        contents = stream[start:stop]
-        files.append(
-            SourceFile(
-                path,
-                mode,
-                hashlib.sha1(contents, usedforsecurity=False).hexdigest(),
-                hashlib.sha256(contents).hexdigest(),
-            ),
-        )
-        offset = stop + 1
-    if offset != len(stream):
-        raise ValueError('unexpected trailing Git blob data')
-    return commit, tuple(sorted(files, key=lambda item: item.path))
+    return commit, _blob_files(stream, entries)
 
 
 def document(
