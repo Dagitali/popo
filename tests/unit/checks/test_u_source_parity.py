@@ -19,6 +19,7 @@ from popo.checks import (
     python_source,
     swift_source,
 )
+from popo.checks._source_declarations import CallableRequirements
 from popo.config import ConfigurationError
 from popo.config.source_checks import SourceCheckConfig, load_source_check
 from tests.support.files import FileWriter, snapshot_files
@@ -60,6 +61,40 @@ class TestSourceConventions:
     """
     Keep common option names, diagnostics and collector contracts aligned.
     """
+
+    @pytest.mark.parametrize('case', ['none', 'returns', 'raises'])
+    def test_callable_documentation_requirements(
+        self: Self,
+        source_case: SourceCase,
+        case: str,
+    ) -> None:
+        """
+        Share requirement vocabulary while retaining each analysis source.
+        """
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            annotation, body = {
+                'none': ('None', 'pass'),
+                'returns': ('int', 'return 1'),
+                'raises': ('None', 'raise ValueError()'),
+            }[case]
+            syntax = ast.parse(f'def f() -> {annotation}: {body}').body[0]
+            assert isinstance(syntax, ast.FunctionDef)
+            requirements = _python_declarations._requirements(
+                syntax,
+                _python_declarations._signature(syntax),
+            )
+        else:
+            tail = {
+                'none': '',
+                'returns': ' -> Int',
+                'raises': ' rethrows -> Void',
+            }[case]
+            requirements = _swift_declarations._requirements('func', tail)
+        assert requirements == CallableRequirements(
+            'Returns' if case == 'returns' else '',
+            case == 'raises',
+        )
 
     def test_collectors_extract_shared_facts_without_execution(
         self: Self,
