@@ -4,6 +4,7 @@
 Test dependency lower bounds, exact matching, and policy failures.
 """
 
+import json
 from pathlib import Path
 from typing import cast
 
@@ -199,6 +200,58 @@ class TestDependencyPolicy:
         else:
             assert len(failures) == 1
             assert message in failures[0]
+
+    @pytest.mark.parametrize(
+        'names',
+        [('Demo_Pkg', 'demo-pkg'), ('demo.pkg', 'Demo__Pkg'), ('DEMO', 'demo')],
+    )
+    @pytest.mark.parametrize(
+        'suffix',
+        [
+            '==1',
+            '[feature]>=1,<2',
+            '>=1,<2; python_version < "3.15"',
+            ' @ https://example.com/demo.whl#sha256=abc123',
+        ],
+    )
+    def test_exact_comparison_canonicalizes_only_package_names(
+        self,
+        write_file: FileWriter,
+        names: tuple[str, str],
+        suffix: str,
+    ) -> None:
+        """Accept equivalent package spelling while preserving other fields."""
+        expected, actual = (name + suffix for name in names)
+        metadata = write_file(
+            'pyproject.toml',
+            f'[project]\ndependencies = [{json.dumps(expected)}]',
+        )
+        requirements = write_file('requirements.txt', actual)
+        assert validate(DependencyConfig(metadata, requirements, 'exact')) == []
+
+    @pytest.mark.parametrize(
+        'suffix',
+        [
+            '==2',
+            '[other]==1',
+            '==1; python_version < "3.15"',
+            ' @ https://example.com/demo.whl',
+        ],
+    )
+    def test_name_normalization_keeps_other_exact_differences(
+        self,
+        write_file: FileWriter,
+        suffix: str,
+    ) -> None:
+        """Keep non-name dependency drift visible after normalization."""
+        metadata = write_file(
+            'pyproject.toml',
+            '[project]\ndependencies = ["Demo_Pkg==1"]',
+        )
+        requirements = write_file('requirements.txt', 'demo-pkg' + suffix)
+        failures = validate(DependencyConfig(metadata, requirements, 'exact'))
+        assert len(failures) == 1
+        assert 'expected' in failures[0]
 
     @pytest.mark.parametrize(
         'suffix',
