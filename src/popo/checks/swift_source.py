@@ -126,8 +126,11 @@ def validate(
 
     Parameters
     ----------
-    config : SourceCheckConfig
-        Validated Swift source selection, limits, guide and rule settings.
+    config : popo.config.source_checks.SourceCheckConfig
+        Consumer policy loaded for the ``swift-source`` domain with
+        load_source_check: resolved root, include/exclude patterns, optional
+        source guide, size limits and documentation/convention settings.
+        This function does not load or revalidate configuration.
 
     Returns
     -------
@@ -135,15 +138,35 @@ def validate(
         Discovery and guide findings, followed by read or source-rule findings
         for each sorted selected path. Diagnostics include relative locations
         where available, without source excerpts or exception contents. Missing
-        or unreadable inputs become findings; empty means no findings.
+        or unreadable inputs become findings; unreadable files are skipped
+        while remaining selected files are checked. An empty list means the
+        selected inputs satisfy the implemented checks, not full language or
+        documentation-tool validation.
+
+    Raises
+    ------
+    KeyError
+        Required rule settings are absent when direct configuration
+        construction bypasses load_source_check.
+    ValueError
+        Numeric limits cannot be converted to integers, or selected paths
+        cannot be expressed relative to config.root, when direct construction
+        bypasses the loader's setting and resolved-root contracts.
 
     Notes
     -----
+    Inspect sorted, deduplicated files selected by include/exclude patterns.
+    Check the optional source guide before reading selected files as UTF-8.
+    Physical line limits apply to each readable file; width limits apply only
+    to recognized documentation lines. Discovery, confinement, guide and
+    read/decode failures are returned as redacted findings, not raw exceptions.
+
     Mask nested comments and ordinary, multiline and raw strings before
     recognizing line-leading declarations. Triple-slash comments attach across
     attribute-only lines. Nominal documentation follows the consumer's
     declaration-docs setting; member documentation and callable contract rules
     are separately opt-in.
+
     Named function, init and subscript signatures use balanced parentheses.
     Documentation names use internal parameters and DocC list fields. This
     lexical subset does not validate Swift syntax, operator signatures, regex
