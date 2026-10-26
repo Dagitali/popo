@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+  - [Added](#added)
 - [\[0.10.0\] - 2026-10-25](#0100---2026-10-25)
 - [0.9.1 - 2026-10-24](#091---2026-10-24)
 - [0.9.0 - 2026-10-24](#090---2026-10-24)
@@ -60,6 +61,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+### Added
+
+- Opt-in `check-python-source`, `check-swift-documentation` and `check-logs` commands with
+  consumer-owned policies, existing text/JSON reporting, confined input discovery, and redacted log
+  findings. See [source and log checks](docs/source-and-log-checks.md).
 
 ## [0.10.0] - 2026-10-25
 
