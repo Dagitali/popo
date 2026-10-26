@@ -13,6 +13,18 @@ from ._source_declarations import DeclarationFacts, SourceFacts
 # SECTION: CONSTANTS
 
 
+CALLABLE_KINDS = frozenset({'func', 'init', 'subscript'})
+NOMINAL_KINDS = frozenset({'struct', 'class', 'enum', 'actor', 'protocol', 'extension'})
+NONVALUE_RETURN_TYPES = frozenset(
+    {
+        'Void',
+        '()',
+        'Swift.Void',
+        'Never',
+        'Swift.Never',
+    },
+)
+
 DECLARATION_PATTERN = re.compile(
     r'^\s*(?:(?:@\w+(?:\([^\n]*\))?|public|private|fileprivate|internal|'
     r'final|nonisolated|open|package|indirect|distributed|static|class|override|'
@@ -25,11 +37,6 @@ PARAMETER_NAME_PATTERN = re.compile(r'`?(\w+)`?')
 RETURN_PATTERN = re.compile(r'->\s*(.*?)\s*(?:\bwhere\b|$)', re.S)
 STRING_START_PATTERN = re.compile(r'(#+)?("""|")')
 THROWS_PATTERN = re.compile(r'\b(?:rethrows|throws)\b')
-
-NOMINAL_KINDS = frozenset({'struct', 'class', 'enum', 'actor', 'protocol', 'extension'})
-CALLABLE_KINDS = frozenset({'func', 'init', 'subscript'})
-
-NONVALUE_RETURN_TYPES = frozenset({'Void', '()', 'Swift.Void', 'Never', 'Swift.Never'})
 
 
 # !SECTION
@@ -284,6 +291,46 @@ def _declarations(
         yield _declaration(item, lines, documentation)
 
 
+def _file_overview(
+    code: str,
+    lines: list[str],
+    documentation: set[int],
+) -> bool:
+    """
+    Identify a file overview using the front end's documentation convention.
+
+    Parameters
+    ----------
+    code : str
+        Position-preserving masked Swift source from lexical_view.
+    lines : list[str]
+        Original source lines retaining comment prefixes and indentation.
+    documentation : set[int]
+        One-based triple-slash documentation lines from lexical masking.
+
+    Returns
+    -------
+    bool
+        Whether a column-zero triple-slash comment followed by a space occurs
+        before the first code line. Comments inside literals and trailing
+        comments do not establish a file overview.
+
+    Notes
+    -----
+    Swift uses lexical comment locations rather than Python's module-docstring
+    identity. This is a bounded comment convention, not compiler validation;
+    neither front end executes code or validates the overview's prose quality.
+    """
+    first_code = next(
+        (index for index, line in enumerate(code.splitlines()) if line.strip()),
+        len(lines),
+    )
+    return any(
+        number <= first_code and lines[number - 1].startswith('/// ')
+        for number in documentation
+    )
+
+
 def _parameter_lines(
     code: str,
     position: int,
@@ -532,16 +579,12 @@ def parse(
     """
     code, documentation = lexical_view(source)
     lines = source.splitlines()
-    first_code = next(
-        (index for index, line in enumerate(code.splitlines()) if line.strip()),
-        len(lines),
-    )
-    overview = any(
-        number <= first_code and lines[number - 1].startswith('/// ')
-        for number in documentation
-    )
     declarations = _declarations(_declaration_syntax(code), lines, documentation)
-    return SourceFacts(overview, tuple(sorted(documentation)), tuple(declarations))
+    return SourceFacts(
+        _file_overview(code, lines, documentation),
+        tuple(sorted(documentation)),
+        tuple(declarations),
+    )
 
 
 # !SECTION

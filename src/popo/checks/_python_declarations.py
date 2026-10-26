@@ -28,7 +28,6 @@ type _DeclarationSyntax = ast.ClassDef | _CallableSyntax
 CALLABLE_KINDS = frozenset({'function'})
 NOMINAL_KINDS = frozenset({'class'})
 
-DECLARATION_NODES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 NONVALUE_RETURN_TYPES = frozenset(
     {
         '',
@@ -39,6 +38,8 @@ NONVALUE_RETURN_TYPES = frozenset(
         'typing.Never',
     },
 )
+
+DECLARATION_NODES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 # !SECTION
@@ -94,7 +95,7 @@ class Declaration:
     facts : DeclarationFacts
         Documentation and signature requirements from the AST front end.
     annotated : bool
-        Whether all callable parameters and its return have annotations.
+        Whether all callable parameters and the return have annotations.
         True for classes, where this observation is not used.
     instance_methods : tuple[str, ...]
         Direct class methods with an initial positional parameter named self,
@@ -167,8 +168,8 @@ def _declaration(
     Notes
     -----
     Signature observations come from _signature using native AST arguments.
-    Body analysis
-    excludes nested definitions; explicit raises include locally caught ones.
+    Body analysis excludes nested definitions; explicit raises include locally
+    caught ones.
     Type annotations are observed, not resolved or validated.
     """
     if isinstance(syntax, ast.ClassDef):
@@ -228,9 +229,9 @@ def _declaration_syntax(
     Yields
     ------
     _DeclarationSyntax
-        Class, function and async-function nodes, including nested
-        declarations.
-        Python supplies complete syntax nodes rather than lexical records.
+        Native class, function and async-function nodes, including nested
+        declarations. Python supplies complete syntax nodes rather than
+        lexical records.
     """
     for node in ast.walk(tree):
         if isinstance(node, DECLARATION_NODES):
@@ -257,6 +258,32 @@ def _declarations(
     """
     for item in syntax:
         yield _declaration(item)
+
+
+def _file_overview(
+    tree: ast.Module,
+) -> bool:
+    """
+    Identify a file overview using the front end's documentation convention.
+
+    Parameters
+    ----------
+    tree : ast.Module
+        Parsed Python module; comments and literals are already classified.
+
+    Returns
+    -------
+    bool
+        Whether the module has a nonempty, cleaned leading docstring. Class
+        and callable docstrings do not establish a file overview.
+
+    Notes
+    -----
+    Python's parser supplies module-docstring identity. Swift instead uses
+    lexical comment locations before the first code line. Neither front end
+    executes inspected code or validates the overview's prose quality.
+    """
+    return bool(ast.get_docstring(tree))
 
 
 def _parameter_lines(
@@ -429,7 +456,7 @@ def parse(
                 range(doc.lineno, (doc.end_lineno or doc.lineno) + 1),
             )
     return SourceFacts(
-        bool(ast.get_docstring(tree)),
+        _file_overview(tree),
         tuple(sorted(documentation)),
         tuple(_declarations(syntax)),
     )
