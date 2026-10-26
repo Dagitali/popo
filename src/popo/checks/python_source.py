@@ -123,44 +123,44 @@ def validate(
     config: SourceCheckConfig,
 ) -> list[str]:
     """
-    Return configured source-check findings without executing consumer code.
+    Validate selected Python source files without executing consumer code.
 
     Parameters
     ----------
     config : popo.config.source_checks.SourceCheckConfig
-        Consumer policy loaded for the ``python-source`` domain with
-        load_source_check: resolved root, include/exclude patterns, optional
-        source guide, size limits and documentation/convention settings.
-        This function does not load or revalidate configuration.
+        Policy for ``python-source``, normally obtained from
+        :func:`~popo.config.source_checks.load_source_check`. Requires a
+        resolved repository root, include/exclude glob patterns and domain
+        settings.
+        Configuration is neither loaded nor revalidated here.
 
     Returns
     -------
     list[str]
-        Discovery and guide findings, followed by read or source-rule findings
-        for each sorted selected path. Diagnostics include relative locations
-        where available, without source excerpts or exception contents. Missing
-        or unreadable inputs become findings; unreadable files are skipped
-        while remaining selected files are checked. An empty list means the
-        selected inputs satisfy the implemented checks, not full language or
-        documentation-tool validation.
+        Discovery and guide findings first, then read or source-rule findings
+        for each selected file in sorted path order. An empty list means no
+        findings from the configured checks. Diagnostics use relative paths
+        and line numbers where applicable, without source excerpts or raw
+        exception messages. Unreadable files are reported and skipped while
+        remaining files are checked.
 
     Raises
     ------
     KeyError
-        Required rule settings are absent when direct configuration
-        construction bypasses load_source_check.
+        config.settings lacks an option required by this checker.
     ValueError
-        Numeric limits cannot be converted to integers, or selected paths
-        cannot be expressed relative to config.root, when direct construction
-        bypasses the loader's setting and resolved-root contracts.
+        A numeric limit cannot be converted to an integer, or a selected path
+        cannot be expressed relative to config.root. These indicate a
+        configuration that does not satisfy the loader's contracts.
 
     Notes
     -----
     Inspect sorted, deduplicated files selected by include/exclude patterns.
-    Check the optional source guide before reading selected files as UTF-8.
-    Physical line limits apply to each readable file; width limits apply only
-    to recognized documentation lines. Discovery, confinement, guide and
-    read/decode failures are returned as redacted findings, not raw exceptions.
+    Require exact backticked source paths in the optional source guide before
+    reading selected files as UTF-8. Physical line limits apply to readable
+    files; width limits apply only to recognized documentation lines. Missing
+    glob matches, unsafe paths and input read/decode failures become redacted
+    findings rather than raw filesystem or decoding exceptions.
 
     Parse Python ASTs without importing or executing inspected modules. Invalid
     syntax produces a location-only diagnostic after physical file-limit
