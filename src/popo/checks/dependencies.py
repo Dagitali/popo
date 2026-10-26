@@ -174,6 +174,7 @@ def _requirements(
         Parsed requirements indexed by canonicalized name, plus diagnostics
         for invalid declarations or duplicate names. The first valid entry
         wins when spelling, extras, or markers produce the same package key.
+        Returned requirements use canonical names; other fields are retained.
 
     Notes
     -----
@@ -192,6 +193,7 @@ def _requirements(
         if name in parsed:
             failures.append(f'{source}: duplicate dependency {name!r}')
             continue
+        requirement.name = name
         parsed[name] = requirement
     return parsed, failures
 
