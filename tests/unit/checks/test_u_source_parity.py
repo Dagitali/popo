@@ -4,6 +4,7 @@
 Verify shared source-policy contracts and language-specific documentation.
 """
 
+import ast
 from collections.abc import Callable
 from pathlib import Path
 from typing import Self
@@ -200,6 +201,47 @@ class TestSourceConventions:
         write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
         with pytest.raises(ConfigurationError, match='unknown settings'):
             load_source_check(tmp_path, domain)
+
+    @pytest.mark.parametrize('kind', ['nominal', 'callable'])
+    def test_single_declaration_conversion(
+        self: Self,
+        source_case: SourceCase,
+        kind: str,
+    ) -> None:
+        """
+        Convert a single nominal or callable independently of aggregation.
+        """
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            source = (
+                'class C:\n    """Details."""\n'
+                if kind == 'nominal'
+                else 'def f(value: int) -> int:\n    """Details."""\n    return value\n'
+            )
+            syntax = ast.parse(source).body[0]
+            assert isinstance(syntax, (ast.ClassDef, ast.FunctionDef))
+            declaration = _python_declarations._declaration(syntax)
+            assert declaration.annotated
+        else:
+            source = '/// Details.\n' + (
+                'struct C {}'
+                if kind == 'nominal'
+                else 'func f(value: Int) -> Int { value }'
+            )
+            code, documentation = _swift_declarations.lexical_view(source)
+            syntax = next(_swift_declarations._declaration_syntax(code))
+            declaration = _swift_declarations._declaration(
+                syntax,
+                source.splitlines(),
+                documentation,
+            )
+            assert declaration.documentation_start == 1
+            assert declaration.separated
+        facts = declaration.facts
+        assert facts.documentation.strip() == 'Details.'
+        assert facts.parameter_names == (() if kind == 'nominal' else ('value',))
+        assert facts.return_section == ('' if kind == 'nominal' else 'Returns')
+        assert not facts.raises
 
 
 class TestSourceInputFailures:
