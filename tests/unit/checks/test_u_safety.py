@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from popo.checks.safety import validate
-from popo.config.safety import SafetyConfig
+from popo.config.safety import SafetyConfig, SafetyException
 from tests.support.files import FileWriter
 
 # SECTION: FIXTURES
@@ -319,7 +319,7 @@ class TestWorkflowSafety:
             tmp_path,
             workflows=('ci.yml',),
             exceptions=(
-                (
+                SafetyException(
                     'ci.yml',
                     'pull_request_target',
                     'team',
@@ -356,7 +356,14 @@ class TestWorkflowSafety:
             tmp_path,
             workflows=('ci.yml',),
             exceptions=(
-                ('ci.yml', 'pull_request_target', 'team', 'review', 'owner', expiry),
+                SafetyException(
+                    'ci.yml',
+                    'pull_request_target',
+                    'team',
+                    'review',
+                    'owner',
+                    expiry,
+                ),
             ),
         )
         failures = validate(config, today=date(2026, 10, 7))
