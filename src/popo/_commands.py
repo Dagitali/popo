@@ -180,8 +180,8 @@ def _dependencies(
     UnicodeError
         If an input cannot be decoded as UTF-8.
     ValueError
-        If the shared configuration loader cannot express dependency metadata
-        relative to the consumer root, such as an absolute path outside it.
+        If the Python-policy loader cannot express dependency metadata relative
+        to the consumer root, such as an absolute path outside it.
     """
     config = load_config(args.root.resolve()).dependencies
     return dependencies.validate(config), 'dependency boundaries are synchronized'
@@ -292,11 +292,11 @@ def _logs(
     ), 'configured logs passed'
 
 
-def _python(
+def _python_policy(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
     """
-    Load Python policy and return failures with its success message.
+    Load Python policy and return findings with a success summary.
 
     Parameters
     ----------
@@ -318,8 +318,8 @@ def _python(
     UnicodeError
         If an input cannot be decoded as UTF-8.
     ValueError
-        If the shared configuration loader cannot express dependency metadata
-        relative to the consumer root, such as an absolute path outside it.
+        If the Python-policy loader cannot express dependency metadata relative
+        to the consumer root, such as an absolute path outside it.
     """
     config = load_python_policy_config(args.root.resolve())
     return python_policy.validate(config), 'Python policy is consistent'
@@ -328,7 +328,32 @@ def _python(
 def _python_source(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
-    """Dispatch explicitly configured, read-only Python source checks."""
+    """
+    Load Python source policy and return findings with a success summary.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments containing the consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Source-check findings and a summary to display only on success.
+
+    Raises
+    ------
+    ConfigurationError
+        The explicit python-source policy is missing or invalid.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded, or root resolution
+        fails. Inspected input errors are returned as findings by the checker.
+
+    Notes
+    -----
+    Dispatch the shared source-selection policy to the language-specific
+    validator. Consumer source and development tools are not executed.
+    """
     config = load_source_check(args.root, 'python-source')
     return python_source.validate(config), 'configured Python source checks passed'
 
@@ -396,7 +421,8 @@ def _safety(
 def _swift_policy(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
-    """Check Swift declarations with an optional explicit compiler observation.
+    """
+    Load Swift policy and return findings with a success summary.
 
     Parameters
     ----------
@@ -427,7 +453,32 @@ def _swift_policy(
 def _swift_source(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
-    """Dispatch explicitly configured, read-only Swift source checks."""
+    """
+    Load Swift source policy and return findings with a success summary.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments containing the consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Source-check findings and a summary to display only on success.
+
+    Raises
+    ------
+    ConfigurationError
+        The explicit swift-source policy is missing or invalid.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded, or root resolution
+        fails. Inspected input errors are returned as findings by the checker.
+
+    Notes
+    -----
+    Dispatch the shared source-selection policy to the language-specific
+    validator. Consumer source and development tools are not executed.
+    """
     config = load_source_check(args.root, 'swift-source')
     return swift_source.validate(config), 'configured Swift source checks passed'
 
@@ -452,7 +503,7 @@ NATIVE_HANDLERS: dict[str, Command] = {
     'check-automation-contracts': _automation,
     'check-repository-safety': _safety,
     'check-dependency-boundaries': _dependencies,
-    'check-python-policy': _python,
+    'check-python-policy': _python_policy,
     'check-release-changelog': _changelog,
 }
 
