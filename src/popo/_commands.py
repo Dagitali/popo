@@ -15,14 +15,18 @@ from .checks import (
     docs,
     files,
     guardrails,
+    logs,
     python_policy,
+    python_source,
     safety,
+    swift_documentation,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
 from .config.files import load_headers_config, load_required_files_config
 from .config.guardrails import load_guardrails_config
 from .config.safety import load_safety_config
+from .config.source_checks import load_source_check
 
 # SECTION: TYPE ALIASES
 
@@ -361,6 +365,27 @@ def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
     return files.validate_headers(config), 'configured file headers are valid'
 
 
+def _python_source(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Dispatch explicitly configured, read-only Python source checks."""
+    config = load_source_check(args.root, 'python-source')
+    return python_source.validate(config), 'configured Python conventions passed'
+
+
+def _swift_documentation(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Dispatch explicitly configured Swift documentation checks."""
+    config = load_source_check(args.root, 'swift-documentation')
+    return swift_documentation.validate(config), 'configured Swift documentation passed'
+
+
+def _logs(args: argparse.Namespace) -> tuple[list[str], str]:
+    """Dispatch explicit artifact inspection without revealing log contents."""
+    config = load_source_check(args.root, 'logs')
+    return logs.validate(
+        config,
+        getattr(args, 'log_root', None),
+    ), 'configured logs passed'
+
+
 # !SECTION
 
 
@@ -369,6 +394,9 @@ def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
 
 # Registry of native command handlers.
 NATIVE_HANDLERS: dict[str, Command] = {
+    'check-python-source': _python_source,
+    'check-swift-documentation': _swift_documentation,
+    'check-logs': _logs,
     'check-guardrail-parity': _guardrail_parity,
     'check-required-files': _required_files,
     'check-file-headers': _file_headers,
