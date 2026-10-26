@@ -160,6 +160,57 @@ class TestSourceConventions:
             f'{filename}:1: documentation line too long',
         ]
 
+    @pytest.mark.parametrize(
+        'python_text,swift_text,python_overview,swift_overview',
+        [
+            pytest.param('', '', False, False, id='empty'),
+            pytest.param(
+                '"""Overview."""\nvalue = 1',
+                '/// Overview.\nlet value = 1',
+                True,
+                True,
+                id='leading',
+            ),
+            pytest.param(
+                'value = 1\n"""Late documentation."""',
+                'let value = 1\n/// Late documentation.',
+                False,
+                False,
+                id='after-code',
+            ),
+            pytest.param(
+                'value = """Literal text."""',
+                'let value = "/// Literal text."',
+                False,
+                False,
+                id='literal-decoy',
+            ),
+            pytest.param(
+                'class C:\n    """Declaration documentation."""',
+                '/// Declaration documentation.\nstruct C {}',
+                False,
+                True,
+                id='declaration-documentation',
+            ),
+        ],
+    )
+    def test_file_overview_conventions(
+        self: Self,
+        source_case: SourceCase,
+        python_text: str,
+        swift_text: str,
+        python_overview: bool,
+        swift_overview: bool,
+    ) -> None:
+        """Preserve each language's leading file-documentation convention."""
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            parsed = _python_declarations.parse(python_text)
+            assert parsed.has_overview is python_overview
+        else:
+            parsed = _swift_declarations.parse(swift_text)
+            assert parsed.has_overview is swift_overview
+
     def test_nested_callable_discovery_remains_language_specific(
         self: Self,
         source_case: SourceCase,
