@@ -49,6 +49,7 @@ flowchart LR
 | Native commands | `src/popo/_commands.py` | Adapt offline checks and share their handler registry between individual and aggregate dispatch |
 | Configuration | `src/popo/config/` | Load consumer settings and domain-specific defaults |
 | Validators | `src/popo/checks/` | Inspect files and return findings |
+| Source and artifact inputs | `src/popo/checks/_source_inputs.py` | Confine opt-in source/log discovery, deduplicate inputs and redact read failures |
 | Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
 | Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report text results |
 | Native reporting | `src/popo/reporting.py` | Preserve check identities and emit aggregate text or versioned JSON |

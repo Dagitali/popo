@@ -76,6 +76,8 @@ configured; see the [release policy].
 
 ## Features
 
+- Opt-in Python source conventions, Swift documentation and redacted log checks; see [source and log
+  checks](docs/source-and-log-checks.md) for unreleased scope and configuration;
 - Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];
 - Local Markdown inline links/images, reference definitions, and heading or explicit HTML anchors,
   with undefined full/collapsed labels and conflicting definitions rejected. Fenced/inline code

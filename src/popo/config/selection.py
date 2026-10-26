@@ -21,6 +21,9 @@ BASELINE = (
     'check-python-policy',
 )
 OPTIONAL = {
+    'python-source': 'check-python-source',
+    'swift-documentation': 'check-swift-documentation',
+    'logs': 'check-logs',
     'automation': 'check-automation-contracts',
     'safety': 'check-repository-safety',
     'files': 'check-required-files',

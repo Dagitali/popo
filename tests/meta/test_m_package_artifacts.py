@@ -81,6 +81,16 @@ class TestPackageArtifacts:
                 'dependencies.py',
                 'python_policy.py',
                 'automation.py',
+                'source_checks.py',
+            )
+        } <= names
+        assert {
+            f'{prefix}checks/{filename}'
+            for filename in (
+                '_source_inputs.py',
+                'python_source.py',
+                'swift_documentation.py',
+                'logs.py',
             )
         } <= names
         assert f'{prefix}config.py' not in names
