@@ -182,6 +182,11 @@ def create_parser() -> argparse.ArgumentParser:
             subparser.set_defaults(handler=handler)
         parsers[name] = subparser
 
+    parsers['check-logs'].add_argument(
+        '--log-root',
+        type=Path,
+        help='Explicit root of exported logs',
+    )
     parsers['check-github-actions-pins'].add_argument(
         '--automation-directory',
         type=Path,
