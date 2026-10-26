@@ -232,6 +232,8 @@ class TestSourceInventory:
             b'id blob 9\nx\n',
             b'id blob 1\nx\nextra',
             b'',
+            b'id blob PRIVATE\nx\n',
+            b'id blob 1 PRIVATE\nx\n',
         ],
     )
     def test_malformed_batch_data_fails(
@@ -260,8 +262,9 @@ class TestSourceInventory:
                 blob,
             ],
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError) as raised:
                 inventory.collect(tmp_path, 'HEAD')
+        assert 'PRIVATE' not in str(raised.value)
 
     def test_replacements_are_ignored(
         self,
