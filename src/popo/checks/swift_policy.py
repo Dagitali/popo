@@ -35,6 +35,68 @@ def _read(
         return None, [f'{relative}: cannot read Swift policy input']
 
 
+def _local_observations(
+    config: SwiftPolicyConfig,
+) -> tuple[list[VersionObservation], list[str]]:
+    """Read local selections and the first-line manifest minimum, not code."""
+    observations: list[VersionObservation] = []
+    failures: list[str] = []
+    for path, kind in ((config.version_file, 'preferred'), (config.manifest, 'tools')):
+        text, errors = _read(path, config.root)
+        failures.extend(errors)
+        if text is None:
+            continue
+        if kind == 'tools':
+            header = TOOLS_HEADER_PATTERN.fullmatch(
+                text.splitlines()[0] if text else '',
+            )
+            if header is None:
+                failures.append(
+                    f'{path.relative_to(config.root).as_posix()}: '
+                    'missing literal first-line tools version',
+                )
+                continue
+            text = header[1]
+        observations.append(
+            VersionObservation(path, 'local declaration', text.strip(), kind),
+        )
+    return observations, failures
+
+
+def _workflow_observations(
+    config: SwiftPolicyConfig,
+) -> tuple[list[VersionObservation], list[str]]:
+    """Discover confined workflows and collect scoped compiler declarations."""
+    failures: list[str] = []
+    paths: set[Path] = set()
+    for pattern in config.workflow_globs:
+        try:
+            matches = [path for path in config.root.glob(pattern) if path.is_file()]
+            if not matches:
+                failures.append(f'no Swift policy workflows match: {pattern}')
+            paths.update(matches)
+        except (OSError, ValueError):
+            failures.append('cannot discover Swift policy workflows')
+    ci: list[VersionObservation] = []
+    for path in sorted(paths):
+        try:
+            if not path.resolve().is_relative_to(config.root):
+                failures.append(
+                    f'{path.relative_to(config.root).as_posix()}: '
+                    'workflow escapes repository root',
+                )
+                continue
+        except (OSError, ValueError):
+            failures.append('cannot resolve Swift policy workflow')
+            continue
+        values, errors = workflow_observations(path, config.workflow_version_key)
+        ci.extend(values)
+        failures.extend(
+            f'{path.relative_to(config.root).as_posix()}: {error}' for error in errors
+        )
+    return ci, failures
+
+
 # !SECTION
 
 
@@ -74,53 +136,9 @@ def validate(
     Language modes, deployment targets and dependency resolution are outside
     this check. Explicit observed compilers need membership, not preference.
     """
-    failures: list[str] = []
-    observations: list[VersionObservation] = []
-    for path, kind in ((config.version_file, 'preferred'), (config.manifest, 'tools')):
-        text, errors = _read(path, config.root)
-        failures.extend(errors)
-        if text is None:
-            continue
-        if kind == 'tools':
-            header = TOOLS_HEADER_PATTERN.fullmatch(
-                text.splitlines()[0] if text else '',
-            )
-            if header is None:
-                failures.append(
-                    f'{path.relative_to(config.root).as_posix()}: '
-                    'missing literal first-line tools version',
-                )
-                continue
-            text = header[1]
-        observations.append(
-            VersionObservation(path, 'local declaration', text.strip(), kind),
-        )
-    paths: set[Path] = set()
-    for pattern in config.workflow_globs:
-        try:
-            matches = [path for path in config.root.glob(pattern) if path.is_file()]
-            if not matches:
-                failures.append(f'no Swift policy workflows match: {pattern}')
-            paths.update(matches)
-        except (OSError, ValueError):
-            failures.append('cannot discover Swift policy workflows')
-    ci: list[VersionObservation] = []
-    for path in sorted(paths):
-        try:
-            if not path.resolve().is_relative_to(config.root):
-                failures.append(
-                    f'{path.relative_to(config.root).as_posix()}: '
-                    'workflow escapes repository root',
-                )
-                continue
-        except (OSError, ValueError):
-            failures.append('cannot resolve Swift policy workflow')
-            continue
-        values, errors = workflow_observations(path, config.workflow_version_key)
-        ci.extend(values)
-        failures.extend(
-            f'{path.relative_to(config.root).as_posix()}: {error}' for error in errors
-        )
+    observations, failures = _local_observations(config)
+    ci, errors = _workflow_observations(config)
+    failures.extend(errors)
     observations.extend(ci)
     if compiler_version is not None:
         observations.append(
@@ -129,6 +147,7 @@ def validate(
     allowed = {parse_version(value) for value in config.compiler_versions}
     preferred = parse_version(config.preferred_version)
     expected = {'preferred': preferred, 'tools': parse_version(config.tools_version)}
+    ci_sources = {item.source for item in ci}
     ci_versions: set[tuple[int, int, int]] = set()
     for item in observations:
         label = (
@@ -141,7 +160,7 @@ def validate(
         except ValueError:
             failures.append(f'{label}: invalid stable Swift version')
             continue
-        if item in ci:
+        if item.kind == 'compiler' and item.source in ci_sources:
             ci_versions.add(version)
         if item.kind == 'compiler' and version not in allowed:
             failures.append(f'{label}: compiler version is not supported by policy')

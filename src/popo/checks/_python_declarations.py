@@ -119,7 +119,10 @@ def _callable(
     names = [arg.arg for arg in parameters]
     if positional and positional[0].arg in {'self', 'cls'}:
         names.remove(positional[0].arg)
-    annotation = ast.unparse(node.returns) if node.returns is not None else ''
+    result_type = node.returns
+    annotation = ast.unparse(result_type) if result_type is not None else ''
+    if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
+        annotation = result_type.value
     returns = annotation not in NONVALUE_RETURN_TYPES
     yields = raises = False
     for item in _body(node):
@@ -179,6 +182,7 @@ def parse(
     Positional-only, keyword-only, async and variadic signatures are included.
     Nested functions and classes receive their own records. Their bodies do
     not contribute return/yield/raise requirements to the enclosing function.
+    Quoted non-value return annotations use the same rules as unquoted ones.
     Explicit raises include locally caught ones; indirect exceptions and escape
     analysis are not inferred. Type annotations are observed, not validated.
     """

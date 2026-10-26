@@ -32,9 +32,13 @@ def validate(
     -------
     list[str]
         Redacted findings. Missing inputs and unreadable or non-UTF-8 logs
-        fail rather than establishing success without evidence.
+        fail rather than establishing success without evidence. Root resolution
+        errors also become redacted diagnostics.
     """
-    boundary = (root or config.root).resolve()
+    try:
+        boundary = (root or config.root).resolve()
+    except (OSError, ValueError):
+        return ['cannot resolve selected input root']
     paths, failures = discover(config, boundary)
     patterns = require_table(config.settings['patterns'], name='logs.patterns')
     for path in paths:

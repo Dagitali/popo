@@ -38,6 +38,7 @@ def limits(
         Relative locations and rule descriptions without source excerpts.
     """
     relative = path.relative_to(config.root).as_posix()
+    width = int(str(config.settings['documentation-width']))
     failures = (
         [f'{relative}: file exceeds configured line limit']
         if len(lines) > int(str(config.settings['max-file-lines']))
@@ -46,7 +47,7 @@ def limits(
     failures.extend(
         f'{relative}:{number}: documentation line too long'
         for number in sorted(set(documentation))
-        if len(lines[number - 1]) > int(str(config.settings['documentation-width']))
+        if len(lines[number - 1]) > width
     )
     return failures
 
