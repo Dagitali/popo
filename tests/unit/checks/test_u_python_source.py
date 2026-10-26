@@ -4,13 +4,14 @@
 Exercise Python source policy and language-specific findings.
 """
 
+import ast
 from pathlib import Path
 from textwrap import dedent
 from typing import Self
 
 import pytest
 
-from popo.checks import python_source
+from popo.checks import _python_declarations, python_source
 from popo.config import ConfigurationError
 from popo.config.source_checks import load_source_check
 from tests.support.files import FileWriter
@@ -134,6 +135,34 @@ class TestPythonDocumentation:
         assert findings == (
             ['sample.py:1: return documentation missing'] if body == 'return 1' else []
         )
+
+    @pytest.mark.parametrize(
+        'body,return_section,raises',
+        [
+            ('return 1', 'Returns', False),
+            ('yield 1', 'Yields', False),
+            ('raise ValueError()', '', True),
+        ],
+    )
+    def test_signature_facts_exclude_body_requirements(
+        self: Self,
+        body: str,
+        return_section: str,
+        raises: bool,
+    ) -> None:
+        """
+        Keep native signature annotations separate from explicit body facts.
+        """
+        source = f'def f(value: int) -> None:\n    {body}\n'
+        syntax = ast.parse(source).body[0]
+        assert isinstance(syntax, ast.FunctionDef)
+        signature = _python_declarations._signature(syntax)
+        assert signature.parameter_names == ('value',)
+        assert signature.annotated
+        assert not signature.returns
+        facts = _python_declarations._declaration(syntax).facts
+        assert facts.return_section == return_section
+        assert facts.raises is raises
 
 
 class TestPythonSource:
