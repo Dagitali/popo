@@ -5,6 +5,7 @@ Exercise opt-in source and artifact commands through the public dispatcher.
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Self
 
@@ -33,8 +34,8 @@ class TestSourceCommands:
             ('check-logs', 'logs', 'console.log', 'Clean startup'),
         ),
     )
-    @pytest.mark.parametrize('selection', ['individual', 'profile', 'explicit'])
-    def test_individual_and_profile_dispatch(
+    @pytest.mark.parametrize('present', [True, False], ids=['present', 'missing'])
+    def test_selected_dispatch_preserves_inputs(
         self: Self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
@@ -42,49 +43,36 @@ class TestSourceCommands:
         domain: str,
         filename: str,
         source: str,
-        selection: str,
+        select_check: Callable[[Path, str], tuple[str, ...]],
+        present: bool,
         cli_format: str | None,
         format_arguments: tuple[str, ...],
     ) -> None:
         extra = '\npatterns = { failure = "FORBIDDEN" }' if domain == 'logs' else ''
         (tmp_path / 'popo.toml').write_text(
-            f'[profiles.selected]\nchecks = ["{command}"]\n'
             f'[{domain}]\ninclude = ["{filename}"]{extra}',
         )
-        (tmp_path / filename).write_text(source)
+        if present:
+            (tmp_path / filename).write_text(source, encoding='utf-8')
         assert command in load_plan(tmp_path).checks
-        if selection == 'explicit':
-            policy = tmp_path / 'popo.toml'
-            policy.write_text(
-                f'checks=["{command}"]\n' + policy.read_text(),
-                encoding='utf-8',
-            )
-        arguments = (
-            [command]
-            if selection == 'individual'
-            else ['check-all', '--profile', 'selected']
-            if selection == 'profile'
-            else ['check-all']
-        )
+        arguments = select_check(tmp_path, command)
         before = snapshot_files(tmp_path)
-        assert main([*arguments, '--root', str(tmp_path), *format_arguments]) == 0
+        assert main([*arguments, '--root', str(tmp_path), *format_arguments]) == (
+            0 if present else 1
+        )
         output = capsys.readouterr()
         assert output.err == ''
         if cli_format == 'json':
             report = json.loads(output.out)
-            assert report['passed']
-            assert report['checks'][0]['check'] == command
+            assert report['passed'] is present
+            assert [item['check'] for item in report['checks']] == [command]
+            if not present:
+                assert report['checks'][0]['diagnostics'][0]['message'] == (
+                    f'no inputs match: {filename}'
+                )
         else:
-            assert output.out.startswith('PASS: ')
+            assert output.out.startswith('PASS: ' if present else 'FAIL: ')
         assert snapshot_files(tmp_path) == before
-        (tmp_path / filename).unlink()
-        assert main([*arguments, '--root', str(tmp_path), *format_arguments]) == 1
-        output = capsys.readouterr()
-        assert output.err == ''
-        if cli_format == 'json':
-            assert not json.loads(output.out)['passed']
-        else:
-            assert 'FAIL:' in output.out
 
     @pytest.mark.parametrize(
         'command',

@@ -1,6 +1,7 @@
 """Exercise Swift toolchain policy through native CLI selection and reports."""
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -12,36 +13,20 @@ from tests.support.files import snapshot_files
 
 
 class TestSwiftPolicyCommands:
-    """Keep the explicit Swift policy independent of Python project metadata."""
+    """
+    Keep the explicit Swift policy independent of Python project metadata.
+    """
 
-    @pytest.mark.parametrize('selection', ['individual', 'explicit', 'profile'])
     def test_public_dispatch(
         self,
         swift_policy_consumer: Path,
         capsys: pytest.CaptureFixture[str],
         cli_format: str | None,
         format_arguments: tuple[str, ...],
-        selection: str,
+        select_check: Callable[[Path, str], tuple[str, ...]],
     ) -> None:
         root = swift_policy_consumer
-        path = root / 'popo.toml'
-        if selection == 'explicit':
-            path.write_text(
-                'checks=["check-swift-policy"]\n' + path.read_text(),
-                encoding='utf-8',
-            )
-        elif selection == 'profile':
-            path.write_text(
-                '[profiles.swift]\nchecks=["check-swift-policy"]\n' + path.read_text(),
-                encoding='utf-8',
-            )
-        arguments = (
-            ['check-swift-policy']
-            if selection == 'individual'
-            else ['check-all']
-            if selection == 'explicit'
-            else ['check-all', '--profile', 'swift']
-        )
+        arguments = select_check(root, 'check-swift-policy')
         before = snapshot_files(root)
         assert main([*arguments, '--root', str(root), *format_arguments]) == 0
         output = capsys.readouterr()
@@ -49,7 +34,9 @@ class TestSwiftPolicyCommands:
         if cli_format == 'json':
             report = json.loads(output.out)
             assert report['passed']
-            assert report['checks'][0]['check'] == 'check-swift-policy'
+            assert [item['check'] for item in report['checks']] == [
+                'check-swift-policy',
+            ]
         else:
             assert output.out.startswith('PASS:')
         assert snapshot_files(root) == before
