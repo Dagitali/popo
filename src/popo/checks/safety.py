@@ -169,7 +169,7 @@ def validate(
     day = today or datetime.now(UTC).date()
     paths, failures = _workflow_paths(config)
     used: set[tuple[str, str]] = set()
-    exceptions = {(entry[0], entry[1]): entry for entry in config.exceptions}
+    exceptions = {(entry.workflow, entry.trigger): entry for entry in config.exceptions}
     for candidate in paths:
         relative = candidate.relative_to(config.root).as_posix()
         try:
@@ -196,7 +196,7 @@ def validate(
                     failures.append(
                         f'{relative}: privileged trigger {trigger} needs exception',
                     )
-                elif exception[-1] < day:
+                elif exception.expires < day:
                     failures.append(f'{relative}: expired {trigger} exception')
             if privileged and _head_checkout(document):
                 failures.append(f'{relative}: privileged checkout of pull-request head')
@@ -214,7 +214,7 @@ def validate(
         if scope in used:
             continue
         failures.append(f'{scope[0]}: unused {scope[1]} exception')
-        if entry[-1] < day:
+        if entry.expires < day:
             failures.append(f'{scope[0]}: expired {scope[1]} exception')
     for manifest, lockfile in config.npm_pairs:
         try:
