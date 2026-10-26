@@ -1,4 +1,8 @@
-"""Interpret DocC documentation separately from Swift syntax."""
+"""
+:mod:`popo.checks._swift_documentation` module.
+
+Interpret DocC documentation separately from Swift syntax.
+"""
 
 import re
 

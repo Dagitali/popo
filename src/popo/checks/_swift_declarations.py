@@ -1,4 +1,8 @@
-"""Extract bounded Swift declaration syntax without compiling consumer code."""
+"""
+:mod:`popo.checks._swift_declarations` module.
+
+Extract bounded Swift declaration syntax without compiling consumer code.
+"""
 
 import re
 from collections.abc import Iterator

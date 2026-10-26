@@ -1,4 +1,8 @@
-"""Extract Python declaration facts once through the standard-library AST."""
+"""
+:mod:`popo.checks._python_declarations` module.
+
+Extract Python declaration facts once through the standard-library AST.
+"""
 
 import ast
 from collections.abc import Iterator

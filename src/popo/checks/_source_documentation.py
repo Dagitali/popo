@@ -1,4 +1,8 @@
-"""Share source-size, documentation-width and guide checks across languages."""
+"""
+:mod:`popo.checks._source_documentation` module.
+
+Share source-size, documentation-width and guide checks across languages.
+"""
 
 import re
 from collections.abc import Iterable

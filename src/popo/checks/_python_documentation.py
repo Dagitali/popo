@@ -1,4 +1,8 @@
-"""Interpret NumPy documentation separately from Python syntax."""
+"""
+:mod:`popo.checks._python_documentation` module.
+
+Interpret NumPy documentation separately from Python syntax.
+"""
 
 import re
 

@@ -1,4 +1,8 @@
-"""Inspect literal guardrail entry points without executing consumer code."""
+"""
+:mod:`popo.checks.guardrails` module.
+
+Inspect literal guardrail entry points without executing consumer code.
+"""
 
 from pathlib import Path
 from typing import cast

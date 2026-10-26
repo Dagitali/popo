@@ -1,4 +1,8 @@
-"""Store the declaration facts shared by source-policy frontends."""
+"""
+:mod:`popo.checks._source_declarations` module.
+
+Store the declaration facts shared by source-policy front ends.
+"""
 
 from dataclasses import dataclass
 

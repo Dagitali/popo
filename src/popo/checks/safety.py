@@ -1,6 +1,10 @@
 # safety.py
 # Bounded static checks, not a workflow sandbox or full npm lock validator.
-"""Validate privileged-trigger policy and npm root metadata offline."""
+"""
+:mod:`popo.checks.safety` module.
+
+Validate privileged-trigger policy and npm root metadata offline.
+"""
 
 import json
 import re

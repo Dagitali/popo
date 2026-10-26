@@ -1,6 +1,10 @@
 # safety.py
 # Read-only consumer safety policy; never execute workflow or package commands.
-"""Load opt-in workflow and npm manifest consistency policy."""
+"""
+:mod:`popo.config.safety` module.
+
+Load opt-in workflow and npm manifest consistency policy.
+"""
 
 from dataclasses import dataclass
 from datetime import date

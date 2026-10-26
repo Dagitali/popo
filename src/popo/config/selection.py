@@ -1,4 +1,8 @@
-"""Select offline repository checks without assuming a consumer language."""
+"""
+:mod:`popo.config.selection` module.
+
+Select offline repository checks without assuming a consumer language.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path

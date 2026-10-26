@@ -1,4 +1,8 @@
-"""Load an explicit Make, pre-commit and workflow invocation contract."""
+"""
+:mod:`popo.config.guardrails` module.
+
+Load an explicit Make, pre-commit and workflow invocation contract.
+"""
 
 import re
 from dataclasses import dataclass

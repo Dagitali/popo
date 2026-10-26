@@ -1,4 +1,7 @@
-"""Audit GitHub settings through GET requests, never policy-file inference.
+"""
+:mod:`popo.checks.hosted` module.
+
+Audit GitHub settings through GET requests, never policy-file inference.
 
 Maintainer Notes
 ----------------

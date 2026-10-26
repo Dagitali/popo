@@ -1,4 +1,8 @@
-"""Compare Swift toolchain declarations without invoking Swift or manifests."""
+"""
+:mod:`popo.checks.swift_policy` module.
+
+Compare Swift toolchain declarations without invoking Swift or manifests.
+"""
 
 import re
 from pathlib import Path

@@ -8,7 +8,11 @@
 # - Never execute workflow commands or change consumer source files.
 # - Preserve validator diagnostics and exit statuses, including tool failures.
 
-"""Adapt self-repository references for actionlint without hiding errors."""
+"""
+:mod:`popo.checks.actionlint` module.
+
+Adapt self-repository references for actionlint without hiding errors.
+"""
 
 import json
 import re

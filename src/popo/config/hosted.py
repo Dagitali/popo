@@ -1,4 +1,7 @@
-"""Load explicit hosted audit policy without contacting GitHub.
+"""
+:mod:`popo.config.hosted` module.
+
+Load explicit hosted audit policy without contacting GitHub.
 
 Maintainer Notes
 ----------------

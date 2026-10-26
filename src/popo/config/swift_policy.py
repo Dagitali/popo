@@ -1,4 +1,8 @@
-"""Load explicit Swift compiler policy independently of Python metadata."""
+"""
+:mod:`popo.config.swift_policy` module.
+
+Load explicit Swift compiler policy independently of Python metadata.
+"""
 
 import re
 from dataclasses import dataclass

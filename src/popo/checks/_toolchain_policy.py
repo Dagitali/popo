@@ -1,4 +1,8 @@
-"""Observe scoped workflow toolchain declarations without execution."""
+"""
+:mod:`popo.checks._toolchain_policy` module.
+
+Observe scoped workflow toolchain declarations without execution.
+"""
 
 import re
 from dataclasses import dataclass
