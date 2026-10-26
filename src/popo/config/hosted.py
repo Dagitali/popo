@@ -20,6 +20,36 @@ from ._common import ConfigurationError, read_popo, read_strings, require_table
 
 
 @dataclass(frozen=True)
+class ExceptionPolicy:
+    """
+    Hold a scoped approval attestation for an expiring deviation.
+
+    Attributes
+    ----------
+    repository, check : str
+        Exact repository and expected-check identifiers covered by approval.
+    owner, reason : str
+        Responsible maintainer and explanation of the deviation.
+    approved_by, approval : str
+        Approver and HTTPS evidence URL; authenticity requires human review.
+    expires : datetime.date
+        Inclusive expiry date, compared against the UTC calendar date.
+
+    Notes
+    -----
+    Direct construction does not validate or authenticate the attestation.
+    """
+
+    repository: str
+    check: str
+    owner: str
+    reason: str
+    approved_by: str
+    approval: str
+    expires: date
+
+
+@dataclass(frozen=True)
 class RepositoryPolicy:
     """
     Hold explicit expectations for one GitHub repository.
@@ -49,36 +79,6 @@ class RepositoryPolicy:
     labels: tuple[str, ...]
     codeowners: bool
     branches: dict[str, tuple[str, ...]]
-
-
-@dataclass(frozen=True)
-class ExceptionPolicy:
-    """
-    Hold a scoped approval attestation for an expiring deviation.
-
-    Attributes
-    ----------
-    repository, check : str
-        Exact repository and expected-check identifiers covered by approval.
-    owner, reason : str
-        Responsible maintainer and explanation of the deviation.
-    approved_by, approval : str
-        Approver and HTTPS evidence URL; authenticity requires human review.
-    expires : datetime.date
-        Inclusive expiry date, compared against the UTC calendar date.
-
-    Notes
-    -----
-    Direct construction does not validate or authenticate the attestation.
-    """
-
-    repository: str
-    check: str
-    owner: str
-    reason: str
-    approved_by: str
-    approval: str
-    expires: date
 
 
 @dataclass(frozen=True)

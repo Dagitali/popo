@@ -38,33 +38,6 @@ class Finding:
 
 
 @dataclass(frozen=True)
-class Response:
-    """
-    Represent API data or a failure returned by the read-only adapter.
-
-    Attributes
-    ----------
-    data : typing.Any
-        Parsed successful response, or recognized absence evidence on failure.
-        Defaults to None; data is retained without copying or sanitizing it.
-    error : str
-        Adapter-provided failure description; empty for successful responses.
-    status : int or None
-        HTTP status extracted from a failed CLI response, when available.
-
-    Notes
-    -----
-    Direct construction performs no validation or credential redaction. The
-    default adapter supplies sanitized failure text, and audit findings select
-    narrow observations rather than serializing this response in full.
-    """
-
-    data: Any = None
-    error: str = ''
-    status: int | None = None
-
-
-@dataclass(frozen=True)
 class Audit:
     """Record a timestamped audit, not an enforcement or delivery guarantee."""
 
@@ -92,6 +65,33 @@ class Audit:
         caller-constructed findings.
         """
         return json.dumps(asdict(self), indent=2)
+
+
+@dataclass(frozen=True)
+class Response:
+    """
+    Represent API data or a failure returned by the read-only adapter.
+
+    Attributes
+    ----------
+    data : typing.Any
+        Parsed successful response, or recognized absence evidence on failure.
+        Defaults to None; data is retained without copying or sanitizing it.
+    error : str
+        Adapter-provided failure description; empty for successful responses.
+    status : int or None
+        HTTP status extracted from a failed CLI response, when available.
+
+    Notes
+    -----
+    Direct construction performs no validation or credential redaction. The
+    default adapter supplies sanitized failure text, and audit findings select
+    narrow observations rather than serializing this response in full.
+    """
+
+    data: Any = None
+    error: str = ''
+    status: int | None = None
 
 
 type Fetcher = Callable[[str, bool], Response]

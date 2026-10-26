@@ -20,24 +20,24 @@ from ._common import (
 
 
 @dataclass(frozen=True, slots=True)
-class RequiredFilesConfig:
+class HeaderException:
     """
-    Store a consumer root and exact required relative filenames.
+    Preserve matched files without reading contents, with a stated reason.
 
     Attributes
     ----------
-    root : pathlib.Path
-        Consumer boundary, resolved by the configuration loader.
-    required : tuple[str, ...]
-        Exact root-relative POSIX filenames, without glob expansion.
+    patterns : tuple[str, ...]
+        Case-sensitive root-relative preservation patterns.
+    reason : str
+        Consumer explanation for preserving matching files.
 
     Notes
     -----
-    Direct construction does not validate paths or inspect files.
+    Exceptions do not bypass path-containment checks.
     """
 
-    root: Path
-    required: tuple[str, ...]
+    patterns: tuple[str, ...]
+    reason: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,27 +85,6 @@ class HeaderRule:
 
 
 @dataclass(frozen=True, slots=True)
-class HeaderException:
-    """
-    Preserve matched files without reading contents, with a stated reason.
-
-    Attributes
-    ----------
-    patterns : tuple[str, ...]
-        Case-sensitive root-relative preservation patterns.
-    reason : str
-        Consumer explanation for preserving matching files.
-
-    Notes
-    -----
-    Exceptions do not bypass path-containment checks.
-    """
-
-    patterns: tuple[str, ...]
-    reason: str
-
-
-@dataclass(frozen=True, slots=True)
 class HeadersConfig:
     """
     Store consumer identity, ordered rules and explicit preservation policy.
@@ -134,6 +113,27 @@ class HeadersConfig:
     rules: tuple[HeaderRule, ...]
     exceptions: tuple[HeaderException, ...]
     ignored_directories: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RequiredFilesConfig:
+    """
+    Store a consumer root and exact required relative filenames.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Consumer boundary, resolved by the configuration loader.
+    required : tuple[str, ...]
+        Exact root-relative POSIX filenames, without glob expansion.
+
+    Notes
+    -----
+    Direct construction does not validate paths or inspect files.
+    """
+
+    root: Path
+    required: tuple[str, ...]
 
 
 # !SECTION
