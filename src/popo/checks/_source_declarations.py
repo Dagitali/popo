@@ -10,6 +10,32 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
+class CallableRequirements:
+    """
+    Describe derived return and exception documentation requirements.
+
+    Attributes
+    ----------
+    return_section : str
+        Required conceptual section: Returns, Yields, or empty when unneeded.
+        Documentation interpreters map this to the language's notation.
+    raises : bool
+        Whether explicit raise or throws/rethrows syntax requires coverage.
+        This does not establish exception escape behavior.
+
+    Notes
+    -----
+    Language-specific collectors decide how annotations, bodies or signatures
+    contribute these requirements. Parameter documentation remains represented
+    separately by DeclarationFacts.parameter_names. The record performs no
+    validation, code execution or type resolution.
+    """
+
+    return_section: str = ''
+    raises: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class DeclarationFacts:
     """
     Describe syntax-derived documentation and signature requirements.

@@ -8,7 +8,11 @@ import ast
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
-from ._source_declarations import DeclarationFacts, SourceFacts
+from ._source_declarations import (
+    CallableRequirements,
+    DeclarationFacts,
+    SourceFacts,
+)
 
 # SECTION: TYPE ALIASES
 
@@ -62,7 +66,7 @@ class _Signature:
         Whether parameter/default spans satisfy the physical-layout rule.
     returns : bool
         Whether the return annotation alone requires a Returns section.
-        Explicit value returns or yields can add requirements in _declaration.
+        Explicit value returns or yields can add requirements in _requirements.
     annotated : bool
         Whether every parameter, including receivers, and the return have
         annotations. Annotation contents are observed, not resolved.
@@ -168,9 +172,9 @@ def _declaration(
     Notes
     -----
     Signature observations come from _signature using native AST arguments.
-    Body analysis excludes nested definitions; explicit raises include locally
-    caught ones.
-    Type annotations are observed, not resolved or validated.
+    _requirements combines them with body facts while excluding nested scopes;
+    explicit raises include locally caught ones. Type annotations are observed,
+    not resolved or validated.
     """
     if isinstance(syntax, ast.ClassDef):
         methods = tuple(
@@ -190,25 +194,15 @@ def _declaration(
             instance_methods=methods,
         )
     signature = _signature(syntax)
-    returns = signature.returns
-    yields = raises = False
-    for item in _body(syntax):
-        if isinstance(item, (ast.Yield, ast.YieldFrom)):
-            yields = True
-        elif isinstance(item, ast.Raise):
-            raises = True
-        elif isinstance(item, ast.Return):
-            returns |= item.value is not None and not (
-                isinstance(item.value, ast.Constant) and item.value.value is None
-            )
+    requirements = _requirements(syntax, signature)
     return Declaration(
         DeclarationFacts(
             syntax.lineno,
             'function',
             ast.get_docstring(syntax) or '',
             signature.parameter_names,
-            'Yields' if yields else 'Returns' if returns else '',
-            raises,
+            requirements.return_section,
+            requirements.raises,
             signature.parameter_lines,
         ),
         signature.annotated,
@@ -364,6 +358,51 @@ def _parameters(
     ]
 
 
+def _requirements(
+    node: _CallableSyntax,
+    signature: _Signature,
+) -> CallableRequirements:
+    """
+    Derive callable return and exception documentation requirements.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Function or async-function node supplying explicit body observations.
+    signature : _Signature
+        Previously collected native-AST signature observations.
+
+    Returns
+    -------
+    CallableRequirements
+        Yields for generators, otherwise Returns for a value-bearing annotation
+        or explicit value return, and raise coverage for explicit statements.
+        None-valued returns alone do not require a section. Nested scopes do
+        not contribute; locally caught raises still require documentation.
+
+    Notes
+    -----
+    Python combines annotations with AST body observations. Swift instead
+    derives these requirements from bounded signatures; neither approach
+    resolves types, executes code or proves exception escape behavior.
+    """
+    returns = signature.returns
+    yields = raises = False
+    for item in _body(node):
+        if isinstance(item, (ast.Yield, ast.YieldFrom)):
+            yields = True
+        elif isinstance(item, ast.Raise):
+            raises = True
+        elif isinstance(item, ast.Return):
+            returns |= item.value is not None and not (
+                isinstance(item.value, ast.Constant) and item.value.value is None
+            )
+    return CallableRequirements(
+        'Yields' if yields else 'Returns' if returns else '',
+        raises,
+    )
+
+
 def _signature(
     node: _CallableSyntax,
 ) -> _Signature:
@@ -385,8 +424,9 @@ def _signature(
     Notes
     -----
     Quoted non-value return annotations follow the same rules as unquoted
-    forms. Body-derived return/yield/raise requirements belong to _declaration,
-    which uses _body to exclude nested scopes. No consumer code executes.
+    forms. Body-derived return/yield/raise requirements come from
+    _requirements, which uses _body to exclude nested scopes. No consumer code
+    executes.
     """
     args = node.args
     positional = [*args.posonlyargs, *args.args]

@@ -8,7 +8,11 @@ import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
-from ._source_declarations import DeclarationFacts, SourceFacts
+from ._source_declarations import (
+    CallableRequirements,
+    DeclarationFacts,
+    SourceFacts,
+)
 
 # SECTION: CONSTANTS
 
@@ -61,16 +65,18 @@ class _DeclarationSyntax:
         Recognized declaration keyword; operator functions are unsupported.
     parameter_names : tuple[str, ...] or None
         Internal argument names, or None when a signature is unsupported.
-    returns, raises, parameter_lines : bool
-        Non-Void result, throws/rethrows syntax, and separate-line parameters.
+    requirements : CallableRequirements
+        Return and exception documentation requirements from bounded signature
+        text; bodies are not analyzed and types are not resolved.
+    parameter_lines : bool
+        Whether parameter/default spans satisfy the physical-layout rule.
     """
 
     line: int
     attachment_start: int
     kind: str
     parameter_names: tuple[str, ...] | None = ()
-    returns: bool = False
-    raises: bool = False
+    requirements: CallableRequirements = CallableRequirements()
     parameter_lines: bool = True
 
 
@@ -189,8 +195,8 @@ def _declaration(
 
     Notes
     -----
-    Bounded signature facts were collected lexically. Unlike Python's AST body
-    analysis, Swift return and raise requirements come from signature syntax;
+    Bounded signature facts and _requirements were collected lexically.
+    Swift return and raise requirements come from signature syntax;
     declaration conversion neither compiles code nor infers body semantics.
     """
     start = syntax.attachment_start
@@ -204,8 +210,8 @@ def _declaration(
         syntax.kind,
         doc,
         syntax.parameter_names,
-        'Returns' if syntax.returns else '',
-        syntax.raises,
+        syntax.requirements.return_section,
+        syntax.requirements.raises,
         syntax.parameter_lines,
     )
     return Declaration(facts, start + 1, not start or not lines[start - 1].strip())
@@ -266,19 +272,12 @@ def _declaration_syntax(
                     parameters = None
             if body >= 0 and (kind in NOMINAL_KINDS or kind in CALLABLE_KINDS):
                 owners[body] = 'nominal' if kind in NOMINAL_KINDS else 'callable'
-            result = RETURN_PATTERN.search(tail)
-            returns = (
-                (kind == 'func' or kind == 'subscript')
-                and result is not None
-                and result[1].strip() not in NONVALUE_RETURN_TYPES
-            )
             yield _DeclarationSyntax(
                 index + 1,
                 start,
                 kind,
                 parameters,
-                returns,
-                bool(THROWS_PATTERN.search(tail.partition('->')[0])),
+                _requirements(kind, tail),
                 separate,
             )
         for column, char in enumerate(line):
@@ -441,6 +440,46 @@ def _parameters(
                 start, default = index + 1, False
     parts.append(_ParameterSyntax(start, text[start:]))
     return [part for part in parts if part.text.strip()]
+
+
+def _requirements(
+    kind: str,
+    tail: str,
+) -> CallableRequirements:
+    """
+    Derive callable return and exception documentation requirements.
+
+    Parameters
+    ----------
+    kind : str
+        Declaration keyword; only func and subscript require return sections.
+    tail : str
+        Bounded text after the parameter list, or empty for noncallables and
+        unsupported signatures.
+
+    Returns
+    -------
+    CallableRequirements
+        Returns for a recognized non-Void/non-Never result, and raise coverage
+        for throws/rethrows before the return arrow. Other declaration kinds
+        do not require a return section. Swift does not derive Yields here.
+
+    Notes
+    -----
+    Swift inspects bounded signature syntax. Python instead combines native
+    annotations and explicit body observations; neither approach resolves
+    types, executes code or proves exception escape behavior.
+    """
+    result = RETURN_PATTERN.search(tail)
+    returns = (
+        kind in {'func', 'subscript'}
+        and result is not None
+        and result[1].strip() not in NONVALUE_RETURN_TYPES
+    )
+    return CallableRequirements(
+        'Returns' if returns else '',
+        bool(THROWS_PATTERN.search(tail.partition('->')[0])),
+    )
 
 
 def _signature(
