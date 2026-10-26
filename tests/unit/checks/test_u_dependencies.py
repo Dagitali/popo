@@ -301,6 +301,31 @@ class TestDependencyPolicy:
             f'{metadata}: project must be a TOML table',
         ]
 
+    @pytest.mark.parametrize('structural', [False, True])
+    def test_metadata_failures_preserve_validation_order(
+        self,
+        write_file: FileWriter,
+        mode: DependencyMode,
+        structural: bool,
+    ) -> None:
+        """Keep metadata and installer failure ordering stable."""
+        metadata = write_file(
+            'pyproject.toml',
+            '[project]\ndependencies = '
+            + ('42' if structural else '["not a requirement"]'),
+        )
+        requirements = write_file('requirements.txt', '-r other.txt\ninvalid???')
+        failures = validate(DependencyConfig(metadata, requirements, mode))
+        if structural:
+            assert failures == [
+                f'{metadata}: project.dependencies must be a string array',
+            ]
+        else:
+            assert len(failures) == 3
+            assert failures[0].startswith(f'{metadata}: invalid requirement')
+            assert failures[1].startswith(f'{requirements}:1: installer directives')
+            assert failures[2].startswith(f'{requirements}: invalid requirement')
+
     def test_missing_files(
         self,
         tmp_path: Path,
