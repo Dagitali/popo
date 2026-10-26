@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks.python_policy` module.
 
-Validate a repository's declared Python-version policy.
+Validate Python toolchain policy without installing or invoking interpreters.
 """
 
 import re

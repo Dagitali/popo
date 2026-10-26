@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks.swift_policy` module.
 
-Compare Swift toolchain declarations without invoking Swift or manifests.
+Validate Swift toolchain policy without installing or invoking compilers.
 """
 
 import re
@@ -136,7 +136,7 @@ def validate(
 
     Parameters
     ----------
-    config : SwiftPolicyConfig
+    config : popo.config.swift_policy.SwiftPolicyConfig
         Explicit consumer compiler policy; no Python metadata is consulted.
     compiler_version : str or None, optional
         Caller-supplied compiler observation. No Swift executable is invoked;
