@@ -104,9 +104,9 @@ def _workflow(
     document = _read_yaml(config.workflow)
     job = _mapping(_mapping(document.get('jobs')).get(config.job))
     matches = [
-        _mapping(step)
-        for step in _items(job.get('steps'))
-        if _mapping(step).get('id') == config.step
+        step
+        for value in _items(job.get('steps'))
+        if (step := _mapping(value)).get('id') == config.step
     ]
     for owner in (document, job, *matches):
         directory = _mapping(_mapping(owner.get('defaults')).get('run')).get(
