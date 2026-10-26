@@ -5,12 +5,18 @@ Validate explicit Swift policy independently of Python package metadata.
 """
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
 from popo.config import ConfigurationError
+from popo.config._common import read_popo
 from popo.config.selection import load_plan
-from popo.config.swift_policy import load_swift_policy_config, parse_version
+from popo.config.swift_policy import (
+    load_swift_policy_config,
+    parse_swift_policy,
+    parse_version,
+)
 
 # SECTION: TESTS
 
@@ -70,6 +76,20 @@ class TestSwiftPolicyConfiguration:
     def test_omitted_patch_means_zero(self) -> None:
         assert parse_version('6.1') == parse_version('6.1.0') == (6, 1, 0)
 
+    def test_parse_without_reading_inputs(
+        self,
+        swift_policy_consumer: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Parse preloaded settings without reading configuration or inputs."""
+        root = swift_policy_consumer
+        settings = read_popo(root)
+        expected = load_swift_policy_config(root)
+        reader = Mock(side_effect=AssertionError('unexpected file read'))
+        monkeypatch.setattr(Path, 'read_text', reader)
+        assert parse_swift_policy(root, settings) == expected
+        reader.assert_not_called()
+
     @pytest.mark.parametrize('embedded', [False, True], ids=['standalone', 'pyproject'])
     def test_policy_sources(
         self,
@@ -86,6 +106,7 @@ class TestSwiftPolicyConfiguration:
             (root / 'popo.toml').unlink()
             (root / 'pyproject.toml').write_text(text, encoding='utf-8')
         config = load_swift_policy_config(root)
+        assert config == parse_swift_policy(root, read_popo(root))
         assert config.preferred_version == '6.1.2'
         assert config.tools_version == '5.9'
         assert config.manifest == root / 'Package.swift'
