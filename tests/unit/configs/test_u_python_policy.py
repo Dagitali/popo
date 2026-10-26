@@ -14,21 +14,22 @@ from tests.support.files import FileWriter
 class TestPythonPolicyConfiguration:
     """Preserve aggregate defaults while validating the new optional parser."""
 
-    @pytest.mark.parametrize('mode', ['text', 'scoped', 'unknown', ''])
+    @pytest.mark.parametrize('mode', [None, 'text', 'scoped', 'unknown', ''])
     def test_workflow_parser_selection(
         self,
         write_file: FileWriter,
         tmp_path: Path,
-        mode: str,
+        mode: str | None,
     ) -> None:
+        setting = '' if mode is None else f'workflow-parser="{mode}"'
         write_file(
             'pyproject.toml',
             '[project]\nrequires-python=">=3.13,<3.15"\n'
-            f'[tool.popo.python-policy]\nworkflow-parser="{mode}"',
+            f'[tool.popo.python-policy]\n{setting}',
         )
-        if mode in {'text', 'scoped'}:
+        if mode in {None, 'text', 'scoped'}:
             config = load_python_policy_config(tmp_path)
-            assert config.workflow_parser == mode
+            assert config.workflow_parser == (mode or 'text')
             assert config == load_config(tmp_path).python_policy
         else:
             with pytest.raises(ConfigurationError, match='workflow-parser'):
