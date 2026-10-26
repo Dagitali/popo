@@ -166,7 +166,9 @@ def lexical_view(
     return ''.join(result), documentation
 
 
-def _parts(text: str) -> list[tuple[int, str]]:
+def _parts(
+    text: str,
+) -> list[tuple[int, str]]:
     """Split parameters at outer commas, respecting type/default delimiters."""
     parts: list[tuple[int, str]] = []
     stack: list[str] = []
@@ -238,7 +240,9 @@ def _signature(
     return tuple(names), code[end:stop], separate, stop
 
 
-def _declarations(code: str) -> Iterator[_Syntax]:
+def _declarations(
+    code: str,
+) -> Iterator[_Syntax]:
     """
     Yield nominal, member and named callable declaration observations.
 
@@ -313,7 +317,9 @@ def _declarations(code: str) -> Iterator[_Syntax]:
         offset += len(line)
 
 
-def parse(source: str) -> SourceFacts[Declaration]:
+def parse(
+    source: str,
+) -> SourceFacts[Declaration]:
     """Collect immutable Swift observations from a bounded lexical view.
 
     Parameters

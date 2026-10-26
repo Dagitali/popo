@@ -207,7 +207,10 @@ class TestSwiftLexicalBoundaries:
             'let x = 1 /// trailing documentation is not an overview',
         ],
     )
-    def test_masked_strings_and_trailing_comments(self, source: str) -> None:
+    def test_masked_strings_and_trailing_comments(
+        self,
+        source: str,
+    ) -> None:
         _, documentation = lexical_view(source)
         assert documentation == set()
 

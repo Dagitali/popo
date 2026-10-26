@@ -92,7 +92,10 @@ class TestSwiftPolicyConfiguration:
         'version',
         ['6.1-SNAPSHOT', '6', '06.1', '>=6.0', '6.0.0.1', ''],
     )
-    def test_version_syntax(self, version: str) -> None:
+    def test_version_syntax(
+        self,
+        version: str,
+    ) -> None:
         with pytest.raises(ValueError):
             parse_version(version)
 

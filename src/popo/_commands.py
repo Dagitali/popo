@@ -218,7 +218,9 @@ def _docs(
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
 
-def _guardrail_parity(args: argparse.Namespace) -> tuple[list[str], str]:
+def _guardrail_parity(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """
     Inspect explicit local and CI invocation contracts without execution.
 
@@ -312,7 +314,9 @@ def _safety(
     return safety.validate(config), 'configured repository safety checks passed'
 
 
-def _required_files(args: argparse.Namespace) -> tuple[list[str], str]:
+def _required_files(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """
     Dispatch configured required-file validation.
 
@@ -340,7 +344,9 @@ def _required_files(args: argparse.Namespace) -> tuple[list[str], str]:
     return files.validate_required(config), 'required files are present'
 
 
-def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
+def _file_headers(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """
     Dispatch configured header validation.
 
@@ -368,13 +374,17 @@ def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
     return files.validate_headers(config), 'configured file headers are valid'
 
 
-def _python_source(args: argparse.Namespace) -> tuple[list[str], str]:
+def _python_source(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """Dispatch explicitly configured, read-only Python source checks."""
     config = load_source_check(args.root, 'python-source')
     return python_source.validate(config), 'configured Python source checks passed'
 
 
-def _swift_policy(args: argparse.Namespace) -> tuple[list[str], str]:
+def _swift_policy(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """Check Swift declarations with an optional explicit compiler observation.
 
     Parameters
@@ -403,13 +413,17 @@ def _swift_policy(args: argparse.Namespace) -> tuple[list[str], str]:
     ), 'Swift toolchain declarations are consistent'
 
 
-def _swift_source(args: argparse.Namespace) -> tuple[list[str], str]:
+def _swift_source(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """Dispatch explicitly configured, read-only Swift source checks."""
     config = load_source_check(args.root, 'swift-source')
     return swift_source.validate(config), 'configured Swift source checks passed'
 
 
-def _logs(args: argparse.Namespace) -> tuple[list[str], str]:
+def _logs(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """Dispatch explicit artifact inspection without revealing log contents."""
     config = load_source_check(args.root, 'logs')
     return logs.validate(

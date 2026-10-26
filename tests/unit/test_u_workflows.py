@@ -53,7 +53,9 @@ def workflow_fixture(
     call. The loader performs no schema validation or workflow execution.
     """
 
-    def load(name: str) -> dict[str, Any]:
+    def load(
+        name: str,
+    ) -> dict[str, Any]:
         """
         Read a checkout workflow with string-valued YAML scalars.
 
@@ -395,7 +397,9 @@ class TestWorkflows:
             if not key.startswith('GIT_')
         } | {'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
 
-        def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+        def git(
+            *arguments: str,
+        ) -> subprocess.CompletedProcess[str]:
             """
             Run a Git fixture command with isolated identity and disabled
             signing/hooks.

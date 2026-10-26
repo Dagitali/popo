@@ -113,7 +113,9 @@ def _workflow(
     return read_mapping(path, label='workflow')
 
 
-def _workflow_paths(config: SafetyConfig) -> tuple[list[Path], list[str]]:
+def _workflow_paths(
+    config: SafetyConfig,
+) -> tuple[list[Path], list[str]]:
     """Discover unique workflows, retaining findings for failed patterns."""
     paths: set[Path] = set()
     failures: list[str] = []

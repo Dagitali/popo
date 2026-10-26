@@ -58,7 +58,9 @@ class TestRedactedLogs:
         )
         config = load_source_check(tmp_path, 'logs')
 
-        def fail_resolution(path: Path) -> Path:
+        def fail_resolution(
+            path: Path,
+        ) -> Path:
             raise error('PRIVATE ROOT')
 
         monkeypatch.setattr(Path, 'resolve', fail_resolution)

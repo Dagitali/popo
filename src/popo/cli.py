@@ -48,7 +48,9 @@ def _add_root(
     )
 
 
-def _explain(args: argparse.Namespace) -> int:
+def _explain(
+    args: argparse.Namespace,
+) -> int:
     """Describe selection and provenance without running any validators."""
     plan = load_plan(args.root, args.profile)
     explanation = {
@@ -69,7 +71,9 @@ def _explain(args: argparse.Namespace) -> int:
     return 0
 
 
-def _invoke(args: argparse.Namespace) -> CheckResult:
+def _invoke(
+    args: argparse.Namespace,
+) -> CheckResult:
     """
     Convert a native check's configuration errors into identified results.
     """
@@ -81,7 +85,9 @@ def _invoke(args: argparse.Namespace) -> CheckResult:
     return CheckResult(args.command, tuple(failures), success)
 
 
-def _selected_results(args: argparse.Namespace) -> list[CheckResult]:
+def _selected_results(
+    args: argparse.Namespace,
+) -> list[CheckResult]:
     """
     Execute selected offline checks and retain each check's identity.
 
@@ -217,7 +223,9 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+) -> int:
     """
     Run a popo command.
 

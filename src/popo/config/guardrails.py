@@ -56,7 +56,9 @@ class GuardrailsConfig:
 # SECTION: FUNCTIONS
 
 
-def load_guardrails_config(root: Path) -> GuardrailsConfig:
+def load_guardrails_config(
+    root: Path,
+) -> GuardrailsConfig:
     """Validate a consumer-owned parity contract without executing commands.
 
     Parameters

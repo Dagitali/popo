@@ -75,7 +75,10 @@ class CheckPlan:
 # SECTION: FUNCTIONS
 
 
-def load_plan(root: Path, profile: str | None = None) -> CheckPlan:
+def load_plan(
+    root: Path,
+    profile: str | None = None,
+) -> CheckPlan:
     """
     Resolve a nonempty check selection without running validators.
 

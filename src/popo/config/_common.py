@@ -31,7 +31,9 @@ class ConfigurationError(ValueError):
 # SECTION: FUNCTIONS
 
 
-def configuration_path(root: Path) -> Path:
+def configuration_path(
+    root: Path,
+) -> Path:
     """Select standalone consumer policy before Python project metadata.
 
     Parameters

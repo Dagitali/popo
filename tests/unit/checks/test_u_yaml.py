@@ -27,7 +27,9 @@ def parse_yaml_fixture(
     if request.param == 'text':
         return parse_mapping
 
-    def parse(source: str) -> dict[str, object]:
+    def parse(
+        source: str,
+    ) -> dict[str, object]:
         return read_mapping(write_file('ci.yml', source))
 
     return parse

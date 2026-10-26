@@ -20,7 +20,9 @@ import pytest
         pytest.param('json', id='json'),
     ],
 )
-def cli_format_fixture(request: pytest.FixtureRequest) -> str | None:
+def cli_format_fixture(
+    request: pytest.FixtureRequest,
+) -> str | None:
     """
     Exercise default and explicit formats with independent consumers.
 

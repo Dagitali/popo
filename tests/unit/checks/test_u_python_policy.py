@@ -70,7 +70,9 @@ def policy(
 
 
 @pytest.fixture(params=['${{ env.MISSING }}', '${{ matrix.missing }}'])
-def unresolved_reference(request: pytest.FixtureRequest) -> str:
+def unresolved_reference(
+    request: pytest.FixtureRequest,
+) -> str:
     """Supply recognized version references with no matching declaration."""
     return str(request.param)
 
@@ -427,7 +429,10 @@ class TestPythonPolicyInputBoundaries:
         assert len(failures) == 1
         assert ('does not exist' if missing else 'invalid TOML') in failures[0]
 
-    def test_shared_metadata_is_read_once(self, policy: PythonPolicyConfig) -> None:
+    def test_shared_metadata_is_read_once(
+        self,
+        policy: PythonPolicyConfig,
+    ) -> None:
         """Use one observation for package, mypy and embedded Ruff settings."""
         with patch.object(
             Path,

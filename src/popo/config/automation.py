@@ -49,7 +49,9 @@ class AutomationConfig:
 # SECTION: FUNCTIONS
 
 
-def load_automation_config(root: Path) -> AutomationConfig:
+def load_automation_config(
+    root: Path,
+) -> AutomationConfig:
     """Load and validate automation settings without modifying any files.
 
     Parameters

@@ -88,7 +88,9 @@ def _problem(
     return None
 
 
-def _sources(config: HeadersConfig) -> list[Path]:
+def _sources(
+    config: HeadersConfig,
+) -> list[Path]:
     """Discover tracked/unignored sources, with bounded non-Git fallback."""
     try:
         result = subprocess.run(

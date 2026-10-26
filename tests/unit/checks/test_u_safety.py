@@ -26,7 +26,9 @@ from tests.support.files import FileWriter
         pytest.param('on: EVENT\nloop: &loop [*loop]\n', id='sequence-cycle'),
     ],
 )
-def cyclic_workflow(request: pytest.FixtureRequest) -> str:
+def cyclic_workflow(
+    request: pytest.FixtureRequest,
+) -> str:
     """Supply recursive YAML aliases independent of workflow policy values."""
     return str(request.param)
 
@@ -195,7 +197,10 @@ class TestSafetyFailureIsolation:
         )
         original = Path.glob
 
-        def glob(path: Path, pattern: str) -> Iterator[Path]:
+        def glob(
+            path: Path,
+            pattern: str,
+        ) -> Iterator[Path]:
             if pattern == 'broken*.yml':
                 raise error('PRIVATE DISCOVERY DETAILS')
             yield from original(path, pattern)

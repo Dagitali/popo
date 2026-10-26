@@ -123,7 +123,9 @@ def guardrail_tools_fixture(
     name='entry_point',
     params=['make', 'pre-commit', 'ci'],
 )
-def entry_point_fixture(request: pytest.FixtureRequest) -> str:
+def entry_point_fixture(
+    request: pytest.FixtureRequest,
+) -> str:
     """
     Give each actual caller its own consumer, commands and outcome.
 
@@ -191,7 +193,9 @@ def _run_consumer(
     )
 
 
-def _consumer_sources(root: Path) -> dict[Path, bytes]:
+def _consumer_sources(
+    root: Path,
+) -> dict[Path, bytes]:
     """
     Compare consumer source bytes separately from disposable Git metadata.
     """

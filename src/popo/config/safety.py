@@ -52,7 +52,9 @@ class SafetyConfig:
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _path(value: object) -> str:
+def _path(
+    value: object,
+) -> str:
     """Require a nonempty repository-relative policy path."""
     if (
         not isinstance(value, str)
@@ -70,7 +72,9 @@ def _path(value: object) -> str:
 # SECTION: FUNCTIONS
 
 
-def load_safety_config(root: Path) -> SafetyConfig:
+def load_safety_config(
+    root: Path,
+) -> SafetyConfig:
     """
     Load safety settings without commands or network access.
 

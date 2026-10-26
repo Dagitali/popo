@@ -29,7 +29,10 @@ SECTION_PATTERNS = {
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _section(doc: str, name: str) -> str:
+def _section(
+    doc: str,
+    name: str,
+) -> str:
     """Extract a NumPy section through the next underlined section heading."""
     match = SECTION_PATTERNS[name].search(doc)
     if match is None:
@@ -39,7 +42,9 @@ def _section(doc: str, name: str) -> str:
     return remainder[: end.start() if end else len(remainder)].strip()
 
 
-def _parameters(doc: str) -> set[str]:
+def _parameters(
+    doc: str,
+) -> set[str]:
     """Read grouped and variadic names from the NumPy Parameters section."""
     return {
         name.strip().lstrip('*')

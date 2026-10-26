@@ -45,7 +45,9 @@ class ProjectConfig:
 # SECTION: FUNCTIONS
 
 
-def load_config(root: Path) -> ProjectConfig:
+def load_config(
+    root: Path,
+) -> ProjectConfig:
     """
     Load configuration for ``root``, applying portable layout defaults.
 

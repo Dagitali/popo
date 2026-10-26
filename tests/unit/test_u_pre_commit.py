@@ -15,7 +15,9 @@ import yaml
 
 
 @pytest.fixture(name='project_metadata', scope='module')
-def project_metadata_fixture(repository_root: Path) -> dict[str, Any]:
+def project_metadata_fixture(
+    repository_root: Path,
+) -> dict[str, Any]:
     """
     Parse canonical package and tool metadata once for hook contracts.
 
