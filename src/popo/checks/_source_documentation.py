@@ -190,4 +190,35 @@ def limits(
     return failures
 
 
+def overview_findings(
+    has_overview: bool,
+    config: SourceCheckConfig,
+    relative: str,
+) -> list[str]:
+    """
+    Check the shared file-overview policy using language-specific facts.
+
+    Parameters
+    ----------
+    has_overview : bool
+        Overview observation from the language's declaration collector.
+    config : SourceCheckConfig
+        Consumer-owned file-overviews switch; no source is parsed here.
+    relative : str
+        Repository-relative filename for location-only diagnostics.
+
+    Returns
+    -------
+    list[str]
+        One missing-overview finding when required and absent, otherwise empty.
+        Python module-docstring and Swift leading-comment rules remain owned
+        by their respective collectors.
+    """
+    return (
+        [f'{relative}: missing file overview']
+        if config.settings['file-overviews'] and not has_overview
+        else []
+    )
+
+
 # !SECTION

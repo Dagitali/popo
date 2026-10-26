@@ -10,7 +10,11 @@ from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import CALLABLE_KINDS, Declaration
 from ._source_declarations import SourceFacts
-from ._source_documentation import CallableDocumentation, contract_findings
+from ._source_documentation import (
+    CallableDocumentation,
+    contract_findings,
+    overview_findings,
+)
 
 # SECTION: CONSTANTS
 
@@ -27,6 +31,53 @@ SECTION_PATTERNS = {
 
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _declaration_findings(
+    declaration: Declaration,
+    config: SourceCheckConfig,
+    relative: str,
+) -> list[str]:
+    """
+    Check one declaration's documentation policy and callable contract.
+
+    Parameters
+    ----------
+    declaration : Declaration
+        Shared documentation/signature facts and Python-only observations.
+    config : SourceCheckConfig
+        Declaration-presence and callable-contract switches.
+    relative : str
+        Repository-relative filename for location-only diagnostics.
+
+    Returns
+    -------
+    list[str]
+        Declaration-presence and callable-contract findings in that order.
+
+    Notes
+    -----
+    Declaration presence applies to Python classes and functions alike.
+    Callable evidence uses NumPy sections; syntax requirements were collected
+    independently, including receiver exclusion and explicit body requirements.
+    """
+    failures: list[str] = []
+    facts = declaration.facts
+    doc = facts.documentation
+    if config.settings['declaration-docs'] and not doc:
+        failures.append(
+            f'{relative}:{facts.line}: missing declaration documentation',
+        )
+    if facts.kind in CALLABLE_KINDS:
+        failures.extend(
+            contract_findings(
+                facts,
+                config,
+                relative,
+                _documentation(doc, facts.return_section),
+            ),
+        )
+    return failures
 
 
 def _documentation(
@@ -155,27 +206,9 @@ def documentation_findings(
     Explicit raises include locally caught ones; exception escape analysis,
     indirect exceptions, prose quality and type descriptions are not validated.
     """
-    failures = (
-        [f'{relative}: missing file overview']
-        if config.settings['file-overviews'] and not source.has_overview
-        else []
-    )
+    failures = overview_findings(source.has_overview, config, relative)
     for declaration in source.declarations:
-        facts = declaration.facts
-        doc = facts.documentation
-        if config.settings['declaration-docs'] and not doc:
-            failures.append(
-                f'{relative}:{facts.line}: missing declaration documentation',
-            )
-        if facts.kind in CALLABLE_KINDS:
-            failures.extend(
-                contract_findings(
-                    facts,
-                    config,
-                    relative,
-                    _documentation(doc, facts.return_section),
-                ),
-            )
+        failures.extend(_declaration_findings(declaration, config, relative))
     return failures
 
 

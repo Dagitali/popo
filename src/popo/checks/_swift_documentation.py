@@ -9,7 +9,11 @@ import re
 from popo.config.source_checks import SourceCheckConfig
 
 from ._source_declarations import SourceFacts
-from ._source_documentation import CallableDocumentation, contract_findings
+from ._source_documentation import (
+    CallableDocumentation,
+    contract_findings,
+    overview_findings,
+)
 from ._swift_declarations import CALLABLE_KINDS, NOMINAL_KINDS, Declaration
 
 # SECTION: CONSTANTS
@@ -30,6 +34,64 @@ SINGULAR_PARAMETER_PATTERN = re.compile(r'(?im)^[ \t]*-[ \t]*Parameter[ \t]+`?(\
 
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _declaration_findings(
+    declaration: Declaration,
+    config: SourceCheckConfig,
+    relative: str,
+) -> list[str]:
+    """
+    Check one declaration's documentation policy and callable contract.
+
+    Parameters
+    ----------
+    declaration : Declaration
+        Shared facts and Swift documentation attachment/spacing observations.
+    config : SourceCheckConfig
+        Nominal/member presence, spacing and callable-contract switches.
+    relative : str
+        Repository-relative filename for location-only diagnostics.
+
+    Returns
+    -------
+    list[str]
+        Presence/spacing and callable-contract findings in reporting order.
+
+    Notes
+    -----
+    Nominals use declaration-docs; other recognized members use member-docs.
+    A missing required doc takes precedence over a spacing finding. Callable
+    evidence uses DocC fields. Syntax and attachment facts are consumed
+    without reconstructing signatures or compiling Swift.
+    """
+    failures: list[str] = []
+    facts = declaration.facts
+    doc = facts.documentation
+    required = (
+        config.settings['declaration-docs']
+        if facts.kind in NOMINAL_KINDS
+        else config.settings['member-docs']
+    )
+    if required and not doc.strip():
+        failures.append(
+            f'{relative}:{facts.line}: missing declaration documentation',
+        )
+    elif doc and config.settings['declaration-spacing'] and not declaration.separated:
+        failures.append(
+            f'{relative}:{declaration.documentation_start}: '
+            'missing blank line before documentation',
+        )
+    if facts.kind in CALLABLE_KINDS:
+        failures.extend(
+            contract_findings(
+                facts,
+                config,
+                relative,
+                _documentation(doc, facts.return_section),
+            ),
+        )
+    return failures
 
 
 def _documentation(
@@ -153,39 +215,9 @@ def documentation_findings(
     Triple-slash comments are the supported notation; full DocC validation and
     the front end's unsupported Swift grammar remain separate responsibilities.
     """
-    failures = (
-        [f'{relative}: missing file overview']
-        if config.settings['file-overviews'] and not source.has_overview
-        else []
-    )
+    failures = overview_findings(source.has_overview, config, relative)
     for declaration in source.declarations:
-        facts = declaration.facts
-        doc = facts.documentation
-        required = (
-            config.settings['declaration-docs']
-            if facts.kind in NOMINAL_KINDS
-            else config.settings['member-docs']
-        )
-        if required and not doc.strip():
-            failures.append(
-                f'{relative}:{facts.line}: missing declaration documentation',
-            )
-        elif (
-            doc and config.settings['declaration-spacing'] and not declaration.separated
-        ):
-            failures.append(
-                f'{relative}:{declaration.documentation_start}: '
-                'missing blank line before documentation',
-            )
-        if facts.kind in CALLABLE_KINDS:
-            failures.extend(
-                contract_findings(
-                    facts,
-                    config,
-                    relative,
-                    _documentation(doc, facts.return_section),
-                ),
-            )
+        failures.extend(_declaration_findings(declaration, config, relative))
     return failures
 
 
