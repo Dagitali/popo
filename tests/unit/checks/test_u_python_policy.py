@@ -439,3 +439,41 @@ class TestPythonPolicyInputBoundaries:
         assert (
             sum(call.args[0] == policy.metadata for call in reads.call_args_list) == 1
         )
+
+
+class TestScopedPythonPolicy:
+    """Opt into scoped observations without changing legacy text defaults."""
+
+    def test_scoped_workflow_and_independent_loader(
+        self,
+        policy: PythonPolicyConfig,
+        tmp_path: Path,
+    ) -> None:
+        from popo.config.python_policy import load_python_policy_config
+
+        workflow = policy.workflow_directory / 'ci.yml'
+        workflow.write_text(
+            """jobs:
+  build:
+    strategy:
+      matrix:
+        python: ["3.13", "3.14"]
+    steps:
+      - with:
+          python-version: ${{ matrix.python }}
+""",
+            encoding='utf-8',
+        )
+        config = replace(policy, workflow_parser='scoped')
+        assert validate(config, running_version='3.13') == []
+        workflow.write_text('jobs: {}', encoding='utf-8')
+        assert any(
+            'no explicit python-version' in f
+            for f in validate(config, running_version='3.13')
+        )
+        workflow.unlink()
+        assert 'no Python policy workflows found' in validate(
+            config,
+            running_version='3.13',
+        )
+        assert load_python_policy_config(tmp_path).workflow_parser == 'text'
