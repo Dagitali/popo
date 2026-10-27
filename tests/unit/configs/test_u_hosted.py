@@ -61,6 +61,38 @@ class TestHostedConfiguration:
             load_hosted_config(tmp_path)
 
     @pytest.mark.parametrize(
+        'repository',
+        ['owner/first', 'owner/second', 'OWNER/first'],
+    )
+    @pytest.mark.parametrize('check', ['label:bug', 'label:docs'])
+    def test_exception_scope_uses_own_repository(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        repository: str,
+        check: str,
+    ) -> None:
+        """Keep exception checks scoped to the exact configured repository."""
+        write_file(
+            'popo.toml',
+            '[[hosted.repositories]]\nname="owner/first"\nlabels=["bug"]\n'
+            '[[hosted.repositories]]\nname="owner/second"\nlabels=["docs"]\n'
+            '[[hosted.exceptions]]\n'
+            f'repository="{repository}"\ncheck="{check}"\n'
+            'owner="team"\nreason="reviewed"\napproved-by="reviewer"\n'
+            'approval="https://example.com/review"\nexpires="2026-10-31"',
+        )
+        expected = {'owner/first': 'label:bug', 'owner/second': 'label:docs'}
+        if expected.get(repository) == check:
+            config = load_hosted_config(tmp_path)
+            assert len(config.repositories) == 2
+            assert config.exceptions[0].repository == repository
+            assert config.exceptions[0].check == check
+        else:
+            with pytest.raises(ConfigurationError, match='configured repository/check'):
+                load_hosted_config(tmp_path)
+
+    @pytest.mark.parametrize(
         ('config', 'message'),
         [
             ('', 'must be a TOML table'),
