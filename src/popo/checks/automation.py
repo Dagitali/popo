@@ -233,8 +233,8 @@ def _metadata(
     json.JSONDecodeError
         If the companion contains invalid JSON.
     OSError, UnicodeError
-        If path resolution, reading, or decoding fails. Reading uses the
-        default text encoding of the execution environment.
+        If path resolution, reading, or UTF-8 decoding fails. Reading is
+        independent of the execution environment's default text encoding.
     re.PatternError
         If a filePatterns entry is not a valid regular expression.
 
@@ -246,7 +246,10 @@ def _metadata(
     :func:`~popo.checks.automation.validate`.
     """
     metadata = _inside(root, path.with_suffix('.properties.json'))
-    doc = require_mapping(json.loads(metadata.read_text()), 'template metadata')
+    doc = require_mapping(
+        json.loads(metadata.read_text(encoding='utf-8')),
+        'template metadata',
+    )
     for key in ('name', 'description'):
         if not isinstance(doc.get(key), str) or not doc[key]:
             raise ValueError(f'template metadata needs {key}')
