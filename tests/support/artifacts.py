@@ -14,39 +14,6 @@ import pytest
 
 
 @pytest.fixture(
-    name='artifact',
-    scope='module',
-    params=['*.whl', '*.tar.gz'],
-    ids=['wheel', 'sdist'],
-)
-def artifact_fixture(
-    request: pytest.FixtureRequest,
-    artifact_directory: Path,
-) -> Path:
-    """
-    Select the sole artifact of the parameterized distribution type.
-
-    Parameters
-    ----------
-    request : pytest.FixtureRequest
-        Active request whose parameter is ``*.whl`` or ``*.tar.gz``.
-    artifact_directory : pathlib.Path
-        Directory prepared and checked by the session-scoped artifact fixture.
-
-    Returns
-    -------
-    pathlib.Path
-        Matching wheel or sdist, prevalidated by ``artifact_directory``.
-
-    Raises
-    ------
-    StopIteration
-        If an artifact is removed after the directory fixture validates it.
-    """
-    return next(artifact_directory.glob(request.param))
-
-
-@pytest.fixture(
     name='artifact_directory',
     scope='session',
 )
@@ -122,6 +89,39 @@ def artifact_directory_fixture(
         timeout=60,
     )
     return directory
+
+
+@pytest.fixture(
+    name='artifact',
+    scope='module',
+    params=['*.whl', '*.tar.gz'],
+    ids=['wheel', 'sdist'],
+)
+def artifact_fixture(
+    request: pytest.FixtureRequest,
+    artifact_directory: Path,
+) -> Path:
+    """
+    Select the sole artifact of the parameterized distribution type.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Active request whose parameter is ``*.whl`` or ``*.tar.gz``.
+    artifact_directory : pathlib.Path
+        Directory prepared and checked by the session-scoped artifact fixture.
+
+    Returns
+    -------
+    pathlib.Path
+        Matching wheel or sdist, prevalidated by ``artifact_directory``.
+
+    Raises
+    ------
+    StopIteration
+        If an artifact is removed after the directory fixture validates it.
+    """
+    return next(artifact_directory.glob(request.param))
 
 
 # !SECTION

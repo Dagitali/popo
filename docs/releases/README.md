@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.11 Series](#011-series)
 - [0.10 Series](#010-series)
 - [0.9 Series](#09-series)
 - [0.8 Series](#08-series)
@@ -35,9 +36,14 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
 
+## 0.11 Series
+
+- [v0.11.0] — 2026-10-26: Python/Swift source and log checks, Swift toolchain policy, stricter
+  diagnostics and internal simplification; tagging/publication remain separate.
+
 ## 0.10 Series
 
-- [v0.10.0] — planned, prepared 2026-10-25: Add explicit committed-source inventories in JSON and
+- [v0.10.0] — 2026-10-25: Add explicit committed-source inventories in JSON and
   source-only SPDX 2.3; released-form record, tagging and publication not performed.
 
 ## 0.9 Series
@@ -179,6 +185,7 @@ prepared.
 [v0.1.4]: v0.1.4.md
 [v0.1.5]: v0.1.5.md
 [v0.10.0]: v0.10.0.md
+[v0.11.0]: v0.11.0.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md

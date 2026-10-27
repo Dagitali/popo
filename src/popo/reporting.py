@@ -1,4 +1,8 @@
-"""Versioned machine-readable output for offline check execution."""
+"""
+:mod:`popo.reporting` module.
+
+Versioned machine-readable output for offline check execution.
+"""
 
 import json
 from dataclasses import dataclass

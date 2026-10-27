@@ -16,22 +16,6 @@ from popo.config.hosted import RepositoryPolicy
 # SECTION: FIXTURES
 
 
-@pytest.fixture(name='hosted_policy')
-def hosted_policy_fixture() -> RepositoryPolicy:
-    """Return a representative consumer-owned inventory."""
-    return RepositoryPolicy(
-        'example/library',
-        {
-            'private-vulnerability-reporting': True,
-            'secret-scanning': True,
-            'secret-scanning-push-protection': True,
-        },
-        ('bug',),
-        True,
-        {'main': ('quality',)},
-    )
-
-
 @pytest.fixture(name='github_responses')
 def github_responses_fixture() -> dict[str, Response]:
     """Return complete, successful API evidence for the policy."""
@@ -81,6 +65,22 @@ approved-by = "reviewer"
 approval = "https://example.com/review"
 expires = "2026-10-31"
 """
+
+
+@pytest.fixture(name='hosted_policy')
+def hosted_policy_fixture() -> RepositoryPolicy:
+    """Return a representative consumer-owned inventory."""
+    return RepositoryPolicy(
+        'example/library',
+        {
+            'private-vulnerability-reporting': True,
+            'secret-scanning': True,
+            'secret-scanning-push-protection': True,
+        },
+        ('bug',),
+        True,
+        {'main': ('quality',)},
+    )
 
 
 # !SECTION

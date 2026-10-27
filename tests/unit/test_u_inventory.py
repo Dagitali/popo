@@ -1,7 +1,8 @@
 """
 :mod:`tests.unit.test_u_inventory` module.
 
-Validate committed source identity, checksums, containment and failure behavior.
+Validate committed source identity, checksums, containment and failure
+behavior.
 """
 
 import hashlib
@@ -110,24 +111,87 @@ class TestSourceInventory:
             assert len(report['relationships']) == 3
         assert snapshot_files(tmp_path) == before
 
-    def test_spdx_generations_have_distinct_namespaces(
+    def test_empty_commit_is_not_an_inventory(
         self,
         tmp_path: Path,
     ) -> None:
         """
-        Avoid reusing one SPDX namespace across independently created
-        documents.
+        Fail clearly for commits without inventoried file entries.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
         """
-        repository(tmp_path)
-        first = inventory.document(tmp_path, 'HEAD', 'Example', 'spdx')
-        second = inventory.document(tmp_path, 'HEAD', 'Example', 'spdx')
-        assert first['documentNamespace'] != second['documentNamespace']
-        assert first['files'] == second['files']
+        git(tmp_path, 'init', '--template=')
+        git(tmp_path, 'commit', '--allow-empty', '-m', 'Empty fixture')
+        with pytest.raises(ValueError, match='no source files'):
+            inventory.collect(tmp_path, 'HEAD')
+
+    @pytest.mark.parametrize('error', GIT_FAILURES)
+    def test_git_errors(
+        self,
+        tmp_path: Path,
+        error: Exception,
+    ) -> None:
+        """
+        Hide private diagnostics while retaining command identity.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        error : Exception
+            Synthetic launch or timeout error with private diagnostic text.
+        """
+        with patch.object(inventory.subprocess, 'run', side_effect=error):
+            with pytest.raises(ValueError, match='could not run local Git rev-parse'):
+                inventory.collect(tmp_path, 'HEAD')
+
+    def test_gitlinks_are_rejected(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Do not represent a submodule commit as fully inventoried source.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        """
+        commit = repository(tmp_path)
+        git(
+            tmp_path,
+            'update-index',
+            '--add',
+            '--cacheinfo',
+            '160000',
+            commit,
+            'dependency',
+        )
+        git(tmp_path, 'commit', '-m', 'Synthetic gitlink')
+        with pytest.raises(ValueError, match='submodules'):
+            inventory.collect(tmp_path, 'HEAD')
+
+    @pytest.mark.parametrize('name', ['', ' ', 'two\nlines', 'null\0name'])
+    def test_invalid_project_name(
+        self,
+        tmp_path: Path,
+        name: str,
+    ) -> None:
+        """
+        Reject names that cannot be represented as single-line SPDX metadata.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        name : str
+            Invalid single-line metadata value selected by the fixture.
+        """
+        with pytest.raises(ValueError, match='name'):
+            inventory.document(tmp_path, 'HEAD', name, 'json')
 
     @pytest.mark.parametrize('revision', ['missing', '--help', 'HEAD:no-file'])
     def test_invalid_revision_has_no_partial_json(
@@ -159,39 +223,112 @@ class TestSourceInventory:
         assert captured.out == ''
         assert 'source-inventory' in captured.err
 
-    @pytest.mark.parametrize('name', ['', ' ', 'two\nlines', 'null\0name'])
-    def test_invalid_project_name(
+    @pytest.mark.parametrize(
+        'blob',
+        [
+            b'wrong blob 1\nx\n',
+            b'id tree 1\nx\n',
+            b'id blob -1\n',
+            b'id blob 9\nx\n',
+            b'id blob 1\nx\nextra',
+            b'',
+            b'id blob PRIVATE\nx\n',
+            b'id blob 1 PRIVATE\nx\n',
+        ],
+    )
+    def test_malformed_batch_data_fails(
         self,
         tmp_path: Path,
-        name: str,
+        blob: bytes,
     ) -> None:
         """
-        Reject names that cannot be represented as single-line SPDX metadata.
+        Reject mismatched IDs, types, sizes, truncation and trailing object
+        data.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
-        name : str
-            Invalid single-line metadata value selected by the fixture.
+        blob : bytes
+            Malformed batch response for independent integrity scenarios.
         """
-        with pytest.raises(ValueError, match='name'):
-            inventory.document(tmp_path, 'HEAD', name, 'json')
+        with patch.object(
+            inventory,
+            '_git',
+            side_effect=[
+                str(tmp_path).encode(),
+                b'commit',
+                b'100644 blob id\tfile\0',
+                blob,
+            ],
+        ):
+            with pytest.raises(ValueError) as raised:
+                inventory.collect(tmp_path, 'HEAD')
+        assert 'PRIVATE' not in str(raised.value)
 
-    def test_unsupported_format(
+    def test_replacements_are_ignored(
         self,
         tmp_path: Path,
     ) -> None:
         """
-        Reject unsupported direct rendering formats before collection.
+        Keep local replacement refs out of committed release evidence.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
         """
-        with pytest.raises(ValueError, match='format'):
-            inventory.document(tmp_path, 'HEAD', 'Example', 'xml')
+        commit = repository(tmp_path)
+        git(tmp_path, 'commit', '-m', 'Staged replacement')
+        git(tmp_path, 'replace', commit, 'HEAD')
+        actual, files = inventory.collect(tmp_path, commit)
+        assert actual == commit
+        assert (
+            next(f for f in files if f.path == 'a_b.txt').sha256
+            == hashlib.sha256(b'committed\n').hexdigest()
+        )
+
+    def test_repository_environment_is_ignored(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Honor the explicit root despite inherited Git repository overrides.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        """
+        commit = repository(tmp_path)
+        with patch.dict(
+            'os.environ',
+            {
+                'GIT_DIR': str(tmp_path / 'missing.git'),
+                'GIT_WORK_TREE': '/nonexistent-fixture',
+            },
+        ):
+            actual, _ = inventory.collect(tmp_path, 'HEAD')
+        assert actual == commit
+
+    def test_spdx_generations_have_distinct_namespaces(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Avoid reusing one SPDX namespace across independently created
+        documents.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        """
+        repository(tmp_path)
+        first = inventory.document(tmp_path, 'HEAD', 'Example', 'spdx')
+        second = inventory.document(tmp_path, 'HEAD', 'Example', 'spdx')
+        assert first['documentNamespace'] != second['documentNamespace']
+        assert first['files'] == second['files']
 
     def test_subdirectory_is_not_a_repository_root(
         self,
@@ -211,32 +348,6 @@ class TestSourceInventory:
         nested.mkdir()
         with pytest.raises(ValueError, match='top-level'):
             inventory.collect(nested, 'HEAD')
-
-    def test_gitlinks_are_rejected(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Do not represent a submodule commit as fully inventoried source.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Disposable root for synthetic Git objects and checkout edits.
-        """
-        commit = repository(tmp_path)
-        git(
-            tmp_path,
-            'update-index',
-            '--add',
-            '--cacheinfo',
-            '160000',
-            commit,
-            'dependency',
-        )
-        git(tmp_path, 'commit', '-m', 'Synthetic gitlink')
-        with pytest.raises(ValueError, match='submodules'):
-            inventory.collect(tmp_path, 'HEAD')
 
     def test_symlinks_are_not_followed(
         self,
@@ -266,124 +377,17 @@ class TestSourceInventory:
         assert link.sha256 == hashlib.sha256(b'../private-source').hexdigest()
         assert any(f.path == source.name for f in files)
 
-    def test_replacements_are_ignored(
+    def test_unsupported_format(
         self,
         tmp_path: Path,
     ) -> None:
         """
-        Keep local replacement refs out of committed release evidence.
+        Reject unsupported direct rendering formats before collection.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
         """
-        commit = repository(tmp_path)
-        git(tmp_path, 'commit', '-m', 'Staged replacement')
-        git(tmp_path, 'replace', commit, 'HEAD')
-        actual, files = inventory.collect(tmp_path, commit)
-        assert actual == commit
-        assert (
-            next(f for f in files if f.path == 'a_b.txt').sha256
-            == hashlib.sha256(b'committed\n').hexdigest()
-        )
-
-    @pytest.mark.parametrize('error', GIT_FAILURES)
-    def test_git_errors(
-        self,
-        tmp_path: Path,
-        error: Exception,
-    ) -> None:
-        """
-        Hide private diagnostics while retaining command identity.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Disposable root for synthetic Git objects and checkout edits.
-        error : Exception
-            Synthetic launch or timeout error with private diagnostic text.
-        """
-        with patch.object(inventory.subprocess, 'run', side_effect=error):
-            with pytest.raises(ValueError, match='could not run local Git rev-parse'):
-                inventory.collect(tmp_path, 'HEAD')
-
-    @pytest.mark.parametrize(
-        'blob',
-        [
-            b'wrong blob 1\nx\n',
-            b'id tree 1\nx\n',
-            b'id blob -1\n',
-            b'id blob 9\nx\n',
-            b'id blob 1\nx\nextra',
-            b'',
-        ],
-    )
-    def test_malformed_batch_data_fails(
-        self,
-        tmp_path: Path,
-        blob: bytes,
-    ) -> None:
-        """
-        Reject mismatched IDs, types, sizes, truncation and trailing object
-        data.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Disposable root for synthetic Git objects and checkout edits.
-        blob : bytes
-            Malformed batch response for independent integrity scenarios.
-        """
-        with patch.object(
-            inventory,
-            '_git',
-            side_effect=[
-                str(tmp_path).encode(),
-                b'commit',
-                b'100644 blob id\tfile\0',
-                blob,
-            ],
-        ):
-            with pytest.raises(ValueError):
-                inventory.collect(tmp_path, 'HEAD')
-
-    def test_empty_commit_is_not_an_inventory(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Fail clearly for commits without inventoried file entries.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Disposable root for synthetic Git objects and checkout edits.
-        """
-        git(tmp_path, 'init', '--template=')
-        git(tmp_path, 'commit', '--allow-empty', '-m', 'Empty fixture')
-        with pytest.raises(ValueError, match='no source files'):
-            inventory.collect(tmp_path, 'HEAD')
-
-    def test_repository_environment_is_ignored(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Honor the explicit root despite inherited Git repository overrides.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Disposable root for synthetic Git objects and checkout edits.
-        """
-        commit = repository(tmp_path)
-        with patch.dict(
-            'os.environ',
-            {
-                'GIT_DIR': str(tmp_path / 'missing.git'),
-                'GIT_WORK_TREE': '/nonexistent-fixture',
-            },
-        ):
-            actual, _ = inventory.collect(tmp_path, 'HEAD')
-        assert actual == commit
+        with pytest.raises(ValueError, match='format'):
+            inventory.document(tmp_path, 'HEAD', 'Example', 'xml')

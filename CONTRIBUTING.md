@@ -163,6 +163,12 @@ public API; do not treat internal checker modules as a promised consumer API.
 The package ships a `py.typed` marker and runs mypy in strict mode. When contributing Python code:
 
 - Use syntax supported by the minimum Python version declared in `pyproject.toml`;
+- Put each function or method parameter on its own line with a trailing comma, except when the sole
+  parameter is `self`; parameterless definitions may remain compact;
+- Alphabetize public and protected (`_name`) functions within their logical groups when definition
+  order has no behavioral effect; preserve initialization and special-method constraints;
+- Alphabetize public and protected classes within logical groups, keeping base classes and evaluated
+  annotation dependencies before their dependants;
 - Prefer precise boundary types over `Any` and explain unavoidable dynamic boundaries;
 - Keep runtime validation for configuration rules that type checking cannot enforce;
 - Avoid importing internal modules in examples when the public CLI is sufficient; and

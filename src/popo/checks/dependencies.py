@@ -60,6 +60,50 @@ def _constraint_versions(
     return versions, failures
 
 
+def _metadata_requirements(
+    source: Path,
+) -> tuple[dict[str, Requirement] | None, list[str]]:
+    """
+    Read runtime dependencies from project metadata without executing it.
+
+    Parameters
+    ----------
+    source : pathlib.Path
+        Existing UTF-8 TOML metadata file selected by the consumer.
+
+    Returns
+    -------
+    tuple[dict[str, packaging.requirements.Requirement] or None, list[str]]
+        Canonicalized requirements and parsing/shape diagnostics. Invalid TOML
+        or project/dependency shapes return None; requirement-level
+        failures retain the valid entries collected before or after them.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        The metadata file cannot be read or decoded as UTF-8.
+
+    Notes
+    -----
+    Inspect project.dependencies only; do not evaluate markers or read optional
+    dependency groups. Declaration parsing and duplicate detection remain in
+    _requirements. No packages are imported or installed.
+    """
+    try:
+        document = tomllib.loads(source.read_text(encoding='utf-8'))
+    except tomllib.TOMLDecodeError as error:
+        return None, [f'{source}: invalid TOML: {error}']
+    project = document.get('project', {})
+    if not isinstance(project, dict):
+        return None, [f'{source}: project must be a TOML table']
+    raw_dependencies = project.get('dependencies', [])
+    if not isinstance(raw_dependencies, list) or not all(
+        isinstance(value, str) for value in raw_dependencies
+    ):
+        return None, [f'{source}: project.dependencies must be a string array']
+    return _requirements(raw_dependencies, source)
+
+
 def _minimum_versions(
     dependencies: dict[str, Requirement],
     source: Path,
@@ -92,8 +136,8 @@ def _minimum_versions(
         lower = [
             item.version for item in requirement.specifier if item.operator == '>='
         ]
-        upper = [item for item in requirement.specifier if item.operator in {'<', '<='}]
-        if requirement.url is not None or len(lower) != 1 or not upper:
+        has_upper = any(item.operator in {'<', '<='} for item in requirement.specifier)
+        if requirement.url is not None or len(lower) != 1 or not has_upper:
             failures.append(
                 f'{source}: dependency must declare one >= lower bound and an upper '
                 f'bound: {str(requirement)!r}',
@@ -174,6 +218,7 @@ def _requirements(
         Parsed requirements indexed by canonicalized name, plus diagnostics
         for invalid declarations or duplicate names. The first valid entry
         wins when spelling, extras, or markers produce the same package key.
+        Returned requirements use canonical names; other fields are retained.
 
     Notes
     -----
@@ -192,6 +237,7 @@ def _requirements(
         if name in parsed:
             failures.append(f'{source}: duplicate dependency {name!r}')
             continue
+        requirement.name = name
         parsed[name] = requirement
     return parsed, failures
 
@@ -244,19 +290,9 @@ def validate(
     ]
     if missing:
         return [f'dependency-policy file does not exist: {path}' for path in missing]
-    try:
-        document = tomllib.loads(config.metadata.read_text(encoding='utf-8'))
-    except tomllib.TOMLDecodeError as error:
-        return [f'{config.metadata}: invalid TOML: {error}']
-    project = document.get('project', {})
-    if not isinstance(project, dict):
-        return [f'{config.metadata}: project must be a TOML table']
-    raw_dependencies = project.get('dependencies', [])
-    if not isinstance(raw_dependencies, list) or not all(
-        isinstance(value, str) for value in raw_dependencies
-    ):
-        return [f'{config.metadata}: project.dependencies must be a string array']
-    expected, failures = _requirements(raw_dependencies, config.metadata)
+    expected, failures = _metadata_requirements(config.metadata)
+    if expected is None:
+        return failures
     lines, line_failures = _requirement_lines(config.requirements)
     actual, requirement_failures = _requirements(lines, config.requirements)
     failures.extend(line_failures)

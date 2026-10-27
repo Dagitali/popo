@@ -37,7 +37,8 @@ npm-pairs = [
 
 All arrays default to empty. Every workflow pattern must match; include `.yaml`, templates, and
 additional paths explicitly. Paths and resolved symlinks must remain inside the repository. Unknown
-keys, malformed configuration, duplicate YAML keys, and unreadable inputs fail.
+keys, malformed configuration, duplicate YAML keys, and unreadable inputs fail. A discovery error
+produces a diagnostic while independent workflow patterns and npm pairs are still checked.
 
 ## Workflow Trust Boundaries
 
@@ -81,7 +82,8 @@ Each pair compares manifest name/version and dependency, development, and option
 specifications against the `packages[""]` root of an npm v2/v3 lockfile. Exact version pins also
 require a matching top-level `node_modules` version. Configure both the committed manifest and any
 source manifest copied into its directory by CI. This catches fixture drift without reimplementing
-npm's resolver or implicitly updating a lockfile.
+npm's resolver or implicitly updating a lockfile. Findings collected before malformed metadata
+remain in the report, and an error in one pair does not prevent later pairs from being checked.
 
 Ranges, peer resolution, workspaces, transitive graphs, and platform-specific optional packages are
 not fully validated. Preserve `npm ci` and runtime fixture checks in hosted CI. A successful static

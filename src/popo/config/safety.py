@@ -1,11 +1,15 @@
 # safety.py
 # Read-only consumer safety policy; never execute workflow or package commands.
-"""Load opt-in workflow and npm manifest consistency policy."""
+"""
+:mod:`popo.config.safety` module.
+
+Load opt-in workflow and npm manifest consistency policy.
+"""
 
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import cast
+from typing import NamedTuple, cast
 
 from ._common import ConfigurationError, read_popo, require_table
 
@@ -23,7 +27,7 @@ class SafetyConfig:
         Resolved repository boundary.
     workflows : tuple[str, ...]
         Relative workflow discovery patterns.
-    exceptions : tuple[tuple[str, str, str, str, str, date], ...]
+    exceptions : tuple[SafetyException, ...]
         Exact workflow, trigger, owner, reason, approver, and expiry records.
     npm_pairs : tuple[tuple[str, str], ...]
         Manifest and lockfile pairs, including copied source manifests.
@@ -37,9 +41,43 @@ class SafetyConfig:
 
     root: Path
     workflows: tuple[str, ...] = ()
-    exceptions: tuple[tuple[str, str, str, str, str, date], ...] = ()
+    exceptions: tuple['SafetyException', ...] = ()
     npm_pairs: tuple[tuple[str, str], ...] = ()
     configured: bool = False
+
+
+# !SECTION
+
+# SECTION: NAMED TUPLES
+
+
+class SafetyException(NamedTuple):
+    """
+    Retain one privileged-trigger approval with named immutable fields.
+
+    Attributes
+    ----------
+    workflow : str
+        Exact repository-relative workflow path, without discovery patterns.
+    trigger : str
+        Approved privileged event: pull_request_target or workflow_run.
+    owner, reason, approver : str
+        Nonblank accountability, rationale and approval details.
+    expires : datetime.date
+        Last UTC calendar date on which the approval remains valid.
+
+    Notes
+    -----
+    Tuple equality, iteration and slicing remain available. Direct construction
+    does not validate fields; the configuration loader performs validation.
+    """
+
+    workflow: str
+    trigger: str
+    owner: str
+    reason: str
+    approver: str
+    expires: date
 
 
 # !SECTION
@@ -48,7 +86,64 @@ class SafetyConfig:
 # SECTION: PROTECTED FUNCTIONS
 
 
-def _path(value: object) -> str:
+def _exception(
+    value: object,
+) -> SafetyException:
+    """
+    Parse one exact privileged-trigger scope and its approval details.
+
+    Parameters
+    ----------
+    value : object
+        Consumer exception table with scope, accountability and expiry fields.
+
+    Returns
+    -------
+    SafetyException
+        Validated approval, preserving its declared details without mutation.
+
+    Raises
+    ------
+    ConfigurationError
+        Fields are missing/unknown, paths or triggers are invalid, details are
+        blank/non-string, or expiry is not a canonical quoted ISO date.
+    """
+    entry = require_table(value, name='safety exception')
+    if set(entry) != {
+        'workflow',
+        'trigger',
+        'owner',
+        'reason',
+        'approved-by',
+        'expires',
+    }:
+        raise ConfigurationError(
+            'safety exception requires exact scope and approval',
+        )
+    workflow = _path(entry['workflow'])
+    if any(character in workflow for character in '*?['):
+        raise ConfigurationError('exception workflow must be an exact path')
+    trigger = entry['trigger']
+    if trigger not in ('pull_request_target', 'workflow_run'):
+        raise ConfigurationError('exception trigger must be privileged')
+    details = [entry[key] for key in ('owner', 'reason', 'approved-by', 'expires')]
+    if not all(isinstance(value, str) and value.strip() for value in details):
+        raise ConfigurationError('exception details must be nonempty strings')
+    owner, reason, approver, expiry = map(str, details)
+    try:
+        expires = date.fromisoformat(expiry)
+        if expires.isoformat() != expiry:
+            raise ValueError('noncanonical date')
+    except ValueError as error:
+        raise ConfigurationError(
+            'exception expires must be a quoted ISO date',
+        ) from error
+    return SafetyException(workflow, str(trigger), owner, reason, approver, expires)
+
+
+def _path(
+    value: object,
+) -> str:
     """Require a nonempty repository-relative policy path."""
     if (
         not isinstance(value, str)
@@ -66,7 +161,9 @@ def _path(value: object) -> str:
 # SECTION: FUNCTIONS
 
 
-def load_safety_config(root: Path) -> SafetyConfig:
+def load_safety_config(
+    root: Path,
+) -> SafetyConfig:
     """
     Load safety settings without commands or network access.
 
@@ -106,46 +203,14 @@ def load_safety_config(root: Path) -> SafetyConfig:
         if set(pair) != {'manifest', 'lockfile'}:
             raise ConfigurationError('npm-pairs requires manifest and lockfile')
         pairs.append((_path(pair['manifest']), _path(pair['lockfile'])))
-    exceptions: list[tuple[str, str, str, str, str, date]] = []
-    for item in arrays['exceptions']:
-        entry = require_table(item, name='safety exception')
-        if set(entry) != {
-            'workflow',
-            'trigger',
-            'owner',
-            'reason',
-            'approved-by',
-            'expires',
-        }:
-            raise ConfigurationError(
-                'safety exception requires exact scope and approval',
-            )
-        workflow = _path(entry['workflow'])
-        if any(character in workflow for character in '*?['):
-            raise ConfigurationError('exception workflow must be an exact path')
-        trigger = entry['trigger']
-        if trigger not in ('pull_request_target', 'workflow_run'):
-            raise ConfigurationError('exception trigger must be privileged')
-        details = [entry[key] for key in ('owner', 'reason', 'approved-by', 'expires')]
-        if not all(isinstance(value, str) and value.strip() for value in details):
-            raise ConfigurationError('exception details must be nonempty strings')
-        owner, reason, approver, expiry = map(str, details)
-        try:
-            expires = date.fromisoformat(expiry)
-            if expires.isoformat() != expiry:
-                raise ValueError('noncanonical date')
-        except ValueError as error:
-            raise ConfigurationError(
-                'exception expires must be a quoted ISO date',
-            ) from error
-        exceptions.append((workflow, str(trigger), owner, reason, approver, expires))
-    scopes = [(entry[0], entry[1]) for entry in exceptions]
+    exceptions = tuple(_exception(item) for item in arrays['exceptions'])
+    scopes = [(entry.workflow, entry.trigger) for entry in exceptions]
     if len(scopes) != len(set(scopes)):
         raise ConfigurationError('duplicate safety exception scope')
     return SafetyConfig(
         root,
         workflows,
-        tuple(exceptions),
+        exceptions,
         tuple(pairs),
         'safety' in popo,
     )

@@ -101,40 +101,6 @@ WorkflowLoader.add_implicit_resolver(
 # SECTION: FUNCTIONS
 
 
-def require_mapping(
-    value: object,
-    label: str,
-) -> dict[str, object]:
-    """
-    Require a dictionary and narrow its type without copying its contents.
-
-    Parameters
-    ----------
-    value : object
-        Candidate mapping; only dict instances are accepted.
-    label : str
-        Description used in a failure diagnostic.
-
-    Returns
-    -------
-    dict[str, object]
-        The original dictionary, with its type narrowed for callers.
-
-    Raises
-    ------
-    ValueError
-        If value is not a dict instance.
-
-    Notes
-    -----
-    Do not validate key or value types or mutate the dictionary. String-key
-    validation for YAML occurs in the loader.
-    """
-    if not isinstance(value, dict):
-        raise ValueError(f'{label} must be a mapping')
-    return cast(dict[str, object], value)
-
-
 def mapping_nodes(
     value: object,
     seen: set[int] | None = None,
@@ -180,12 +146,49 @@ def mapping_nodes(
             pending.extend(reversed(cast(list[object], current)))
 
 
+def parse_mapping(
+    source: str,
+    *,
+    label: str = 'document',
+) -> dict[str, object]:
+    """
+    Parse a YAML text snapshot using the shared restricted safe loader.
+
+    Parameters
+    ----------
+    source : str
+        YAML text already read by the caller; no files are inspected.
+    label : str, optional
+        Mapping name used in diagnostics; defaults to ``document``.
+
+    Returns
+    -------
+    dict[str, object]
+        Mapping with unique string keys and GitHub-compatible booleans.
+
+    Raises
+    ------
+    yaml.YAMLError
+        If YAML parsing or safe construction fails.
+    ValueError
+        If the document is not a mapping, including empty input, or contains
+        duplicate or non-string keys.
+
+    Notes
+    -----
+    Share the same shape and key validation as file-based reading. Parsing
+    performs no file I/O and does not execute automation or arbitrary objects.
+    """
+    # PyYAML's dynamic return value is narrowed at this boundary.
+    value: object = yaml.load(source, Loader=WorkflowLoader)
+    return require_mapping(value, label)
+
+
 def read_mapping(
     path: Path,
     *,
     label: str = 'document',
 ) -> dict[str, object]:
-    # PyYAML's dynamic return value is narrowed at this boundary.
     """
     Read a UTF-8 YAML file and require a mapping document.
 
@@ -218,8 +221,41 @@ def read_mapping(
     per-file diagnostics. Safety and actionlint callers handle errors
     separately.
     """
-    value: object = yaml.load(path.read_text(encoding='utf-8'), Loader=WorkflowLoader)
-    return require_mapping(value, label)
+    return parse_mapping(path.read_text(encoding='utf-8'), label=label)
+
+
+def require_mapping(
+    value: object,
+    label: str,
+) -> dict[str, object]:
+    """
+    Require a dictionary and narrow its type without copying its contents.
+
+    Parameters
+    ----------
+    value : object
+        Candidate mapping; only dict instances are accepted.
+    label : str
+        Description used in a failure diagnostic.
+
+    Returns
+    -------
+    dict[str, object]
+        The original dictionary, with its type narrowed for callers.
+
+    Raises
+    ------
+    ValueError
+        If value is not a dict instance.
+
+    Notes
+    -----
+    Do not validate key or value types or mutate the dictionary. String-key
+    validation for YAML occurs in the loader.
+    """
+    if not isinstance(value, dict):
+        raise ValueError(f'{label} must be a mapping')
+    return cast(dict[str, object], value)
 
 
 # !SECTION

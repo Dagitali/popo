@@ -1,4 +1,7 @@
-"""Audit GitHub settings through GET requests, never policy-file inference.
+"""
+:mod:`popo.checks.hosted` module.
+
+Audit GitHub settings through GET requests, never policy-file inference.
 
 Maintainer Notes
 ----------------
@@ -10,7 +13,7 @@ import json
 import re
 import subprocess
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 from urllib.parse import quote
@@ -32,33 +35,6 @@ class Finding:
     status: Status
     detail: str
     evidence: str
-
-
-@dataclass(frozen=True)
-class Response:
-    """
-    Represent API data or a failure returned by the read-only adapter.
-
-    Attributes
-    ----------
-    data : typing.Any
-        Parsed successful response, or recognized absence evidence on failure.
-        Defaults to None; data is retained without copying or sanitizing it.
-    error : str
-        Adapter-provided failure description; empty for successful responses.
-    status : int or None
-        HTTP status extracted from a failed CLI response, when available.
-
-    Notes
-    -----
-    Direct construction performs no validation or credential redaction. The
-    default adapter supplies sanitized failure text, and audit findings select
-    narrow observations rather than serializing this response in full.
-    """
-
-    data: Any = None
-    error: str = ''
-    status: int | None = None
 
 
 @dataclass(frozen=True)
@@ -91,6 +67,33 @@ class Audit:
         return json.dumps(asdict(self), indent=2)
 
 
+@dataclass(frozen=True)
+class Response:
+    """
+    Represent API data or a failure returned by the read-only adapter.
+
+    Attributes
+    ----------
+    data : typing.Any
+        Parsed successful response, or recognized absence evidence on failure.
+        Defaults to None; data is retained without copying or sanitizing it.
+    error : str
+        Adapter-provided failure description; empty for successful responses.
+    status : int or None
+        HTTP status extracted from a failed CLI response, when available.
+
+    Notes
+    -----
+    Direct construction performs no validation or credential redaction. The
+    default adapter supplies sanitized failure text, and audit findings select
+    narrow observations rather than serializing this response in full.
+    """
+
+    data: Any = None
+    error: str = ''
+    status: int | None = None
+
+
 type Fetcher = Callable[[str, bool], Response]
 
 
@@ -98,6 +101,81 @@ type Fetcher = Callable[[str, bool], Response]
 
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _github_get(
+    endpoint: str,
+    paginate: bool = False,
+) -> Response:
+    """
+    Fetch one GitHub endpoint using the authenticated GitHub CLI.
+
+    Parameters
+    ----------
+    endpoint : str
+        Internally constructed repository API path, not an arbitrary URL.
+    paginate : bool, optional
+        Fetch all pages and combine array responses.
+
+    Returns
+    -------
+    Response
+        Parsed data or a sanitized failure. Authentication, launch, timeout,
+        API, and malformed JSON errors remain unavailable evidence.
+
+    Notes
+    -----
+    Explicitly uses GET and github.com. Credentials are managed by ``gh``;
+    no token is read or printed by Popo. Subprocesses have a bounded timeout.
+    """
+    command = [
+        'gh',
+        'api',
+        '--hostname',
+        'github.com',
+        '--method',
+        'GET',
+        '-H',
+        'Accept: application/vnd.github+json',
+        '-H',
+        'X-GitHub-Api-Version: 2026-03-10',
+        endpoint,
+    ]
+    if paginate:
+        command.extend(['--paginate', '--slurp'])
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired, UnicodeError):
+        return Response(error='GitHub CLI unavailable, timed out, or undecodable')
+    if result.returncode:
+        match = re.search(r'\(HTTP (\d{3})\)', result.stderr)
+        status = int(match[1]) if match else None
+        # Retain only a recognized absence message, never arbitrary API text.
+        try:
+            body = json.loads(result.stdout)
+        except (ValueError, TypeError):
+            body = None
+        message = (
+            'Branch not protected'
+            if isinstance(body, dict) and body.get('message') == 'Branch not protected'
+            else None
+        )
+        return Response(
+            data=message,
+            error=f'GitHub GET failed (HTTP {status or 'unknown'})',
+            status=status,
+        )
+    try:
+        data = json.loads(result.stdout)
+        if paginate:
+            if not isinstance(data, list) or any(
+                not isinstance(page, list) for page in data
+            ):
+                return Response(error='unexpected paginated response')
+            data = [item for page in data for item in page]
+        return Response(data=data)
+    except ValueError:
+        return Response(error='invalid JSON response')
 
 
 def _repository(
@@ -108,7 +186,12 @@ def _repository(
     base = f'repos/{policy.name}'
     findings: list[Finding] = []
 
-    def add(check: str, state: bool | None, detail: str, endpoint: str) -> None:
+    def add(
+        check: str,
+        state: bool | None,
+        detail: str,
+        endpoint: str,
+    ) -> None:
         """
         Record unknown evidence separately from a confirmed match or drift.
         """
@@ -257,31 +340,7 @@ def _repository(
         if legacy.status == 404 and legacy.data == 'Branch not protected':
             legacy = Response(data={})
         try:
-            if rules.error or not isinstance(rules.data, list):
-                raise ValueError('effective rules unavailable')
-            contexts: set[str] = set()
-            for rule in rules.data:
-                if not isinstance(rule, dict) or not isinstance(rule.get('type'), str):
-                    raise ValueError('unexpected effective rule')
-                if rule['type'] == 'required_status_checks':
-                    required_rules = rule['parameters']['required_status_checks']
-                    if not isinstance(required_rules, list):
-                        raise ValueError('unexpected rules check array')
-                    contexts.update(item['context'] for item in required_rules)
-            legacy_known = not legacy.error and isinstance(legacy.data, dict)
-            if legacy_known:
-                required = legacy.data.get('required_status_checks') or {}
-                legacy_contexts = required.get('contexts', [])
-                legacy_checks = required.get('checks', [])
-                if not isinstance(legacy_contexts, list) or not isinstance(
-                    legacy_checks,
-                    list,
-                ):
-                    raise ValueError('unexpected legacy check array')
-                contexts.update(legacy_contexts)
-                contexts.update(item['context'] for item in legacy_checks)
-            if any(not isinstance(name, str) for name in contexts):
-                raise ValueError('unexpected check context')
+            contexts, legacy_known = _required_contexts(rules, legacy)
             for check in checks:
                 state = True if check in contexts else False if legacy_known else None
                 add(
@@ -303,82 +362,69 @@ def _repository(
     return findings
 
 
-# !SECTION
-
-
-def _github_get(
-    endpoint: str,
-    paginate: bool = False,
-) -> Response:
+def _required_contexts(
+    rules: Response,
+    legacy: Response,
+) -> tuple[set[str], bool]:
     """
-    Fetch one GitHub endpoint using the authenticated GitHub CLI.
+    Combine effective-rule and legacy required-check evidence without I/O.
 
     Parameters
     ----------
-    endpoint : str
-        Internally constructed repository API path, not an arbitrary URL.
-    paginate : bool, optional
-        Fetch all pages and combine array responses.
+    rules : Response
+        Effective branch rules with pagination already flattened by the caller.
+    legacy : Response
+        Legacy protection data; recognized absence is normalized by the caller.
 
     Returns
     -------
-    Response
-        Parsed data or a sanitized failure. Authentication, launch, timeout,
-        API, and malformed JSON errors remain unavailable evidence.
+    tuple[set[str], bool]
+        Required context names and whether legacy evidence is known. A present
+        context can be verified even when legacy evidence is inaccessible;
+        absence is conclusive only when both sources are available.
+
+    Raises
+    ------
+    KeyError, TypeError, ValueError, AttributeError
+        Effective rules are unavailable, or recognized rule/legacy check data
+        is malformed. The repository auditor converts these failures to
+        inaccessible evidence without retaining partial context conclusions.
 
     Notes
     -----
-    Explicitly uses GET and github.com. Credentials are managed by ``gh``;
-    no token is read or printed by Popo. Subprocesses have a bounded timeout.
+    Perform no endpoint reads or response mutation. This parser does not verify
+    check-source identity.
+    Unrelated effective-rule types do not contribute required contexts.
     """
-    command = [
-        'gh',
-        'api',
-        '--hostname',
-        'github.com',
-        '--method',
-        'GET',
-        '-H',
-        'Accept: application/vnd.github+json',
-        '-H',
-        'X-GitHub-Api-Version: 2026-03-10',
-        endpoint,
-    ]
-    if paginate:
-        command.extend(['--paginate', '--slurp'])
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.TimeoutExpired, UnicodeError):
-        return Response(error='GitHub CLI unavailable, timed out, or undecodable')
-    if result.returncode:
-        match = re.search(r'\(HTTP (\d{3})\)', result.stderr)
-        status = int(match[1]) if match else None
-        # Retain only a recognized absence message, never arbitrary API text.
-        try:
-            body = json.loads(result.stdout)
-        except (ValueError, TypeError):
-            body = None
-        message = (
-            'Branch not protected'
-            if isinstance(body, dict) and body.get('message') == 'Branch not protected'
-            else None
-        )
-        return Response(
-            data=message,
-            error=f'GitHub GET failed (HTTP {status or 'unknown'})',
-            status=status,
-        )
-    try:
-        data = json.loads(result.stdout)
-        if paginate:
-            if not isinstance(data, list) or any(
-                not isinstance(page, list) for page in data
-            ):
-                return Response(error='unexpected paginated response')
-            data = [item for page in data for item in page]
-        return Response(data=data)
-    except ValueError:
-        return Response(error='invalid JSON response')
+    if rules.error or not isinstance(rules.data, list):
+        raise ValueError('effective rules unavailable')
+    contexts: set[str] = set()
+    for rule in rules.data:
+        if not isinstance(rule, dict) or not isinstance(rule.get('type'), str):
+            raise ValueError('unexpected effective rule')
+        if rule['type'] == 'required_status_checks':
+            required_rules = rule['parameters']['required_status_checks']
+            if not isinstance(required_rules, list):
+                raise ValueError('unexpected rules check array')
+            contexts.update(item['context'] for item in required_rules)
+    legacy_known = not legacy.error and isinstance(legacy.data, dict)
+    if legacy_known:
+        required = legacy.data.get('required_status_checks') or {}
+        legacy_contexts = required.get('contexts', [])
+        legacy_checks = required.get('checks', [])
+        if not isinstance(legacy_contexts, list) or not isinstance(
+            legacy_checks,
+            list,
+        ):
+            raise ValueError('unexpected legacy check array')
+        contexts.update(legacy_contexts)
+        contexts.update(item['context'] for item in legacy_checks)
+    if any(not isinstance(name, str) for name in contexts):
+        raise ValueError('unexpected check context')
+    return contexts, legacy_known
+
+
+# !SECTION
 
 
 # SECTION: FUNCTIONS
@@ -424,34 +470,42 @@ def audit(
     now = datetime.now(UTC)
     day = today or now.date()
     findings = [item for repo in config.repositories for item in _repository(repo, get)]
+    missing_positions: dict[tuple[str, str], list[int]] = {}
+    for index, item in enumerate(findings):
+        if item.status == 'missing':
+            missing_positions.setdefault((item.repository, item.check), []).append(
+                index,
+            )
     for exception in config.exceptions:
         if exception.expires < day:
-            findings.append(
-                Finding(
-                    exception.repository,
-                    f'exception:{exception.check}',
-                    'missing',
-                    f'exception expired {exception.expires}; owner={exception.owner}',
-                    exception.approval,
-                ),
-            )
-            continue
-        for index, item in enumerate(findings):
-            if (item.repository, item.check, item.status) == (
+            expired = Finding(
                 exception.repository,
-                exception.check,
+                f'exception:{exception.check}',
                 'missing',
-            ):
-                findings[index] = Finding(
-                    item.repository,
-                    item.check,
-                    'excepted',
+                f'exception expired {exception.expires}; owner={exception.owner}',
+                exception.approval,
+            )
+            missing_positions.setdefault(
+                (expired.repository, expired.check),
+                [],
+            ).append(
+                len(findings),
+            )
+            findings.append(expired)
+            continue
+        scope = (exception.repository, exception.check)
+        for index in missing_positions.pop(scope, []):
+            item = findings[index]
+            findings[index] = replace(
+                item,
+                status='excepted',
+                detail=(
                     f'{item.detail}; owner={exception.owner}; '
                     f'approved-by={exception.approved_by}; '
                     f'expires={exception.expires}; '
-                    f'reason={exception.reason}; approval={exception.approval}',
-                    item.evidence,
-                )
+                    f'reason={exception.reason}; approval={exception.approval}'
+                ),
+            )
     return Audit(now.isoformat(), tuple(findings))
 
 

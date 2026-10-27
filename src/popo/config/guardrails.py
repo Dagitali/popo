@@ -1,4 +1,8 @@
-"""Load an explicit Make, pre-commit and workflow invocation contract."""
+"""
+:mod:`popo.config.guardrails` module.
+
+Load an explicit Make, pre-commit and workflow invocation contract.
+"""
 
 import re
 from dataclasses import dataclass
@@ -52,7 +56,9 @@ class GuardrailsConfig:
 # SECTION: FUNCTIONS
 
 
-def load_guardrails_config(root: Path) -> GuardrailsConfig:
+def load_guardrails_config(
+    root: Path,
+) -> GuardrailsConfig:
     """Validate a consumer-owned parity contract without executing commands.
 
     Parameters

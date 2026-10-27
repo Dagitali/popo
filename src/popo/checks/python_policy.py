@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks.python_policy` module.
 
-Validate a repository's declared Python-version policy.
+Validate Python toolchain policy without installing or invoking interpreters.
 """
 
 import re
@@ -15,6 +15,8 @@ from packaging.version import InvalidVersion, Version
 
 from popo.config import PythonPolicyConfig
 from popo.support import automation_paths
+
+from ._toolchain_policy import workflow_observations
 
 # SECTION: CONSTANTS
 
@@ -33,6 +35,82 @@ WORKFLOW_VERSION_PATTERN = re.compile(
 
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _local_findings(
+    config: PythonPolicyConfig,
+) -> list[str]:
+    """
+    Compare local metadata, tool settings and the preferred version file.
+
+    Parameters
+    ----------
+    config : popo.config.PythonPolicyConfig
+        Expected consumer policy and local declaration paths.
+
+    Returns
+    -------
+    list[str]
+        Local declaration findings, in metadata, Ruff and version-file order.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        An existing input cannot be read or decoded as UTF-8.
+
+    Notes
+    -----
+    Read shared package/Ruff metadata once, reporting a single parse failure.
+    Missing files and invalid TOML become findings; read/decode errors
+    propagate.
+    Exact text comparisons are intentional, unlike workflow range membership.
+    """
+    failures: list[str] = []
+    metadata, metadata_failures = _read_toml(config.metadata)
+    failures.extend(metadata_failures)
+    if metadata is not None:
+        project = _table(metadata.get('project'))
+        mypy = _table(_table(metadata.get('tool')).get('mypy'))
+        if project.get('requires-python') != config.requires_python:
+            failures.append(
+                f'{config.metadata}: project.requires-python must equal '
+                f'{config.requires_python!r}',
+            )
+        if mypy.get('python_version') != config.mypy_python_version:
+            failures.append(
+                f'{config.metadata}: tool.mypy.python_version must equal '
+                f'{config.mypy_python_version!r}',
+            )
+
+    ruff = metadata
+    if config.ruff_config != config.metadata:
+        ruff, ruff_failures = _read_toml(config.ruff_config)
+        failures.extend(ruff_failures)
+    if ruff is not None:
+        if config.ruff_config == config.metadata:
+            value = _table(_table(ruff.get('tool')).get('ruff')).get(
+                'target-version',
+            )
+        else:
+            value = ruff.get('target-version')
+        if value != config.ruff_target_version:
+            failures.append(
+                f'{config.ruff_config}: Ruff target-version must equal '
+                f'{config.ruff_target_version!r}',
+            )
+
+    if not config.python_version_file.is_file():
+        failures.append(
+            f'Python-policy file does not exist: {config.python_version_file}',
+        )
+    elif config.python_version_file.read_text(encoding='utf-8').strip() != (
+        config.python_version
+    ):
+        failures.append(
+            f'{config.python_version_file}: expected {config.python_version!r}',
+        )
+
+    return failures
 
 
 def _normalize_scalar(
@@ -180,6 +258,77 @@ def _table(
     return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
 
+def _workflow_findings(
+    config: PythonPolicyConfig,
+    supported: SpecifierSet,
+) -> list[str]:
+    """
+    Collect workflow declaration and version-range findings in file order.
+
+    Parameters
+    ----------
+    config : popo.config.PythonPolicyConfig
+        Expected consumer policy, workflow directory and parser selection.
+    supported : packaging.specifiers.SpecifierSet
+        Accepted versions parsed from the consumer's requires-python policy.
+
+    Returns
+    -------
+    list[str]
+        Discovery, declaration and version findings, in workflow file order.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        A workflow cannot be read or decoded as UTF-8 in legacy text mode.
+
+    Notes
+    -----
+    Keep each file's parse findings before its unsupported-version findings.
+    Legacy text mode propagates read/decode errors and requires inputs only
+    when a setup-python action marker is present. Scoped mode reports
+    read/decode errors and requires inputs in each file.
+    Neither mode executes workflows or resolves arbitrary expressions.
+    """
+    failures: list[str] = []
+    if not config.workflow_directory.is_dir():
+        failures.append(
+            f'workflow directory does not exist: {config.workflow_directory}',
+        )
+        return failures
+    paths = automation_paths(config.workflow_directory)
+    if config.workflow_parser == 'scoped' and not paths:
+        failures.append('no Python policy workflows found')
+    for path in paths:
+        if config.workflow_parser == 'scoped':
+            observations, errors = workflow_observations(path, 'python-version')
+            failures.extend(f'{path}: {error}' for error in errors)
+            configured = [observation.value for observation in observations]
+        else:
+            content = path.read_text(encoding='utf-8')
+            configured = [
+                resolved
+                for raw in map(
+                    _normalize_scalar,
+                    WORKFLOW_VERSION_PATTERN.findall(content),
+                )
+                for resolved in (_resolve_versions(raw, content) or (raw,))
+            ]
+            if 'actions/setup-python@' in content and not configured:
+                failures.append(f'{path}: setup-python requires an explicit version')
+        for value in configured:
+            try:
+                accepted = Version(value) in supported
+            except InvalidVersion:
+                accepted = False
+            if not accepted:
+                failures.append(f'{path}: unsupported Python version {value!r}')
+    return failures
+
+
+# !SECTION
+
+
 # SECTION: FUNCTIONS
 
 
@@ -189,7 +338,7 @@ def validate(
     running_version: str | None = None,
 ) -> list[str]:
     """
-    Return Python-policy inconsistencies.
+    Collect declaration drift and compare the Python runtime version.
 
     Parameters
     ----------
@@ -223,10 +372,14 @@ def validate(
     Metadata specifier text, mypy and Ruff settings, and the stripped version
     file are compared exactly with configured expectations. Runtime and
     resolved workflow versions are tested for membership in the configured
-    specifier set. Workflow resolution is text-based and supports literals,
+    specifier set. Default workflow resolution uses text and supports literals,
     inline lists, environment references, and inline or contiguous block-list
     matrices; it does not evaluate arbitrary expressions or model job-local
-    YAML scope. Unresolved environment and matrix references produce version
+    YAML scope. Optional scoped mode uses the shared strict YAML observer,
+    requires version inputs per file, and reports unresolved declarations or
+    unsupported matrices without guessing. Workflow read/decode errors become
+    diagnostics in scoped mode; legacy text mode propagates them.
+    Unresolved environment and matrix references produce version
     diagnostics even when other declarations resolve. Shared package/Ruff
     metadata is read once per validation, including a single parse diagnostic.
     """
@@ -245,71 +398,8 @@ def validate(
             f'received {active_version}',
         )
 
-    metadata, metadata_failures = _read_toml(config.metadata)
-    failures.extend(metadata_failures)
-    if metadata is not None:
-        project = _table(metadata.get('project'))
-        mypy = _table(_table(metadata.get('tool')).get('mypy'))
-        if project.get('requires-python') != config.requires_python:
-            failures.append(
-                f'{config.metadata}: project.requires-python must equal '
-                f'{config.requires_python!r}',
-            )
-        if mypy.get('python_version') != config.mypy_python_version:
-            failures.append(
-                f'{config.metadata}: tool.mypy.python_version must equal '
-                f'{config.mypy_python_version!r}',
-            )
-
-    ruff = metadata
-    if config.ruff_config != config.metadata:
-        ruff, ruff_failures = _read_toml(config.ruff_config)
-        failures.extend(ruff_failures)
-    if ruff is not None:
-        if config.ruff_config == config.metadata:
-            value = _table(_table(ruff.get('tool')).get('ruff')).get(
-                'target-version',
-            )
-        else:
-            value = ruff.get('target-version')
-        if value != config.ruff_target_version:
-            failures.append(
-                f'{config.ruff_config}: Ruff target-version must equal '
-                f'{config.ruff_target_version!r}',
-            )
-
-    if not config.python_version_file.is_file():
-        failures.append(
-            f'Python-policy file does not exist: {config.python_version_file}',
-        )
-    elif config.python_version_file.read_text(encoding='utf-8').strip() != (
-        config.python_version
-    ):
-        failures.append(
-            f'{config.python_version_file}: expected {config.python_version!r}',
-        )
-
-    if not config.workflow_directory.is_dir():
-        failures.append(
-            f'workflow directory does not exist: {config.workflow_directory}',
-        )
-        return failures
-    for path in automation_paths(config.workflow_directory):
-        content = path.read_text(encoding='utf-8')
-        configured = [
-            resolved
-            for raw in map(_normalize_scalar, WORKFLOW_VERSION_PATTERN.findall(content))
-            for resolved in (_resolve_versions(raw, content) or (raw,))
-        ]
-        if 'actions/setup-python@' in content and not configured:
-            failures.append(f'{path}: setup-python requires an explicit version')
-        for value in configured:
-            try:
-                accepted = Version(value) in supported
-            except InvalidVersion:
-                accepted = False
-            if not accepted:
-                failures.append(f'{path}: unsupported Python version {value!r}')
+    failures.extend(_local_findings(config))
+    failures.extend(_workflow_findings(config, supported))
     return failures
 
 

@@ -30,6 +30,7 @@ are resolved against that root. See the [configuration example] for a Python sta
 - [Output and Explanation](#output-and-explanation)
 - [Dependency Settings](#dependency-settings)
 - [Python-Policy Settings](#python-policy-settings)
+- [Swift-Policy Settings](#swift-policy-settings)
 - [Automation Settings](#automation-settings)
 - [File Policy Settings](#file-policy-settings)
 - [Repository Safety Settings](#repository-safety-settings)
@@ -47,9 +48,13 @@ automatically. Missing profiles, duplicate names, empty arrays and unknown check
 
 Selectable commands are `check-docs`, `check-github-actions-pins`, `check-dependency-boundaries`,
 `check-python-policy`, `check-automation-contracts`, `check-repository-safety`,
-`check-required-files`, `check-file-headers` and `check-guardrail-parity`. Checks run in declared
-order. Reported failures and per-domain configuration failures do not hide later selected checks.
-Unhandled filesystem and decoding errors retain their command-specific propagation boundaries.
+`check-required-files`, `check-file-headers`, `check-guardrail-parity`, `check-python-source`,
+`check-swift-source`, `check-swift-policy` and `check-logs`. Swift policy and source/log checks are
+unreleased additions. See [Swift toolchain policy] and [source and log checks](source-and-log-checks.md)
+for their opt-in tables and limits. Checks run in
+declared order. Reported failures and per-domain configuration failures do not hide later selected
+checks. Unhandled filesystem and decoding errors retain their command-specific propagation
+boundaries.
 
 Without explicit selection, legacy baseline checks remain enabled and configured optional domains
 join them. Explicit selection can omit configured domains; their settings are generally not loaded.
@@ -116,7 +121,9 @@ created. Individual settings override detected defaults.
 In `minimum-constraints` mode, each runtime dependency must declare one `>=` lower bound and an
 upper bound. Its corresponding constraint must be a single `name==version` pin equal to the lower
 bound. A newer allowed version is still a mismatch for this fixture. In `exact` mode, normalized
-dependency declarations must match the requirements. Neither mode installs dependencies.
+dependency declarations must match the requirements. Package names are case-insensitive, and runs of
+dots, underscores and hyphens are equivalent; this normalization does not discard extras, markers,
+version specifiers or URL fragments. Neither mode installs dependencies.
 
 Requirements inputs accept blank lines, full-line comments, and inline comments introduced by
 whitespace followed by `#`. URL fragments without preceding whitespace remain part of the
@@ -137,6 +144,7 @@ Popo a complete installer requirements-file parser.
 | `ruff-target-version` | `py` plus `python-version` with periods removed |
 | `mypy-python-version` | `python-version` |
 | `workflow-directory` | `.github/workflows` |
+| `workflow-parser` | `text`; optional `scoped` YAML observations |
 
 The default `requires-python` comes from dependency metadata even when the Python-policy metadata
 path is overridden. Set it explicitly when using a different policy. Popo checks the running
@@ -148,6 +156,14 @@ Configuration loading remains separate.
 Every discovered workflow `python-version` declaration is checked. Unresolved supported env/matrix
 references produce an unsupported-version diagnostic even when another declaration is valid.
 Resolution remains text-based and does not model job-local scope or arbitrary expressions.
+
+## Swift-Policy Settings
+
+`[swift-policy]` (or `[tool.popo.swift-policy]`) declares supported stable compiler versions, a
+preferred local selection, the expected package tools minimum and explicit workflow globs.
+`check-swift-policy` has its own loader and requires no Python project metadata. It never invokes
+Swift or executes manifests. See the [Swift toolchain policy] for the schema, scoped CI resolution,
+explicit `--compiler-version` observations, version semantics and limits.
 
 ## Automation Settings
 
@@ -226,12 +242,17 @@ expressions or full YAML semantics.
   [automation contracts guide] for exemptions and limits.
 - `check-actionlint` selects configured workflows/templates or explicit in-root paths and runs an
   already-installed linter using a disposable self-reference compatibility view. `--actionlint`
-  selects the executable/options. Source files are not rewritten, diagnostics retain source
+  selects the executable/options. Validation and normalization share one read per automation file,
+  including repeated or cyclic references. Source files are not rewritten, diagnostics retain source
   locations, and the exact external status is returned. Tool launch and source errors return one.
   Unlike native contract checks, this explicitly invokes an external tool; it is not included in
   `check-all` and does not install tools, execute workflow commands, or access the network itself.
 - `check-dependency-boundaries` and `check-python-policy` load dependency and Python-policy
   configuration together; they do not load automation settings.
+- `check-python-source`, `check-swift-source` and `check-logs` inspect configured inputs
+  without executing source or native tools. `check-logs --log-root` selects an explicit artifact
+  boundary; a relative override resolves against the working directory, not `--root`. They require
+  their own opt-in policy tables; see [source and log checks](source-and-log-checks.md).
 - `check-release-changelog` requires a release version and defaults to the root `CHANGELOG.md`; use
   `--changelog` to select another file.
 - `check-all` uses explicit checks or a named profile when supplied, otherwise legacy baseline and
@@ -260,3 +281,4 @@ read-only and do not repair files or change consumer policy automatically.
 [Hosted Settings Audit]: hosted-audit.md
 [repository safety]: repository-safety.md
 [source inventories]: source-inventory.md
+[Swift toolchain policy]: swift-policy.md

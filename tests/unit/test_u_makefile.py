@@ -146,93 +146,6 @@ class TestMakefile:
     exercise temporary directories and verify existing state is preserved.
     """
 
-    def test_checks_use_checkout_source_path(
-        self,
-        make: MakeRunner,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Verify Make supplies the checkout source path to test subprocesses.
-
-        Parameters
-        ----------
-        make : MakeRunner
-            Runner for the isolated copied Makefile.
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        """
-        result = make('-s', 'test', 'PYTEST=printf \'%s\' "$$PYTHONPATH"')
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.split(os.pathsep)[0] == str(tmp_path / 'checkout/src')
-
-    def test_inherited_overrides_do_not_leak(
-        self,
-        make: MakeRunner,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Keep nested Make assertions independent of caller overrides.
-
-        Parameters
-        ----------
-        make : MakeRunner
-            Runner for the isolated copied Makefile.
-        monkeypatch : pytest.MonkeyPatch
-            Restore environment, attributes, and working directory.
-        """
-        monkeypatch.setenv('TEST_ARGS', '--must-not-leak')
-        monkeypatch.setenv('PYTHON', 'must-not-run')
-        result = make('-n', 'test')
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == 'python3 -m pytest'
-
-    @pytest.mark.parametrize(
-        ('managed', 'overrides', 'expected'),
-        [
-            (False, (), 'python3'),
-            (True, (), '".venv/bin/python"'),
-            (True, ('VIRTUAL_ENV=active-env',), 'python3'),
-            (True, ('PYTHON=custom-python',), 'custom-python'),
-            (True, ('VENV_DIR=custom env',), '"custom env/bin/python"'),
-            (True, ('OS=Windows_NT',), '".venv/Scripts/python.exe"'),
-        ],
-        ids=['path', 'managed', 'active', 'explicit', 'spaces', 'windows'],
-    )
-    def test_interpreter_selection(
-        self,
-        make: MakeRunner,
-        tmp_path: Path,
-        managed: bool,
-        overrides: tuple[str, ...],
-        expected: str,
-    ) -> None:
-        """
-        Verify Make selects managed, active, or explicitly overridden Python.
-
-        Parameters
-        ----------
-        make : MakeRunner
-            Runner for the isolated copied Makefile.
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        managed : bool
-            Whether the temporary checkout includes a managed interpreter stub.
-        overrides : tuple[str, ...]
-            Make variable assignments controlling interpreter selection.
-        expected : str
-            Exact interpreter command expected in Make dry-run output.
-        """
-        if managed:
-            interpreter = tmp_path / 'checkout' / expected.strip('"')
-            if expected in {'python3', 'custom-python'}:
-                interpreter = tmp_path / 'checkout/.venv/bin/python'
-            interpreter.parent.mkdir(parents=True)
-            interpreter.write_text('', encoding='utf-8')
-            interpreter.chmod(0o755)
-        result = make('-n', 'test', *overrides)
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == f'{expected} -m pytest'
-
     @pytest.mark.parametrize(
         ('alias', 'target'),
         [('fmt', 'format'), ('build', 'dist'), ('check-pre-push', 'check')],
@@ -259,6 +172,25 @@ class TestMakefile:
         direct = make('-n', target)
         assert aliased.returncode == direct.returncode == 0
         assert aliased.stdout == direct.stdout
+
+    def test_checks_use_checkout_source_path(
+        self,
+        make: MakeRunner,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Verify Make supplies the checkout source path to test subprocesses.
+
+        Parameters
+        ----------
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        """
+        result = make('-s', 'test', 'PYTEST=printf \'%s\' "$$PYTHONPATH"')
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.split(os.pathsep)[0] == str(tmp_path / 'checkout/src')
 
     def test_default_gate_preserves_existing_checks(
         self,
@@ -343,6 +275,74 @@ class TestMakefile:
         for target in targets:
             assert target in result.stdout
         assert ' -m pytest' not in result.stdout
+
+    def test_inherited_overrides_do_not_leak(
+        self,
+        make: MakeRunner,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Keep nested Make assertions independent of caller overrides.
+
+        Parameters
+        ----------
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
+        monkeypatch : pytest.MonkeyPatch
+            Restore environment, attributes, and working directory.
+        """
+        monkeypatch.setenv('TEST_ARGS', '--must-not-leak')
+        monkeypatch.setenv('PYTHON', 'must-not-run')
+        result = make('-n', 'test')
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == 'python3 -m pytest'
+
+    @pytest.mark.parametrize(
+        ('managed', 'overrides', 'expected'),
+        [
+            (False, (), 'python3'),
+            (True, (), '".venv/bin/python"'),
+            (True, ('VIRTUAL_ENV=active-env',), 'python3'),
+            (True, ('PYTHON=custom-python',), 'custom-python'),
+            (True, ('VENV_DIR=custom env',), '"custom env/bin/python"'),
+            (True, ('OS=Windows_NT',), '".venv/Scripts/python.exe"'),
+        ],
+        ids=['path', 'managed', 'active', 'explicit', 'spaces', 'windows'],
+    )
+    def test_interpreter_selection(
+        self,
+        make: MakeRunner,
+        tmp_path: Path,
+        managed: bool,
+        overrides: tuple[str, ...],
+        expected: str,
+    ) -> None:
+        """
+        Verify Make selects managed, active, or explicitly overridden Python.
+
+        Parameters
+        ----------
+        make : MakeRunner
+            Runner for the isolated copied Makefile.
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        managed : bool
+            Whether the temporary checkout includes a managed interpreter stub.
+        overrides : tuple[str, ...]
+            Make variable assignments controlling interpreter selection.
+        expected : str
+            Exact interpreter command expected in Make dry-run output.
+        """
+        if managed:
+            interpreter = tmp_path / 'checkout' / expected.strip('"')
+            if expected in {'python3', 'custom-python'}:
+                interpreter = tmp_path / 'checkout/.venv/bin/python'
+            interpreter.parent.mkdir(parents=True)
+            interpreter.write_text('', encoding='utf-8')
+            interpreter.chmod(0o755)
+        result = make('-n', 'test', *overrides)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == f'{expected} -m pytest'
 
     def test_packaging_commands_are_overridable(
         self,

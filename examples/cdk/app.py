@@ -4,7 +4,9 @@ from aws_cdk import App, RemovalPolicy, Stack
 from aws_cdk import aws_s3 as s3
 
 
-def create_stack(app: App) -> Stack:
+def create_stack(
+    app: App,
+) -> Stack:
     """
     Describe a private retained bucket without contacting AWS.
 

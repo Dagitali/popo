@@ -84,6 +84,7 @@ documentation format; do not copy generated output from another project.
   settings, and CLI scope.
 - [File policies]: Opt-in required paths and configurable source-header contracts.
 - [Shared guardrails]: One explicit check profile delegated through Make, pre-commit, and CI.
+- [Swift toolchain policy]: Explicit compiler selections, package minimums and scoped CI versions.
 - [Source inventories]: Explicit Git revisions, JSON/SPDX output and source-only evidence limits.
 - [Hosted settings audit]: Explicit GitHub expectations and the limits of GET-only evidence.
 - [Adoption playbook]: Consumer setup, behavioral comparison, CI integration, and migration safeguards.
@@ -150,5 +151,6 @@ Use reference links sorted by destination and keep file headers and tables of co
 [Repository safety]: repository-safety.md
 [Runbooks]: runbooks/README.md
 [Source inventories]: source-inventory.md
+[Swift toolchain policy]: swift-policy.md
 [Tutorials]: tutorials/README.md
 [First repository tutorial]: tutorials/check-first-repository.md

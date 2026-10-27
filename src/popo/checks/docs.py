@@ -223,6 +223,77 @@ def _slugify(
     return re.sub(r'[\s]+', '-', heading)
 
 
+def _target_findings(
+    source: Path,
+    line_number: int,
+    target: str,
+    image: bool,
+    resolved_root: Path,
+    anchor_cache: dict[Path, set[str]],
+) -> list[str]:
+    """
+    Check one URL's local destination and optional Markdown anchor.
+
+    Parameters
+    ----------
+    source : pathlib.Path
+        Markdown source used for relative target resolution and diagnostics.
+    line_number : int
+        Original one-based source line containing the link or definition.
+    target : str
+        Parsed destination text, possibly angle-wrapped or followed by a title.
+    image : bool
+        Whether the destination is an inline image rather than a regular link.
+    resolved_root : pathlib.Path
+        Resolved repository boundary for local targets.
+    anchor_cache : dict[pathlib.Path, set[str]]
+        Per-invocation cache updated only for inspected Markdown targets.
+
+    Returns
+    -------
+    list[str]
+        Malformed URL, missing target, escape or anchor findings. External URLs
+        are skipped without fetching; no finding proves remote validity.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        Target resolution, inspection, reading or UTF-8 decoding fails.
+
+    Notes
+    -----
+    Keep malformed URLs local to this diagnostic so later links are checked.
+    Existing directory links need no README unless they include a fragment.
+    """
+    raw_target = target.strip().strip('<>')
+    if ' "' in raw_target:
+        raw_target = raw_target.split(' "', maxsplit=1)[0]
+    try:
+        parsed = urlsplit(raw_target)
+    except ValueError:
+        return [f'{source}:{line_number}: invalid link target: {raw_target}']
+    if parsed.scheme or parsed.netloc:
+        return []
+    target_path = source if not parsed.path else source.parent / unquote(parsed.path)
+    if target_path.is_dir() and parsed.fragment:
+        target_path = target_path / 'README.md'
+    resolved_target = target_path.resolve()
+    if not resolved_target.is_relative_to(resolved_root):
+        return [f'{source}:{line_number}: link escapes repository: {raw_target}']
+    if target_path.is_dir() and not parsed.fragment and not image:
+        return []
+    if not target_path.is_file():
+        return [f'{source}:{line_number}: local target does not exist: {raw_target}']
+    if parsed.fragment and target_path.suffix.lower() == '.md':
+        anchor_path = resolved_target
+        anchors = anchor_cache.get(anchor_path)
+        if anchors is None:
+            anchors = anchor_cache[anchor_path] = _anchors(anchor_path)
+        if unquote(parsed.fragment).lower() not in anchors:
+            return [f'{source}:{line_number}: anchor does not exist: {raw_target}']
+    return []
+
+
 # !SECTION
 
 
@@ -233,7 +304,7 @@ def validate(
     root: Path,
 ) -> list[str]:
     """
-    Return broken repository-local Markdown link failures.
+    Return Markdown URL-syntax and repository-local target findings.
 
     Parameters
     ----------
@@ -243,9 +314,9 @@ def validate(
     Returns
     -------
     list[str]
-        Missing-root, missing-target, missing-anchor, repository-escape, or
-        invalid-reference diagnostics. Link and reference diagnostics retain
-        the source path and original line number.
+        Missing-root, missing-target, missing-anchor, repository-escape,
+        invalid-reference and malformed-URL findings. Link/reference findings
+        retain the source path and original line number.
 
     Raises
     ------
@@ -262,6 +333,7 @@ def validate(
     reference labels with whitespace folding and case folding; reject
     conflicting destinations and undefined full or collapsed reference uses.
     Shortcut reference syntax and nested/escaped link syntax are not fully
+    supported. Malformed URLs become findings without stopping later links.
     External URLs are skipped without network requests. Fragments are validated
     only for Markdown targets; other local targets are checked for existence.
     Files are never modified.
@@ -310,42 +382,16 @@ def validate(
                     for match in LINK_PATTERN.finditer(line)
                 ]
             for target, image in targets:
-                raw_target = target.strip().strip('<>')
-                if ' "' in raw_target:
-                    raw_target = raw_target.split(' "', maxsplit=1)[0]
-                parsed = urlsplit(raw_target)
-                if parsed.scheme or parsed.netloc:
-                    continue
-                target_path = (
-                    source if not parsed.path else source.parent / unquote(parsed.path)
+                failures.extend(
+                    _target_findings(
+                        source,
+                        line_number,
+                        target,
+                        image,
+                        resolved_root,
+                        anchor_cache,
+                    ),
                 )
-                if target_path.is_dir() and parsed.fragment:
-                    target_path = target_path / 'README.md'
-                resolved_target = target_path.resolve()
-                if not resolved_target.is_relative_to(resolved_root):
-                    failures.append(
-                        f'{source}:{line_number}: link escapes repository: '
-                        f'{raw_target}',
-                    )
-                    continue
-                if target_path.is_dir() and not parsed.fragment and not image:
-                    continue
-                if not target_path.is_file():
-                    failures.append(
-                        f'{source}:{line_number}: local target does not exist: '
-                        f'{raw_target}',
-                    )
-                    continue
-                if parsed.fragment and target_path.suffix.lower() == '.md':
-                    anchor_path = resolved_target
-                    anchors = anchor_cache.get(anchor_path)
-                    if anchors is None:
-                        anchors = anchor_cache[anchor_path] = _anchors(anchor_path)
-                    if unquote(parsed.fragment).lower() not in anchors:
-                        failures.append(
-                            f'{source}:{line_number}: anchor does not exist: '
-                            f'{raw_target}',
-                        )
     return failures
 
 

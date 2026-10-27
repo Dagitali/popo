@@ -1,4 +1,11 @@
-"""Share report-format selection across independent CLI integration cases."""
+"""
+:mod:`tests.integration.conftest` module.
+
+Share report-format and check-selection fixtures across CLI integration cases.
+"""
+
+from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +20,9 @@ import pytest
         pytest.param('json', id='json'),
     ],
 )
-def cli_format_fixture(request: pytest.FixtureRequest) -> str | None:
+def cli_format_fixture(
+    request: pytest.FixtureRequest,
+) -> str | None:
     """
     Exercise default and explicit formats with independent consumers.
 
@@ -49,3 +58,37 @@ def format_arguments_fixture(
         Immutable argument suffix; empty when testing the default format.
     """
     return () if cli_format is None else ('--format', cli_format)
+
+
+@pytest.fixture(
+    name='select_check',
+    params=['individual', 'explicit', 'profile'],
+)
+def select_check_fixture(
+    request: pytest.FixtureRequest,
+) -> Callable[[Path, str], tuple[str, ...]]:
+    """
+    Select one native check through independent dispatch modes.
+
+    The caller supplies a consumer root with popo.toml to the factory.
+    Aggregate modes prepend an explicit check list or a selected profile and
+    return CLI arguments. Individual mode preserves the existing policy.
+    Consumers and selections remain function-scoped; no command executes here.
+    """
+
+    def select(
+        root: Path,
+        command: str,
+    ) -> tuple[str, ...]:
+        if request.param == 'individual':
+            return (command,)
+        profile = request.param == 'profile'
+        prefix = '[profiles.selected]\n' if profile else ''
+        path = root / 'popo.toml'
+        path.write_text(
+            f'{prefix}checks=["{command}"]\n' + path.read_text(encoding='utf-8'),
+            encoding='utf-8',
+        )
+        return ('check-all', '--profile', 'selected') if profile else ('check-all',)
+
+    return select
