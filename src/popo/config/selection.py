@@ -25,6 +25,9 @@ BASELINE = (
     'check-python-policy',
 )
 OPTIONAL = {
+    'test-results': 'check-test-results',
+    'python-boundaries': 'check-python-boundaries',
+    'swift-boundaries': 'check-swift-boundaries',
     'python-source': 'check-python-source',
     'swift-policy': 'check-swift-policy',
     'swift-source': 'check-swift-source',
@@ -104,6 +107,44 @@ def load_plan(
     """
     root = root.resolve()
     settings = read_popo(root)
+    return parse_plan(root, settings, profile)
+
+
+def parse_plan(
+    root: Path,
+    settings: dict[str, object],
+    profile: str | None = None,
+) -> CheckPlan:
+    """
+    Select checks from an already-read consumer configuration snapshot.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Consumer repository root; resolved before recording provenance.
+    settings : dict[str, object]
+        Standalone or embedded Popo table, inspected without mutation.
+    profile : str or None, optional
+        Explicit profile; otherwise use configured checks or legacy defaults.
+
+    Returns
+    -------
+    CheckPlan
+        Validated checks in configuration order and their source provenance.
+
+    Raises
+    ------
+    ConfigurationError
+        Selection or profile is missing, malformed, empty or unknown.
+    OSError
+        Repository root or configuration provenance cannot be inspected.
+
+    Notes
+    -----
+    No configuration contents are read again and no checks are executed.
+    Provenance selects the current standalone/embedded filename as usual.
+    """
+    root = root.resolve()
     reason = 'legacy defaults and configured opt-in checks'
     selection = settings.get('checks')
     if profile is not None:

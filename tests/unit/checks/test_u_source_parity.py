@@ -532,4 +532,36 @@ class TestSourceParity:
             load_source_check(tmp_path, domain)
 
 
+class TestParsedSourceEvaluation:
+    """Keep shared evaluation order independent of native parser behavior."""
+
+    def test_limits_documentation_and_conventions_keep_order(
+        self,
+        source_case: SourceCase,
+        tmp_path: Path,
+    ) -> None:
+        """Report limits before documentation and signature-layout findings."""
+        domain, filename, validate = source_case
+        (tmp_path / 'popo.toml').write_text(
+            f'[{domain}]\ninclude=["{filename}"]\nmax-file-lines=1\n'
+            'file-overviews=true\ndeclaration-docs=true\nparameter-lines=true\n'
+            + ('member-docs=true\n' if domain == 'swift-source' else ''),
+            encoding='utf-8',
+        )
+        (tmp_path / filename).write_text(
+            'def f(value: int):\n    pass'
+            if domain == 'python-source'
+            else 'func f(value: Int) {\n}',
+            encoding='utf-8',
+        )
+        before = snapshot_files(tmp_path)
+        findings = validate(load_source_check(tmp_path, domain))
+        assert findings[0] == f'{filename}: file exceeds configured line limit'
+        assert 'overview' in findings[1]
+        assert findings[2] == f'{filename}:1: missing declaration documentation'
+        assert findings[3] == f'{filename}:1: parameters require separate lines'
+        assert len(findings) == 4
+        assert snapshot_files(tmp_path) == before
+
+
 # !SECTION

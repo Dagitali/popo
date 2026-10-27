@@ -49,12 +49,13 @@ automatically. Missing profiles, duplicate names, empty arrays and unknown check
 Selectable commands are `check-docs`, `check-github-actions-pins`, `check-dependency-boundaries`,
 `check-python-policy`, `check-automation-contracts`, `check-repository-safety`,
 `check-required-files`, `check-file-headers`, `check-guardrail-parity`, `check-python-source`,
-`check-swift-source`, `check-swift-policy` and `check-logs`. Swift policy and source/log checks are
-unreleased additions. See [Swift toolchain policy] and [source and log checks](source-and-log-checks.md)
-for their opt-in tables and limits. Checks run in
-declared order. Reported failures and per-domain configuration failures do not hide later selected
-checks. Unhandled filesystem and decoding errors retain their command-specific propagation
-boundaries.
+`check-swift-source`, `check-swift-policy`, `check-logs`, `check-test-results`,
+`check-swift-boundaries` and `check-python-boundaries`. Result/boundary commands were added in
+v0.12.0. See [Swift toolchain policy], [source and log checks](source-and-log-checks.md), and
+[result and boundary checks](result-and-boundary-checks.md) for their opt-in tables and limits.
+Checks run in declared order. Reported failures and per-domain configuration failures do not hide
+later selected checks. Unhandled filesystem and decoding errors retain their command-specific
+propagation boundaries.
 
 Without explicit selection, legacy baseline checks remain enabled and configured optional domains
 join them. Explicit selection can omit configured domains; their settings are generally not loaded.
@@ -203,6 +204,10 @@ exception attestations.
 Only `audit-github-settings` loads it; `check-all` stays offline. See [Hosted Settings Audit] for
 the complete schema, statuses, permissions, and evidence limits. Unknown hosted keys and malformed
 or duplicate scopes fail loading rather than being silently ignored.
+
+Result and architecture policies are documented in [result and boundary
+checks](result-and-boundary-checks.md). Result/boundary commands were added in v0.12.0; selection
+requires their explicit tables.
 
 ## Command Boundaries
 

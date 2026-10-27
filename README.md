@@ -77,9 +77,13 @@ configured; see the [release policy].
 
 ## Features
 
+- Native test-summary acceptance in v0.12.0 and configurable Python/Swift layer boundaries; Python
+  module ownership supports flat and `src/` layouts, including modules named `src.py`. See [result
+  and boundary checks](docs/result-and-boundary-checks.md);
 - Opt-in Python and Swift source conventions, documentation contracts and redacted log checks;
   quoted Python return annotations follow unquoted rules, log-root errors stay redacted, and log
-  patterns must be nonblank single-line literals. See [source and log
+  patterns must be nonblank single-line literals. Source/log include and exclude patterns share
+  root-confinement validation with setting-specific diagnostics. See [source and log
   checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
 - Opt-in Swift compiler, package tools-version and scoped CI declaration checks; see [Swift
   toolchain policy](docs/swift-policy.md);
@@ -92,7 +96,8 @@ configured; see the [release policy].
 - Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
   policies];
 - Language-neutral standalone policy, explicit check profiles, JSON results and local/CI guardrail
-  parity; see the [guardrail guide];
+  parity. Guardrail entry points and profile selection use one configuration snapshot; see the
+  [guardrail guide];
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;

@@ -11,8 +11,10 @@ from popo.config.source_checks import SourceCheckConfig
 from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
-    contract_findings,
-    overview_findings,
+    callable_findings,
+)
+from ._source_documentation import (
+    documentation_findings as collect_documentation_findings,
 )
 from ._swift_declarations import CALLABLE_KINDS, NOMINAL_KINDS, Declaration
 
@@ -82,15 +84,9 @@ def _declaration_findings(
             f'{relative}:{declaration.documentation_start}: '
             'missing blank line before documentation',
         )
-    if facts.kind in CALLABLE_KINDS:
-        failures.extend(
-            contract_findings(
-                facts,
-                config,
-                relative,
-                _documentation(doc, facts.return_section),
-            ),
-        )
+    failures.extend(
+        callable_findings(facts, config, relative, CALLABLE_KINDS, _documentation),
+    )
     return failures
 
 
@@ -215,10 +211,12 @@ def documentation_findings(
     Triple-slash comments are the supported notation; full DocC validation and
     the front end's unsupported Swift grammar remain separate responsibilities.
     """
-    failures = overview_findings(source.has_overview, config, relative)
-    for declaration in source.declarations:
-        failures.extend(_declaration_findings(declaration, config, relative))
-    return failures
+    return collect_documentation_findings(
+        source,
+        config,
+        relative,
+        _declaration_findings,
+    )
 
 
 # !SECTION

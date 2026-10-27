@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ._common import ConfigurationError, read_popo, read_string, require_table
-from .selection import load_plan
+from .selection import parse_plan
 
 # SECTION: DATA CLASSES
 
@@ -81,7 +81,8 @@ def load_guardrails_config(
         Unreadable configuration or paths that cannot resolve.
     """
     root = root.resolve()
-    table = require_table(read_popo(root).get('guardrails'), name='guardrails')
+    settings = read_popo(root)
+    table = require_table(settings.get('guardrails'), name='guardrails')
     defaults = {
         'makefile': 'Makefile',
         'hooks': '.pre-commit-config.yaml',
@@ -113,7 +114,7 @@ def load_guardrails_config(
                 f'guardrails.{key} must stay inside the repository',
             )
         paths[key] = resolved
-    load_plan(root, values['profile'])
+    parse_plan(root, settings, values['profile'])
     return GuardrailsConfig(
         root,
         paths['makefile'],
