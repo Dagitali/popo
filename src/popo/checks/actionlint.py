@@ -118,9 +118,14 @@ def _normalize(
                 pending.extend((key, value))
         elif isinstance(node, yaml.SequenceNode):
             pending.extend(node.value)
-    for (start, end), replacement in sorted(changes.items(), reverse=True):
-        source = source[:start] + replacement + source[end:]
-    return source
+    # Assemble original spans once instead of recopying the source per change.
+    parts: list[str] = []
+    position = 0
+    for (start, end), replacement in sorted(changes.items()):
+        parts.extend((source[position:start], replacement))
+        position = end
+    parts.append(source[position:])
+    return ''.join(parts)
 
 
 # !SECTION
