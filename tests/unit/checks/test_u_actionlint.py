@@ -102,6 +102,37 @@ class TestActionlintFailures:
 class TestActionlintNormalization:
     """Group isolated regression scenarios for actionlint."""
 
+    @pytest.mark.parametrize('count', [2, 32])
+    @pytest.mark.parametrize('newline', ['\n', '\r\n'], ids=['lf', 'crlf'])
+    def test_multiple_references_preserve_original_spans(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        count: int,
+        newline: str,
+    ) -> None:
+        """Replace original character spans without changing adjacent text."""
+        write_file('actions/test/action.yml', 'name: Test')
+        source = newline.join(
+            [
+                '# Unicode ü and 日本語 precede replacement offsets.',
+                'jobs:',
+                '  check:',
+                '    steps:',
+                *['      - uses: "$/actions/test"'] * count,
+                '      - run: echo "$/actions/test"',
+                '',
+            ],
+        )
+        write_file('ci.yml', source)
+        before = snapshot_files(tmp_path)
+        expected = source.replace(
+            'uses: "$/actions/test"',
+            'uses: "./actions/test"',
+        )
+        assert _normalize(source, AutomationConfig(tmp_path)) == expected
+        assert snapshot_files(tmp_path) == before
+
     @pytest.mark.parametrize(
         'source',
         [
