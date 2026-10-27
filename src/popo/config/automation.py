@@ -27,8 +27,8 @@ class AutomationConfig:
         Owner/repository aliases resolved against this checkout, not remote
         refs.
     template_placeholder_refs : tuple[str, ...]
-        Exact ref tokens allowed only in templates referencing existing self
-        targets.
+        Exact ref tokens without whitespace, @ or /, allowed only in templates
+        referencing existing self targets.
     configured : bool
         Whether the selected policy source contains an automation table.
     """
@@ -104,20 +104,22 @@ def load_automation_config(
                 )
             ):
                 raise ConfigurationError('local-repositories must contain owner/repo')
-            if key == 'template-placeholder-refs' and any(c in item for c in '@/\n '):
+            if key == 'template-placeholder-refs' and any(
+                character in '@/' or character.isspace() for character in item
+            ):
                 raise ConfigurationError(
                     'template placeholders must be exact ref tokens',
                 )
         values[key] = strings
     return AutomationConfig(
-        root,
-        values['workflow-globs'],
-        values['action-globs'],
-        values['template-globs'],
-        values['yaml-globs'],
-        values['local-repositories'],
-        values['template-placeholder-refs'],
-        configured,
+        root=root,
+        workflow_globs=values['workflow-globs'],
+        action_globs=values['action-globs'],
+        template_globs=values['template-globs'],
+        yaml_globs=values['yaml-globs'],
+        local_repositories=values['local-repositories'],
+        template_placeholder_refs=values['template-placeholder-refs'],
+        configured=configured,
     )
 
 
