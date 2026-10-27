@@ -62,6 +62,7 @@ To get started:
 - Run the same checks locally, in pre-commit hooks, and in CI.
 - Inspect the current repository or select another with `--root`.
 - Configure consumer policy independently of Popo's own development settings.
+- Compare dependency names consistently across case, dots, underscores and hyphens.
 - Receive diagnostics for malformed dependency project tables; safety approvals require quoted
   `YYYY-MM-DD` expiry dates.
 - Validate repository files without modifying them or requiring cloud credentials.
@@ -76,13 +77,18 @@ configured; see the [release policy].
 
 ## Features
 
-- Opt-in Python source conventions, Swift documentation and redacted log checks; see [source and log
-  checks](docs/source-and-log-checks.md) for unreleased scope and configuration;
+- Opt-in Python and Swift source conventions, documentation contracts and redacted log checks;
+  quoted Python return annotations follow unquoted rules, log-root errors stay redacted, and log
+  patterns must be nonblank single-line literals. See [source and log
+  checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
+- Opt-in Swift compiler, package tools-version and scoped CI declaration checks; see [Swift
+  toolchain policy](docs/swift-policy.md);
 - Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];
 - Local Markdown inline links/images, reference definitions, and heading or explicit HTML anchors,
-  with undefined full/collapsed labels and conflicting definitions rejected. Fenced/inline code
-  and HTML comments are excluded, targets cannot escape the repository, and fragment validation
-  applies only to Markdown; generated and vendored sources such as `node_modules` are excluded;
+  with undefined full/collapsed labels and conflicting definitions rejected. Malformed URLs are
+  reported without skipping later links. Fenced/inline code and HTML comments are excluded, targets
+  cannot escape the repository, and fragment validation applies only to Markdown; generated and
+  vendored sources such as `node_modules` are excluded;
 - Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
   policies];
 - Language-neutral standalone policy, explicit check profiles, JSON results and local/CI guardrail
@@ -92,7 +98,7 @@ configured; see the [release policy].
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Python-version policy across package metadata, tool configuration, and workflows, including
   inline and block-list version matrices; and
-- Dated semantic-version entries in a changelog.
+- Dated changelog entries with ASCII `MAJOR.MINOR.PATCH` release versions.
 
 Guardrail parity keeps reading Make recipes across non-recipe comments, accepting comment-only
 separators without allowing them to hide extra commands. The runnable [consumer examples] cover AWS
@@ -164,6 +170,10 @@ popo explain
 popo check-guardrail-parity
 popo check-required-files
 popo check-file-headers
+popo check-python-source
+popo check-swift-source
+popo check-swift-policy
+popo check-logs
 popo check-github-actions-pins
 popo check-automation-contracts
 popo check-repository-safety
@@ -178,6 +188,9 @@ popo source-inventory --revision HEAD --name Example > source-inventory.json
 Every command accepts `--root`. The equivalent module entry point is
 `python -m popo`.
 
+`source-inventory` reads committed Git blobs and reports malformed blob responses without including
+raw header text or source bytes in diagnostic messages; see [source inventories].
+
 `check-all` defaults to the documentation, action-pin, dependency, and Python-policy checks.
 Explicit `checks` or `--profile NAME` replace that selection; see the [guardrail guide] for Swift,
 CDK and other consumers. Native offline commands accept `--format json`; `popo explain` describes
@@ -188,7 +201,8 @@ Repository safety checks are similarly opt-in through `[tool.popo.safety]`; see 
 reference]. Available since v0.6.0.
 
 File checks retain dangling symlinks for containment checks and report required-file path errors
-without skipping later entries. See the [file policies] guide for discovery and preservation rules.
+without skipping later entries. Header discovery preserves carriage returns, line feeds and Unicode
+in Git filenames. See the [file policies] guide for discovery and preservation rules.
 
 ## Configuration
 
@@ -231,6 +245,8 @@ references. Use `--pins-only` to skip input, composite, and metadata checks; par
 target resolution still run. The older `check-github-actions-pins` command remains available and
 also recognizes valid revision-free self references. Parsed YAML traversal visits shared mappings
 once and handles recursive aliases; safety checks retain diagnostics without recursion crashes.
+Automation and safety discovery failures are reported while independent patterns and checks
+continue. Orphan template-metadata discovery failures also retain findings from later directories.
 
 See the [automation settings reference] for command boundaries and validation rules. Configure
 discovery and policy in the consuming repository, without importing Popo internals:
@@ -254,16 +270,17 @@ Local `./` and same-repository `$/` references, plus configured `owner/repositor
 against the current checkout, never against historical or remote commits. Calls reject
 unknown/missing required inputs and literal workflow input type mismatches; expression values are
 not evaluated. Composite actions require names, descriptions, and nonempty steps with exactly one of
-`run` or `uses`; `run` steps require shells. Templates require matching `.properties.json` files
+`run` or `uses`; `run` steps require shells. Templates require matching UTF-8 `.properties.json` files
 with names/descriptions and valid optional categories/filePatterns; orphan metadata is reported.
 
-Placeholder exemptions apply only to configured template files referencing existing targets through
-a configured local alias. They never exempt ordinary workflows or third-party actions. Like the
-existing pin checker, local and `docker://` references are exempt from SHA pinning. No commands are
-executed, sources rewritten, or network requests made. Commit existence, container immutability,
-expression evaluation, secrets, outputs, and the complete GitHub schema are outside this check;
-retain actionlint and hosted tests. YAML mapping keys must be strings; `on` remains a string, while
-only `true` and `false` are interpreted as booleans.
+Placeholder refs are exact tokens without whitespace, `@` or `/`. Placeholder exemptions apply only
+to configured template files referencing existing targets through a configured local alias. They
+never exempt ordinary workflows or third-party actions. Like the existing pin checker, local and
+`docker://` references are exempt from SHA pinning. No commands are executed, sources rewritten, or
+network requests made. Commit existence, container immutability, expression evaluation, secrets,
+outputs, and the complete GitHub schema are outside this check; retain actionlint and hosted tests.
+YAML mapping keys must be strings; `on` remains a string, while only `true` and `false` are
+interpreted as booleans.
 
 Same-repository references must be nonempty, revision-free paths without traversal. Native contract
 validation checks containment, target existence, and supplied inputs directly without rewriting or
@@ -278,12 +295,14 @@ root-relative/absolute in-root paths. For example:
 popo check-actionlint --root . --actionlint 'actionlint -color' .github/workflows/ci.yml
 ```
 
-The view contains only selected automation and referenced local targets. Real self-reference YAML
-values become local paths for older actionlint versions; script text, duplicate-key rejection,
-source files, and native contract validation are preserved. Diagnostics map back to source paths,
-and the exact linter exit status is returned. The command never installs tools or executes workflow
-commands; it is separate from `check-all` and requires no consumer schema changes. It does not make
-GitHub Enterprise Server support `$/`; that is a hosted-platform limitation.
+The view contains only selected automation, referenced local targets and existing implicit linter
+configuration. Each automation file is read once, and validation and normalization use the same text
+snapshot. Real self-reference YAML values become local paths for older actionlint versions; script
+text, duplicate-key rejection, source files, and native contract validation are preserved.
+Diagnostics map back to source paths, and the exact linter exit status is returned. The command
+never installs tools or executes workflow commands; it is separate from `check-all` and requires no
+consumer schema changes. It does not make GitHub Enterprise Server support `$/`; that is a
+hosted-platform limitation.
 
 ### Hosted Settings Audit
 
@@ -319,7 +338,7 @@ when no virtual environment is active; activation is not required for `make test
 An explicit `PYTHON` override takes precedence.
 
 Unit tests group checker coverage under `tests/unit/checks/` and configuration coverage under
-`tests/unit/configs/`. Independent parameterized scenarios and isolated subprocess fixtures keep
+`tests/unit/config/`. Independent parameterized scenarios and isolated subprocess fixtures keep
 failures reproducible; see the [test layout] for selection and shared-fixture conventions.
 
 When optional hooks are installed, the pre-push stage runs `make check-pre-push` (the full local

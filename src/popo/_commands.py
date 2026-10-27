@@ -19,14 +19,17 @@ from .checks import (
     python_policy,
     python_source,
     safety,
-    swift_documentation,
+    swift_policy,
+    swift_source,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
 from .config.files import load_headers_config, load_required_files_config
 from .config.guardrails import load_guardrails_config
+from .config.python_policy import load_python_policy_config
 from .config.safety import load_safety_config
 from .config.source_checks import load_source_check
+from .config.swift_policy import load_swift_policy_config
 
 # SECTION: TYPE ALIASES
 
@@ -177,8 +180,8 @@ def _dependencies(
     UnicodeError
         If an input cannot be decoded as UTF-8.
     ValueError
-        If the shared configuration loader cannot express dependency metadata
-        relative to the consumer root, such as an absolute path outside it.
+        If the Python-policy loader cannot express dependency metadata relative
+        to the consumer root, such as an absolute path outside it.
     """
     config = load_config(args.root.resolve()).dependencies
     return dependencies.validate(config), 'dependency boundaries are synchronized'
@@ -215,7 +218,39 @@ def _docs(
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
 
-def _guardrail_parity(args: argparse.Namespace) -> tuple[list[str], str]:
+def _file_headers(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch configured header validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Failures and a success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        If the policy is absent or malformed.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
+    """
+    config = load_headers_config(args.root)
+    if config is None:
+        raise ConfigurationError('check-file-headers requires tool.popo.headers')
+    return files.validate_headers(config), 'configured file headers are valid'
+
+
+def _guardrail_parity(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """
     Inspect explicit local and CI invocation contracts without execution.
 
@@ -246,11 +281,22 @@ def _guardrail_parity(args: argparse.Namespace) -> tuple[list[str], str]:
     ), 'guardrail entry points agree'
 
 
-def _python(
+def _logs(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """Dispatch explicit artifact inspection without revealing log contents."""
+    config = load_source_check(args.root, 'logs')
+    return logs.validate(
+        config,
+        getattr(args, 'log_root', None),
+    ), 'configured logs passed'
+
+
+def _python_policy(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
     """
-    Load Python policy and return failures with its success message.
+    Load Python policy and return findings with a success summary.
 
     Parameters
     ----------
@@ -272,11 +318,74 @@ def _python(
     UnicodeError
         If an input cannot be decoded as UTF-8.
     ValueError
-        If the shared configuration loader cannot express dependency metadata
-        relative to the consumer root, such as an absolute path outside it.
+        If the Python-policy loader cannot express dependency metadata relative
+        to the consumer root, such as an absolute path outside it.
     """
-    config = load_config(args.root.resolve()).python_policy
+    config = load_python_policy_config(args.root.resolve())
     return python_policy.validate(config), 'Python policy is consistent'
+
+
+def _python_source(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Load Python source policy and return findings with a success summary.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments containing the consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Source-check findings and a summary to display only on success.
+
+    Raises
+    ------
+    ConfigurationError
+        The explicit python-source policy is missing or invalid.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded, or root resolution
+        fails. Inspected input errors are returned as findings by the checker.
+
+    Notes
+    -----
+    Dispatch the shared source-selection policy to the language-specific
+    validator. Consumer source and development tools are not executed.
+    """
+    config = load_source_check(args.root, 'python-source')
+    return python_source.validate(config), 'configured Python source checks passed'
+
+
+def _required_files(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch configured required-file validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Failures and a success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        If the policy is absent or malformed.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded, or its root
+        cannot resolve. Validator-caught file errors remain diagnostics.
+    """
+    config = load_required_files_config(args.root)
+    if config is None:
+        raise ConfigurationError('check-required-files requires tool.popo.files')
+    return files.validate_required(config), 'required files are present'
 
 
 def _safety(
@@ -309,81 +418,69 @@ def _safety(
     return safety.validate(config), 'configured repository safety checks passed'
 
 
-def _required_files(args: argparse.Namespace) -> tuple[list[str], str]:
+def _swift_policy(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
     """
-    Dispatch configured required-file validation.
+    Load Swift policy and return findings with a success summary.
 
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed consumer root.
+        Consumer root and optional compiler_version string. Aggregate checks
+        omit the observation and do not invoke Swift to infer one.
 
     Returns
     -------
     tuple[list[str], str]
-        Failures and a success-only summary.
+        Declaration/runtime-observation diagnostics and success-only summary.
 
     Raises
     ------
     ConfigurationError
-        If the policy is absent or malformed.
+        If the opt-in Swift policy is absent or invalid.
     OSError, UnicodeError
-        If consumer configuration cannot be read or decoded, or its root
-        cannot resolve. Validator-caught file errors remain diagnostics.
+        If loading consumer configuration fails; inspected input errors are
+        returned as diagnostics by the validator.
     """
-    config = load_required_files_config(args.root)
-    if config is None:
-        raise ConfigurationError('check-required-files requires tool.popo.files')
-    return files.validate_required(config), 'required files are present'
-
-
-def _file_headers(args: argparse.Namespace) -> tuple[list[str], str]:
-    """
-    Dispatch configured header validation.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed consumer root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Failures and a success-only summary.
-
-    Raises
-    ------
-    ConfigurationError
-        If the policy is absent or malformed.
-    OSError, UnicodeError
-        If consumer configuration cannot be read or decoded, or its root
-        cannot resolve. Validator-caught file errors remain diagnostics.
-    """
-    config = load_headers_config(args.root)
-    if config is None:
-        raise ConfigurationError('check-file-headers requires tool.popo.headers')
-    return files.validate_headers(config), 'configured file headers are valid'
-
-
-def _python_source(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Dispatch explicitly configured, read-only Python source checks."""
-    config = load_source_check(args.root, 'python-source')
-    return python_source.validate(config), 'configured Python conventions passed'
-
-
-def _swift_documentation(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Dispatch explicitly configured Swift documentation checks."""
-    config = load_source_check(args.root, 'swift-documentation')
-    return swift_documentation.validate(config), 'configured Swift documentation passed'
-
-
-def _logs(args: argparse.Namespace) -> tuple[list[str], str]:
-    """Dispatch explicit artifact inspection without revealing log contents."""
-    config = load_source_check(args.root, 'logs')
-    return logs.validate(
+    config = load_swift_policy_config(args.root)
+    return swift_policy.validate(
         config,
-        getattr(args, 'log_root', None),
-    ), 'configured logs passed'
+        compiler_version=getattr(args, 'compiler_version', None),
+    ), 'Swift toolchain declarations are consistent'
+
+
+def _swift_source(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Load Swift source policy and return findings with a success summary.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments containing the consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Source-check findings and a summary to display only on success.
+
+    Raises
+    ------
+    ConfigurationError
+        The explicit swift-source policy is missing or invalid.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded, or root resolution
+        fails. Inspected input errors are returned as findings by the checker.
+
+    Notes
+    -----
+    Dispatch the shared source-selection policy to the language-specific
+    validator. Consumer source and development tools are not executed.
+    """
+    config = load_source_check(args.root, 'swift-source')
+    return swift_source.validate(config), 'configured Swift source checks passed'
 
 
 # !SECTION
@@ -395,7 +492,8 @@ def _logs(args: argparse.Namespace) -> tuple[list[str], str]:
 # Registry of native command handlers.
 NATIVE_HANDLERS: dict[str, Command] = {
     'check-python-source': _python_source,
-    'check-swift-documentation': _swift_documentation,
+    'check-swift-source': _swift_source,
+    'check-swift-policy': _swift_policy,
     'check-logs': _logs,
     'check-guardrail-parity': _guardrail_parity,
     'check-required-files': _required_files,
@@ -405,7 +503,7 @@ NATIVE_HANDLERS: dict[str, Command] = {
     'check-automation-contracts': _automation,
     'check-repository-safety': _safety,
     'check-dependency-boundaries': _dependencies,
-    'check-python-policy': _python,
+    'check-python-policy': _python_policy,
     'check-release-changelog': _changelog,
 }
 

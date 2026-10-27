@@ -20,18 +20,6 @@ from tests.support.inventory import repository
 
 
 @pytest.fixture(
-    name='use_module',
-    params=[False, True],
-    ids=['console', 'module'],
-)
-def use_module_fixture(
-    request: pytest.FixtureRequest,
-) -> bool:
-    """Exercise both installed entry points with independent inputs."""
-    return bool(request.param)
-
-
-@pytest.fixture(
     name='artifact_version',
     scope='module',
 )
@@ -42,6 +30,18 @@ def artifact_version_fixture(
     if artifact.suffix == '.whl':
         return parse_wheel_filename(artifact.name)[1]
     return parse_sdist_filename(artifact.name)[1]
+
+
+@pytest.fixture(
+    name='use_module',
+    params=[False, True],
+    ids=['console', 'module'],
+)
+def use_module_fixture(
+    request: pytest.FixtureRequest,
+) -> bool:
+    """Exercise both installed entry points with independent inputs."""
+    return bool(request.param)
 
 
 # !SECTION
@@ -60,53 +60,6 @@ class TestInstalledCLI:
     per-test temporary directories. Exercise both console and module entry
     points, exit statuses, output channels, and read-only checker behavior.
     """
-
-    @pytest.mark.parametrize('format_', ['json', 'spdx'])
-    def test_source_inventory(
-        self,
-        installation: Installation,
-        tmp_path: Path,
-        use_module: bool,
-        format_: str,
-    ) -> None:
-        """
-        Inventory committed bytes through installed console and module commands.
-
-        Parameters
-        ----------
-        installation : Installation
-            Isolated wheel or sdist installation outside the checkout.
-        tmp_path : pathlib.Path
-            Disposable root for synthetic Git objects and checkout edits.
-        use_module : bool
-            Whether to invoke the module instead of the console executable.
-        format_ : str
-            Selected plain JSON or source-only SPDX representation.
-        """
-        commit = repository(tmp_path)
-        before = snapshot_files(tmp_path)
-        result = installation.run(
-            'source-inventory',
-            '--root',
-            str(tmp_path),
-            '--revision',
-            'fixture-tag',
-            '--name',
-            'Consumer',
-            '--format',
-            format_,
-            module=use_module,
-        )
-        assert result.returncode == 0, result.stderr
-        report = json.loads(result.stdout)
-        assert len(report['files']) == 2
-        assert (
-            report.get('revision') == commit
-            if format_ == 'json'
-            else report['spdxVersion'] == 'SPDX-2.3'
-        )
-        assert result.stderr == ''
-        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         ('reference', 'status'),
@@ -155,40 +108,6 @@ class TestInstalledCLI:
         assert result.returncode == status, result.stdout + result.stderr
         assert not result.stderr
         assert workflow.read_text(encoding='utf-8') == source
-
-    @pytest.mark.parametrize(
-        'argument',
-        ['--help', '--version'],
-    )
-    def test_information_commands(
-        self,
-        installation: Installation,
-        artifact_version: Version,
-        argument: str,
-        use_module: bool,
-    ) -> None:
-        """
-        Verify help and version output through console and module entry points.
-
-        Parameters
-        ----------
-        installation : Installation
-            Installed artifact isolated from checkout imports.
-        artifact_version : packaging.version.Version
-            Expected artifact version, independent of source-import fallbacks.
-        argument : str
-            Information option to exercise, either --help or --version.
-        use_module : bool
-            Whether to invoke python -m popo rather than the console-script
-            entry point.
-        """
-        result = installation.run(argument, module=use_module)
-        assert result.returncode == 0, result.stderr
-        if argument == '--help':
-            assert 'check-all' in result.stdout
-        else:
-            assert Version(result.stdout.split()[-1]) == artifact_version
-        assert not result.stderr
 
     @pytest.mark.parametrize(
         ('content', 'status', 'message'),
@@ -241,6 +160,40 @@ class TestInstalledCLI:
         assert message in result.stdout
         assert not result.stderr
         assert readme.read_text(encoding='utf-8') == content
+
+    @pytest.mark.parametrize(
+        'argument',
+        ['--help', '--version'],
+    )
+    def test_information_commands(
+        self,
+        installation: Installation,
+        artifact_version: Version,
+        argument: str,
+        use_module: bool,
+    ) -> None:
+        """
+        Verify help and version output through console and module entry points.
+
+        Parameters
+        ----------
+        installation : Installation
+            Installed artifact isolated from checkout imports.
+        artifact_version : packaging.version.Version
+            Expected artifact version, independent of source-import fallbacks.
+        argument : str
+            Information option to exercise, either --help or --version.
+        use_module : bool
+            Whether to invoke python -m popo rather than the console-script
+            entry point.
+        """
+        result = installation.run(argument, module=use_module)
+        assert result.returncode == 0, result.stderr
+        if argument == '--help':
+            assert 'check-all' in result.stdout
+        else:
+            assert Version(result.stdout.split()[-1]) == artifact_version
+        assert not result.stderr
 
     @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
     @pytest.mark.parametrize(
@@ -299,44 +252,59 @@ reason = "Synthetic policy fixture"
         assert result.stderr == ''
         assert snapshot_files(tmp_path) == original
 
+    @pytest.mark.parametrize('format_', ['json', 'spdx'])
+    def test_source_inventory(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        use_module: bool,
+        format_: str,
+    ) -> None:
+        """
+        Inventory committed bytes through installed console and module
+        commands.
+
+        Parameters
+        ----------
+        installation : Installation
+            Isolated wheel or sdist installation outside the checkout.
+        tmp_path : pathlib.Path
+            Disposable root for synthetic Git objects and checkout edits.
+        use_module : bool
+            Whether to invoke the module instead of the console executable.
+        format_ : str
+            Selected plain JSON or source-only SPDX representation.
+        """
+        commit = repository(tmp_path)
+        before = snapshot_files(tmp_path)
+        result = installation.run(
+            'source-inventory',
+            '--root',
+            str(tmp_path),
+            '--revision',
+            'fixture-tag',
+            '--name',
+            'Consumer',
+            '--format',
+            format_,
+            module=use_module,
+        )
+        assert result.returncode == 0, result.stderr
+        report = json.loads(result.stdout)
+        assert len(report['files']) == 2
+        assert (
+            report.get('revision') == commit
+            if format_ == 'json'
+            else report['spdxVersion'] == 'SPDX-2.3'
+        )
+        assert result.stderr == ''
+        assert snapshot_files(tmp_path) == before
+
 
 class TestInstalledSelection:
     """
     Verify language-neutral plans through isolated installed entry points.
     """
-
-    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
-    def test_standalone_profile(
-        self,
-        installation: Installation,
-        tmp_path: Path,
-        use_module: bool,
-        valid: bool,
-    ) -> None:
-        """
-        Select docs without Python metadata and preserve the consumer bytes.
-        """
-        policy = tmp_path / 'popo.toml'
-        policy.write_text('[profiles.docs]\nchecks=["check-docs"]\n', encoding='utf-8')
-        readme = tmp_path / 'README.md'
-        readme.write_text(
-            '# Consumer' if valid else '[missing](absent)',
-            encoding='utf-8',
-        )
-        original = snapshot_files(tmp_path)
-        arguments = ['--root', str(tmp_path), '--profile', 'docs', '--format', 'json']
-        explanation = installation.run('explain', *arguments, module=use_module)
-        assert explanation.returncode == 0, explanation.stdout + explanation.stderr
-        assert explanation.stderr == ''
-        assert json.loads(explanation.stdout)['checks'] == ['check-docs']
-        result = installation.run('check-all', *arguments, module=use_module)
-        assert result.returncode == int(not valid), result.stdout + result.stderr
-        assert result.stderr == ''
-        report = json.loads(result.stdout)
-        assert report['schema_version'] == 1
-        assert report['passed'] is valid
-        assert report['checks'][0]['check'] == 'check-docs'
-        assert snapshot_files(tmp_path) == original
 
     def test_guardrail_contract(
         self,
@@ -387,6 +355,39 @@ class TestInstalledSelection:
             ]
         )
         assert snapshot_files(root) == original
+
+    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
+    def test_standalone_profile(
+        self,
+        installation: Installation,
+        tmp_path: Path,
+        use_module: bool,
+        valid: bool,
+    ) -> None:
+        """
+        Select docs without Python metadata and preserve the consumer bytes.
+        """
+        policy = tmp_path / 'popo.toml'
+        policy.write_text('[profiles.docs]\nchecks=["check-docs"]\n', encoding='utf-8')
+        readme = tmp_path / 'README.md'
+        readme.write_text(
+            '# Consumer' if valid else '[missing](absent)',
+            encoding='utf-8',
+        )
+        original = snapshot_files(tmp_path)
+        arguments = ['--root', str(tmp_path), '--profile', 'docs', '--format', 'json']
+        explanation = installation.run('explain', *arguments, module=use_module)
+        assert explanation.returncode == 0, explanation.stdout + explanation.stderr
+        assert explanation.stderr == ''
+        assert json.loads(explanation.stdout)['checks'] == ['check-docs']
+        result = installation.run('check-all', *arguments, module=use_module)
+        assert result.returncode == int(not valid), result.stdout + result.stderr
+        assert result.stderr == ''
+        report = json.loads(result.stdout)
+        assert report['schema_version'] == 1
+        assert report['passed'] is valid
+        assert report['checks'][0]['check'] == 'check-docs'
+        assert snapshot_files(tmp_path) == original
 
 
 # !SECTION

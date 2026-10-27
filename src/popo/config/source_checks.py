@@ -13,19 +13,26 @@ from ._common import ConfigurationError, read_popo, read_strings, require_table
 # SECTION: CONSTANTS
 
 
+SOURCE_DEFAULTS: dict[str, object] = {
+    'documentation-width': 79,
+    'max-file-lines': 1000,
+    'parameter-lines': False,
+    'parameter-docs': False,
+    'return-docs': False,
+    'raises-docs': False,
+    'file-overviews': False,
+    'declaration-docs': False,
+    'source-guide': '',
+}
 DOMAINS: dict[str, dict[str, object]] = {
-    'python-source': {
-        'annotations': False,
-        'parameter-lines': False,
-        'alphabetical-methods': False,
-        'docstring-width': 79,
-        'max-module-lines': 1000,
-    },
-    'swift-documentation': {
+    'python-source': SOURCE_DEFAULTS
+    | {'annotations': False, 'alphabetical-methods': False},
+    'swift-source': SOURCE_DEFAULTS
+    | {
+        'member-docs': False,
         'file-overviews': True,
         'declaration-docs': True,
         'declaration-spacing': True,
-        'source-guide': '',
     },
     'logs': {'patterns': {}},
 }
@@ -112,7 +119,7 @@ def load_source_check(
             raise ConfigurationError(f'{domain}.{key}: invalid setting type')
         if type(value) is int and value < 1:
             raise ConfigurationError(f'{domain}.{key}: expected a positive integer')
-    if domain == 'swift-documentation':
+    if 'source-guide' in settings:
         guide = Path(str(settings['source-guide']))
         if guide.is_absolute() or '..' in guide.parts:
             raise ConfigurationError('source-guide must stay inside root')
@@ -122,9 +129,12 @@ def load_source_check(
             not re.fullmatch(r'[A-Za-z0-9_.-]+', key)
             or not isinstance(value, str)
             or not value.strip()
+            or value.splitlines() != [value]
             for key, value in patterns.items()
         ):
-            raise ConfigurationError('logs.patterns requires named nonempty literals')
+            raise ConfigurationError(
+                'logs.patterns requires named nonempty single-line literals',
+            )
     return SourceCheckConfig(root.resolve(), domain, include, exclude, settings)
 
 

@@ -4,6 +4,7 @@
 Test dependency lower bounds, exact matching, and policy failures.
 """
 
+import json
 from pathlib import Path
 from typing import cast
 
@@ -43,22 +44,6 @@ class TestDependencyPolicy:
     minimum modes. Include malformed inputs and comment/URL-fragment boundaries
     without installing or resolving dependencies.
     """
-
-    @pytest.mark.parametrize('project', ['1', '"metadata"', '[]', 'false'])
-    def test_malformed_project_table(
-        self,
-        write_file: FileWriter,
-        project: str,
-        mode: DependencyMode,
-    ) -> None:
-        """
-        Report malformed project tables instead of crashing during lookup.
-        """
-        metadata = write_file('pyproject.toml', f'project = {project}')
-        requirements = write_file('requirements.txt', '')
-        assert validate(DependencyConfig(metadata, requirements, mode)) == [
-            f'{metadata}: project must be a TOML table',
-        ]
 
     def test_commented_directive_retains_line_number(
         self,
@@ -201,6 +186,34 @@ class TestDependencyPolicy:
             assert message in failures[0]
 
     @pytest.mark.parametrize(
+        'names',
+        [('Demo_Pkg', 'demo-pkg'), ('demo.pkg', 'Demo__Pkg'), ('DEMO', 'demo')],
+    )
+    @pytest.mark.parametrize(
+        'suffix',
+        [
+            '==1',
+            '[feature]>=1,<2',
+            '>=1,<2; python_version < "3.15"',
+            ' @ https://example.com/demo.whl#sha256=abc123',
+        ],
+    )
+    def test_exact_comparison_canonicalizes_only_package_names(
+        self,
+        write_file: FileWriter,
+        names: tuple[str, str],
+        suffix: str,
+    ) -> None:
+        """Accept equivalent package spelling while preserving other fields."""
+        expected, actual = (name + suffix for name in names)
+        metadata = write_file(
+            'pyproject.toml',
+            f'[project]\ndependencies = [{json.dumps(expected)}]',
+        )
+        requirements = write_file('requirements.txt', actual)
+        assert validate(DependencyConfig(metadata, requirements, 'exact')) == []
+
+    @pytest.mark.parametrize(
         'suffix',
         [' # minimum', '\t# minimum', '   # note # more'],
     )
@@ -272,6 +285,47 @@ class TestDependencyPolicy:
         assert len(failures) == 1
         assert message in failures[0]
 
+    @pytest.mark.parametrize('project', ['1', '"metadata"', '[]', 'false'])
+    def test_malformed_project_table(
+        self,
+        write_file: FileWriter,
+        project: str,
+        mode: DependencyMode,
+    ) -> None:
+        """
+        Report malformed project tables instead of crashing during lookup.
+        """
+        metadata = write_file('pyproject.toml', f'project = {project}')
+        requirements = write_file('requirements.txt', '')
+        assert validate(DependencyConfig(metadata, requirements, mode)) == [
+            f'{metadata}: project must be a TOML table',
+        ]
+
+    @pytest.mark.parametrize('structural', [False, True])
+    def test_metadata_failures_preserve_validation_order(
+        self,
+        write_file: FileWriter,
+        mode: DependencyMode,
+        structural: bool,
+    ) -> None:
+        """Keep metadata and installer failure ordering stable."""
+        metadata = write_file(
+            'pyproject.toml',
+            '[project]\ndependencies = '
+            + ('42' if structural else '["not a requirement"]'),
+        )
+        requirements = write_file('requirements.txt', '-r other.txt\ninvalid???')
+        failures = validate(DependencyConfig(metadata, requirements, mode))
+        if structural:
+            assert failures == [
+                f'{metadata}: project.dependencies must be a string array',
+            ]
+        else:
+            assert len(failures) == 3
+            assert failures[0].startswith(f'{metadata}: invalid requirement')
+            assert failures[1].startswith(f'{requirements}:1: installer directives')
+            assert failures[2].startswith(f'{requirements}: invalid requirement')
+
     def test_missing_files(
         self,
         tmp_path: Path,
@@ -292,6 +346,30 @@ class TestDependencyPolicy:
         assert validate(DependencyConfig(*paths, mode)) == [
             f'dependency-policy file does not exist: {path}' for path in paths
         ]
+
+    @pytest.mark.parametrize(
+        'suffix',
+        [
+            '==2',
+            '[other]==1',
+            '==1; python_version < "3.15"',
+            ' @ https://example.com/demo.whl',
+        ],
+    )
+    def test_name_normalization_keeps_other_exact_differences(
+        self,
+        write_file: FileWriter,
+        suffix: str,
+    ) -> None:
+        """Keep non-name dependency drift visible after normalization."""
+        metadata = write_file(
+            'pyproject.toml',
+            '[project]\ndependencies = ["Demo_Pkg==1"]',
+        )
+        requirements = write_file('requirements.txt', 'demo-pkg' + suffix)
+        failures = validate(DependencyConfig(metadata, requirements, 'exact'))
+        assert len(failures) == 1
+        assert 'expected' in failures[0]
 
     @pytest.mark.parametrize(
         'suffix',

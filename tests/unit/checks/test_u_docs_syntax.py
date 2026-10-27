@@ -112,6 +112,27 @@ class TestMarkdownSyntax:
         write_file('README.md', '```markdown\n[example]: missing.md\n```\n')
         assert validate(tmp_path) == []
 
+    def test_multiline_comments_preserve_diagnostic_line_numbers(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Keep diagnostics on original lines after masking HTML comments.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Synthetic consumer root.
+        write_file : FileWriter
+            Writer supplying a multiline comment and active reference.
+        """
+        source = write_file(
+            'README.md',
+            '<!--\n[Example][hidden]\n-->\n[Real][missing]',
+        )
+        assert validate(tmp_path) == [f'{source}:4: undefined reference: missing']
+
     @pytest.mark.parametrize(
         'block',
         [
@@ -180,27 +201,6 @@ class TestMarkdownSyntax:
         """
         write_file('README.md', f'{fence}\n[Example](missing.md)\n')
         assert validate(tmp_path) == []
-
-    def test_multiline_comments_preserve_diagnostic_line_numbers(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Keep diagnostics on original lines after masking HTML comments.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Synthetic consumer root.
-        write_file : FileWriter
-            Writer supplying a multiline comment and active reference.
-        """
-        source = write_file(
-            'README.md',
-            '<!--\n[Example][hidden]\n-->\n[Real][missing]',
-        )
-        assert validate(tmp_path) == [f'{source}:4: undefined reference: missing']
 
 
 # !SECTION

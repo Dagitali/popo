@@ -7,7 +7,11 @@
 # Maintainer Notes
 # - Keep consumer trees isolated; do not fetch or execute referenced actions.
 
-"""Regression coverage for native same-repository automation references."""
+"""
+:mod:`tests.unit.checks.test_u_self_references` module.
+
+Regression coverage for native same-repository automation references.
+"""
 
 from collections.abc import Callable
 from pathlib import Path

@@ -3,7 +3,9 @@
 from packaging.version import Version
 
 
-def normalized_version(value: str) -> str:
+def normalized_version(
+    value: str,
+) -> str:
     """Return canonical version text using the consumer's runtime dependency.
 
     Parameters

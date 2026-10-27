@@ -5,12 +5,15 @@ Exercise opt-in source and artifact commands through the public dispatcher.
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Self
 
 import pytest
 
 from popo.cli import main
+from popo.config.selection import load_plan
+from tests.support.files import snapshot_files
 
 # SECTION: TESTS
 
@@ -19,45 +22,8 @@ class TestSourceCommands:
     """Verify selection, JSON reporting and private-artifact boundaries."""
 
     @pytest.mark.parametrize(
-        'command,domain,filename,source',
-        (
-            ('check-python-source', 'python-source', 'rule.py', 'x = 1'),
-            (
-                'check-swift-documentation',
-                'swift-documentation',
-                'Rule.swift',
-                '/// File and rule overview.\nstruct Rule {}',
-            ),
-            ('check-logs', 'logs', 'console.log', 'Clean startup'),
-        ),
-    )
-    def test_individual_and_profile_dispatch(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-        domain: str,
-        filename: str,
-        source: str,
-    ) -> None:
-        extra = '\npatterns = { failure = "FORBIDDEN" }' if domain == 'logs' else ''
-        (tmp_path / 'popo.toml').write_text(
-            f'[profiles.selected]\nchecks = ["{command}"]\n'
-            f'[{domain}]\ninclude = ["{filename}"]{extra}',
-        )
-        (tmp_path / filename).write_text(source)
-        for arguments in ([command], ['check-all', '--profile', 'selected']):
-            assert main([*arguments, '--root', str(tmp_path), '--format', 'json']) == 0
-            report = json.loads(capsys.readouterr().out)
-            assert report['passed']
-            assert report['checks'][0]['check'] == command
-        (tmp_path / filename).unlink()
-        assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
-        assert not json.loads(capsys.readouterr().out)['passed']
-
-    @pytest.mark.parametrize(
         'command',
-        ('check-python-source', 'check-swift-documentation', 'check-logs'),
+        ('check-python-source', 'check-swift-source', 'check-logs'),
     )
     def test_absent_configuration_reports_failure(
         self: Self,
@@ -68,6 +34,24 @@ class TestSourceCommands:
         assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
         report = json.loads(capsys.readouterr().out)
         assert 'configuration:' in report['checks'][0]['diagnostics'][0]['message']
+
+    def test_aggregate_continues_after_invalid_domain_configuration(
+        self: Self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        (tmp_path / 'popo.toml').write_text(
+            'checks = ["check-python-source", "check-logs"]\n'
+            '[python-source]\ninclude = []\n'
+            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
+        )
+        assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
+        report = json.loads(capsys.readouterr().out)
+        assert [item['check'] for item in report['checks']] == [
+            'check-python-source',
+            'check-logs',
+        ]
+        assert all(not item['passed'] for item in report['checks'])
 
     def test_explicit_external_log_root_redacts_financial_contents(
         self: Self,
@@ -101,23 +85,58 @@ class TestSourceCommands:
         assert 'WARNING' not in output
         assert 'console.log:1: warning' in output
 
-    def test_aggregate_continues_after_invalid_domain_configuration(
+    @pytest.mark.parametrize(
+        'command,domain,filename,source',
+        (
+            ('check-python-source', 'python-source', 'rule.py', 'x = 1'),
+            (
+                'check-swift-source',
+                'swift-source',
+                'Rule.swift',
+                '/// File and rule overview.\nstruct Rule {}',
+            ),
+            ('check-logs', 'logs', 'console.log', 'Clean startup'),
+        ),
+    )
+    @pytest.mark.parametrize('present', [True, False], ids=['present', 'missing'])
+    def test_selected_dispatch_preserves_inputs(
         self: Self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        command: str,
+        domain: str,
+        filename: str,
+        source: str,
+        select_check: Callable[[Path, str], tuple[str, ...]],
+        present: bool,
+        cli_format: str | None,
+        format_arguments: tuple[str, ...],
     ) -> None:
+        extra = '\npatterns = { failure = "FORBIDDEN" }' if domain == 'logs' else ''
         (tmp_path / 'popo.toml').write_text(
-            'checks = ["check-python-source", "check-logs"]\n'
-            '[python-source]\ninclude = []\n'
-            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
+            f'[{domain}]\ninclude = ["{filename}"]{extra}',
         )
-        assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert [item['check'] for item in report['checks']] == [
-            'check-python-source',
-            'check-logs',
-        ]
-        assert all(not item['passed'] for item in report['checks'])
+        if present:
+            (tmp_path / filename).write_text(source, encoding='utf-8')
+        assert command in load_plan(tmp_path).checks
+        arguments = select_check(tmp_path, command)
+        before = snapshot_files(tmp_path)
+        assert main([*arguments, '--root', str(tmp_path), *format_arguments]) == (
+            0 if present else 1
+        )
+        output = capsys.readouterr()
+        assert output.err == ''
+        if cli_format == 'json':
+            report = json.loads(output.out)
+            assert report['passed'] is present
+            assert [item['check'] for item in report['checks']] == [command]
+            if not present:
+                assert report['checks'][0]['diagnostics'][0]['message'] == (
+                    f'no inputs match: {filename}'
+                )
+        else:
+            assert output.out.startswith('PASS: ' if present else 'FAIL: ')
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION

@@ -13,6 +13,7 @@ from pathlib import Path
 
 RELEASE_PATTERN = re.compile(
     r'^v?(?P<version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$',
+    re.ASCII,
 )
 
 
@@ -63,7 +64,7 @@ def normalize_release(
     Parameters
     ----------
     release : str
-        Three-component release version with an optional leading ``v``.
+        Three ASCII-decimal components with an optional leading ``v``.
 
     Returns
     -------
@@ -74,7 +75,8 @@ def normalize_release(
     ------
     ValueError
         If the input is not a three-component release version. Leading
-        zeroes, prerelease suffixes, and build metadata are not accepted.
+        zeroes, non-ASCII digits, prerelease suffixes and build metadata are
+        not accepted.
     """
 
     if match := RELEASE_PATTERN.fullmatch(release):

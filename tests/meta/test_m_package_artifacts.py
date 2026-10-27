@@ -80,6 +80,7 @@ class TestPackageArtifacts:
                 'project.py',
                 'dependencies.py',
                 'python_policy.py',
+                'swift_policy.py',
                 'automation.py',
                 'source_checks.py',
             )
@@ -88,11 +89,20 @@ class TestPackageArtifacts:
             f'{prefix}checks/{filename}'
             for filename in (
                 '_source_inputs.py',
+                '_source_documentation.py',
+                '_source_declarations.py',
+                '_python_declarations.py',
+                '_swift_documentation.py',
+                '_python_documentation.py',
+                '_swift_declarations.py',
                 'python_source.py',
-                'swift_documentation.py',
+                'swift_source.py',
+                'swift_policy.py',
+                '_toolchain_policy.py',
                 'logs.py',
             )
         } <= names
+        assert f'{prefix}checks/swift_documentation.py' not in names
         assert f'{prefix}config.py' not in names
         assert f'{prefix}automation_config.py' not in names
         assert {'LICENSE', 'NOTICE'} <= {name.rsplit('/', 1)[-1] for name in names}

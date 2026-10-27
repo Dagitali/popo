@@ -20,8 +20,11 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.11.0 - 2026-10-26](#0110---2026-10-26)
+  - [Fixed](#fixed)
+  - [Changed](#changed)
   - [Added](#added)
-- [\[0.10.0\] - 2026-10-25](#0100---2026-10-25)
+- [0.10.0 - 2026-10-25](#0100---2026-10-25)
 - [0.9.1 - 2026-10-24](#091---2026-10-24)
 - [0.9.0 - 2026-10-24](#090---2026-10-24)
 - [0.8.2 - 2026-10-23](#082---2026-10-23)
@@ -62,11 +65,120 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+## [0.11.0] - 2026-10-26
+
+### Fixed
+
+- Read template JSON metadata explicitly as UTF-8 so Unicode names and descriptions validate
+  consistently regardless of the machine's default text encoding.
+- Reject all whitespace in template placeholder refs, including tabs, carriage returns and Unicode
+  whitespace, while preserving valid literal tokens and repeated automation discovery patterns.
+- Restrict release-version components to ASCII digits, rejecting mixed Unicode digits before
+  changelog file inspection while preserving optional `v` prefixes and valid numeric cores.
+- Reject log literals containing line separators that cannot match the line-based scanner, including
+  trailing separators, instead of silently accepting ineffective diagnostic rules.
+- Report malformed Markdown URLs without aborting later links, including inline destinations and
+  reference definitions; keep remote checks offline.
+- Report orphan template-metadata discovery and companion-inspection errors as redacted findings
+  without aborting later files/directories; pins-only mode still skips metadata inspection.
+- Report automation-pattern discovery and file-inspection failures without exposing exception text
+  or aborting independent patterns, in both full-contract and pins-only modes.
+- Preserve carriage returns and line feeds in Git-discovered header filenames by capturing binary
+  NUL-delimited paths, preventing files from being silently omitted during text-mode decoding.
+- Redact malformed source-inventory blob headers, including invalid sizes, from failure messages.
+- Report safety workflow discovery errors without aborting independent workflow and npm checks.
+- Canonicalize package names in exact dependency comparisons so equivalent case and separator
+  spellings do not cause false mismatches; retain version, extras, marker and URL comparisons.
+- Treat quoted Python `None`, `NoReturn` and `Never` return annotations like their unquoted forms
+  when checking documentation, while still requiring documentation for explicit value returns.
+- Return a redacted diagnostic when a selected log root cannot resolve.
+
+### Changed
+
+- Index missing hosted findings by repository/check when applying approvals and use immutable record
+  replacement, preserving evidence, exception scope and expiry-finding order.
+- Separate hosted branch-context parsing from API orchestration and reporting while preserving
+  required-check unions and the distinction between missing and inaccessible evidence.
+- Assemble actionlint compatibility replacements from original source spans in one pass, avoiding
+  repeated whole-file copies while preserving anchors, script text and source locations.
+- Separate CLI inventory generation and hosted-audit reporting from main dispatch and share format
+  option setup, preserving command syntax, output streams and exit behavior.
+- Prepare log patterns once per validation and compute relative filenames once per file, retaining
+  redacted file/line/rule ordering and one finding per matching rule per line.
+- Separate Markdown target validation from source/reference traversal, preserving anchor caching,
+  target containment, directory handling and diagnostic order.
+- Separate Git header-source inventory from filesystem fallback and reuse ignored-directory sets.
+- Rename `tests/unit/configs/` to `tests/unit/config/` to mirror the source package and update
+  test module names, contributor commands and current documentation.
+- Split hosted repository and exception parsing from loader orchestration, caching expected checks
+  once per repository while retaining exact exception scopes and validation order.
+- Represent privileged-trigger exceptions with named immutable fields and isolate approval parsing
+  from safety configuration loading, preserving tuple semantics and lifecycle diagnostics.
+- Separate dependency metadata parsing from comparison orchestration and avoid allocating unused
+  upper-bound lists, preserving partial results, failure ordering and both comparison modes.
+- Separate committed inventory tree decoding and blob validation/hashing from Git orchestration,
+  retaining sorted output, checksums and read-only operation.
+- Align Python/Swift command-adapter names and source-dispatch docstring contracts without changing
+  command names, policy defaults or language-specific checks.
+- Share Python/Swift source-validation orchestration and align per-file `_source_findings`
+  contracts, preserving diagnostic order, Python syntax errors and Swift lexical boundaries.
+  Document both validators' analysis boundaries and consumer-controlled conventions.
+- Separate Swift policy parsing from configuration loading, matching the Python policy boundary;
+  clarify immutable settings and propagated exception contracts without changing version rules.
+  Separate Python local/workflow findings and clarify Swift observation/read stages, preserving
+  diagnostic order, shared metadata reads and language-specific error handling. Clarify each Swift
+  setting separately and align loader/path contracts with Python policy documentation. Standardize
+  local/workflow helper contracts and correct Swift text-input documentation.
+- Align per-declaration documentation checking under `_declaration_findings` and share the
+  file-overview diagnostic. Keep Python declaration presence and Swift nominal/member/spacing
+  policies separate, preserving diagnostic order and existing callable-contract behavior.
+- Align Python and Swift documentation interpreters around `_documentation`, `_parameters` and
+  `_section`, using immutable `CallableDocumentation` evidence in shared contract checking. Preserve
+  NumPy/DocC syntax, result/exception mappings and language-specific presence/spacing rules.
+- Align return/exception analysis under `_requirements` in both declaration collectors using one
+  immutable `CallableRequirements` model. Preserve Python annotation/body analysis, generator
+  priority and locally caught raises, plus Swift signature-only return and throws/rethrows rules.
+- Name parameter-syntax observations consistently in both declaration collectors. Retain native
+  Python `ast.arg` nodes and replace Swift positional span tuples with immutable `_ParameterSyntax`
+  records, preserving offsets, parameter ordering and nested type/default parsing.
+- Align file-overview detection under `_file_overview` in both declaration collectors and group
+  language-policy constants consistently. Preserve Python module-docstring and Swift leading-
+  comment conventions, including their different treatment of declaration documentation.
+- Align callable-signature extraction in both declaration collectors using `_signature` and named,
+  immutable `_Signature` records. Keep Python annotation observations separate from body-derived
+  requirements and retain Swift lexical boundaries and explicit unsupported-signature markers.
+- Give both declaration collectors a single-declaration conversion boundary. Python now converts
+  classes and callables through `_declaration`, matching Swift's counterpart; aggregation retains
+  discovery order, and docstrings distinguish native AST analysis from lexical signature facts.
+- Align Python and Swift declaration collectors around explicit syntax-discovery and declaration-
+  construction stages, shared helper-role names, and matching documentation contracts. Preserve
+  native AST analysis, bounded Swift lexing and all language-specific source-policy observations.
+- Collect actionlint compatibility sources separately from tool execution. Read each automation file
+  once and share its text between validation and normalization; reuse the restricted YAML mapping
+  parser for both text snapshots and file inputs.
+- Separate safety discovery and npm comparison from orchestration. Yield npm findings so drift found
+  before malformed data remains visible; avoid repeated guardrail step-shape conversion.
+- Separate header-rule and preservation-exception parsing from configuration orchestration,
+  retaining first-match order, validation diagnostics and consumer-owned defaults.
+- Share Python/Swift source-policy defaults while preserving language-specific opt-ins. Separate
+  Swift local and workflow observation collection from comparisons and avoid repeated linear
+  searches through CI observations. Compute documentation-width settings once per source file.
+
 ### Added
 
-- Opt-in `check-python-source`, `check-swift-documentation` and `check-logs` commands with
-  consumer-owned policies, existing text/JSON reporting, confined input discovery, and redacted log
-  findings. See [source and log checks](docs/source-and-log-checks.md).
+- Add opt-in `check-swift-policy` with an independent loader, explicit stable compiler selections,
+  local version and package-minimum checks, and scoped CI observations without executing Swift. Add
+  an optional shared scoped workflow parser for Python while retaining its legacy default.
+- Opt-in `check-python-source`, `check-swift-source` and `check-logs` commands with consumer-owned
+  policies, existing text/JSON reporting, confined input discovery, and redacted log findings. See
+  [source and log checks](docs/source-and-log-checks.md)
+- Standardize the Swift command and policy as `check-swift-source` / `swift-source`. Share
+  source-size, documentation-width and source-guide checks; add optional Python NumPy and Swift DocC
+  callable documentation checks with explicit language-specific syntax limits. Retain shared
+  configuration loading and read-only, redacted input handling.
+- Separate Python and Swift declaration collection from NumPy/DocC interpretation using shared
+  immutable facts. Standardize policy keys as `documentation-width` and `max-file-lines`
+  and use consistent limit diagnostics; replace the earlier option names without aliases.
 
 ## [0.10.0] - 2026-10-25
 
@@ -507,6 +619,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.8.2]: docs/releases/v0.8.2.md
 [0.9.0]: docs/releases/v0.9.0.md
 [0.9.1]: docs/releases/v0.9.1.md
+[0.10.0]: docs/releases/v0.10.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

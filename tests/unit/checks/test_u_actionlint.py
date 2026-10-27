@@ -7,9 +7,14 @@
 # Maintainer Notes
 # - Keep adaptation independent of tool installation and hosted execution.
 
-"""Unit coverage for the temporary actionlint source view."""
+"""
+:mod:`tests.unit.checks.test_u_actionlint` module.
+
+Unit coverage for the temporary actionlint source view.
+"""
 
 import subprocess
+from collections import Counter
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -67,35 +72,6 @@ def linter_repository_fixture(
 # SECTION: TESTS
 
 
-class TestActionlintNormalization:
-    """Group isolated regression scenarios for actionlint."""
-
-    @pytest.mark.parametrize(
-        'source',
-        [
-            'uses: "$/actions/test"\n',
-            'ref: &self $/actions/test\nuses: *self\n',
-            'uses: >-\n  $/actions/test\n',
-        ],
-    )
-    def test_normalization_uses_yaml_values(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        source: str,
-    ) -> None:
-        """
-        Normalize quoted, aliased, and block values without rewriting scripts.
-        """
-        write_file('actions/test/action.yml', 'name: Test')
-        script = 'run: |\n  uses: $/actions/test\n'
-        normalized = _normalize(source + script, AutomationConfig(tmp_path))
-        data = yaml.safe_load(normalized)
-        assert data['uses'] == './actions/test'
-        assert data['run'] == 'uses: $/actions/test\n'
-        assert script in normalized
-
-
 class TestActionlintFailures:
     """Reject invalid invocations before launching any external validator."""
 
@@ -121,6 +97,66 @@ class TestActionlintFailures:
         with pytest.raises(ValueError, match=message):
             run(tmp_path, paths, command)
         runner.assert_not_called()
+
+
+class TestActionlintNormalization:
+    """Group isolated regression scenarios for actionlint."""
+
+    @pytest.mark.parametrize('count', [2, 32])
+    @pytest.mark.parametrize('newline', ['\n', '\r\n'], ids=['lf', 'crlf'])
+    def test_multiple_references_preserve_original_spans(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        count: int,
+        newline: str,
+    ) -> None:
+        """Replace original character spans without changing adjacent text."""
+        write_file('actions/test/action.yml', 'name: Test')
+        source = newline.join(
+            [
+                '# Unicode ü and 日本語 precede replacement offsets.',
+                'jobs:',
+                '  check:',
+                '    steps:',
+                *['      - uses: "$/actions/test"'] * count,
+                '      - run: echo "$/actions/test"',
+                '',
+            ],
+        )
+        write_file('ci.yml', source)
+        before = snapshot_files(tmp_path)
+        expected = source.replace(
+            'uses: "$/actions/test"',
+            'uses: "./actions/test"',
+        )
+        assert _normalize(source, AutomationConfig(tmp_path)) == expected
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            'uses: "$/actions/test"\n',
+            'ref: &self $/actions/test\nuses: *self\n',
+            'uses: >-\n  $/actions/test\n',
+        ],
+    )
+    def test_normalization_uses_yaml_values(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        source: str,
+    ) -> None:
+        """
+        Normalize quoted, aliased, and block values without rewriting scripts.
+        """
+        write_file('actions/test/action.yml', 'name: Test')
+        script = 'run: |\n  uses: $/actions/test\n'
+        normalized = _normalize(source + script, AutomationConfig(tmp_path))
+        data = yaml.safe_load(normalized)
+        assert data['uses'] == './actions/test'
+        assert data['run'] == 'uses: $/actions/test\n'
+        assert script in normalized
 
 
 class TestActionlintSourceView:
@@ -175,6 +211,54 @@ class TestActionlintSourceView:
         assert raised.value is error
         runner.assert_called_once()
         assert not Path(runner.call_args.kwargs['cwd']).exists()
+        assert snapshot_files(tmp_path) == before
+
+    def test_validation_and_normalization_share_single_source_reads(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Read shared and cyclic targets once from the same snapshot."""
+        workflow = write_file(
+            'ci.yml',
+            'jobs: {check: {steps: [{uses: "$/actions/check"}, '
+            '{uses: "$/actions/check"}]}}',
+        )
+        action = write_file(
+            'actions/check/action.yml',
+            'name: Check\nruns: {using: composite, steps: [{uses: "$/actions/check"}]}',
+        )
+        before = snapshot_files(tmp_path)
+        reads: Counter[Path] = Counter()
+        original = Path.read_text
+
+        def inspect_view(
+            arguments: list[str],
+            **options: object,
+        ) -> subprocess.CompletedProcess[str]:
+            mirror = Path(str(options['cwd']))
+            assert './actions/check' in (mirror / 'ci.yml').read_text()
+            assert (
+                './actions/check' in (mirror / 'actions/check/action.yml').read_text()
+            )
+            return subprocess.CompletedProcess(arguments, 0, '', '')
+
+        def read_once(
+            path: Path,
+            encoding: str | None = None,
+            errors: str | None = None,
+        ) -> str:
+            if path in (workflow, action):
+                reads[path] += 1
+                assert reads[path] == 1, 'Source must not be reread after validation'
+            return original(path, encoding=encoding, errors=errors)
+
+        monkeypatch.setattr(subprocess, 'run', Mock(side_effect=inspect_view))
+        with monkeypatch.context() as context:
+            context.setattr(Path, 'read_text', read_once)
+            assert run(tmp_path, ['ci.yml', 'ci.yml']) == 0
+        assert reads == {workflow: 1, action: 1}
         assert snapshot_files(tmp_path) == before
 
 

@@ -40,46 +40,6 @@ class Installation:
     directory: Path
     environment: dict[str, str]
 
-    def run(
-        self,
-        *arguments: str,
-        module: bool = False,
-    ) -> subprocess.CompletedProcess[str]:
-        """
-        Run the installed console script or module and capture its result.
-
-        Parameters
-        ----------
-        *arguments : str
-            CLI arguments appended to the chosen entry point.
-        module : bool, optional
-            Use the installation's Python interpreter with -m popo when
-            ``True``; otherwise invoke its console script. Defaults to
-            ``False``.
-
-        Returns
-        -------
-        subprocess.CompletedProcess[str]
-            Exit status and captured text output, including unsuccessful CLI
-            exits.
-
-        Raises
-        ------
-        subprocess.TimeoutExpired
-            If the process exceeds 30 seconds.
-        OSError, UnicodeError
-            If startup fails or captured output cannot be decoded.
-
-        Notes
-        -----
-        Use :attr:`Installation.directory` and
-        :attr:`Installation.environment`. Nonzero statuses are returned for
-        scenario assertions instead of raising
-        :exc:`~subprocess.CalledProcessError`.
-        """
-        prefix = [str(self.python), '-m', 'popo'] if module else [str(self.command)]
-        return self.execute(*prefix, *arguments)
-
     def execute(
         self,
         *arguments: str,
@@ -119,6 +79,46 @@ class Installation:
             timeout=timeout,
             check=False,
         )
+
+    def run(
+        self,
+        *arguments: str,
+        module: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        """
+        Run the installed console script or module and capture its result.
+
+        Parameters
+        ----------
+        *arguments : str
+            CLI arguments appended to the chosen entry point.
+        module : bool, optional
+            Use the installation's Python interpreter with -m popo when
+            ``True``; otherwise invoke its console script. Defaults to
+            ``False``.
+
+        Returns
+        -------
+        subprocess.CompletedProcess[str]
+            Exit status and captured text output, including unsuccessful CLI
+            exits.
+
+        Raises
+        ------
+        subprocess.TimeoutExpired
+            If the process exceeds 30 seconds.
+        OSError, UnicodeError
+            If startup fails or captured output cannot be decoded.
+
+        Notes
+        -----
+        Use :attr:`Installation.directory` and
+        :attr:`Installation.environment`. Nonzero statuses are returned for
+        scenario assertions instead of raising
+        :exc:`~subprocess.CalledProcessError`.
+        """
+        prefix = [str(self.python), '-m', 'popo'] if module else [str(self.command)]
+        return self.execute(*prefix, *arguments)
 
 
 # !SECTION

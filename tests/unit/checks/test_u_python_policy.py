@@ -6,13 +6,14 @@ Test Python-version consistency and workflow matrix resolution.
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Literal
 from unittest.mock import patch
 
 import pytest
 
 from popo.checks.python_policy import validate
 from popo.config import PythonPolicyConfig
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -70,12 +71,14 @@ def policy(
 
 
 @pytest.fixture(params=['${{ env.MISSING }}', '${{ matrix.missing }}'])
-def unresolved_reference(request: pytest.FixtureRequest) -> str:
+def unresolved_reference(
+    request: pytest.FixtureRequest,
+) -> str:
     """Supply recognized version references with no matching declaration."""
     return str(request.param)
 
 
-# SECTION!
+# !SECTION
 
 
 # SECTION: TESTS
@@ -383,6 +386,76 @@ class TestPythonPolicy:
 class TestPythonPolicyInputBoundaries:
     """Validate each declaration and inspect shared metadata consistently."""
 
+    @pytest.mark.parametrize('parser', ['text', 'scoped'])
+    def test_diagnostic_stage_and_workflow_order(
+        self,
+        policy: PythonPolicyConfig,
+        write_file: FileWriter,
+        parser: Literal['text', 'scoped'],
+    ) -> None:
+        """Preserve runtime, local and per-workflow diagnostic order."""
+        policy.python_version_file.write_text('3.12', encoding='utf-8')
+        first = write_file(
+            '.github/workflows/a.yml',
+            'jobs:\n  build:\n    steps:\n      - with:\n'
+            '          python-version: "3.12"\n',
+        )
+        middle = write_file(
+            '.github/workflows/ci.yml',
+            'name: actions/setup-python@fixture\njobs: {}\n',
+        )
+        last = write_file(
+            '.github/workflows/z.yml',
+            'jobs:\n  build:\n    steps:\n      - with:\n'
+            '          python-version: "banana"\n',
+        )
+        config = replace(policy, workflow_parser=parser)
+        before = snapshot_files(policy.metadata.parent)
+        assert validate(config, running_version='3.12') == [
+            'checker runtime: Python >=3.13,<3.15 is required; received 3.12',
+            f"{policy.python_version_file}: expected '3.13'",
+            f"{first}: unsupported Python version '3.12'",
+            f'{middle}: '
+            + (
+                'setup-python requires an explicit version'
+                if parser == 'text'
+                else 'no explicit python-version declarations'
+            ),
+            f"{last}: unsupported Python version 'banana'",
+        ]
+        assert snapshot_files(policy.metadata.parent) == before
+
+    @pytest.mark.parametrize('missing', [False, True], ids=['malformed', 'missing'])
+    def test_shared_metadata_failure_is_reported_once(
+        self,
+        policy: PythonPolicyConfig,
+        missing: bool,
+    ) -> None:
+        """Avoid duplicate diagnostics for one package/Ruff metadata input."""
+        if missing:
+            policy.metadata.unlink()
+        else:
+            policy.metadata.write_text('[', encoding='utf-8')
+        failures = validate(policy, running_version='3.13')
+        assert len(failures) == 1
+        assert ('does not exist' if missing else 'invalid TOML') in failures[0]
+
+    def test_shared_metadata_is_read_once(
+        self,
+        policy: PythonPolicyConfig,
+    ) -> None:
+        """Use one observation for package, mypy and embedded Ruff settings."""
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=Path.read_text,
+        ) as reads:
+            assert validate(policy, running_version='3.13') == []
+        assert (
+            sum(call.args[0] == policy.metadata for call in reads.call_args_list) == 1
+        )
+
     @pytest.mark.parametrize(
         'unresolved_first',
         [False, True],
@@ -412,30 +485,54 @@ class TestPythonPolicyInputBoundaries:
             f'{path}: unsupported Python version {unresolved_reference!r}',
         ]
 
-    @pytest.mark.parametrize('missing', [False, True], ids=['malformed', 'missing'])
-    def test_shared_metadata_failure_is_reported_once(
+
+class TestScopedPythonPolicy:
+    """Opt into scoped observations without changing legacy text defaults."""
+
+    @pytest.mark.parametrize(
+        'scenario,message',
+        [
+            ('matrix', None),
+            ('missing-declarations', 'no explicit python-version declarations'),
+            ('missing-workflow', 'no Python policy workflows found'),
+        ],
+    )
+    def test_scoped_workflow_declarations(
         self,
         policy: PythonPolicyConfig,
-        missing: bool,
+        tmp_path: Path,
+        scenario: str,
+        message: str | None,
     ) -> None:
-        """Avoid duplicate diagnostics for one package/Ruff metadata input."""
-        if missing:
-            policy.metadata.unlink()
+        """Validate each scoped observation case with independent inputs."""
+        workflow = policy.workflow_directory / 'ci.yml'
+        if scenario == 'missing-workflow':
+            workflow.unlink()
         else:
-            policy.metadata.write_text('[', encoding='utf-8')
-        failures = validate(policy, running_version='3.13')
-        assert len(failures) == 1
-        assert ('does not exist' if missing else 'invalid TOML') in failures[0]
-
-    def test_shared_metadata_is_read_once(self, policy: PythonPolicyConfig) -> None:
-        """Use one observation for package, mypy and embedded Ruff settings."""
-        with patch.object(
-            Path,
-            'read_text',
-            autospec=True,
-            side_effect=Path.read_text,
-        ) as reads:
-            assert validate(policy, running_version='3.13') == []
+            source = (
+                """jobs:
+  build:
+    strategy:
+      matrix:
+        python: ["3.13", "3.14"]
+    steps:
+      - with:
+          python-version: ${{ matrix.python }}
+"""
+                if scenario == 'matrix'
+                else 'jobs: {}'
+            )
+            workflow.write_text(source, encoding='utf-8')
+        expected = []
+        if message is not None:
+            expected = [
+                f'{workflow}: {message}'
+                if scenario == 'missing-declarations'
+                else message,
+            ]
+        before = snapshot_files(tmp_path)
         assert (
-            sum(call.args[0] == policy.metadata for call in reads.call_args_list) == 1
+            validate(replace(policy, workflow_parser='scoped'), running_version='3.13')
+            == expected
         )
+        assert snapshot_files(tmp_path) == before

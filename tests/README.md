@@ -36,14 +36,18 @@ top-level directory.
 
 Within `tests/unit/`:
 
-- `checks/` mirrors `popo.checks`; larger checker suites may span focused test modules.
-- `configs/` covers `popo.config`: project loading and shared loader contracts in
+- `checks/` mirrors `popo.checks`; larger checker suites may span focused test modules. Python and
+  Swift source suites use `test_u_python_source.py` and `test_u_swift_source.py`;
+  `test_u_source_parity.py` covers their common contracts, `test_u_documentation_parity.py` covers
+  comparable NumPy/DocC evidence and intentional markup differences, and `test_u_logs.py` covers log
+  findings.
+- `config/` covers `popo.config`: project loading and shared loader contracts in
   `test_u_project.py`, with domain-specific modules for automation, files, guardrails, hosted
   audits, safety, and selection.
 - Tests for shared support, Make, hooks, and repository workflows remain at the unit-layer root.
 
 Both subdirectories inherit the `unit` marker and shared fixtures. Checker tests may construct or
-load configuration to exercise a validator; configuration-only validation belongs in `configs/`.
+load configuration to exercise a validator; configuration-only validation belongs in `config/`.
 
 ## Discovery and Selection
 
@@ -87,26 +91,37 @@ skips unavailable operations and permission restrictions; unexpected filesystem 
 ## Suite Design
 
 Group related scenarios into plain pytest `Test*` classes with instance methods; use fixtures rather
-than constructors or shared mutable class state. For functions and methods with multiple parameters,
-put each parameter on its own line, including `self`, and retain the trailing comma. Parameterize
-inputs that share a contract so each scenario has independent setup and failure reporting; reserve
-loops for assertions about one result. Assert specific diagnostics, not merely a nonempty result.
-For mutation cases, verify the source marker exists before replacing it. Compare file-byte snapshots
-when checking that validation preserves consumer inputs, including rejected configurations. The
-`write_file` fixture creates temporary UTF-8 repository files. Keep domain-specific policy fixtures
-local to their test module unless multiple layers use them. Hosted observations live in
-`tests/support/hosted.py`, with prefixed fixture names and function scope so mutable API responses
-remain isolated. Hosted configuration cases belong in `unit/configs/`, GET-adapter and observation
-cases in `unit/checks/`, and public CLI reporting in `integration/`. Parameterized CLI-format
-fixtures in `integration/conftest.py` cover default text, explicit text and JSON independently for
-hosted and native commands; invalid configuration must fail before the observer runs. Subprocess
-tests use timeouts; Make runs against a temporary copy of the Makefile, and Make and Git fixtures
-exclude inherited tool configuration where it can change the result. The Make runner derives
-configurable variables from the copied Makefile and strips caller overrides such as `TEST_ARGS`;
-pass deliberate overrides as Make command arguments instead. Header-policy unit fixtures simulate
-missing Git by default, with explicit subprocess outcomes for inventory cases. Actionlint unit tests
-inspect the temporary source view during the mocked tool call and check cleanup after successful
-execution, tool failure, and process-launch failure.
+than constructors or shared mutable class state. Alphabetize classes, methods and fixtures within
+logical groups, preserving fixture/hook sections and definition-time dependencies. Put each function
+or method parameter on its own line with a trailing comma, including `self` when other parameters
+exist. Only a sole `self` parameter may remain inline; parameterless definitions remain compact.
+Parameterize inputs that share a contract so each scenario has independent setup and failure
+reporting; reserve loops for assertions about one result. Assert specific diagnostics, not merely a
+nonempty result. For mutation cases, verify the source marker exists before replacing it. Compare
+file-byte snapshots when checking that validation preserves consumer inputs, including rejected
+configurations. The `write_file` fixture creates temporary UTF-8 repository files. Keep
+domain-specific policy fixtures local to their test module unless multiple layers use them. Hosted
+observations live in `tests/support/hosted.py`, with prefixed fixture names and function scope so
+mutable API responses remain isolated. Hosted configuration cases belong in `unit/config/`,
+GET-adapter and observation cases in `unit/checks/`, and public CLI reporting in `integration/`.
+Parameterized CLI-format fixtures in `integration/conftest.py` cover default text, explicit text and
+JSON independently for hosted and native commands; invalid configuration must fail before the
+observer runs. A shared function-scoped selection factory in that conftest configures individual,
+explicit aggregate and profile dispatch for a caller-supplied consumer root. Source-command success
+and missing-input cases use separate consumers and byte snapshots; YAML text/file parser cases use a
+parameterized fixture so failures are reported independently. Toolchain suites likewise isolate
+scoped workflow states and CI preference modes. Missing, undecodable and permission-denied Swift
+inputs assert exact diagnostics and unchanged input bytes; loader defaults are tested under
+`config/`. Subprocess tests use timeouts; Make runs against a temporary copy of the Makefile, and
+Make and Git fixtures exclude inherited tool configuration where it can change the result. The Make
+runner derives configurable variables from the copied Makefile and strips caller overrides such as
+`TEST_ARGS`; pass deliberate overrides as Make command arguments instead. Header-policy unit
+fixtures simulate missing Git by default, with explicit subprocess outcomes for inventory cases.
+Required-file and header-policy cases use separate class suites. Directive presence, optional schema
+preambles, required maintainer notes and rule ordering are parameterized with fresh consumers and
+file-byte snapshots, including rejected inputs. Actionlint unit tests inspect the temporary source
+view during the mocked tool call and check cleanup after successful execution, tool failure, and
+process-launch failure.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry
@@ -164,7 +179,7 @@ After installing development dependencies:
 make test
 make test-unit
 make test-unit UNIT_TEST_ARGS="tests/unit/checks"
-make test-unit UNIT_TEST_ARGS="tests/unit/configs"
+make test-unit UNIT_TEST_ARGS="tests/unit/config"
 make test-integration
 make test-distribution
 make test-installation

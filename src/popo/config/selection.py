@@ -1,4 +1,8 @@
-"""Select offline repository checks without assuming a consumer language."""
+"""
+:mod:`popo.config.selection` module.
+
+Select offline repository checks without assuming a consumer language.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +26,8 @@ BASELINE = (
 )
 OPTIONAL = {
     'python-source': 'check-python-source',
-    'swift-documentation': 'check-swift-documentation',
+    'swift-policy': 'check-swift-policy',
+    'swift-source': 'check-swift-source',
     'logs': 'check-logs',
     'automation': 'check-automation-contracts',
     'safety': 'check-repository-safety',
@@ -70,7 +75,10 @@ class CheckPlan:
 # SECTION: FUNCTIONS
 
 
-def load_plan(root: Path, profile: str | None = None) -> CheckPlan:
+def load_plan(
+    root: Path,
+    profile: str | None = None,
+) -> CheckPlan:
     """
     Resolve a nonempty check selection without running validators.
 

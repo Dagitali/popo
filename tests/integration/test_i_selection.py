@@ -1,4 +1,8 @@
-"""Exercise language-neutral CLI plans and versioned offline JSON reports."""
+"""
+:mod:`tests.integration.test_i_selection` module.
+
+Exercise language-neutral CLI plans and versioned offline JSON reports.
+"""
 
 import json
 from pathlib import Path
@@ -49,53 +53,6 @@ def profile_consumer_fixture(
 class TestSelectedChecks:
     """Run native checks through the same CLI used locally and in CI."""
 
-    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
-    def test_swift_consumer(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        cli_format: str | None,
-        format_arguments: tuple[str, ...],
-        valid: bool,
-    ) -> None:
-        """A Swift repository can select docs/files without Python metadata."""
-        write_file(
-            'popo.toml',
-            'checks=["check-docs","check-required-files"]\n[files]\nrequired=["Package.swift"]',
-        )
-        write_file('Package.swift', '// swift-tools-version: 6.0\n')
-        write_file('README.md', '# Consumer\n' if valid else '[missing](absent)')
-        before = snapshot_files(tmp_path)
-        assert main(
-            ['check-all', '--root', str(tmp_path), *format_arguments],
-        ) == int(not valid)
-        output = capsys.readouterr()
-        assert not output.err
-        if cli_format == 'json':
-            result = json.loads(output.out)
-            assert result['schema_version'] == 1
-            assert result['passed'] is valid
-            assert [check['check'] for check in result['checks']] == [
-                'check-docs',
-                'check-required-files',
-            ]
-            assert result['checks'][1]['passed'] is True
-            if not valid:
-                assert result['checks'][0]['diagnostics'] == [
-                    {
-                        'severity': 'error',
-                        'message': (
-                            f'{tmp_path / 'README.md'}:1: '
-                            'local target does not exist: absent'
-                        ),
-                    },
-                ]
-                assert result['checks'][0]['summary'] == ''
-        else:
-            assert ('PASS:' if valid else 'FAIL:') in output.out
-        assert snapshot_files(tmp_path) == before
-
     def test_explain(
         self,
         profile_consumer: Path,
@@ -142,67 +99,6 @@ class TestSelectedChecks:
             assert 'check-docs' in output.out
         assert snapshot_files(profile_consumer) == before
 
-    @pytest.mark.parametrize('profile', ['docs', None], ids=['named', 'default'])
-    def test_profile_execution(
-        self,
-        profile_consumer: Path,
-        write_file: FileWriter,
-        capsys: pytest.CaptureFixture[str],
-        cli_format: str | None,
-        format_arguments: tuple[str, ...],
-        profile: str | None,
-    ) -> None:
-        """
-        A selected profile replaces the independently failing default checks.
-        """
-        write_file('README.md', '# Consumer')
-        profile_arguments = [] if profile is None else ['--profile', profile]
-        assert main(
-            [
-                'check-all',
-                '--root',
-                str(profile_consumer),
-                *profile_arguments,
-                *format_arguments,
-            ],
-        ) == int(profile is None)
-        output = capsys.readouterr()
-        assert output.err == ''
-        if cli_format == 'json':
-            result = json.loads(output.out)
-            assert result['passed'] is (profile is not None)
-            assert [check['check'] for check in result['checks']] == [
-                'check-required-files' if profile is None else 'check-docs',
-            ]
-        else:
-            assert (
-                'requires tool.popo.files' if profile is None else 'PASS:'
-            ) in output.out
-
-    @pytest.mark.parametrize('command', ['check-all', 'explain'])
-    def test_invalid_plan(
-        self,
-        write_file: FileWriter,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-        cli_format: str | None,
-        format_arguments: tuple[str, ...],
-    ) -> None:
-        """
-        Bad selection produces one configuration result in the chosen format.
-        """
-        write_file('popo.toml', 'checks=[]')
-        assert main([command, '--root', str(tmp_path), *format_arguments]) == 1
-        output = capsys.readouterr()
-        assert not output.err
-        if cli_format == 'json':
-            result = json.loads(output.out)
-            assert result['passed'] is False
-            assert result['checks'][0]['check'] == 'configuration'
-        else:
-            assert 'checks must select at least one check' in output.out
-
     def test_independent_configuration_failures(
         self,
         write_file: FileWriter,
@@ -242,6 +138,114 @@ class TestSelectedChecks:
         result = json.loads(capsys.readouterr().out)
         assert result['command'] == 'check-docs'
         assert result['checks'][0]['diagnostics'] == []
+
+    @pytest.mark.parametrize('command', ['check-all', 'explain'])
+    def test_invalid_plan(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        command: str,
+        cli_format: str | None,
+        format_arguments: tuple[str, ...],
+    ) -> None:
+        """
+        Bad selection produces one configuration result in the chosen format.
+        """
+        write_file('popo.toml', 'checks=[]')
+        assert main([command, '--root', str(tmp_path), *format_arguments]) == 1
+        output = capsys.readouterr()
+        assert not output.err
+        if cli_format == 'json':
+            result = json.loads(output.out)
+            assert result['passed'] is False
+            assert result['checks'][0]['check'] == 'configuration'
+        else:
+            assert 'checks must select at least one check' in output.out
+
+    @pytest.mark.parametrize('profile', ['docs', None], ids=['named', 'default'])
+    def test_profile_execution(
+        self,
+        profile_consumer: Path,
+        write_file: FileWriter,
+        capsys: pytest.CaptureFixture[str],
+        cli_format: str | None,
+        format_arguments: tuple[str, ...],
+        profile: str | None,
+    ) -> None:
+        """
+        A selected profile replaces the independently failing default checks.
+        """
+        write_file('README.md', '# Consumer')
+        profile_arguments = [] if profile is None else ['--profile', profile]
+        assert main(
+            [
+                'check-all',
+                '--root',
+                str(profile_consumer),
+                *profile_arguments,
+                *format_arguments,
+            ],
+        ) == int(profile is None)
+        output = capsys.readouterr()
+        assert output.err == ''
+        if cli_format == 'json':
+            result = json.loads(output.out)
+            assert result['passed'] is (profile is not None)
+            assert [check['check'] for check in result['checks']] == [
+                'check-required-files' if profile is None else 'check-docs',
+            ]
+        else:
+            assert (
+                'requires tool.popo.files' if profile is None else 'PASS:'
+            ) in output.out
+
+    @pytest.mark.parametrize('valid', [True, False], ids=['passing', 'failing'])
+    def test_swift_consumer(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        cli_format: str | None,
+        format_arguments: tuple[str, ...],
+        valid: bool,
+    ) -> None:
+        """A Swift repository can select docs/files without Python metadata."""
+        write_file(
+            'popo.toml',
+            'checks=["check-docs","check-required-files"]\n[files]\nrequired=["Package.swift"]',
+        )
+        write_file('Package.swift', '// swift-tools-version: 6.0\n')
+        write_file('README.md', '# Consumer\n' if valid else '[missing](absent)')
+        before = snapshot_files(tmp_path)
+        assert main(
+            ['check-all', '--root', str(tmp_path), *format_arguments],
+        ) == int(not valid)
+        output = capsys.readouterr()
+        assert not output.err
+        if cli_format == 'json':
+            result = json.loads(output.out)
+            assert result['schema_version'] == 1
+            assert result['passed'] is valid
+            assert [check['check'] for check in result['checks']] == [
+                'check-docs',
+                'check-required-files',
+            ]
+            assert result['checks'][1]['passed'] is True
+            if not valid:
+                assert result['checks'][0]['diagnostics'] == [
+                    {
+                        'severity': 'error',
+                        'message': (
+                            f'{tmp_path / 'README.md'}:1: '
+                            'local target does not exist: absent'
+                        ),
+                    },
+                ]
+                assert result['checks'][0]['summary'] == ''
+        else:
+            assert ('PASS:' if valid else 'FAIL:') in output.out
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION

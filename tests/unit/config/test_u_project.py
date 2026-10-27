@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_project` module.
+:mod:`tests.unit.config.test_u_project` module.
 
 Test project configuration discovery and shared loader contracts.
 """
@@ -239,6 +239,34 @@ class TestConfiguration:
         with pytest.raises(ConfigurationError, match='unknown tool.popo.automation'):
             load_automation_config(tmp_path)
 
+    def test_python_defaults_follow_dependency_metadata(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Verify default Python requirements and Ruff paths follow dependency
+        metadata.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        """
+        write_file(
+            'pyproject.toml',
+            '[tool.popo.dependencies]\nmetadata = "dependencies.toml"\n'
+            '[tool.popo.python-policy]\nmetadata = "python.toml"\n',
+        )
+        write_file('dependencies.toml', '[project]\nrequires-python = ">=3.14"')
+        write_file('python.toml', '[project]\nrequires-python = ">=3.13"')
+        config = load_config(tmp_path)
+        assert config.python_policy.metadata == tmp_path / 'python.toml'
+        assert config.python_policy.ruff_config == tmp_path / 'dependencies.toml'
+        assert config.python_policy.requires_python == '>=3.14'
+
     @pytest.mark.parametrize(
         ('content', 'message'),
         [
@@ -283,34 +311,6 @@ class TestConfiguration:
         write_file('pyproject.toml', content)
         with pytest.raises(ConfigurationError, match=message):
             load_config(tmp_path)
-
-    def test_python_defaults_follow_dependency_metadata(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify default Python requirements and Ruff paths follow dependency
-        metadata.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        write_file(
-            'pyproject.toml',
-            '[tool.popo.dependencies]\nmetadata = "dependencies.toml"\n'
-            '[tool.popo.python-policy]\nmetadata = "python.toml"\n',
-        )
-        write_file('dependencies.toml', '[project]\nrequires-python = ">=3.14"')
-        write_file('python.toml', '[project]\nrequires-python = ">=3.13"')
-        config = load_config(tmp_path)
-        assert config.python_policy.metadata == tmp_path / 'python.toml'
-        assert config.python_policy.ruff_config == tmp_path / 'dependencies.toml'
-        assert config.python_policy.requires_python == '>=3.14'
 
 
 # !SECTION

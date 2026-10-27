@@ -5,6 +5,7 @@ Validate exact required files and configured source headers without mutation.
 """
 
 import ast
+import os
 import subprocess
 from fnmatch import fnmatchcase
 from itertools import dropwhile, takewhile
@@ -13,6 +14,64 @@ from pathlib import Path
 from ..config.files import HeaderRule, HeadersConfig, RequiredFilesConfig
 
 # SECTION: PROTECTED FUNCTIONS
+
+
+def _git_sources(
+    config: HeadersConfig,
+) -> set[Path] | None:
+    """
+    Read NUL-delimited Git filenames without translating embedded newlines.
+
+    Parameters
+    ----------
+    config : HeadersConfig
+        Consumer root used for bounded, read-only Git discovery.
+
+    Returns
+    -------
+    set[pathlib.Path] or None
+        Tracked and unignored paths decoded with the filesystem encoding, or
+        None when Git is unavailable or fails outside a detected repository.
+
+    Raises
+    ------
+    OSError
+        Git cannot start, except for a missing executable, or inventory fails
+        inside a detected repository.
+    subprocess.TimeoutExpired
+        Git discovery exceeds its 30-second bound.
+
+    Notes
+    -----
+    Binary capture preserves carriage returns and line feeds in filenames;
+    NUL is the only record delimiter. No checkout files are modified.
+    """
+    try:
+        result = subprocess.run(
+            [
+                'git',
+                '-C',
+                str(config.root),
+                'ls-files',
+                '--cached',
+                '--others',
+                '--exclude-standard',
+                '-z',
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+    except FileNotFoundError:
+        return None
+    if result.returncode == 0:
+        return {
+            config.root / name
+            for name in os.fsdecode(result.stdout).split('\0')
+            if name
+        }
+    if (config.root / '.git').exists():
+        raise OSError('Git source inventory failed')
+    return None
 
 
 def _header(
@@ -88,44 +147,22 @@ def _problem(
     return None
 
 
-def _sources(config: HeadersConfig) -> list[Path]:
+def _sources(
+    config: HeadersConfig,
+) -> list[Path]:
     """Discover tracked/unignored sources, with bounded non-Git fallback."""
-    try:
-        result = subprocess.run(
-            [
-                'git',
-                '-C',
-                str(config.root),
-                'ls-files',
-                '--cached',
-                '--others',
-                '--exclude-standard',
-                '-z',
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except FileNotFoundError:
-        result = None
-    if result is not None and result.returncode == 0:
-        paths = {config.root / name for name in result.stdout.split('\0') if name}
-    else:
-        if result is not None and (config.root / '.git').exists():
-            raise OSError('Git source inventory failed')
+    paths = _git_sources(config)
+    ignored = set(config.ignored_directories)
+    if paths is None:
         paths = set()
         for directory, directories, names in config.root.walk(on_error=_walk_error):
-            directories[:] = [
-                name for name in directories if name not in config.ignored_directories
-            ]
+            directories[:] = [name for name in directories if name not in ignored]
             paths.update(directory / name for name in names)
     return sorted(
         path
         for path in paths
         if (path.is_file() or (path.is_symlink() and not path.exists()))
-        and not set(path.relative_to(config.root).parts[:-1]).intersection(
-            config.ignored_directories,
-        )
+        and ignored.isdisjoint(path.relative_to(config.root).parts[:-1])
         and path.name != '.git'
     )
 

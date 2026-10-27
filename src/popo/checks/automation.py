@@ -17,6 +17,54 @@ from .actions import is_pinned
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _automation_paths(
+    config: AutomationConfig,
+) -> tuple[dict[Path, str], list[str]]:
+    """
+    Discover categorized automation inputs without losing independent findings.
+
+    Parameters
+    ----------
+    config : AutomationConfig
+        Consumer root and ordered workflow/action/template/YAML patterns.
+
+    Returns
+    -------
+    tuple[dict[pathlib.Path, str], list[str]]
+        Deduplicated paths in discovery order, plus missing-pattern, category
+        conflict and redacted discovery-error findings. The first category
+        assigned to a path wins. Failed patterns do not stop later patterns.
+
+    Notes
+    -----
+    Discover files only; containment and contents are checked separately.
+    Glob iteration and file-inspection OSError/ValueError failures become
+    findings without exposing exception text or executing consumer code.
+    """
+    failures: list[str] = []
+    paths: dict[Path, str] = {}
+    for kind, patterns in (
+        ('workflow', config.workflow_globs),
+        ('action', config.action_globs),
+        ('template', config.template_globs),
+        ('yaml', config.yaml_globs),
+    ):
+        for pattern in patterns:
+            try:
+                matches = sorted(p for p in config.root.glob(pattern) if p.is_file())
+            except (OSError, ValueError):
+                failures.append(f'cannot discover automation files: {pattern}')
+                continue
+            if not matches:
+                failures.append(f'no automation files match: {pattern}')
+            for path in matches:
+                if path in paths and paths[path] != kind:
+                    failures.append(f'{path}: conflicting automation categories')
+                else:
+                    paths[path] = kind
+    return paths, failures
+
+
 def _call(
     node: dict[str, object],
     target: dict[str, object],
@@ -185,8 +233,8 @@ def _metadata(
     json.JSONDecodeError
         If the companion contains invalid JSON.
     OSError, UnicodeError
-        If path resolution, reading, or decoding fails. Reading uses the
-        default text encoding of the execution environment.
+        If path resolution, reading, or UTF-8 decoding fails. Reading is
+        independent of the execution environment's default text encoding.
     re.PatternError
         If a filePatterns entry is not a valid regular expression.
 
@@ -198,7 +246,10 @@ def _metadata(
     :func:`~popo.checks.automation.validate`.
     """
     metadata = _inside(root, path.with_suffix('.properties.json'))
-    doc = require_mapping(json.loads(metadata.read_text()), 'template metadata')
+    doc = require_mapping(
+        json.loads(metadata.read_text(encoding='utf-8')),
+        'template metadata',
+    )
     for key in ('name', 'description'):
         if not isinstance(doc.get(key), str) or not doc[key]:
             raise ValueError(f'template metadata needs {key}')
@@ -209,6 +260,50 @@ def _metadata(
         if key == 'filePatterns':
             for pattern in values:
                 re.compile(pattern)
+
+
+def _orphan_metadata_findings(
+    paths: dict[Path, str],
+) -> list[str]:
+    """
+    Find orphan template companions while retaining independent discoveries.
+
+    Parameters
+    ----------
+    paths : dict[pathlib.Path, str]
+        Selected automation paths and their assigned categories.
+
+    Returns
+    -------
+    list[str]
+        Orphan findings in sorted parent/file order. Parent discovery and
+        companion-file inspection errors become redacted findings; later
+        parents and metadata files are still inspected when possible.
+
+    Notes
+    -----
+    Inspect companion names and YAML file existence only, without reading JSON
+    contents or executing templates. Full validation invokes this stage;
+    pins-only validation skips it.
+    """
+    failures: list[str] = []
+    parents = {path.parent for path, kind in paths.items() if kind == 'template'}
+    for parent in sorted(parents):
+        try:
+            metadata_files = sorted(parent.glob('*.properties.json'))
+        except (OSError, ValueError):
+            failures.append(f'{parent}: cannot discover template metadata')
+            continue
+        for metadata in metadata_files:
+            stem = metadata.name.removesuffix('.properties.json')
+            try:
+                if not any(
+                    (parent / (stem + ext)).is_file() for ext in ('.yml', '.yaml')
+                ):
+                    failures.append(f'{metadata}: orphan template metadata')
+            except (OSError, ValueError):
+                failures.append(f'{metadata}: cannot inspect template companion')
+    return failures
 
 
 def _target(
@@ -313,8 +408,10 @@ def validate(
     list[str]
         Per-file diagnostics for malformed YAML/JSON, missing or escaping
         targets, input mismatches, composite structure, template metadata, and
-        unsafe pins. Read/decode errors become diagnostics; validation
-        continues across files.
+        unsafe pins. Configured-pattern discovery and file-inspection errors
+        become redacted findings; later patterns and independent files are
+        still checked. Read/decode errors become per-file diagnostics. Orphan
+        metadata discovery and inspection failures also retain later findings.
 
     Notes
     -----
@@ -325,23 +422,7 @@ def validate(
     Placeholder refs are exempt only in templates with configured self aliases
     and existing targets.
     """
-    failures: list[str] = []
-    paths: dict[Path, str] = {}
-    for kind, patterns in (
-        ('workflow', config.workflow_globs),
-        ('action', config.action_globs),
-        ('template', config.template_globs),
-        ('yaml', config.yaml_globs),
-    ):
-        for pattern in patterns:
-            matches = sorted(p for p in config.root.glob(pattern) if p.is_file())
-            if not matches:
-                failures.append(f'no automation files match: {pattern}')
-            for path in matches:
-                if path in paths and paths[path] != kind:
-                    failures.append(f'{path}: conflicting automation categories')
-                else:
-                    paths[path] = kind
+    paths, failures = _automation_paths(config)
     for path, kind in paths.items():
         try:
             _inside(config.root, path)
@@ -386,18 +467,16 @@ def validate(
                             'workflow_call',
                         )
                     _call(node, doc, workflow)
-        except (OSError, UnicodeError, ValueError, yaml.YAMLError, re.error) as error:
+        except (
+            OSError,
+            UnicodeError,
+            ValueError,
+            yaml.YAMLError,
+            re.PatternError,
+        ) as error:
             failures.append(f'{path}: {error}')
     if not pins_only:
-        for parent in sorted(
-            {p.parent for p, kind in paths.items() if kind == 'template'},
-        ):
-            for metadata in sorted(parent.glob('*.properties.json')):
-                stem = metadata.name.removesuffix('.properties.json')
-                if not any(
-                    (parent / (stem + ext)).is_file() for ext in ('.yml', '.yaml')
-                ):
-                    failures.append(f'{metadata}: orphan template metadata')
+        failures.extend(_orphan_metadata_findings(paths))
     return failures
 
 

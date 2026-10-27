@@ -20,24 +20,24 @@ from ._common import (
 
 
 @dataclass(frozen=True, slots=True)
-class RequiredFilesConfig:
+class HeaderException:
     """
-    Store a consumer root and exact required relative filenames.
+    Preserve matched files without reading contents, with a stated reason.
 
     Attributes
     ----------
-    root : pathlib.Path
-        Consumer boundary, resolved by the configuration loader.
-    required : tuple[str, ...]
-        Exact root-relative POSIX filenames, without glob expansion.
+    patterns : tuple[str, ...]
+        Case-sensitive root-relative preservation patterns.
+    reason : str
+        Consumer explanation for preserving matching files.
 
     Notes
     -----
-    Direct construction does not validate paths or inspect files.
+    Exceptions do not bypass path-containment checks.
     """
 
-    root: Path
-    required: tuple[str, ...]
+    patterns: tuple[str, ...]
+    reason: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,27 +85,6 @@ class HeaderRule:
 
 
 @dataclass(frozen=True, slots=True)
-class HeaderException:
-    """
-    Preserve matched files without reading contents, with a stated reason.
-
-    Attributes
-    ----------
-    patterns : tuple[str, ...]
-        Case-sensitive root-relative preservation patterns.
-    reason : str
-        Consumer explanation for preserving matching files.
-
-    Notes
-    -----
-    Exceptions do not bypass path-containment checks.
-    """
-
-    patterns: tuple[str, ...]
-    reason: str
-
-
-@dataclass(frozen=True, slots=True)
 class HeadersConfig:
     """
     Store consumer identity, ordered rules and explicit preservation policy.
@@ -136,6 +115,27 @@ class HeadersConfig:
     ignored_directories: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class RequiredFilesConfig:
+    """
+    Store a consumer root and exact required relative filenames.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        Consumer boundary, resolved by the configuration loader.
+    required : tuple[str, ...]
+        Exact root-relative POSIX filenames, without glob expansion.
+
+    Notes
+    -----
+    Direct construction does not validate paths or inspect files.
+    """
+
+    root: Path
+    required: tuple[str, ...]
+
+
 # !SECTION
 
 
@@ -152,6 +152,66 @@ def _boolean(
     if type(value) is not bool:
         raise ConfigurationError(f'{key} must be boolean')
     return value
+
+
+def _header_exception(
+    entry: object,
+) -> HeaderException:
+    """Validate an explicit preservation scope and its nonblank reason."""
+    row = require_table(entry, name='header exception')
+    if set(row) != {'patterns', 'reason'}:
+        raise ConfigurationError('header exception requires patterns and reason')
+    patterns = _paths(row['patterns'], 'exception patterns', patterns=True)
+    if not patterns:
+        raise ConfigurationError('exception patterns must not be empty')
+    reason = read_string(row, 'reason', default='')
+    if not reason.strip():
+        raise ConfigurationError('header exception reason must not be blank')
+    return HeaderException(patterns, reason)
+
+
+def _header_rule(
+    entry: object,
+) -> HeaderRule:
+    """Validate one ordered header rule without reading consumer source."""
+    row = require_table(entry, name='header rule')
+    if set(row) - {
+        'patterns',
+        'format',
+        'prefix',
+        'required-text',
+        'first-line',
+        'first-line-prefix',
+        'trim-after-first-line',
+        'preamble-prefixes',
+        'purpose-required',
+    }:
+        raise ConfigurationError('unknown header rule setting')
+    patterns = _paths(row.get('patterns'), 'header patterns', patterns=True)
+    if not patterns:
+        raise ConfigurationError('header patterns must not be empty')
+    kind = read_string(row, 'format', default='')
+    if kind not in {'raw', 'python', 'hash', 'slash', 'html', 'xml', 'block'}:
+        raise ConfigurationError('unsupported header format')
+    first = row.get('first-line', '')
+    first_prefix = row.get('first-line-prefix', '')
+    if (
+        not isinstance(first, str)
+        or not isinstance(first_prefix, str)
+        or (first and first_prefix)
+    ):
+        raise ConfigurationError('use one string first-line or first-line-prefix')
+    return HeaderRule(
+        patterns,
+        kind,
+        _template(read_string(row, 'prefix', default='')),
+        read_strings(row.get('required-text', []), 'required-text'),
+        first,
+        first_prefix,
+        _boolean(row, 'trim-after-first-line', False),
+        read_strings(row.get('preamble-prefixes', []), 'preamble-prefixes'),
+        _boolean(row, 'purpose-required', True),
+    )
 
 
 def _paths(
@@ -228,66 +288,14 @@ def load_headers_config(
     table = require_table(popo['headers'], name='tool.popo.headers')
     if set(table) - {'project', 'notice', 'rules', 'exceptions', 'ignored-directories'}:
         raise ConfigurationError('unknown tool.popo.headers setting')
-    rules: list[HeaderRule] = []
     entries = table.get('rules', [])
     if not isinstance(entries, list) or not entries:
         raise ConfigurationError('headers.rules must be a nonempty array')
-    for entry in entries:
-        row = require_table(entry, name='header rule')
-        if set(row) - {
-            'patterns',
-            'format',
-            'prefix',
-            'required-text',
-            'first-line',
-            'first-line-prefix',
-            'trim-after-first-line',
-            'preamble-prefixes',
-            'purpose-required',
-        }:
-            raise ConfigurationError('unknown header rule setting')
-        patterns = _paths(row.get('patterns'), 'header patterns', patterns=True)
-        if not patterns:
-            raise ConfigurationError('header patterns must not be empty')
-        kind = read_string(row, 'format', default='')
-        if kind not in {'raw', 'python', 'hash', 'slash', 'html', 'xml', 'block'}:
-            raise ConfigurationError('unsupported header format')
-        first = row.get('first-line', '')
-        first_prefix = row.get('first-line-prefix', '')
-        if (
-            not isinstance(first, str)
-            or not isinstance(first_prefix, str)
-            or (first and first_prefix)
-        ):
-            raise ConfigurationError('use one string first-line or first-line-prefix')
-        rules.append(
-            HeaderRule(
-                patterns,
-                kind,
-                _template(read_string(row, 'prefix', default='')),
-                read_strings(row.get('required-text', []), 'required-text'),
-                first,
-                first_prefix,
-                _boolean(row, 'trim-after-first-line', False),
-                read_strings(row.get('preamble-prefixes', []), 'preamble-prefixes'),
-                _boolean(row, 'purpose-required', True),
-            ),
-        )
+    rules = tuple(_header_rule(entry) for entry in entries)
     entries = table.get('exceptions', [])
     if not isinstance(entries, list):
         raise ConfigurationError('headers.exceptions must be an array')
-    exceptions: list[HeaderException] = []
-    for entry in entries:
-        row = require_table(entry, name='header exception')
-        if set(row) != {'patterns', 'reason'}:
-            raise ConfigurationError('header exception requires patterns and reason')
-        patterns = _paths(row['patterns'], 'exception patterns', patterns=True)
-        if not patterns:
-            raise ConfigurationError('exception patterns must not be empty')
-        reason = read_string(row, 'reason', default='')
-        if not reason.strip():
-            raise ConfigurationError('header exception reason must not be blank')
-        exceptions.append(HeaderException(patterns, reason))
+    exceptions = tuple(_header_exception(entry) for entry in entries)
     ignored = read_strings(
         table.get(
             'ignored-directories',
@@ -321,8 +329,8 @@ def load_headers_config(
         root.resolve(),
         read_string(table, 'project', default=''),
         read_string(table, 'notice', default=''),
-        tuple(rules),
-        tuple(exceptions),
+        rules,
+        exceptions,
         ignored,
     )
 

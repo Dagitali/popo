@@ -1,4 +1,8 @@
-"""Build isolated consumers with an explicit local/CI guardrail contract."""
+"""
+:mod:`tests.support.guardrails` module.
+
+Build isolated consumers with an explicit local/CI guardrail contract.
+"""
 
 from pathlib import Path
 
@@ -8,6 +12,35 @@ from popo.config.guardrails import GuardrailsConfig, load_guardrails_config
 from tests.support.files import FileWriter
 
 # SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='guardrail_arguments',
+    params=[
+        pytest.param(('check-guardrail-parity',), id='standalone'),
+        pytest.param(('check-all',), id='default-selection'),
+        pytest.param(('check-all', '--profile', 'guardrails'), id='named-profile'),
+    ],
+)
+def guardrail_arguments_fixture(
+    request: pytest.FixtureRequest,
+) -> tuple[str, ...]:
+    """
+    Select one command per consumer, including self-inspecting profiles.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Selected standalone, default-selection or named-profile invocation.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Command and profile switches, without root or output-format options.
+        Named-profile cases run the exact profile delegated to Make. They
+        inspect declarations without executing the Make recipe.
+    """
+    return tuple(str(argument) for argument in request.param)
 
 
 @pytest.fixture(name='guardrail_consumer')
@@ -132,35 +165,6 @@ def guardrail_failure_fixture(
     assert content.count(before) == 1, f'Scenario marker must occur once in {path}'
     path.write_text(content.replace(before, after), encoding='utf-8')
     return guardrail_diagnostics[scenario]
-
-
-@pytest.fixture(
-    name='guardrail_arguments',
-    params=[
-        pytest.param(('check-guardrail-parity',), id='standalone'),
-        pytest.param(('check-all',), id='default-selection'),
-        pytest.param(('check-all', '--profile', 'guardrails'), id='named-profile'),
-    ],
-)
-def guardrail_arguments_fixture(
-    request: pytest.FixtureRequest,
-) -> tuple[str, ...]:
-    """
-    Select one command per consumer, including self-inspecting profiles.
-
-    Parameters
-    ----------
-    request : pytest.FixtureRequest
-        Selected standalone, default-selection or named-profile invocation.
-
-    Returns
-    -------
-    tuple[str, ...]
-        Command and profile switches, without root or output-format options.
-        Named-profile cases run the exact profile delegated to Make. They
-        inspect declarations without executing the Make recipe.
-    """
-    return tuple(str(argument) for argument in request.param)
 
 
 # !SECTION

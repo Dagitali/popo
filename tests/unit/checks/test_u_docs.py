@@ -23,7 +23,7 @@ import pytest
 
 from popo.checks import docs
 from popo.checks.docs import validate
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -244,6 +244,28 @@ class TestMarkdownLinks:
         write_file('README.md', f'[Guide]({link})\n[External](HTTPS://example.com)')
         write_file(target, content)
         assert validate(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        'target',
+        ['http://[broken', '//[broken', 'https://example.com／path'],
+    )
+    @pytest.mark.parametrize('reference', [False, True])
+    def test_malformed_url_keeps_later_findings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        target: str,
+        reference: bool,
+    ) -> None:
+        """Report malformed URLs and continue checking independent links."""
+        line = f'[bad]: {target}' if reference else f'[bad]({target})'
+        source = write_file('README.md', line + '\n[missing](missing.md)\n')
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == [
+            f'{source}:1: invalid link target: {target}',
+            f'{source}:2: local target does not exist: missing.md',
+        ]
+        assert snapshot_files(tmp_path) == before
 
     def test_missing_root(
         self,

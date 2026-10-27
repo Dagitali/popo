@@ -5,6 +5,7 @@ Exercise configured file existence, header syntax and containment boundaries.
 """
 
 import subprocess
+import sys
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -19,7 +20,7 @@ from popo.config.files import (
     HeadersConfig,
     RequiredFilesConfig,
 )
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -64,57 +65,236 @@ def headers_fixture(
 # SECTION: TESTS
 
 
-class TestFilePolicies:
+class TestFileDiscoveryFailures:
     """
-    Verify all checks read synthetic files and preserve consumer contents.
+    Keep filesystem failures visible without skipping other policy checks.
     """
 
-    def test_required_files_report_all_failures(
+    @pytest.mark.parametrize('preserved', [False, True], ids=['checked', 'excepted'])
+    def test_dangling_escape_is_not_hidden(
         self,
-        tmp_path: Path,
+        headers: HeadersConfig,
+        symlink: Callable[[Path, Path], None],
+        preserved: bool,
     ) -> None:
         """
-        Distinguish regular files from directories and absent
-        resources.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
+        Inspect a dangling symlink before applying preservation exceptions.
         """
-        (tmp_path / 'present').write_text('present', encoding='utf-8')
-        (tmp_path / 'directory').mkdir()
-        failures = validate_required(
-            RequiredFilesConfig(tmp_path, ('present', 'directory', 'absent')),
+        link = headers.root / 'escape.bin'
+        symlink(link, headers.root.parent / f'{headers.root.name}-missing-target')
+        config = replace(
+            headers,
+            exceptions=(HeaderException(('*.bin',), 'Binary'),) if preserved else (),
         )
-        assert len(failures) == 2
-        assert all(name in '\n'.join(failures) for name in ('directory', 'absent'))
+        assert validate_headers(config) == [
+            'escape.bin: header source escapes repository',
+        ]
+        assert link.is_symlink()
 
-    def test_escaping_required_symlinks(
+    @pytest.mark.parametrize(
+        'error',
+        [
+            PermissionError('access denied'),
+            ValueError('bad path'),
+            UnicodeError('bad encoding'),
+        ],
+    )
+    @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
+    def test_required_path_failure_does_not_stop_remaining_checks(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        error: Exception,
+        operation: str,
+    ) -> None:
+        """
+        Report unreadable paths and subsequent missing required files together.
+        """
+        inspect_path = getattr(Path, operation)
+
+        def inspect(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> object:
+            """Fail one fixture path while retaining normal inspection."""
+            if path == tmp_path / 'unreadable':
+                raise error
+            return inspect_path(path, *args, **kwargs)
+
+        config = RequiredFilesConfig(tmp_path, ('unreadable', 'missing'))
+        with patch.object(Path, operation, inspect):
+            assert validate_required(config) == [
+                f'unreadable: {error}',
+                'missing: required file does not exist or is not a file',
+            ]
+
+
+class TestGitSourceFilenames:
+    """Preserve Git filename bytes independently of the installed Git tool."""
+
+    @pytest.mark.parametrize(
+        'filename',
+        ['carriage\rreturn', 'pair\r\nname', 'unicode-ü'],
+    )
+    def test_filename_is_not_translated(
+        self,
+        tmp_path: Path,
+        filename: str,
+    ) -> None:
+        """Inspect every selected path without newline translation."""
+        try:
+            (tmp_path / filename).write_text('wrong header', encoding='utf-8')
+        except OSError:
+            pytest.skip('Filename unavailable on this platform')
+        config = HeadersConfig(
+            tmp_path,
+            'Sample',
+            'Notice',
+            (HeaderRule(('*',), 'raw', 'expected', purpose_required=False),),
+            (),
+            (),
+        )
+        run_process = subprocess.run
+        payload = (filename + '\0').encode()
+
+        def run(
+            command: list[str],
+            *,
+            capture_output: bool,
+            timeout: int,
+            text: bool = False,
+        ) -> subprocess.CompletedProcess[bytes] | subprocess.CompletedProcess[str]:
+            return run_process(
+                [
+                    sys.executable,
+                    '-c',
+                    f'import sys; sys.stdout.buffer.write({payload!r})',
+                ],
+                capture_output=capture_output,
+                timeout=timeout,
+                text=text,
+            )
+
+        before = snapshot_files(tmp_path)
+        with patch('popo.checks.files.subprocess.run', side_effect=run):
+            assert validate_headers(config) == [
+                f'{filename}: header does not match configured identity/prefix',
+            ]
+        assert snapshot_files(tmp_path) == before
+
+
+class TestHeaderDirectoryLinks:
+    """Keep existing directory-link discovery behavior unchanged."""
+
+    def test_directory_link_is_not_a_source(
+        self,
+        headers: HeadersConfig,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Reject existing symlink targets outside the configured root.
+        Inspect file links without treating a linked directory as a source
+        file.
+        """
+        target = headers.root / 'directory'
+        target.mkdir()
+        symlink(headers.root / 'directory-link', target)
+        assert validate_headers(headers) == []
+
+
+class TestHeaderDiscoveryBoundaries:
+    """
+    Cover directive and filesystem failures without touching real sources.
+    """
+
+    def test_directive_requires_following_content(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """Report a file containing only its configured first-line prefix."""
+        (headers.root / 'sample').write_text('#!', encoding='utf-8')
+        rule = replace(headers.rules[0], first_line_prefix='#!')
+        assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
+
+    def test_optional_shebang(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """
+        Allow a shebang before a hash header without requiring a directive.
+        """
+        (headers.root / 'sample').write_text(
+            '#!/bin/sh\n# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n',
+            encoding='utf-8',
+        )
+        assert validate_headers(headers) == []
+
+    def test_walk_failure_is_reported(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """Keep recursive fallback permission failures visible to consumers."""
+
+        def walk(
+            path: Path,
+            *,
+            on_error: Callable[[OSError], None],
+        ) -> object:
+            """Simulate a traversal failure through the supplied callback."""
+            on_error(PermissionError('cannot traverse source'))
+            return iter(())
+
+        with patch.object(Path, 'walk', walk):
+            assert validate_headers(headers) == [
+                'header source discovery failed: cannot traverse source',
+            ]
+
+
+class TestHeaderPolicies:
+    """Check header syntax and rule order with independent consumer inputs."""
+
+    def test_binary_exception_is_not_decoded(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """
+        Preserve exempt source bytes without opening their text contents.
 
         Parameters
         ----------
-        tmp_path : pathlib.Path
-            Isolated temporary consumer root.
-        write_file : FileWriter
-            UTF-8 writer creating synthetic policy inputs.
-        symlink : collections.abc.Callable
-            Platform-aware creator for synthetic symbolic links.
+        headers : HeadersConfig
+            Synthetic consumer root and header policy.
         """
-        outside = write_file('outside', 'preserved')
-        root = tmp_path / 'repo'
-        root.mkdir()
-        symlink(root / 'required', outside)
-        assert (
-            'escapes' in validate_required(RequiredFilesConfig(root, ('required',)))[0]
-        )
+        (headers.root / 'image.bin').write_bytes(b'\xff')
+        config = replace(headers, exceptions=(HeaderException(('*.bin',), 'Artwork'),))
+        error = AssertionError('must not decode')
+        with patch.object(Path, 'read_text', side_effect=error):
+            assert validate_headers(config) == []
+
+    def test_broken_git_inventory_fails(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """
+        Report a broken repository rather than silently changing discovery.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic consumer root and header policy.
+        """
+        (headers.root / '.git').mkdir()
+        with patch(
+            'popo.checks.files.subprocess.run',
+            return_value=subprocess.CompletedProcess(
+                [],
+                128,
+                b'',
+                b'broken repository',
+            ),
+        ):
+            assert validate_headers(headers) == [
+                'header source discovery failed: Git source inventory failed',
+            ]
 
     @pytest.mark.parametrize(
         ('kind', 'content'),
@@ -157,120 +337,77 @@ class TestFilePolicies:
         source = headers.root / 'sample'
         source.write_text(content, encoding='utf-8')
         rule = replace(headers.rules[0], format=kind)
+        original = snapshot_files(headers.root)
         assert validate_headers(replace(headers, rules=(rule,))) == []
-        assert source.read_text(encoding='utf-8') == content
+        assert snapshot_files(headers.root) == original
 
-    @pytest.mark.parametrize(
-        ('first', 'prefix', 'trim', 'before'),
-        [
-            ('', '#!', False, '#!/bin/bash\n'),
-            ('// !$*UTF8*$!', '', False, '// !$*UTF8*$!\n'),
-            ('', '// swift-tools-version:', False, '// swift-tools-version: 6.4\n'),
-            ('', '# ', True, '# Article\n\n'),
-        ],
-    )
-    def test_required_directives(
-        self,
-        headers: HeadersConfig,
-        first: str,
-        prefix: str,
-        trim: bool,
-        before: str,
-    ) -> None:
-        """
-        Require configured directives and preserve their first-line
-        position.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic identity, formats and source-discovery policy.
-        first : str
-            Exact required first-line directive, or an empty string.
-        prefix : str
-            Required first-line prefix when no exact directive is supplied.
-        trim : bool
-            Whether blank lines after the directive may be removed.
-        before : str
-            Executable or consumer directive placed before the header.
-        """
-        body = 'sample\nSample\n\nCopyright Sample\n\nPurpose.'
-        source = headers.root / 'sample'
-        rule = replace(
-            headers.rules[0],
-            format='raw',
-            first_line=first,
-            first_line_prefix=prefix,
-            trim_after_first_line=trim,
-        )
-        config = replace(headers, rules=(rule,))
-        source.write_text(before + body, encoding='utf-8')
-        assert validate_headers(config) == []
-        source.write_text(body, encoding='utf-8')
-        assert 'directive' in validate_headers(config)[0]
-
-    def test_optional_schema_preamble_and_required_notes(
+    def test_discovery_timeout_is_failure(
         self,
         headers: HeadersConfig,
     ) -> None:
         """
-        Keep schema directives above hash headers and require
-        maintainer text.
+        Bound Git discovery and retain timeout failures as diagnostics.
 
         Parameters
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
         """
-        body = (
-            '# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n#\n'
-            '# Maintainer Notes\n# - Keep checks read-only.\n'
-        )
-        rule = replace(
-            headers.rules[0],
-            required_text=('\n\nMaintainer Notes\n- ',),
-            preamble_prefixes=('# yaml-language-server:',),
-        )
-        config = replace(headers, rules=(rule,))
-        source = headers.root / 'sample'
-        source.write_text(
-            '# yaml-language-server: schema\n#\n' + body,
-            encoding='utf-8',
-        )
-        assert validate_headers(config) == []
-        source.write_text(body.replace('Maintainer Notes', 'Notes'), encoding='utf-8')
-        assert 'required header text' in validate_headers(config)[0]
+        with patch(
+            'popo.checks.files.subprocess.run',
+            side_effect=subprocess.TimeoutExpired('git', 30),
+        ):
+            assert 'discovery failed' in validate_headers(headers)[0]
 
-    @pytest.mark.parametrize(
-        ('content', 'message'),
-        [
-            ('wrong identity', 'identity'),
-            ('sample\nSample\n\nCopyright Sample\n\n', 'purpose'),
-            ('\xff', 'identity'),
-        ],
-    )
-    def test_malformed_headers(
+    def test_escaping_header_symlink_even_with_exception(
         self,
         headers: HeadersConfig,
-        content: str,
-        message: str,
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Report missing identity or purpose independently of filename
-        selection.
+        Reject escapes before reading or exempting the linked contents.
 
         Parameters
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
-        content : str
-            Synthetic source contents whose observable result is checked.
-        message : str
-            Expected diagnostic identifying the failed policy boundary.
+        symlink : collections.abc.Callable
+            Platform-aware creator for synthetic symbolic links.
         """
-        (headers.root / 'sample').write_text(content, encoding='utf-8')
-        config = replace(headers, rules=(replace(headers.rules[0], format='raw'),))
-        assert message in validate_headers(config)[0]
+        outside = headers.root.parent / (headers.root.name + '-outside')
+        outside.write_bytes(b'\xff')
+        symlink(headers.root / 'sample', outside)
+        config = replace(
+            headers,
+            exceptions=(HeaderException(('*',), 'Test exception'),),
+        )
+        assert 'escapes' in validate_headers(config)[0]
+
+    def test_exception_unknown_format_and_ignored_artifacts(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """
+        Preserve binary exceptions while rejecting unknown maintained
+        formats.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic identity, formats and source-discovery policy.
+        """
+        (headers.root / '.hidden').write_bytes(b'\xff')
+        (headers.root / 'image.bin').write_bytes(b'\xff')
+        (headers.root / '.build').mkdir()
+        (headers.root / '.build/cache').write_bytes(b'\xff')
+        config = replace(
+            headers,
+            rules=(replace(headers.rules[0], patterns=('*.py',)),),
+            exceptions=(HeaderException(('*.bin',), 'Binary asset'),),
+        )
+        failures = validate_headers(config)
+        assert len(failures) == 1
+        assert '.hidden: unclassified' in failures[0]
 
     @pytest.mark.parametrize(
         ('content', 'message'),
@@ -306,179 +443,36 @@ class TestFilePolicies:
         assert message in failures[0]
         assert source.read_bytes() == content
 
-    def test_exception_unknown_format_and_ignored_artifacts(
+    @pytest.mark.parametrize(
+        ('content', 'message'),
+        [
+            ('wrong identity', 'identity'),
+            ('sample\nSample\n\nCopyright Sample\n\n', 'purpose'),
+            ('\xff', 'identity'),
+        ],
+    )
+    def test_malformed_headers(
         self,
         headers: HeadersConfig,
+        content: str,
+        message: str,
     ) -> None:
         """
-        Preserve binary exceptions while rejecting unknown maintained
-        formats.
+        Report missing identity or purpose independently of filename
+        selection.
 
         Parameters
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
+        content : str
+            Synthetic source contents whose observable result is checked.
+        message : str
+            Expected diagnostic identifying the failed policy boundary.
         """
-        (headers.root / '.hidden').write_bytes(b'\xff')
-        (headers.root / 'image.bin').write_bytes(b'\xff')
-        (headers.root / '.build').mkdir()
-        (headers.root / '.build/cache').write_bytes(b'\xff')
-        config = replace(
-            headers,
-            rules=(replace(headers.rules[0], patterns=('*.py',)),),
-            exceptions=(HeaderException(('*.bin',), 'Binary asset'),),
-        )
-        failures = validate_headers(config)
-        assert len(failures) == 1
-        assert '.hidden: unclassified' in failures[0]
-
-    def test_rule_order_and_optional_purpose(self, headers: HeadersConfig) -> None:
-        """
-        Apply the first matching rule and permit explicit purpose
-        exceptions.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic identity, formats and source-discovery policy.
-        """
-        (headers.root / 'sample').write_text('literal', encoding='utf-8')
-        specific = HeaderRule(('sample',), 'raw', 'literal', purpose_required=False)
-        assert (
-            validate_headers(replace(headers, rules=(specific, *headers.rules))) == []
-        )
-        assert validate_headers(replace(headers, rules=(*headers.rules, specific)))
-
-    def test_escaping_header_symlink_even_with_exception(
-        self,
-        headers: HeadersConfig,
-        symlink: Callable[[Path, Path], None],
-    ) -> None:
-        """
-        Reject escapes before reading or exempting the linked contents.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic identity, formats and source-discovery policy.
-        symlink : collections.abc.Callable
-            Platform-aware creator for synthetic symbolic links.
-        """
-        outside = headers.root.parent / (headers.root.name + '-outside')
-        outside.write_bytes(b'\xff')
-        symlink(headers.root / 'sample', outside)
-        config = replace(
-            headers,
-            exceptions=(HeaderException(('*',), 'Test exception'),),
-        )
-        assert 'escapes' in validate_headers(config)[0]
-
-    def test_discovery_timeout_is_failure(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """
-        Bound Git discovery and retain timeout failures as diagnostics.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic identity, formats and source-discovery policy.
-        """
-        with patch(
-            'popo.checks.files.subprocess.run',
-            side_effect=subprocess.TimeoutExpired('git', 30),
-        ):
-            assert 'discovery failed' in validate_headers(headers)[0]
-
-    def test_tracked_untracked_deleted_and_ignored_sources(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """
-        Use Git inventory without inspecting deleted or ignored files.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic identity, formats and source-discovery policy.
-        """
-        source = headers.root / 'sample'
-        source.write_text(
-            '# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.',
-            encoding='utf-8',
-        )
-        with patch(
-            'popo.checks.files.subprocess.run',
-            return_value=subprocess.CompletedProcess([], 0, 'sample\0deleted\0', ''),
-        ) as run:
-            assert validate_headers(headers) == []
-            assert '--others' in run.call_args.args[0]
-            assert '--exclude-standard' in run.call_args.args[0]
-            assert run.call_args.kwargs['timeout'] == 30
-
-    def test_broken_git_inventory_fails(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """
-        Report a broken repository rather than silently changing discovery.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic consumer root and header policy.
-        """
-        (headers.root / '.git').mkdir()
-        with patch(
-            'popo.checks.files.subprocess.run',
-            return_value=subprocess.CompletedProcess([], 128, '', 'broken repository'),
-        ):
-            assert validate_headers(headers) == [
-                'header source discovery failed: Git source inventory failed',
-            ]
-
-    def test_missing_git_uses_local_discovery(self, headers: HeadersConfig) -> None:
-        """
-        Support a non-Git consumer without requiring a Git installation.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic consumer root and header policy.
-        """
-        (headers.root / 'sample').write_text('missing header', encoding='utf-8')
-        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
-            assert 'identity' in validate_headers(headers)[0]
-
-    def test_read_failures_are_reported(self, headers: HeadersConfig) -> None:
-        """
-        Keep unreadable source files from passing header validation.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic consumer root and header policy.
-        """
-        (headers.root / 'sample').write_text('source', encoding='utf-8')
-        error = PermissionError('unreadable source')
-        with patch.object(Path, 'read_text', side_effect=error):
-            assert 'unreadable source' in validate_headers(headers)[0]
-
-    def test_binary_exception_is_not_decoded(self, headers: HeadersConfig) -> None:
-        """
-        Preserve exempt source bytes without opening their text contents.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Synthetic consumer root and header policy.
-        """
-        (headers.root / 'image.bin').write_bytes(b'\xff')
-        config = replace(headers, exceptions=(HeaderException(('*.bin',), 'Artwork'),))
-        error = AssertionError('must not decode')
-        with patch.object(Path, 'read_text', side_effect=error):
-            assert validate_headers(config) == []
+        (headers.root / 'sample').write_text(content, encoding='utf-8')
+        config = replace(headers, rules=(replace(headers.rules[0], format='raw'),))
+        assert message in validate_headers(config)[0]
 
     @pytest.mark.parametrize(
         ('kind', 'content'),
@@ -509,47 +503,203 @@ class TestFilePolicies:
         rule = replace(headers.rules[0], format=kind)
         assert 'leading comment' in validate_headers(replace(headers, rules=(rule,)))[0]
 
-
-class TestHeaderDiscoveryBoundaries:
-    """
-    Cover directive and filesystem failures without touching real sources.
-    """
-
-    def test_optional_shebang(self, headers: HeadersConfig) -> None:
+    def test_missing_git_uses_local_discovery(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """
-        Allow a shebang before a hash header without requiring a directive.
+        Support a non-Git consumer without requiring a Git installation.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic consumer root and header policy.
         """
-        (headers.root / 'sample').write_text(
-            '#!/bin/sh\n# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n',
+        (headers.root / 'sample').write_text('missing header', encoding='utf-8')
+        assert validate_headers(headers) == [
+            'sample: header does not match configured identity/prefix',
+        ]
+
+    @pytest.mark.parametrize('preamble', [False, True])
+    @pytest.mark.parametrize('notes', ['Maintainer Notes', 'Notes'])
+    def test_optional_schema_preamble_and_required_notes(
+        self,
+        headers: HeadersConfig,
+        preamble: bool,
+        notes: str,
+    ) -> None:
+        """
+        Keep schema directives above hash headers and require
+        maintainer text.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic identity, formats and source-discovery policy.
+        preamble : bool
+            Include or omit the optional schema directive.
+        notes : str
+            Correct maintainer heading or an independently invalid heading.
+        """
+        body = (
+            '# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n#\n'
+            f'# {notes}\n# - Keep checks read-only.\n'
+        )
+        rule = replace(
+            headers.rules[0],
+            required_text=('\n\nMaintainer Notes\n- ',),
+            preamble_prefixes=('# yaml-language-server:',),
+        )
+        config = replace(headers, rules=(rule,))
+        source = headers.root / 'sample'
+        directive = '# yaml-language-server: schema\n#\n' if preamble else ''
+        source.write_text(directive + body, encoding='utf-8')
+        original = snapshot_files(headers.root)
+        assert validate_headers(config) == (
+            []
+            if notes == 'Maintainer Notes'
+            else ['sample: required header text is missing']
+        )
+        assert snapshot_files(headers.root) == original
+
+    def test_read_failures_are_reported(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """
+        Keep unreadable source files from passing header validation.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic consumer root and header policy.
+        """
+        (headers.root / 'sample').write_text('source', encoding='utf-8')
+        error = PermissionError('unreadable source')
+        with patch.object(Path, 'read_text', side_effect=error):
+            assert 'unreadable source' in validate_headers(headers)[0]
+
+    @pytest.mark.parametrize(
+        ('first', 'prefix', 'trim', 'before'),
+        [
+            ('', '#!', False, '#!/bin/bash\n'),
+            ('// !$*UTF8*$!', '', False, '// !$*UTF8*$!\n'),
+            ('', '// swift-tools-version:', False, '// swift-tools-version: 6.4\n'),
+            ('', '# ', True, '# Article\n\n'),
+        ],
+    )
+    @pytest.mark.parametrize('present', [True, False], ids=['present', 'missing'])
+    def test_required_directives(
+        self,
+        headers: HeadersConfig,
+        first: str,
+        prefix: str,
+        trim: bool,
+        before: str,
+        present: bool,
+    ) -> None:
+        """
+        Require configured directives and preserve their first-line
+        position.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic identity, formats and source-discovery policy.
+        first : str
+            Exact required first-line directive, or an empty string.
+        prefix : str
+            Required first-line prefix when no exact directive is supplied.
+        trim : bool
+            Whether blank lines after the directive may be removed.
+        before : str
+            Executable or consumer directive placed before the header.
+        present : bool
+            Include the required directive, or test its absence independently.
+        """
+        body = 'sample\nSample\n\nCopyright Sample\n\nPurpose.'
+        source = headers.root / 'sample'
+        rule = replace(
+            headers.rules[0],
+            format='raw',
+            first_line=first,
+            first_line_prefix=prefix,
+            trim_after_first_line=trim,
+        )
+        config = replace(headers, rules=(rule,))
+        source.write_text((before if present else '') + body, encoding='utf-8')
+        original = snapshot_files(headers.root)
+        assert validate_headers(config) == (
+            []
+            if present
+            else ['sample: required first-line directive is missing or malformed']
+        )
+        assert snapshot_files(headers.root) == original
+
+    @pytest.mark.parametrize('specific_first', [True, False])
+    def test_rule_order_and_optional_purpose(
+        self,
+        headers: HeadersConfig,
+        specific_first: bool,
+    ) -> None:
+        """
+        Apply the first matching rule and permit explicit purpose
+        exceptions.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic identity, formats and source-discovery policy.
+        specific_first : bool
+            Place the purpose-exempt rule before or after the generic rule.
+        """
+        (headers.root / 'sample').write_text('literal', encoding='utf-8')
+        specific = HeaderRule(('sample',), 'raw', 'literal', purpose_required=False)
+        rules = (
+            (specific, *headers.rules) if specific_first else (*headers.rules, specific)
+        )
+        original = snapshot_files(headers.root)
+        assert validate_headers(replace(headers, rules=rules)) == (
+            []
+            if specific_first
+            else ['sample: header does not match configured identity/prefix']
+        )
+        assert snapshot_files(headers.root) == original
+
+    def test_tracked_untracked_deleted_and_ignored_sources(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
+        """
+        Use Git inventory without inspecting deleted or ignored files.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Synthetic identity, formats and source-discovery policy.
+        """
+        source = headers.root / 'sample'
+        source.write_text(
+            '# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.',
             encoding='utf-8',
         )
-        assert validate_headers(headers) == []
-
-    def test_directive_requires_following_content(self, headers: HeadersConfig) -> None:
-        """Report a file containing only its configured first-line prefix."""
-        (headers.root / 'sample').write_text('#!', encoding='utf-8')
-        rule = replace(headers.rules[0], first_line_prefix='#!')
-        assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
-
-    def test_walk_failure_is_reported(self, headers: HeadersConfig) -> None:
-        """Keep recursive fallback permission failures visible to consumers."""
-
-        def walk(path: Path, *, on_error: Callable[[OSError], None]) -> object:
-            """Simulate a traversal failure through the supplied callback."""
-            on_error(PermissionError('cannot traverse source'))
-            return iter(())
-
-        with (
-            patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError),
-            patch.object(Path, 'walk', walk),
-        ):
-            assert 'cannot traverse source' in validate_headers(headers)[0]
+        with patch(
+            'popo.checks.files.subprocess.run',
+            return_value=subprocess.CompletedProcess([], 0, b'sample\0deleted\0', b''),
+        ) as run:
+            assert validate_headers(headers) == []
+            assert '--others' in run.call_args.args[0]
+            assert '--exclude-standard' in run.call_args.args[0]
+            assert run.call_args.kwargs['timeout'] == 30
 
 
 class TestNonHashPreambles:
     """Keep non-hash preamble handling independent of hash separators."""
 
-    def test_slash_preamble(self, headers: HeadersConfig) -> None:
+    def test_slash_preamble(
+        self,
+        headers: HeadersConfig,
+    ) -> None:
         """Skip a matching directive before a slash-comment source header."""
         (headers.root / 'sample').write_text(
             '// directive\n// sample\n// Sample\n//\n'
@@ -564,81 +714,56 @@ class TestNonHashPreambles:
         assert validate_headers(replace(headers, rules=(rule,))) == []
 
 
-class TestFileDiscoveryFailures:
+class TestRequiredFilePolicies:
     """
-    Keep filesystem failures visible without skipping other policy checks.
+    Verify all checks read synthetic files and preserve consumer contents.
     """
 
-    @pytest.mark.parametrize('preserved', [False, True], ids=['checked', 'excepted'])
-    def test_dangling_escape_is_not_hidden(
-        self,
-        headers: HeadersConfig,
-        symlink: Callable[[Path, Path], None],
-        preserved: bool,
-    ) -> None:
-        """
-        Inspect a dangling symlink before applying preservation exceptions.
-        """
-        link = headers.root / 'escape.bin'
-        symlink(link, headers.root.parent / f'{headers.root.name}-missing-target')
-        config = replace(
-            headers,
-            exceptions=(HeaderException(('*.bin',), 'Binary'),) if preserved else (),
-        )
-        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
-            assert validate_headers(config) == [
-                'escape.bin: header source escapes repository',
-            ]
-        assert link.is_symlink()
-
-    @pytest.mark.parametrize(
-        'error',
-        [
-            PermissionError('access denied'),
-            ValueError('bad path'),
-            UnicodeError('bad encoding'),
-        ],
-    )
-    @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
-    def test_required_path_failure_does_not_stop_remaining_checks(
+    def test_escaping_required_symlinks(
         self,
         tmp_path: Path,
-        error: Exception,
-        operation: str,
-    ) -> None:
-        """
-        Report unreadable paths and subsequent missing required files together.
-        """
-        inspect_path = getattr(Path, operation)
-
-        def inspect(path: Path, *args: object, **kwargs: object) -> object:
-            """Fail one fixture path while retaining normal inspection."""
-            if path == tmp_path / 'unreadable':
-                raise error
-            return inspect_path(path, *args, **kwargs)
-
-        config = RequiredFilesConfig(tmp_path, ('unreadable', 'missing'))
-        with patch.object(Path, operation, inspect):
-            assert validate_required(config) == [
-                f'unreadable: {error}',
-                'missing: required file does not exist or is not a file',
-            ]
-
-
-class TestHeaderDirectoryLinks:
-    """Keep existing directory-link discovery behavior unchanged."""
-
-    def test_directory_link_is_not_a_source(
-        self,
-        headers: HeadersConfig,
+        write_file: FileWriter,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        Inspect file links without treating a linked directory as a source
-        file.
+        Reject existing symlink targets outside the configured root.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        write_file : FileWriter
+            UTF-8 writer creating synthetic policy inputs.
+        symlink : collections.abc.Callable
+            Platform-aware creator for synthetic symbolic links.
         """
-        target = headers.root / 'directory'
-        target.mkdir()
-        symlink(headers.root / 'directory-link', target)
-        with patch('popo.checks.files.subprocess.run', side_effect=FileNotFoundError):
-            assert validate_headers(headers) == []
+        outside = write_file('outside', 'preserved')
+        root = tmp_path / 'repo'
+        root.mkdir()
+        symlink(root / 'required', outside)
+        assert (
+            'escapes' in validate_required(RequiredFilesConfig(root, ('required',)))[0]
+        )
+
+    def test_required_files_report_all_failures(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Distinguish regular files from directories and absent
+        resources.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated temporary consumer root.
+        """
+        (tmp_path / 'present').write_text('present', encoding='utf-8')
+        (tmp_path / 'directory').mkdir()
+        failures = validate_required(
+            RequiredFilesConfig(tmp_path, ('present', 'directory', 'absent')),
+        )
+        assert failures == [
+            'directory: required file does not exist or is not a file',
+            'absent: required file does not exist or is not a file',
+        ]

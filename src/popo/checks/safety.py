@@ -1,9 +1,14 @@
 # safety.py
 # Bounded static checks, not a workflow sandbox or full npm lock validator.
-"""Validate privileged-trigger policy and npm root metadata offline."""
+"""
+:mod:`popo.checks.safety` module.
+
+Validate privileged-trigger policy and npm root metadata offline.
+"""
 
 import json
 import re
+from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -46,6 +51,50 @@ def _head_checkout(
     return False
 
 
+def _npm_findings(
+    root: Path,
+    manifest: str,
+    lockfile: str,
+) -> Iterator[str]:
+    """Yield npm drift before later read, parse or shape errors propagate."""
+    label = f'{manifest} -> {lockfile}'
+    package: object = json.loads(_file(root, manifest).read_text('utf-8'))
+    lock: object = json.loads(_file(root, lockfile).read_text('utf-8'))
+    if not isinstance(package, dict) or not isinstance(lock, dict):
+        raise ValueError('npm documents must be objects')
+    if lock.get('lockfileVersion') not in (2, 3):
+        raise ValueError('only npm lockfile versions 2 and 3 are supported')
+    packages = lock.get('packages')
+    if not isinstance(packages, dict) or not isinstance(packages.get(''), dict):
+        raise ValueError('lockfile packages root is required')
+    locked = packages['']
+    for key in (
+        'name',
+        'version',
+        'dependencies',
+        'devDependencies',
+        'optionalDependencies',
+    ):
+        default: dict[str, object] | None = None if key in ('name', 'version') else {}
+        expected = package.get(key, default)
+        observed = locked.get(key, default)
+        if expected != observed:
+            yield f'{label}: root {key} differs'
+        if key not in ('name', 'version'):
+            if not isinstance(expected, dict):
+                raise ValueError(f'{key} must be an object')
+            for name, spec in expected.items():
+                if not isinstance(spec, str) or not spec.strip():
+                    raise ValueError(f'{key} specifications must be strings')
+                if re.fullmatch(r'\d+\.\d+\.\d+(?:-[\w.-]+)?', spec):
+                    installed = packages.get(f'node_modules/{name}')
+                    if (
+                        not isinstance(installed, dict)
+                        or installed.get('version') != spec
+                    ):
+                        yield f'{label}: resolved {name} differs from {spec}'
+
+
 def _scripts(
     value: object,
 ) -> list[str]:
@@ -62,6 +111,24 @@ def _workflow(
 ) -> dict[str, object]:
     """Parse a mapping with duplicate-key rejection and string event keys."""
     return read_mapping(path, label='workflow')
+
+
+def _workflow_paths(
+    config: SafetyConfig,
+) -> tuple[list[Path], list[str]]:
+    """Discover unique workflows, retaining findings for failed patterns."""
+    paths: set[Path] = set()
+    failures: list[str] = []
+    for pattern in config.workflows:
+        try:
+            matches = list(config.root.glob(pattern))
+        except (OSError, ValueError):
+            failures.append(f'cannot discover safety workflows: {pattern}')
+            continue
+        if not matches:
+            failures.append(f'no safety workflows match: {pattern}')
+        paths.update(matches)
+    return sorted(paths), failures
 
 
 # !SECTION
@@ -90,6 +157,8 @@ def validate(
     list[str]
         Failures including missing files, parse errors, drift, unsafe shell
         interpolation, and expired or unused privileged-trigger exceptions.
+        Workflow discovery errors become diagnostics; independent workflows
+        and npm pairs are still inspected.
 
     Notes
     -----
@@ -98,16 +167,10 @@ def validate(
     resolved versions only; ``npm ci`` remains authoritative for full graphs.
     """
     day = today or datetime.now(UTC).date()
-    failures: list[str] = []
+    paths, failures = _workflow_paths(config)
     used: set[tuple[str, str]] = set()
-    exceptions = {(entry[0], entry[1]): entry for entry in config.exceptions}
-    paths: set[Path] = set()
-    for pattern in config.workflows:
-        matches = list(config.root.glob(pattern))
-        if not matches:
-            failures.append(f'no safety workflows match: {pattern}')
-        paths.update(matches)
-    for candidate in sorted(paths):
+    exceptions = {(entry.workflow, entry.trigger): entry for entry in config.exceptions}
+    for candidate in paths:
         relative = candidate.relative_to(config.root).as_posix()
         try:
             document = _workflow(_file(config.root, relative))
@@ -133,7 +196,7 @@ def validate(
                     failures.append(
                         f'{relative}: privileged trigger {trigger} needs exception',
                     )
-                elif exception[-1] < day:
+                elif exception.expires < day:
                     failures.append(f'{relative}: expired {trigger} exception')
             if privileged and _head_checkout(document):
                 failures.append(f'{relative}: privileged checkout of pull-request head')
@@ -148,58 +211,16 @@ def validate(
         except (OSError, UnicodeError, ValueError, yaml.YAMLError) as error:
             failures.append(f'{relative}: {error}')
     for scope, entry in exceptions.items():
-        if scope not in used:
-            failures.append(f'{scope[0]}: unused {scope[1]} exception')
-        if entry[-1] < day and scope not in used:
+        if scope in used:
+            continue
+        failures.append(f'{scope[0]}: unused {scope[1]} exception')
+        if entry.expires < day:
             failures.append(f'{scope[0]}: expired {scope[1]} exception')
     for manifest, lockfile in config.npm_pairs:
-        label = f'{manifest} -> {lockfile}'
         try:
-            package: object = json.loads(
-                _file(config.root, manifest).read_text('utf-8'),
-            )
-            lock: object = json.loads(_file(config.root, lockfile).read_text('utf-8'))
-            if not isinstance(package, dict) or not isinstance(lock, dict):
-                raise ValueError('npm documents must be objects')
-            if lock.get('lockfileVersion') not in (2, 3):
-                raise ValueError('only npm lockfile versions 2 and 3 are supported')
-            packages = lock.get('packages')
-            if not isinstance(packages, dict) or not isinstance(packages.get(''), dict):
-                raise ValueError('lockfile packages root is required')
-            locked = packages['']
-            for key in (
-                'name',
-                'version',
-                'dependencies',
-                'devDependencies',
-                'optionalDependencies',
-            ):
-                default: dict[str, object] | None = (
-                    {}
-                    if key.endswith('Dependencies') or key == 'dependencies'
-                    else None
-                )
-                expected = package.get(key, default)
-                observed = locked.get(key, default)
-                if expected != observed:
-                    failures.append(f'{label}: root {key} differs')
-                if key not in ('name', 'version'):
-                    if not isinstance(expected, dict):
-                        raise ValueError(f'{key} must be an object')
-                    for name, spec in expected.items():
-                        if not isinstance(spec, str) or not spec.strip():
-                            raise ValueError(f'{key} specifications must be strings')
-                        if re.fullmatch(r'\d+\.\d+\.\d+(?:-[\w.-]+)?', spec):
-                            installed = packages.get(f'node_modules/{name}')
-                            if (
-                                not isinstance(installed, dict)
-                                or installed.get('version') != spec
-                            ):
-                                failures.append(
-                                    f'{label}: resolved {name} differs from {spec}',
-                                )
+            failures.extend(_npm_findings(config.root, manifest, lockfile))
         except (OSError, UnicodeError, ValueError) as error:
-            failures.append(f'{label}: {error}')
+            failures.append(f'{manifest} -> {lockfile}: {error}')
     return failures
 
 

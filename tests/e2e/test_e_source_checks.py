@@ -17,7 +17,9 @@ from tests.support.installation import Installation
 
 
 class TestInstalledSourceChecks:
-    """Exercise wheel/sdist console and module entry points without mutation."""
+    """
+    Exercise wheel/sdist console and module entry points without mutation.
+    """
 
     @pytest.mark.parametrize('module', (False, True), ids=('console', 'module'))
     @pytest.mark.parametrize(
@@ -27,17 +29,25 @@ class TestInstalledSourceChecks:
                 'check-python-source',
                 'python-source',
                 'rule.py',
-                'annotations = true',
-                'x = 1',
-                'def f(x): pass',
+                'annotations = true\nparameter-docs=true\nreturn-docs=true\n'
+                'source-guide="Guide.md"',
+                'def f(value: int) -> int:\n'
+                '    """Return an item.\n\n'
+                '    Parameters\n    ----------\n    value : int\n'
+                '        Input.\n\n    Returns\n    -------\n    int\n'
+                '        Item.\n    """\n    return value\n',
+                'def f(value: int) -> int: return value',
             ),
             (
-                'check-swift-documentation',
-                'swift-documentation',
+                'check-swift-source',
+                'swift-source',
                 'Rule.swift',
-                '',
-                '/// File and rule.\nstruct Rule {}',
-                'struct Rule {}',
+                'member-docs=true\nparameter-docs=true\nreturn-docs=true\n'
+                'raises-docs=true\nsource-guide="Guide.md"',
+                '/// Overview.\n/// - Parameter value: Input.\n'
+                '/// - Returns: Result.\n/// - Throws: Invalid input.\n'
+                'func f(value: Int) throws -> Int { value }',
+                '/// Overview.\nfunc f(value: Int) throws -> Int { value }',
             ),
             (
                 'check-logs',
@@ -80,6 +90,7 @@ class TestInstalledSourceChecks:
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude = ["{filename}"]\n{options}',
         )
+        (tmp_path / 'Guide.md').write_text(f'`{filename}`', encoding='utf-8')
         source = tmp_path / filename
         for content, status in ((None, 1), (invalid, 1), (valid, 0)):
             if content is not None:
