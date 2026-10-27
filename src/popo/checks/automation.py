@@ -17,6 +17,54 @@ from .actions import is_pinned
 # SECTION: PROTECTED FUNCTIONS
 
 
+def _automation_paths(
+    config: AutomationConfig,
+) -> tuple[dict[Path, str], list[str]]:
+    """
+    Discover categorized automation inputs without losing independent findings.
+
+    Parameters
+    ----------
+    config : AutomationConfig
+        Consumer root and ordered workflow/action/template/YAML patterns.
+
+    Returns
+    -------
+    tuple[dict[pathlib.Path, str], list[str]]
+        Deduplicated paths in discovery order, plus missing-pattern, category
+        conflict and redacted discovery-error findings. The first category
+        assigned to a path wins. Failed patterns do not stop later patterns.
+
+    Notes
+    -----
+    Discover files only; containment and contents are checked separately.
+    Glob iteration and file-inspection OSError/ValueError failures become
+    findings without exposing exception text or executing consumer code.
+    """
+    failures: list[str] = []
+    paths: dict[Path, str] = {}
+    for kind, patterns in (
+        ('workflow', config.workflow_globs),
+        ('action', config.action_globs),
+        ('template', config.template_globs),
+        ('yaml', config.yaml_globs),
+    ):
+        for pattern in patterns:
+            try:
+                matches = sorted(p for p in config.root.glob(pattern) if p.is_file())
+            except (OSError, ValueError):
+                failures.append(f'cannot discover automation files: {pattern}')
+                continue
+            if not matches:
+                failures.append(f'no automation files match: {pattern}')
+            for path in matches:
+                if path in paths and paths[path] != kind:
+                    failures.append(f'{path}: conflicting automation categories')
+                else:
+                    paths[path] = kind
+    return paths, failures
+
+
 def _call(
     node: dict[str, object],
     target: dict[str, object],
@@ -313,8 +361,9 @@ def validate(
     list[str]
         Per-file diagnostics for malformed YAML/JSON, missing or escaping
         targets, input mismatches, composite structure, template metadata, and
-        unsafe pins. Read/decode errors become diagnostics; validation
-        continues across files.
+        unsafe pins. Configured-pattern discovery and file-inspection errors
+        become redacted findings; later patterns and independent files are
+        still checked. Read/decode errors become per-file diagnostics.
 
     Notes
     -----
@@ -325,23 +374,7 @@ def validate(
     Placeholder refs are exempt only in templates with configured self aliases
     and existing targets.
     """
-    failures: list[str] = []
-    paths: dict[Path, str] = {}
-    for kind, patterns in (
-        ('workflow', config.workflow_globs),
-        ('action', config.action_globs),
-        ('template', config.template_globs),
-        ('yaml', config.yaml_globs),
-    ):
-        for pattern in patterns:
-            matches = sorted(p for p in config.root.glob(pattern) if p.is_file())
-            if not matches:
-                failures.append(f'no automation files match: {pattern}')
-            for path in matches:
-                if path in paths and paths[path] != kind:
-                    failures.append(f'{path}: conflicting automation categories')
-                else:
-                    paths[path] = kind
+    paths, failures = _automation_paths(config)
     for path, kind in paths.items():
         try:
             _inside(config.root, path)
