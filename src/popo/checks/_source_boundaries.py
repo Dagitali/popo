@@ -164,15 +164,19 @@ def validate_boundaries[ParsedSource](
         if source is not None:
             sources[path] = source
     targets_by_layer = {
-        name: set().union(
-            *(analyzer.targets(path, config.root, sources.get(path)) for path in paths),
-        )
+        name: {
+            target
+            for path in paths
+            for target in analyzer.targets(path, config.root, sources.get(path))
+        }
         for name, paths in paths_by_layer.items()
     }
     for layer in config.layers:
-        forbidden_targets = set().union(
-            *(targets_by_layer[name] for name in layer.forbidden_layers),
-        )
+        forbidden_targets = {
+            target
+            for name in layer.forbidden_layers
+            for target in targets_by_layer[name]
+        }
         for path in paths_by_layer[layer.name]:
             if path in sources:
                 failures.extend(

@@ -22,6 +22,32 @@ COUNTS = ('totalTestCount', 'passedTests', 'failedTests', 'skippedTests')
 # !SECTION
 
 
+# SECTION: PROTECTED FUNCTIONS
+
+
+def _report_findings(
+    source: str,
+    config: TestResultsConfig,
+) -> list[str]:
+    """
+    Decode one report and dispatch its named adapter without source disclosure.
+
+    JSON errors take precedence over an unsupported directly constructed
+    adapter. Input discovery and relative diagnostic locations belong to the
+    caller; no files are read or modified here.
+    """
+    try:
+        report = json.loads(source)
+    except (ValueError, RecursionError):
+        return ['invalid test-result JSON']
+    if config.adapter != 'xcode-summary':
+        return ['unsupported test-result adapter']
+    return xcode_summary(report, config.thresholds)
+
+
+# !SECTION
+
+
 # SECTION: FUNCTIONS
 
 
@@ -43,7 +69,8 @@ def xcode_summary(
     -------
     list[str]
         Fixed diagnostics without report values or private warning contents.
-        Missing warnings mean an empty list; other malformed warning types fail.
+        An absent warning field is treated as an empty list; malformed warning
+        types fail.
     """
     if not isinstance(report, dict) or any(
         type(report.get(key)) is not int or report[key] < 0 for key in COUNTS
@@ -86,7 +113,6 @@ def validate(
         Input selection, explicit adapter and acceptance thresholds.
     root : pathlib.Path or None
         Explicit artifact directory, otherwise the consumer repository root.
-
     summary : pathlib.Path or None
         Explicit single report, overriding include/exclude selection. Cannot
         be combined with an artifact root. Symlink escapes remain rejected.
@@ -121,17 +147,8 @@ def validate(
         if source is None:
             continue
         relative = path.relative_to(boundary).as_posix()
-        try:
-            report = json.loads(source)
-        except (ValueError, RecursionError):
-            failures.append(f'{relative}: invalid test-result JSON')
-            continue
-        if config.adapter != 'xcode-summary':
-            failures.append(f'{relative}: unsupported test-result adapter')
-            continue
         failures.extend(
-            f'{relative}: {finding}'
-            for finding in xcode_summary(report, config.thresholds)
+            f'{relative}: {finding}' for finding in _report_findings(source, config)
         )
     return failures
 

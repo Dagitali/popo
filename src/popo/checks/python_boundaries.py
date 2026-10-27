@@ -138,9 +138,9 @@ def _module(
     path: Path,
     root: Path,
 ) -> str:
-    """Map repository-relative files to modules, accepting a src layout."""
+    """Map paths to modules; strip a src directory, never a src.py filename."""
     parts = list(path.relative_to(root).with_suffix('').parts)
-    if parts[0] == 'src':
+    if len(parts) > 1 and parts[0] == 'src':
         parts.pop(0)
     if parts[-1] == '__init__':
         parts.pop()
