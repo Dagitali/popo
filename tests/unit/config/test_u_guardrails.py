@@ -81,4 +81,35 @@ class TestGuardrailConfiguration:
             load_guardrails_config(guardrail_consumer.root)
 
 
+class TestGuardrailConfigurationSnapshot:
+    """Validate entry points and their profile from one configuration read."""
+
+    @pytest.mark.parametrize('filename', ('popo.toml', 'pyproject.toml'))
+    def test_profile_uses_the_same_snapshot(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        filename: str,
+    ) -> None:
+        """Do not combine entry points with a subsequently changed profile."""
+        from unittest.mock import Mock
+
+        from popo.config import guardrails, selection
+        from popo.config._common import read_popo
+
+        prefix = '' if filename == 'popo.toml' else 'tool.popo.'
+        (tmp_path / filename).write_text(
+            f'[{prefix}guardrails]\n'
+            f'[{prefix}profiles.guardrails]\nchecks=["check-docs"]',
+            encoding='utf-8',
+        )
+        original = read_popo(tmp_path)
+        reader = Mock(side_effect=[original, {}])
+        monkeypatch.setattr(guardrails, 'read_popo', reader)
+        monkeypatch.setattr(selection, 'read_popo', reader)
+        assert load_guardrails_config(tmp_path).profile == 'guardrails'
+        reader.assert_called_once_with(tmp_path)
+        assert original['profiles'] == {'guardrails': {'checks': ['check-docs']}}
+
+
 # !SECTION

@@ -90,5 +90,23 @@ class TestBoundaryPolicy:
         with pytest.raises(ConfigurationError):
             load_swift_boundaries_config(tmp_path)
 
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    def test_unknown_layer_settings_are_rejected(
+        self,
+        tmp_path: Path,
+        language: str,
+    ) -> None:
+        """Reject misspelled rules instead of silently weakening layer policy."""
+        from popo.config.source_boundaries import load_boundaries_config
+
+        domain = f'{language}-boundaries'
+        (tmp_path / 'popo.toml').write_text(
+            f'[[{domain}.layers]]\nname="core"\ninclude=["source"]\n'
+            'allowed-import=["UnexpectedTypo"]',
+            encoding='utf-8',
+        )
+        with pytest.raises(ConfigurationError, match='unknown boundary layer setting'):
+            load_boundaries_config(tmp_path, domain)
+
 
 # !SECTION
