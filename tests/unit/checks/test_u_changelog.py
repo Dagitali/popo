@@ -61,7 +61,10 @@ class TestChangelog:
         """
         assert validate(write_file('CHANGELOG.md', content), release) == expected
 
-    @pytest.mark.parametrize('release', ['latest', 'v1.2', '1.2.3rc1', '01.2.3'])
+    @pytest.mark.parametrize(
+        'release',
+        ['latest', 'v1.2', '1.2.3rc1', '01.2.3', '1١.2.3', 'v1.2.3１'],
+    )
     def test_invalid_release(
         self,
         tmp_path: Path,
