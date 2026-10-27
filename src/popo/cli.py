@@ -263,6 +263,17 @@ def create_parser() -> argparse.ArgumentParser:
         '--compiler-version',
         help='Explicit observed Swift compiler version (never inferred)',
     )
+    result_inputs = parsers['check-test-results'].add_mutually_exclusive_group()
+    result_inputs.add_argument(
+        '--summary',
+        type=Path,
+        help='Explicit single exported test summary',
+    )
+    result_inputs.add_argument(
+        '--results-root',
+        type=Path,
+        help='Explicit root of exported test summaries',
+    )
     parsers['check-logs'].add_argument(
         '--log-root',
         type=Path,

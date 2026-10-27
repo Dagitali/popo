@@ -16,20 +16,26 @@ from .checks import (
     files,
     guardrails,
     logs,
+    python_boundaries,
     python_policy,
     python_source,
     safety,
+    swift_boundaries,
     swift_policy,
     swift_source,
+    test_results,
 )
 from .config import ConfigurationError, load_config
 from .config.automation import load_automation_config
 from .config.files import load_headers_config, load_required_files_config
 from .config.guardrails import load_guardrails_config
+from .config.python_boundaries import load_python_boundaries_config
 from .config.python_policy import load_python_policy_config
 from .config.safety import load_safety_config
 from .config.source_checks import load_source_check
+from .config.swift_boundaries import load_swift_boundaries_config
 from .config.swift_policy import load_swift_policy_config
+from .config.test_results import load_test_results_config
 
 # SECTION: TYPE ALIASES
 
@@ -292,6 +298,33 @@ def _logs(
     ), 'configured logs passed'
 
 
+def _python_boundaries(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch consumer-owned Python architecture restrictions.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Explicit consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        AST boundary findings and success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        Boundary policy is absent or malformed.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded.
+    """
+    config = load_python_boundaries_config(args.root)
+    return python_boundaries.validate(config), 'configured Python boundaries passed'
+
+
 def _python_policy(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
@@ -483,6 +516,64 @@ def _swift_source(
     return swift_source.validate(config), 'configured Swift source checks passed'
 
 
+def _swift_boundaries(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch consumer-owned Swift architecture restrictions.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Explicit consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Lexical boundary findings and success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        Boundary policy is absent or malformed.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded.
+    """
+    config = load_swift_boundaries_config(args.root)
+    return swift_boundaries.validate(config), 'configured Swift boundaries passed'
+
+
+def _test_results(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch configured native-result acceptance checks without running tests.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Consumer root and optional results_root or summary artifact override.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Redacted findings and success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        Result policy is absent or malformed.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded.
+    """
+    config = load_test_results_config(args.root)
+    return test_results.validate(
+        config,
+        getattr(args, 'results_root', None),
+        getattr(args, 'summary', None),
+    ), 'configured test results passed'
+
+
 # !SECTION
 
 
@@ -491,6 +582,9 @@ def _swift_source(
 
 # Registry of native command handlers.
 NATIVE_HANDLERS: dict[str, Command] = {
+    'check-test-results': _test_results,
+    'check-swift-boundaries': _swift_boundaries,
+    'check-python-boundaries': _python_boundaries,
     'check-python-source': _python_source,
     'check-swift-source': _swift_source,
     'check-swift-policy': _swift_policy,

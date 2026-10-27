@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.12 Series](#012-series)
 - [0.11 Series](#011-series)
 - [0.10 Series](#010-series)
 - [0.9 Series](#09-series)
@@ -35,6 +36,11 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Evidence Boundaries](#evidence-boundaries)
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
+
+## 0.12 Series
+
+- [v0.12.0] — 2026-10-27: Native test-summary acceptance, Python/Swift architecture boundaries,
+  shared analyzers and validation refinements; tagging/publication remain separate.
 
 ## 0.11 Series
 
@@ -186,6 +192,7 @@ prepared.
 [v0.1.5]: v0.1.5.md
 [v0.10.0]: v0.10.0.md
 [v0.11.0]: v0.11.0.md
+[v0.12.0]: v0.12.0.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md

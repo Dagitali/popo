@@ -83,6 +83,8 @@ class TestPackageArtifacts:
                 'swift_policy.py',
                 'automation.py',
                 'source_checks.py',
+                'test_results.py',
+                'swift_boundaries.py',
             )
         } <= names
         assert {
@@ -100,6 +102,8 @@ class TestPackageArtifacts:
                 'swift_policy.py',
                 '_toolchain_policy.py',
                 'logs.py',
+                'test_results.py',
+                'swift_boundaries.py',
             )
         } <= names
         assert f'{prefix}checks/swift_documentation.py' not in names

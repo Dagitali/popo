@@ -301,7 +301,11 @@ def _workflow_findings(
         failures.append('no Python policy workflows found')
     for path in paths:
         if config.workflow_parser == 'scoped':
-            observations, errors = workflow_observations(path, 'python-version')
+            observations, errors = workflow_observations(
+                path,
+                'python-version',
+                kind='runtime',
+            )
             failures.extend(f'{path}: {error}' for error in errors)
             configured = [observation.value for observation in observations]
         else:

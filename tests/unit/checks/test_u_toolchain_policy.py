@@ -164,4 +164,24 @@ jobs:
         ]
 
 
+class TestObservationInterpretation:
+    """Keep observation roles explicit and independent of action input names."""
+
+    @pytest.mark.parametrize('kind', ('runtime', 'compiler'))
+    @pytest.mark.parametrize('key', ('python-version', 'swift-version'))
+    def test_caller_selects_role(
+        self,
+        write_file: FileWriter,
+        key: str,
+        kind: str,
+    ) -> None:
+        """Record caller semantics without guessing from the workflow key."""
+        path = write_file('ci.yml', f'jobs:\n  build:\n    with: {{ {key}: "3.13" }}')
+        observations, errors = workflow_observations(path, key, kind=kind)
+        assert errors == []
+        assert len(observations) == 1
+        assert observations[0].kind == kind
+        assert observations[0].value == '3.13'
+
+
 # !SECTION

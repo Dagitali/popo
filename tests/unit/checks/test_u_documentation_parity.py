@@ -221,4 +221,83 @@ class TestNumPyDocumentation:
         assert evidence.return_documented is (section == required)
 
 
+class TestDocumentationRunner:
+    """Keep overview diagnostics before declarations across both languages."""
+
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    def test_overview_precedes_declarations(
+        self,
+        tmp_path: Path,
+        language: str,
+    ) -> None:
+        """Preserve source order and redact names and bodies in diagnostics."""
+        domain = f'{language}-source'
+        config = SourceCheckConfig(
+            tmp_path,
+            domain,
+            ('*',),
+            (),
+            dict(DOMAINS[domain])
+            | {
+                'file-overviews': True,
+                'declaration-docs': True,
+            },
+        )
+        parser = _python_declarations if language == 'python' else _swift_declarations
+        interpreter = (
+            _python_documentation if language == 'python' else _swift_documentation
+        )
+        text = (
+            'class PrivateFirst: pass\nclass PrivateSecond: pass'
+            if language == 'python'
+            else 'struct PrivateFirst {}\nstruct PrivateSecond {}'
+        )
+        findings = interpreter.documentation_findings(
+            parser.parse(text),
+            config,
+            'source',
+        )
+        assert len(findings) == 3
+        assert findings[0].startswith('source:')
+        assert 'overview' in findings[0]
+        assert findings[1].startswith('source:1:')
+        assert findings[2].startswith('source:2:')
+        assert 'Private' not in '\n'.join(findings)
+
+
+class TestDisabledCallableContracts:
+    """Keep shared dispatch independent of a consumer's selected rules."""
+
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    def test_disabled_rules_do_not_require_sections(
+        self,
+        tmp_path: Path,
+        language: str,
+    ) -> None:
+        """Leave absent callable markup valid when all relevant rules are off."""
+        domain = f'{language}-source'
+        settings = dict(DOMAINS[domain]) | {
+            'file-overviews': False,
+            'declaration-docs': False,
+        }
+        config = SourceCheckConfig(tmp_path, domain, ('*',), (), settings)
+        parser = _python_declarations if language == 'python' else _swift_declarations
+        interpreter = (
+            _python_documentation if language == 'python' else _swift_documentation
+        )
+        source = (
+            'def f(value: int) -> int:\n    raise ValueError()'
+            if language == 'python'
+            else 'func f(value: Int) throws -> Int { throw Failure() }'
+        )
+        assert (
+            interpreter.documentation_findings(
+                parser.parse(source),
+                config,
+                'source',
+            )
+            == []
+        )
+
+
 # !SECTION

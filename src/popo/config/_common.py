@@ -56,6 +56,42 @@ def configuration_path(
     )
 
 
+def read_patterns(
+    value: object,
+    name: str,
+    *,
+    required: bool = True,
+) -> tuple[str, ...]:
+    """
+    Validate root-relative input patterns without touching the filesystem.
+
+    Parameters
+    ----------
+    value : object
+        Candidate list of unique nonempty glob strings.
+    name : str
+        Setting identifier included in configuration diagnostics.
+    required : bool, optional
+        Reject empty lists when true; defaults to true.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Ordered patterns without absolute paths or parent traversal.
+
+    Raises
+    ------
+    ConfigurationError
+        Values are malformed, required patterns are empty or paths escape.
+    """
+    patterns = read_strings(value, name)
+    if required and not patterns:
+        raise ConfigurationError(f'{name} must not be empty')
+    if any(Path(item).is_absolute() or '..' in Path(item).parts for item in patterns):
+        raise ConfigurationError(f'{name} must stay inside the selected root')
+    return patterns
+
+
 def read_popo(
     root: Path,
 ) -> dict[str, object]:
