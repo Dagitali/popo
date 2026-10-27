@@ -22,7 +22,7 @@ class TestSourceSelectionPolicy:
     @pytest.mark.parametrize('setting', ('include', 'exclude'))
     @pytest.mark.parametrize(
         'pattern',
-        ('../outside', '/absolute', 'nested/../outside'),
+        ('../outside', 'absolute', 'nested/../outside'),
     )
     def test_escaping_patterns_identify_the_setting(
         self,
@@ -32,7 +32,10 @@ class TestSourceSelectionPolicy:
         pattern: str,
     ) -> None:
         """Reject unsafe includes and excludes with specific setting names."""
-        policy = {'include': ['*.py'], 'exclude': []} | {setting: [pattern]}
+        selected = (
+            str(tmp_path.parent / 'outside') if pattern == 'absolute' else pattern
+        )
+        policy = {'include': ['*.py'], 'exclude': []} | {setting: [selected]}
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude={policy['include']!r}\n'
             f'exclude={policy['exclude']!r}\n',
