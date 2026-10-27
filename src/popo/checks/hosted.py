@@ -340,31 +340,7 @@ def _repository(
         if legacy.status == 404 and legacy.data == 'Branch not protected':
             legacy = Response(data={})
         try:
-            if rules.error or not isinstance(rules.data, list):
-                raise ValueError('effective rules unavailable')
-            contexts: set[str] = set()
-            for rule in rules.data:
-                if not isinstance(rule, dict) or not isinstance(rule.get('type'), str):
-                    raise ValueError('unexpected effective rule')
-                if rule['type'] == 'required_status_checks':
-                    required_rules = rule['parameters']['required_status_checks']
-                    if not isinstance(required_rules, list):
-                        raise ValueError('unexpected rules check array')
-                    contexts.update(item['context'] for item in required_rules)
-            legacy_known = not legacy.error and isinstance(legacy.data, dict)
-            if legacy_known:
-                required = legacy.data.get('required_status_checks') or {}
-                legacy_contexts = required.get('contexts', [])
-                legacy_checks = required.get('checks', [])
-                if not isinstance(legacy_contexts, list) or not isinstance(
-                    legacy_checks,
-                    list,
-                ):
-                    raise ValueError('unexpected legacy check array')
-                contexts.update(legacy_contexts)
-                contexts.update(item['context'] for item in legacy_checks)
-            if any(not isinstance(name, str) for name in contexts):
-                raise ValueError('unexpected check context')
+            contexts, legacy_known = _required_contexts(rules, legacy)
             for check in checks:
                 state = True if check in contexts else False if legacy_known else None
                 add(
@@ -384,6 +360,68 @@ def _repository(
                     rules_endpoint,
                 )
     return findings
+
+
+def _required_contexts(
+    rules: Response,
+    legacy: Response,
+) -> tuple[set[str], bool]:
+    """
+    Combine effective-rule and legacy required-check evidence without I/O.
+
+    Parameters
+    ----------
+    rules : Response
+        Effective branch rules with pagination already flattened by the caller.
+    legacy : Response
+        Legacy protection data; recognized absence is normalized by the caller.
+
+    Returns
+    -------
+    tuple[set[str], bool]
+        Required context names and whether legacy evidence is known. A present
+        context can be verified even when legacy evidence is inaccessible;
+        absence is conclusive only when both sources are available.
+
+    Raises
+    ------
+    KeyError, TypeError, ValueError, AttributeError
+        Effective rules are unavailable, or recognized rule/legacy check data
+        is malformed. The repository auditor converts these failures to
+        inaccessible evidence without retaining partial context conclusions.
+
+    Notes
+    -----
+    Perform no endpoint reads or response mutation. This parser does not verify
+    check-source identity.
+    Unrelated effective-rule types do not contribute required contexts.
+    """
+    if rules.error or not isinstance(rules.data, list):
+        raise ValueError('effective rules unavailable')
+    contexts: set[str] = set()
+    for rule in rules.data:
+        if not isinstance(rule, dict) or not isinstance(rule.get('type'), str):
+            raise ValueError('unexpected effective rule')
+        if rule['type'] == 'required_status_checks':
+            required_rules = rule['parameters']['required_status_checks']
+            if not isinstance(required_rules, list):
+                raise ValueError('unexpected rules check array')
+            contexts.update(item['context'] for item in required_rules)
+    legacy_known = not legacy.error and isinstance(legacy.data, dict)
+    if legacy_known:
+        required = legacy.data.get('required_status_checks') or {}
+        legacy_contexts = required.get('contexts', [])
+        legacy_checks = required.get('checks', [])
+        if not isinstance(legacy_contexts, list) or not isinstance(
+            legacy_checks,
+            list,
+        ):
+            raise ValueError('unexpected legacy check array')
+        contexts.update(legacy_contexts)
+        contexts.update(item['context'] for item in legacy_checks)
+    if any(not isinstance(name, str) for name in contexts):
+        raise ValueError('unexpected check context')
+    return contexts, legacy_known
 
 
 # !SECTION
