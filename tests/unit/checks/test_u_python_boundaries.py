@@ -87,66 +87,6 @@ class TestPythonBoundaries:
         )
 
 
-class TestBoundaryConfigurationParity:
-    """Apply common policy contracts independently of language syntax."""
-
-    @pytest.mark.parametrize('language', ('python', 'swift'))
-    @pytest.mark.parametrize(
-        'settings',
-        (
-            '',
-            'layers=[]',
-            'unknown=true',
-            '[[DOMAIN.layers]]\nname="core"\ninclude=["*.SOURCE"]\n'
-            'forbidden-layers=["core"]',
-        ),
-    )
-    def test_invalid_policy(
-        self,
-        tmp_path: Path,
-        language: str,
-        settings: str,
-    ) -> None:
-        """Reject empty, unknown and self-referencing layer policies."""
-        from popo.config._common import ConfigurationError
-        from popo.config.source_boundaries import load_boundaries_config
-
-        domain = f'{language}-boundaries'
-        settings = settings.replace('DOMAIN', domain).replace('SOURCE', language)
-        (tmp_path / 'popo.toml').write_text(
-            f'[{domain}]\n{settings}',
-            encoding='utf-8',
-        )
-        with pytest.raises(ConfigurationError):
-            load_boundaries_config(tmp_path, domain)
-
-    @pytest.mark.parametrize('language', ('python', 'swift'))
-    def test_overlapping_layers_read_once(
-        self,
-        tmp_path: Path,
-        language: str,
-    ) -> None:
-        """Check overlapping selections without repeating source reads."""
-        from popo.checks._source_boundaries import boundary_sources
-        from popo.config.source_boundaries import load_boundaries_config
-
-        domain = f'{language}-boundaries'
-        (tmp_path / 'source').write_text('', encoding='utf-8')
-        (tmp_path / 'popo.toml').write_text(
-            ''.join(
-                f'[[{domain}.layers]]\nname="{name}"\ninclude=["source"]\n'
-                for name in ('one', 'two')
-            ),
-            encoding='utf-8',
-        )
-        paths, sources, failures = boundary_sources(
-            load_boundaries_config(tmp_path, domain),
-        )
-        assert len(paths) == 2
-        assert len(sources) == 1
-        assert failures == []
-
-
 class TestPythonModuleOwnership:
     """Distinguish a src-layout directory from a module named src.py."""
 

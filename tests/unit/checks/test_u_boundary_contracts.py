@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from popo.checks import python_boundaries, swift_boundaries
+from popo.checks import _source_boundaries, python_boundaries, swift_boundaries
 from popo.config.source_boundaries import BoundaryConfig, load_boundaries_config
 from tests.support.files import snapshot_files
 
@@ -140,6 +140,33 @@ class TestBoundaryContracts:
 
 class TestOverlappingBoundaryLayers:
     """Retain layer-specific evaluation while preparing each input once."""
+
+    def test_overlapping_layers_read_once(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        boundary_case: BoundaryCase,
+    ) -> None:
+        """Check overlapping selections without repeating source reads."""
+        read = Mock(wraps=_source_boundaries.read_source)
+        monkeypatch.setattr(_source_boundaries, 'read_source', read)
+
+        domain = boundary_case.domain
+        (tmp_path / 'source').write_text('', encoding='utf-8')
+        (tmp_path / 'popo.toml').write_text(
+            ''.join(
+                f'[[{domain}.layers]]\nname="{name}"\ninclude=["source"]\n'
+                for name in ('one', 'two')
+            ),
+            encoding='utf-8',
+        )
+        paths, sources, failures = _source_boundaries.boundary_sources(
+            load_boundaries_config(tmp_path, domain),
+        )
+        assert len(paths) == 2
+        assert sources == {tmp_path / 'source': ''}
+        read.assert_called_once_with(tmp_path / 'source', tmp_path)
+        assert failures == []
 
     def test_overlapping_selections_parse_once(
         self,
