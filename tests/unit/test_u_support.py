@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from popo.support import automation_paths
+from popo.support import automation_paths, normalize_release
 
 # SECTION: TESTS
 
@@ -41,6 +41,31 @@ class TestSupport:
             Temporary directory for isolated test inputs.
         """
         assert automation_paths(tmp_path / 'absent') == []
+
+    @pytest.mark.parametrize('version', ['0.0.0', '1.2.3', '10.20.30'])
+    @pytest.mark.parametrize('prefix', ['', 'v'])
+    def test_normalize_release_ascii_components(
+        self,
+        version: str,
+        prefix: str,
+    ) -> None:
+        """Preserve ASCII version components and remove only the v prefix."""
+        assert normalize_release(prefix + version) == version
+
+    @pytest.mark.parametrize('digit', ['١', '１'])
+    @pytest.mark.parametrize('component', [0, 1, 2])
+    @pytest.mark.parametrize('prefix', ['', 'v'])
+    def test_normalize_release_rejects_non_ascii_digits(
+        self,
+        digit: str,
+        component: int,
+        prefix: str,
+    ) -> None:
+        """Reject Unicode digits even after a valid ASCII leading digit."""
+        parts = ['1', '2', '3']
+        parts[component] += digit
+        with pytest.raises(ValueError, match='release version must use'):
+            normalize_release(prefix + '.'.join(parts))
 
     def test_uninstalled_version(
         self,
