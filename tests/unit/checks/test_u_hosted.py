@@ -43,6 +43,43 @@ def audit_statuses(
 class TestHostedCheckEvidence:
     """Check effective-rule availability and nonstring legacy contexts."""
 
+    @pytest.mark.parametrize('context', ['quality', 'other'])
+    @pytest.mark.parametrize('legacy_known', [False, True])
+    def test_absence_requires_complete_evidence(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        context: str,
+        legacy_known: bool,
+    ) -> None:
+        """Require complete evidence before confirming a missing context."""
+        github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
+            Response(
+                [
+                    {
+                        'type': 'required_status_checks',
+                        'parameters': {
+                            'required_status_checks': [{'context': context}],
+                        },
+                    },
+                ],
+            )
+        )
+        github_responses['repos/example/library/branches/main/protection'] = (
+            Response({})
+            if legacy_known
+            else Response(error='private evidence unavailable')
+        )
+        status = audit_statuses(hosted_policy, github_responses)[
+            'branch:main:check:quality'
+        ]
+        expected = (
+            'verified'
+            if context == 'quality'
+            else ('missing' if legacy_known else 'inaccessible')
+        )
+        assert status == expected
+
     @pytest.mark.parametrize(
         ('rules', 'legacy', 'expected'),
         [
