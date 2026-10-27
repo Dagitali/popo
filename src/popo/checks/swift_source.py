@@ -9,8 +9,7 @@ from pathlib import Path
 from popo.config.source_checks import SourceCheckConfig
 
 from ._source_declarations import SourceFacts
-from ._source_documentation import limits
-from ._source_validation import validate_sources
+from ._source_validation import parsed_source_findings, validate_sources
 from ._swift_declarations import CALLABLE_KINDS, Declaration, parse
 from ._swift_documentation import documentation_findings
 
@@ -99,17 +98,21 @@ def _source_findings(
 
     Raises
     ------
+    KeyError
+        Required limit or rule settings are absent from direct configuration.
     ValueError
-        The supplied path is not lexically inside config.root.
+        The supplied path is outside config.root or a numeric limit is invalid.
     """
-    failures: list[str] = []
-    relative = path.relative_to(config.root).as_posix()
     lines = source.splitlines()
     parsed = parse(source)
-    failures.extend(limits(config, path, lines, parsed.documentation_lines))
-    failures.extend(documentation_findings(parsed, config, relative))
-    failures.extend(_convention_findings(parsed, config, relative))
-    return failures
+    return parsed_source_findings(
+        parsed,
+        config,
+        path,
+        lines,
+        documentation_findings,
+        _convention_findings,
+    )
 
 
 # !SECTION

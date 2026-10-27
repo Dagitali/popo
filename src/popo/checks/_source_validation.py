@@ -9,12 +9,17 @@ from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_documentation import guide_findings
+from ._source_declarations import SourceFacts
+from ._source_documentation import guide_findings, limits
 from ._source_inputs import discover, read_source
 
 # SECTION: TYPE ALIASES
 
 
+type ParsedSourceInspector[Declaration] = Callable[
+    [SourceFacts[Declaration], SourceCheckConfig, str],
+    list[str],
+]
 type SourceInspector = Callable[[SourceCheckConfig, Path, str], list[str]]
 
 
@@ -22,6 +27,58 @@ type SourceInspector = Callable[[SourceCheckConfig, Path, str], list[str]]
 
 
 # SECTION: FUNCTIONS
+
+
+def parsed_source_findings[Declaration](
+    parsed: SourceFacts[Declaration],
+    config: SourceCheckConfig,
+    path: Path,
+    lines: list[str],
+    documentation: ParsedSourceInspector[Declaration],
+    conventions: ParsedSourceInspector[Declaration],
+) -> list[str]:
+    """
+    Evaluate parsed source limits, documentation and conventions in order.
+
+    Parameters
+    ----------
+    parsed : SourceFacts[Declaration]
+        Native front-end observations; no syntax is parsed again here.
+    config : SourceCheckConfig
+        Consumer-owned limits and rule switches.
+    path : pathlib.Path
+        Source path lexically inside config.root, used for diagnostics.
+    lines : list[str]
+        Physical lines of the original decoded source for limit checks.
+    documentation, conventions : ParsedSourceInspector[Declaration]
+        Language-specific inspectors receiving parsed facts, config and the
+        relative filename. Their native declaration types remain intact.
+
+    Returns
+    -------
+    list[str]
+        Limit findings, then documentation findings, then convention findings.
+        Inspector order and messages are preserved without deduplication.
+
+    Raises
+    ------
+    KeyError
+        Required limit or rule settings are absent from direct configuration.
+    ValueError
+        The source path is outside config.root or a numeric limit is invalid.
+
+    Notes
+    -----
+    Call only after successful front-end collection. Parse failures remain the
+    caller's responsibility. Inspectors own redaction; their exceptions are
+    not intercepted. No files are read and no consumer code is executed.
+    """
+    relative = path.relative_to(config.root).as_posix()
+    return [
+        *limits(config, path, lines, parsed.documentation_lines),
+        *documentation(parsed, config, relative),
+        *conventions(parsed, config, relative),
+    ]
 
 
 def validate_sources(
