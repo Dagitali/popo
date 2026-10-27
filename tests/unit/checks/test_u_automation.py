@@ -4,6 +4,8 @@
 Exercise portable, read-only automation contracts.
 """
 
+import io
+import json
 from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
@@ -381,6 +383,38 @@ class TestTemplateContracts:
         )
         assert validate(config)
         assert validate(config, pins_only=True) == []
+
+    @pytest.mark.parametrize('name', ['CI', 'Café', '日本語'])
+    def test_metadata_uses_utf8_with_ascii_default(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        name: str,
+    ) -> None:
+        """Read Unicode metadata independently of the default text encoding."""
+        write_file('templates/ci.yml', 'name: CI')
+        write_file(
+            'templates/ci.properties.json',
+            json.dumps({'name': name, 'description': name}, ensure_ascii=False),
+        )
+        config = AutomationConfig(
+            tmp_path,
+            workflow_globs=(),
+            template_globs=('templates/*.yml',),
+        )
+
+        def text_encoding(
+            encoding: str | None,
+            stacklevel: int = 2,
+        ) -> str:
+            return 'ascii' if encoding is None else encoding
+
+        before = snapshot_files(tmp_path)
+        with monkeypatch.context() as patcher:
+            patcher.setattr(io, 'text_encoding', text_encoding)
+            assert validate(config) == []
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize('operation', ['glob', 'is_file'])
     @pytest.mark.parametrize('error', [PermissionError, ValueError])
