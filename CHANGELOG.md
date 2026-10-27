@@ -20,10 +20,11 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.11.0 - 2026-10-26](#0110---2026-10-26)
   - [Fixed](#fixed)
   - [Changed](#changed)
   - [Added](#added)
-- [\[0.10.0\] - 2026-10-25](#0100---2026-10-25)
+- [0.10.0 - 2026-10-25](#0100---2026-10-25)
 - [0.9.1 - 2026-10-24](#091---2026-10-24)
 - [0.9.0 - 2026-10-24](#090---2026-10-24)
 - [0.8.2 - 2026-10-23](#082---2026-10-23)
@@ -63,6 +64,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - [0.1.0 - 2026-09-24](#010---2026-09-24)
 
 ## Unreleased
+
+## [0.11.0] - 2026-10-26
 
 ### Fixed
 
@@ -169,12 +172,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Opt-in `check-python-source`, `check-swift-source` and `check-logs` commands with consumer-owned
   policies, existing text/JSON reporting, confined input discovery, and redacted log findings. See
   [source and log checks](docs/source-and-log-checks.md)
-- Align the unreleased Swift command and policy as `check-swift-source` / `swift-source`. Share
+- Standardize the Swift command and policy as `check-swift-source` / `swift-source`. Share
   source-size, documentation-width and source-guide checks; add optional Python NumPy and Swift DocC
   callable documentation checks with explicit language-specific syntax limits. Retain shared
   configuration loading and read-only, redacted input handling.
 - Separate Python and Swift declaration collection from NumPy/DocC interpretation using shared
-  immutable facts. Standardize unreleased policy keys as `documentation-width` and `max-file-lines`
+  immutable facts. Standardize policy keys as `documentation-width` and `max-file-lines`
   and use consistent limit diagnostics; replace the earlier option names without aliases.
 
 ## [0.10.0] - 2026-10-25
@@ -616,6 +619,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.8.2]: docs/releases/v0.8.2.md
 [0.9.0]: docs/releases/v0.9.0.md
 [0.9.1]: docs/releases/v0.9.1.md
+[0.10.0]: docs/releases/v0.10.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

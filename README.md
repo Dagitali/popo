@@ -80,7 +80,7 @@ configured; see the [release policy].
 - Opt-in Python and Swift source conventions, documentation contracts and redacted log checks;
   quoted Python return annotations follow unquoted rules, log-root errors stay redacted, and log
   patterns must be nonblank single-line literals. See [source and log
-  checks](docs/source-and-log-checks.md) for unreleased scope and configuration;
+  checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
 - Opt-in Swift compiler, package tools-version and scoped CI declaration checks; see [Swift
   toolchain policy](docs/swift-policy.md);
 - Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];
