@@ -71,6 +71,46 @@ def _explain(
     return 0
 
 
+def _hosted_audit(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Run an explicitly requested hosted audit and report its narrow findings.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parser-validated options for this command, including root and format.
+
+    Returns
+    -------
+    int
+        Zero on success, or one for reported configuration/validation failures.
+
+    Notes
+    -----
+    Only this explicit command contacts GitHub. Configuration/read failures use
+    the selected text or JSON format. Drift and inaccessible evidence fail;
+    approved exceptions follow the auditor's expiry policy. Custom adapter
+    errors outside the handled configuration/read errors propagate.
+    """
+    try:
+        result = hosted.audit(load_hosted_config(args.root))
+    except (ConfigurationError, OSError, UnicodeError) as error:
+        if args.format == 'json':
+            print(json.dumps({'error': f'configuration: {error}'}))
+            return 1
+        return report([f'configuration: {error}'], success='')
+    if args.format == 'json':
+        print(result.to_json())
+    else:
+        print(f'GitHub settings audit: {result.observed_at}')
+        for item in result.findings:
+            print(f'{item.status}: {item.repository} {item.check}: {item.detail}')
+            print(f'  evidence: {item.evidence}')
+    return int(result.failed)
+
+
 def _invoke(
     args: argparse.Namespace,
 ) -> CheckResult:
@@ -111,6 +151,37 @@ def _selected_results(
         )
         for check in plan.checks
     ]
+
+
+def _source_inventory(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Generate committed source evidence with command-specific error reporting.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parser-validated options for this command, including root and format.
+
+    Returns
+    -------
+    int
+        Zero on success, or one for reported configuration/validation failures.
+
+    Notes
+    -----
+    Generation errors are reported only to stderr; successful evidence goes to
+    stdout. Inventory output is separate from the native check-result schema.
+    No tag, package, checkout file or remote repository is modified.
+    """
+    try:
+        doc = inventory.document(args.root, args.revision, args.name, args.format)
+    except (OSError, UnicodeError, ValueError) as error:
+        print(f'error: source-inventory: {error}', file=sys.stderr)
+        return 1
+    print(json.dumps(doc, indent=2))
+    return 0
 
 
 # !SECTION
@@ -177,7 +248,7 @@ def create_parser() -> argparse.ArgumentParser:
             else commands.add_parser(name)
         )
         _add_root(subparser)
-        if name not in ('check-actionlint', 'audit-github-settings'):
+        if name != 'check-actionlint':
             subparser.add_argument('--format', choices=('text', 'json'), default='text')
         if name in ('check-all', 'explain'):
             subparser.add_argument(
@@ -210,11 +281,6 @@ def create_parser() -> argparse.ArgumentParser:
     parsers['check-actionlint'].add_argument('paths', nargs='*')
     parsers['check-release-changelog'].add_argument('release')
     parsers['check-release-changelog'].add_argument('--changelog', type=Path)
-    parsers['audit-github-settings'].add_argument(
-        '--format',
-        choices=('text', 'json'),
-        default='text',
-    )
     source = commands.add_parser('source-inventory', help='Committed source inventory')
     _add_root(source)
     source.add_argument('--revision', required=True)
@@ -268,29 +334,9 @@ def main(
 
     args = create_parser().parse_args(argv)
     if args.command == 'source-inventory':
-        try:
-            doc = inventory.document(args.root, args.revision, args.name, args.format)
-        except (OSError, UnicodeError, ValueError) as error:
-            print(f'error: source-inventory: {error}', file=sys.stderr)
-            return 1
-        print(json.dumps(doc, indent=2))
-        return 0
+        return _source_inventory(args)
     if args.command == 'audit-github-settings':
-        try:
-            result = hosted.audit(load_hosted_config(args.root))
-        except (ConfigurationError, OSError, UnicodeError) as error:
-            if args.format == 'json':
-                print(json.dumps({'error': f'configuration: {error}'}))
-                return 1
-            return report([f'configuration: {error}'], success='')
-        if args.format == 'json':
-            print(result.to_json())
-        else:
-            print(f'GitHub settings audit: {result.observed_at}')
-            for item in result.findings:
-                print(f'{item.status}: {item.repository} {item.check}: {item.detail}')
-                print(f'  evidence: {item.evidence}')
-        return int(result.failed)
+        return _hosted_audit(args)
     if args.command == 'check-actionlint':
         try:
             return actionlint.run(args.root, args.paths, args.actionlint)
