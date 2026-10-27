@@ -25,6 +25,9 @@ BASELINE = (
     'check-python-policy',
 )
 OPTIONAL = {
+    'test-results': 'check-test-results',
+    'python-boundaries': 'check-python-boundaries',
+    'swift-boundaries': 'check-swift-boundaries',
     'python-source': 'check-python-source',
     'swift-policy': 'check-swift-policy',
     'swift-source': 'check-swift-source',
