@@ -182,6 +182,58 @@ class TestHostedEvidenceBoundaries:
         assert statuses['branch:main:check:quality'] == 'inaccessible'
 
 
+class TestHostedExceptionScopes:
+    """Keep approval matching indexed by repository as well as check ID."""
+
+    @pytest.mark.parametrize('repository', ['owner/one', 'owner/two'])
+    @pytest.mark.parametrize('expired', [False, True])
+    def test_independent_repositories_and_expiry_order(
+        self,
+        repository: str,
+        expired: bool,
+    ) -> None:
+        """Keep repository scopes separate and expiry findings last."""
+        policies = tuple(
+            RepositoryPolicy(name, {}, ('bug',), False, {})
+            for name in ('owner/one', 'owner/two')
+        )
+        exception = ExceptionPolicy(
+            repository,
+            'label:bug',
+            'team',
+            'reviewed',
+            'reviewer',
+            'https://example.com/review',
+            date(2026, 10, 4) if expired else date(2026, 10, 5),
+        )
+
+        def get(
+            endpoint: str,
+            paginate: bool,
+        ) -> Response:
+            return Response([] if paginate else {})
+
+        result = audit(
+            HostedConfig(policies, (exception,)),
+            get,
+            today=date(2026, 10, 5),
+        )
+        expected = [
+            (
+                policy.name,
+                'label:bug',
+                'excepted' if policy.name == repository and not expired else 'missing',
+            )
+            for policy in policies
+        ]
+        if expired:
+            expected.append((repository, 'exception:label:bug', 'missing'))
+        assert [
+            (item.repository, item.check, item.status) for item in result.findings
+        ] == expected
+        assert all(item.evidence.startswith('https://') for item in result.findings)
+
+
 class TestHostedObservations:
     """Group isolated regression scenarios for hosted."""
 
