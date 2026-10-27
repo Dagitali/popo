@@ -129,9 +129,12 @@ def load_source_check(
             not re.fullmatch(r'[A-Za-z0-9_.-]+', key)
             or not isinstance(value, str)
             or not value.strip()
+            or value.splitlines() != [value]
             for key, value in patterns.items()
         ):
-            raise ConfigurationError('logs.patterns requires named nonempty literals')
+            raise ConfigurationError(
+                'logs.patterns requires named nonempty single-line literals',
+            )
     return SourceCheckConfig(root.resolve(), domain, include, exclude, settings)
 
 
