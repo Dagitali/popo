@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_automation` module.
+:mod:`tests.unit.config.test_u_automation` module.
 
 Test validation of consumer automation configuration.
 """

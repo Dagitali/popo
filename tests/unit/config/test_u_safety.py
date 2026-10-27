@@ -1,7 +1,7 @@
 # test_u_safety.py
 # Validate opt-in safety configuration without credentials or network access.
 """
-:mod:`tests.unit.configs.test_u_safety` module.
+:mod:`tests.unit.config.test_u_safety` module.
 
 Exercise safety configuration boundaries and explicit opt-in behavior.
 """

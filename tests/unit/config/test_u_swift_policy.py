@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_swift_policy` module.
+:mod:`tests.unit.config.test_u_swift_policy` module.
 
 Validate explicit Swift policy independently of Python package metadata.
 """

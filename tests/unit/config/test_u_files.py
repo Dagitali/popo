@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_files` module.
+:mod:`tests.unit.config.test_u_files` module.
 
 Reject malformed required-file and header policies before source inspection.
 """

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_guardrails` module.
+:mod:`tests.unit.config.test_u_guardrails` module.
 
 Validate explicit invocation identifiers and confined contract inputs.
 """

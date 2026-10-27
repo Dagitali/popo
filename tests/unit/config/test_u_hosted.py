@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_hosted` module.
+:mod:`tests.unit.config.test_u_hosted` module.
 
 Reject malformed hosted configuration and ambiguous approval scopes.
 """

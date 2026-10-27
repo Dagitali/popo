@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.configs.test_u_selection` module.
+:mod:`tests.unit.config.test_u_selection` module.
 
 Exercise consumer-language-independent configuration and check planning.
 """
