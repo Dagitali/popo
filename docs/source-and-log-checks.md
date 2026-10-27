@@ -20,9 +20,9 @@ Maintainer Notes
 
 ## Status and Boundaries
 
-These commands are unreleased additions. They inspect configured files without importing source,
-executing tools, changing files, or installing dependencies. Existing checks and default selection
-remain unchanged unless a consumer explicitly configures one of these domains.
+These commands are part of the v0.11.0 release scope. They inspect configured files without
+importing source, executing tools, changing files, or installing dependencies. Existing checks and
+default selection remain unchanged unless a consumer explicitly configures one of these domains.
 
 Each domain requires a nonempty `include` list. Patterns are root-relative `Path.glob` patterns;
 `exclude` uses case-sensitive `fnmatch` on root-relative POSIX filenames. Inputs are deduplicated
@@ -103,7 +103,7 @@ max-file-lines = 1000
 source-guide = "Docs/App.docc/SourceFiles.md"
 ```
 
-`check-swift-source` retains the earlier unreleased Swift documentation rules: `file-overviews`,
+`check-swift-source` uses the configured Swift documentation rules: `file-overviews`,
 `declaration-docs` and `declaration-spacing` default to true. A file overview is a leading `/// `
 comment; nominal types and extensions require adjacent `///` documentation, with a blank line before
 that documentation. Attribute-only lines between documentation and declarations are supported.
@@ -128,14 +128,14 @@ outside this lexical subset; both conditional-compilation branches are inspected
 comments do not substitute for the configured `///` convention. This is not SwiftSyntax or a
 compiler; keep compiler, DocC and representative syntax tests in the consumer's validation.
 
-The unreleased names `check-swift-documentation`, `swift-documentation` and `swift_documentation.py`
+The earlier development names `check-swift-documentation`, `swift-documentation` and `swift_documentation.py`
 were replaced by `check-swift-source`, `swift-source` and `swift_source.py`. No compatibility alias
 is provided for these pre-release names. Update explicit profiles and consumer policy together. Both
 language validators use the same discovery, redacted diagnostics, source-guide and limit helpers;
 configuration stays in `popo.config.source_checks` rather than empty per-language modules.
 
 Both source domains use `documentation-width` and `max-file-lines`, with identical width/file-limit
-rule descriptions. The earlier unreleased `docstring-width` and `max-module-lines` keys are rejected
+rule descriptions. The earlier development `docstring-width` and `max-module-lines` keys are rejected
 as unknown settings; update consumer policy before adopting this revision. No compatibility aliases
 are provided for these pre-release names.
 

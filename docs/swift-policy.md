@@ -13,10 +13,10 @@ Maintainer Notes
 
 # Swift Toolchain Policy
 
-`check-swift-policy` is an unreleased, opt-in declaration check. It reads local policy, a version
-file, the package tools-version header and selected workflow inputs. It never executes
-`Package.swift`, invokes Swift, installs a toolchain or changes consumer files. Python project
-metadata is not required.
+`check-swift-policy` is an opt-in declaration check in the v0.11.0 release scope. It reads local
+policy, a version file, the package tools-version header and selected workflow inputs. It never
+executes `Package.swift`, invokes Swift, installs a toolchain or changes consumer files. Python
+project metadata is not required.
 
 - [Configuration](#configuration)
 - [Version Semantics](#version-semantics)
