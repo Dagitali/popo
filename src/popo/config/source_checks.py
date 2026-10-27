@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ._common import ConfigurationError, read_popo, read_strings, require_table
+from ._common import ConfigurationError, read_patterns, read_popo, require_table
 
 # SECTION: CONSTANTS
 
@@ -105,13 +105,12 @@ def load_source_check(
     unknown = table.keys() - defaults.keys() - {'include', 'exclude'}
     if unknown:
         raise ConfigurationError(f'{domain}: unknown settings: {sorted(unknown)}')
-    include = read_strings(table.get('include', []), f'{domain}.include')
-    exclude = read_strings(table.get('exclude', []), f'{domain}.exclude')
-    if not include:
-        raise ConfigurationError(f'{domain}.include must not be empty')
-    for pattern in (*include, *exclude):
-        if Path(pattern).is_absolute() or '..' in Path(pattern).parts:
-            raise ConfigurationError(f'{domain}: patterns must stay inside root')
+    include = read_patterns(table.get('include', []), f'{domain}.include')
+    exclude = read_patterns(
+        table.get('exclude', []),
+        f'{domain}.exclude',
+        required=False,
+    )
     settings = defaults | {key: table[key] for key in defaults if key in table}
     for key, default in defaults.items():
         value = settings[key]
