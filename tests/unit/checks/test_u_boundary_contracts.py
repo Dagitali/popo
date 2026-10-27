@@ -4,13 +4,82 @@
 Check shared language-analyzer ordering, failures and read-only contracts.
 """
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import NamedTuple, cast
+from unittest.mock import Mock
 
 import pytest
 
 from popo.checks import python_boundaries, swift_boundaries
-from popo.config.source_boundaries import load_boundaries_config
+from popo.config.source_boundaries import BoundaryConfig, load_boundaries_config
 from tests.support.files import snapshot_files
+
+# SECTION: NAMED TUPLES
+
+
+class BoundaryCase(NamedTuple):
+    """
+    Keep native syntax and expected lexical differences beside a validator.
+    """
+
+    domain: str
+    validate: Callable[[BoundaryConfig], list[str]]
+    reference: str
+    symbol_lines: tuple[int, ...]
+
+
+# !SECTION
+
+
+# SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='boundary_case',
+    params=(
+        pytest.param(
+            BoundaryCase(
+                'python-boundaries',
+                python_boundaries.validate,
+                'x = Forbidden + Forbidden',
+                (2,),
+            ),
+            id='python',
+        ),
+        pytest.param(
+            BoundaryCase(
+                'swift-boundaries',
+                swift_boundaries.validate,
+                'let x = Forbidden + Forbidden',
+                (1, 2),
+            ),
+            id='swift',
+        ),
+    ),
+)
+def boundary_case_fixture(
+    request: pytest.FixtureRequest,
+) -> BoundaryCase:
+    """
+    Supply one native boundary implementation and its diagnostic expectations.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Selected Python or Swift case; each scenario runs for both languages.
+
+    Returns
+    -------
+    BoundaryCase
+        Policy domain, public validator, native reference and symbol locations.
+        Swift includes import-line tokens; Python inspects AST references.
+    """
+    return cast(BoundaryCase, request.param)
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -18,14 +87,13 @@ from tests.support.files import snapshot_files
 class TestBoundaryContracts:
     """Exercise both structural analyzers through their public validators."""
 
-    @pytest.mark.parametrize('language', ('python', 'swift'))
     def test_diagnostic_order_and_read_only_inputs(
         self,
         tmp_path: Path,
-        language: str,
+        boundary_case: BoundaryCase,
     ) -> None:
         """Keep selection failures before imports and deduplicated symbols."""
-        domain = f'{language}-boundaries'
+        domain = boundary_case.domain
         (tmp_path / 'popo.toml').write_text(
             f'[[{domain}.layers]]\nname="core"\n'
             'include=["missing", "source"]\nallowed-imports=[]\n'
@@ -33,39 +101,38 @@ class TestBoundaryContracts:
             encoding='utf-8',
         )
         (tmp_path / 'source').write_text(
-            'import Forbidden\nx = Forbidden + Forbidden'
-            if language == 'python'
-            else 'import Forbidden\nlet x = Forbidden + Forbidden',
+            f'import Forbidden\n{boundary_case.reference}',
             encoding='utf-8',
         )
         before = snapshot_files(tmp_path)
         config = load_boundaries_config(tmp_path, domain)
-        validator = python_boundaries if language == 'python' else swift_boundaries
-        findings = validator.validate(config)
-        assert len(findings) == (3 if language == 'python' else 4)
-        assert 'missing' in findings[0]
-        assert findings[1] == 'source:1: core: forbidden import Forbidden'
-        if language == 'swift':
-            assert findings[2] == 'source:1: core: forbidden symbol Forbidden'
-        assert findings[-1] == 'source:2: core: forbidden symbol Forbidden'
+        findings = boundary_case.validate(config)
+        assert findings == [
+            'core: no inputs match: missing',
+            'source:1: core: forbidden import Forbidden',
+            *(
+                f'source:{line}: core: forbidden symbol Forbidden'
+                for line in boundary_case.symbol_lines
+            ),
+        ]
         assert snapshot_files(tmp_path) == before
 
-    @pytest.mark.parametrize('language', ('python', 'swift'))
     def test_unreadable_source_fails_without_source_disclosure(
         self,
         tmp_path: Path,
-        language: str,
+        boundary_case: BoundaryCase,
     ) -> None:
-        """Return redacted decoding diagnostics for both language front ends."""
-        domain = f'{language}-boundaries'
+        """
+        Return redacted decoding diagnostics for both language front ends.
+        """
+        domain = boundary_case.domain
         (tmp_path / 'popo.toml').write_text(
             f'[[{domain}.layers]]\nname="core"\ninclude=["source"]',
             encoding='utf-8',
         )
         (tmp_path / 'source').write_bytes(b'PRIVATE\xff')
         before = snapshot_files(tmp_path)
-        validator = python_boundaries if language == 'python' else swift_boundaries
-        findings = validator.validate(load_boundaries_config(tmp_path, domain))
+        findings = boundary_case.validate(load_boundaries_config(tmp_path, domain))
         assert findings
         assert 'PRIVATE' not in '\n'.join(findings)
         assert snapshot_files(tmp_path) == before
@@ -74,25 +141,21 @@ class TestBoundaryContracts:
 class TestOverlappingBoundaryLayers:
     """Retain layer-specific evaluation while preparing each input once."""
 
-    @pytest.mark.parametrize('language', ('python', 'swift'))
     def test_overlapping_selections_parse_once(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        language: str,
+        boundary_case: BoundaryCase,
     ) -> None:
         """Apply both layers' restrictions to one shared parsed source."""
-        from unittest.mock import Mock
-
-        validator = python_boundaries if language == 'python' else swift_boundaries
         analyzer = (
             python_boundaries._PythonBoundaryAnalyzer
-            if language == 'python'
+            if boundary_case.domain == 'python-boundaries'
             else swift_boundaries._SwiftBoundaryAnalyzer
         )
         parse = Mock(wraps=analyzer.parse)
         monkeypatch.setattr(analyzer, 'parse', staticmethod(parse))
-        domain = f'{language}-boundaries'
+        domain = boundary_case.domain
         (tmp_path / 'popo.toml').write_text(
             ''.join(
                 f'[[{domain}.layers]]\nname="{name}"\n'
@@ -103,7 +166,7 @@ class TestOverlappingBoundaryLayers:
         )
         (tmp_path / 'source').write_text('import Blocked', encoding='utf-8')
         before = snapshot_files(tmp_path)
-        assert validator.validate(load_boundaries_config(tmp_path, domain)) == [
+        assert boundary_case.validate(load_boundaries_config(tmp_path, domain)) == [
             f'source:1: {name}: forbidden import Blocked'
             for name in ('first', 'second')
         ]
