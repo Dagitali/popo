@@ -265,4 +265,39 @@ class TestDocumentationRunner:
         assert 'Private' not in '\n'.join(findings)
 
 
+class TestDisabledCallableContracts:
+    """Keep shared dispatch independent of a consumer's selected rules."""
+
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    def test_disabled_rules_do_not_require_sections(
+        self,
+        tmp_path: Path,
+        language: str,
+    ) -> None:
+        """Leave absent callable markup valid when all relevant rules are off."""
+        domain = f'{language}-source'
+        settings = dict(DOMAINS[domain]) | {
+            'file-overviews': False,
+            'declaration-docs': False,
+        }
+        config = SourceCheckConfig(tmp_path, domain, ('*',), (), settings)
+        parser = _python_declarations if language == 'python' else _swift_declarations
+        interpreter = (
+            _python_documentation if language == 'python' else _swift_documentation
+        )
+        source = (
+            'def f(value: int) -> int:\n    raise ValueError()'
+            if language == 'python'
+            else 'func f(value: Int) throws -> Int { throw Failure() }'
+        )
+        assert (
+            interpreter.documentation_findings(
+                parser.parse(source),
+                config,
+                'source',
+            )
+            == []
+        )
+
+
 # !SECTION
