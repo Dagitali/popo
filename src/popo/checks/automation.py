@@ -259,6 +259,50 @@ def _metadata(
                 re.compile(pattern)
 
 
+def _orphan_metadata_findings(
+    paths: dict[Path, str],
+) -> list[str]:
+    """
+    Find orphan template companions while retaining independent discoveries.
+
+    Parameters
+    ----------
+    paths : dict[pathlib.Path, str]
+        Selected automation paths and their assigned categories.
+
+    Returns
+    -------
+    list[str]
+        Orphan findings in sorted parent/file order. Parent discovery and
+        companion-file inspection errors become redacted findings; later
+        parents and metadata files are still inspected when possible.
+
+    Notes
+    -----
+    Inspect companion names and YAML file existence only, without reading JSON
+    contents or executing templates. Full validation invokes this stage;
+    pins-only validation skips it.
+    """
+    failures: list[str] = []
+    parents = {path.parent for path, kind in paths.items() if kind == 'template'}
+    for parent in sorted(parents):
+        try:
+            metadata_files = sorted(parent.glob('*.properties.json'))
+        except (OSError, ValueError):
+            failures.append(f'{parent}: cannot discover template metadata')
+            continue
+        for metadata in metadata_files:
+            stem = metadata.name.removesuffix('.properties.json')
+            try:
+                if not any(
+                    (parent / (stem + ext)).is_file() for ext in ('.yml', '.yaml')
+                ):
+                    failures.append(f'{metadata}: orphan template metadata')
+            except (OSError, ValueError):
+                failures.append(f'{metadata}: cannot inspect template companion')
+    return failures
+
+
 def _target(
     config: AutomationConfig,
     reference: str,
@@ -363,7 +407,8 @@ def validate(
         targets, input mismatches, composite structure, template metadata, and
         unsafe pins. Configured-pattern discovery and file-inspection errors
         become redacted findings; later patterns and independent files are
-        still checked. Read/decode errors become per-file diagnostics.
+        still checked. Read/decode errors become per-file diagnostics. Orphan
+        metadata discovery and inspection failures also retain later findings.
 
     Notes
     -----
@@ -419,18 +464,16 @@ def validate(
                             'workflow_call',
                         )
                     _call(node, doc, workflow)
-        except (OSError, UnicodeError, ValueError, yaml.YAMLError, re.error) as error:
+        except (
+            OSError,
+            UnicodeError,
+            ValueError,
+            yaml.YAMLError,
+            re.PatternError,
+        ) as error:
             failures.append(f'{path}: {error}')
     if not pins_only:
-        for parent in sorted(
-            {p.parent for p, kind in paths.items() if kind == 'template'},
-        ):
-            for metadata in sorted(parent.glob('*.properties.json')):
-                stem = metadata.name.removesuffix('.properties.json')
-                if not any(
-                    (parent / (stem + ext)).is_file() for ext in ('.yml', '.yaml')
-                ):
-                    failures.append(f'{metadata}: orphan template metadata')
+        failures.extend(_orphan_metadata_findings(paths))
     return failures
 
 
