@@ -71,4 +71,44 @@ class TestBoundaryContracts:
         assert snapshot_files(tmp_path) == before
 
 
+class TestOverlappingBoundaryLayers:
+    """Retain layer-specific evaluation while preparing each input once."""
+
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    def test_overlapping_selections_parse_once(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        language: str,
+    ) -> None:
+        """Apply both layers' restrictions to one shared parsed source."""
+        from unittest.mock import Mock
+
+        validator = python_boundaries if language == 'python' else swift_boundaries
+        analyzer = (
+            python_boundaries._PythonBoundaryAnalyzer
+            if language == 'python'
+            else swift_boundaries._SwiftBoundaryAnalyzer
+        )
+        parse = Mock(wraps=analyzer.parse)
+        monkeypatch.setattr(analyzer, 'parse', staticmethod(parse))
+        domain = f'{language}-boundaries'
+        (tmp_path / 'popo.toml').write_text(
+            ''.join(
+                f'[[{domain}.layers]]\nname="{name}"\n'
+                'include=["source"]\nallowed-imports=[]\n'
+                for name in ('first', 'second')
+            ),
+            encoding='utf-8',
+        )
+        (tmp_path / 'source').write_text('import Blocked', encoding='utf-8')
+        before = snapshot_files(tmp_path)
+        assert validator.validate(load_boundaries_config(tmp_path, domain)) == [
+            f'source:1: {name}: forbidden import Blocked'
+            for name in ('first', 'second')
+        ]
+        parse.assert_called_once()
+        assert snapshot_files(tmp_path) == before
+
+
 # !SECTION
