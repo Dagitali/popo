@@ -5,6 +5,7 @@ Exercise configured file existence, header syntax and containment boundaries.
 """
 
 import subprocess
+import sys
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -128,6 +129,60 @@ class TestFileDiscoveryFailures:
             ]
 
 
+class TestGitSourceFilenames:
+    """Preserve Git filename bytes independently of the installed Git tool."""
+
+    @pytest.mark.parametrize(
+        'filename',
+        ['carriage\rreturn', 'pair\r\nname', 'unicode-ü'],
+    )
+    def test_filename_is_not_translated(
+        self,
+        tmp_path: Path,
+        filename: str,
+    ) -> None:
+        """Inspect every selected path without newline translation."""
+        try:
+            (tmp_path / filename).write_text('wrong header', encoding='utf-8')
+        except OSError:
+            pytest.skip('Filename unavailable on this platform')
+        config = HeadersConfig(
+            tmp_path,
+            'Sample',
+            'Notice',
+            (HeaderRule(('*',), 'raw', 'expected', purpose_required=False),),
+            (),
+            (),
+        )
+        run_process = subprocess.run
+        payload = (filename + '\0').encode()
+
+        def run(
+            command: list[str],
+            *,
+            capture_output: bool,
+            timeout: int,
+            text: bool = False,
+        ) -> subprocess.CompletedProcess[bytes] | subprocess.CompletedProcess[str]:
+            return run_process(
+                [
+                    sys.executable,
+                    '-c',
+                    f'import sys; sys.stdout.buffer.write({payload!r})',
+                ],
+                capture_output=capture_output,
+                timeout=timeout,
+                text=text,
+            )
+
+        before = snapshot_files(tmp_path)
+        with patch('popo.checks.files.subprocess.run', side_effect=run):
+            assert validate_headers(config) == [
+                f'{filename}: header does not match configured identity/prefix',
+            ]
+        assert snapshot_files(tmp_path) == before
+
+
 class TestHeaderDirectoryLinks:
     """Keep existing directory-link discovery behavior unchanged."""
 
@@ -230,7 +285,12 @@ class TestHeaderPolicies:
         (headers.root / '.git').mkdir()
         with patch(
             'popo.checks.files.subprocess.run',
-            return_value=subprocess.CompletedProcess([], 128, '', 'broken repository'),
+            return_value=subprocess.CompletedProcess(
+                [],
+                128,
+                b'',
+                b'broken repository',
+            ),
         ):
             assert validate_headers(headers) == [
                 'header source discovery failed: Git source inventory failed',
@@ -625,7 +685,7 @@ class TestHeaderPolicies:
         )
         with patch(
             'popo.checks.files.subprocess.run',
-            return_value=subprocess.CompletedProcess([], 0, 'sample\0deleted\0', ''),
+            return_value=subprocess.CompletedProcess([], 0, b'sample\0deleted\0', b''),
         ) as run:
             assert validate_headers(headers) == []
             assert '--others' in run.call_args.args[0]
