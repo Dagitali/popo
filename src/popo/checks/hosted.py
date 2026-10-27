@@ -13,7 +13,7 @@ import json
 import re
 import subprocess
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 from urllib.parse import quote
@@ -470,34 +470,42 @@ def audit(
     now = datetime.now(UTC)
     day = today or now.date()
     findings = [item for repo in config.repositories for item in _repository(repo, get)]
+    missing_positions: dict[tuple[str, str], list[int]] = {}
+    for index, item in enumerate(findings):
+        if item.status == 'missing':
+            missing_positions.setdefault((item.repository, item.check), []).append(
+                index,
+            )
     for exception in config.exceptions:
         if exception.expires < day:
-            findings.append(
-                Finding(
-                    exception.repository,
-                    f'exception:{exception.check}',
-                    'missing',
-                    f'exception expired {exception.expires}; owner={exception.owner}',
-                    exception.approval,
-                ),
-            )
-            continue
-        for index, item in enumerate(findings):
-            if (item.repository, item.check, item.status) == (
+            expired = Finding(
                 exception.repository,
-                exception.check,
+                f'exception:{exception.check}',
                 'missing',
-            ):
-                findings[index] = Finding(
-                    item.repository,
-                    item.check,
-                    'excepted',
+                f'exception expired {exception.expires}; owner={exception.owner}',
+                exception.approval,
+            )
+            missing_positions.setdefault(
+                (expired.repository, expired.check),
+                [],
+            ).append(
+                len(findings),
+            )
+            findings.append(expired)
+            continue
+        scope = (exception.repository, exception.check)
+        for index in missing_positions.pop(scope, []):
+            item = findings[index]
+            findings[index] = replace(
+                item,
+                status='excepted',
+                detail=(
                     f'{item.detail}; owner={exception.owner}; '
                     f'approved-by={exception.approved_by}; '
                     f'expires={exception.expires}; '
-                    f'reason={exception.reason}; approval={exception.approval}',
-                    item.evidence,
-                )
+                    f'reason={exception.reason}; approval={exception.approval}'
+                ),
+            )
     return Audit(now.isoformat(), tuple(findings))
 
 
