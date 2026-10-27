@@ -250,4 +250,71 @@ class TestResultInputs:
         ]
 
 
+class TestDirectResultConfiguration:
+    """Fail safely when direct callers bypass loader and CLI guarantees."""
+
+    @pytest.mark.parametrize('valid_json', (False, True))
+    def test_unsupported_adapter_preserves_json_error_precedence(
+        self,
+        tmp_path: Path,
+        valid_json: bool,
+    ) -> None:
+        """Reject unknown adapters without hiding malformed JSON evidence."""
+        from dataclasses import replace
+
+        (tmp_path / 'popo.toml').write_text(
+            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
+            encoding='utf-8',
+        )
+        (tmp_path / 'report.json').write_text(
+            '{}' if valid_json else '{PRIVATE',
+            encoding='utf-8',
+        )
+        config = replace(load_test_results_config(tmp_path), adapter='unknown')
+        expected = (
+            'unsupported test-result adapter'
+            if valid_json
+            else 'invalid test-result JSON'
+        )
+        assert validate(config) == [f'report.json: {expected}']
+
+    def test_conflicting_overrides_fail_before_discovery(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Do not inspect artifacts when root and summary overrides conflict."""
+        from popo.config.source_checks import SourceCheckConfig
+        from popo.config.test_results import TestResultsConfig
+
+        config = TestResultsConfig(
+            SourceCheckConfig(tmp_path, 'test-results', ('*.json',), (), {}),
+            'xcode-summary',
+            THRESHOLDS,
+        )
+        assert validate(config, tmp_path, tmp_path / 'missing.json') == [
+            'choose either a result root or a single summary',
+        ]
+
+    @pytest.mark.parametrize('error_type', (OSError, ValueError))
+    def test_root_resolution_errors_are_redacted(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        error_type: type[Exception],
+    ) -> None:
+        """Report unusable artifact roots without disclosing exception text."""
+        from unittest.mock import Mock
+
+        from popo.config.source_checks import SourceCheckConfig
+        from popo.config.test_results import TestResultsConfig
+
+        config = TestResultsConfig(
+            SourceCheckConfig(tmp_path, 'test-results', ('*.json',), (), {}),
+            'xcode-summary',
+            THRESHOLDS,
+        )
+        monkeypatch.setattr(Path, 'resolve', Mock(side_effect=error_type('PRIVATE')))
+        assert validate(config) == ['cannot resolve selected result root']
+
+
 # !SECTION

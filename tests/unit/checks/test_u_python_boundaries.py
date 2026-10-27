@@ -147,4 +147,36 @@ class TestBoundaryConfigurationParity:
         assert failures == []
 
 
+class TestPythonModuleOwnership:
+    """Distinguish a src-layout directory from a module named src.py."""
+
+    @pytest.mark.parametrize(
+        'owner',
+        ('src.py', 'pkg/module.py', 'src/pkg/module.py'),
+    )
+    def test_path_based_layer_targets(
+        self,
+        tmp_path: Path,
+        owner: str,
+    ) -> None:
+        """Reject imports from each owned module without executing its code."""
+        path = tmp_path / owner
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('raise RuntimeError("must not execute")', encoding='utf-8')
+        module = 'src' if owner == 'src.py' else 'pkg.module'
+        (tmp_path / 'consumer.py').write_text(f'import {module}', encoding='utf-8')
+        (tmp_path / 'popo.toml').write_text(
+            '[[python-boundaries.layers]]\nname="consumer"\n'
+            'include=["consumer.py"]\nforbidden-layers=["owner"]\n'
+            '[[python-boundaries.layers]]\nname="owner"\n'
+            f'include=["{owner}"]',
+            encoding='utf-8',
+        )
+        before = snapshot_files(tmp_path)
+        assert validate(load_python_boundaries_config(tmp_path)) == [
+            f'consumer.py:1: consumer: forbidden layer import {module}',
+        ]
+        assert snapshot_files(tmp_path) == before
+
+
 # !SECTION
