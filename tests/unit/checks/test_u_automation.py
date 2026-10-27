@@ -4,7 +4,7 @@
 Exercise portable, read-only automation contracts.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
 
@@ -12,7 +12,7 @@ import pytest
 
 from popo.checks.automation import validate
 from popo.config.automation import AutomationConfig, load_automation_config
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -225,6 +225,51 @@ class TestAutomationDiscovery:
         failures = validate(AutomationConfig(tmp_path))
         assert len(failures) == 1
         assert message in failures[0]
+
+    @pytest.mark.parametrize('operation', ['glob', 'is_file'])
+    @pytest.mark.parametrize('error', [PermissionError, ValueError])
+    @pytest.mark.parametrize('pins_only', [False, True])
+    def test_discovery_failure_keeps_independent_findings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+        error: type[Exception],
+        pins_only: bool,
+    ) -> None:
+        """Keep independent findings after a discovery failure."""
+        write_file('broken.yml', 'on: push')
+        later = write_file('later.yml', 'uses: upstream/action@main')
+        config = AutomationConfig(tmp_path, workflow_globs=('broken.yml', 'later.yml'))
+        before = snapshot_files(tmp_path)
+        original_glob = Path.glob
+        original_is_file = Path.is_file
+
+        def glob(
+            path: Path,
+            pattern: str,
+        ) -> Iterator[Path]:
+            yield from original_glob(path, pattern)
+            if operation == 'glob' and pattern == 'broken.yml':
+                raise error('PRIVATE DISCOVERY DETAILS')
+
+        def is_file(
+            path: Path,
+        ) -> bool:
+            if operation == 'is_file' and path.name == 'broken.yml':
+                raise error('PRIVATE INSPECTION DETAILS')
+            return original_is_file(path)
+
+        with monkeypatch.context() as patcher:
+            patcher.setattr(Path, 'glob', glob)
+            patcher.setattr(Path, 'is_file', is_file)
+            assert validate(config, pins_only=pins_only) == [
+                'cannot discover automation files: broken.yml',
+                f'{later}: remote action must use a full commit SHA: '
+                'upstream/action@main',
+            ]
+        assert snapshot_files(tmp_path) == before
 
     def test_optional_configuration(
         self,
