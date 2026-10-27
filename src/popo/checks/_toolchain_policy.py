@@ -7,6 +7,7 @@ Observe scoped workflow toolchain declarations without execution.
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import yaml
 
@@ -17,6 +18,15 @@ from ._yaml import read_mapping, require_mapping
 
 IDENTIFIER_PATTERN = re.compile(r'[A-Za-z_][A-Za-z0-9_-]*')
 REFERENCE_PATTERN = re.compile(r'\$\{\{\s*(env|matrix)\.([A-Za-z_][A-Za-z0-9_-]*)\s*}}')
+
+
+# !SECTION
+
+
+# SECTION: TYPE ALIASES
+
+
+type ObservationKind = Literal['runtime', 'compiler', 'preferred', 'tools']
 
 
 # !SECTION
@@ -37,14 +47,14 @@ class VersionObservation:
         Field selector or CLI option identifying the observation.
     value : str
         Declared version text; language-specific comparison validates it.
-    kind : str
-        Compiler, preferred local selection or package tools version.
+    kind : ObservationKind
+        Runtime, compiler, preferred local selection or package tools version.
     """
 
     source: Path | None
     location: str
     value: str
-    kind: str = 'compiler'
+    kind: ObservationKind = 'compiler'
 
 
 # !SECTION
@@ -99,6 +109,8 @@ def _resolve(
 def workflow_observations(
     path: Path,
     key: str,
+    *,
+    kind: ObservationKind = 'compiler',
 ) -> tuple[tuple[VersionObservation, ...], list[str]]:
     """
     Read selected action/reusable-workflow inputs with scoped provenance.
@@ -109,6 +121,8 @@ def workflow_observations(
         UTF-8 workflow file; callers enforce the repository boundary.
     key : str
         Literal input key, such as python-version or swift-version.
+    kind : ObservationKind, optional
+        Interpretation supplied by the caller; no tool identity is inferred.
 
     Returns
     -------
@@ -157,7 +171,8 @@ def workflow_observations(
                     )
                     continue
                 observations.extend(
-                    VersionObservation(path, selector, version) for version in versions
+                    VersionObservation(path, selector, version, kind)
+                    for version in versions
                 )
     except (OSError, UnicodeError, ValueError, yaml.YAMLError):
         failures.append('cannot read a valid workflow version declaration')

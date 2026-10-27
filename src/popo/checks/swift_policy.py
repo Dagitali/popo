@@ -9,7 +9,11 @@ from pathlib import Path
 
 from popo.config.swift_policy import SwiftPolicyConfig, parse_version
 
-from ._toolchain_policy import VersionObservation, workflow_observations
+from ._toolchain_policy import (
+    ObservationKind,
+    VersionObservation,
+    workflow_observations,
+)
 
 # SECTION: CONSTANTS
 
@@ -54,7 +58,11 @@ def _local_observations(
     """
     observations: list[VersionObservation] = []
     failures: list[str] = []
-    for path, kind in ((config.version_file, 'preferred'), (config.manifest, 'tools')):
+    declarations: tuple[tuple[Path, ObservationKind], ...] = (
+        (config.version_file, 'preferred'),
+        (config.manifest, 'tools'),
+    )
+    for path, kind in declarations:
         text, errors = _read_text(path, config.root)
         failures.extend(errors)
         if text is None:

@@ -5,7 +5,7 @@ Share callable evidence, source-size, documentation-width and guide checks.
 """
 
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,7 +48,59 @@ class CallableDocumentation:
 # !SECTION
 
 
+# SECTION: TYPE ALIASES
+
+
+type DocumentationInterpreter = Callable[[str, str], CallableDocumentation]
+
+
+# !SECTION
+
+
 # SECTION: FUNCTIONS
+
+
+def callable_findings(
+    facts: DeclarationFacts,
+    config: SourceCheckConfig,
+    relative: str,
+    callable_kinds: Collection[str],
+    interpret: DocumentationInterpreter,
+) -> list[str]:
+    """
+    Interpret callable markup and compare it with signature requirements.
+
+    Parameters
+    ----------
+    facts : DeclarationFacts
+        Precomputed declaration requirements, including its language kind.
+    config : SourceCheckConfig
+        Consumer-owned callable documentation switches.
+    relative : str
+        Repository-relative diagnostic filename.
+    callable_kinds : collections.abc.Collection[str]
+        Language-specific kinds whose callable contracts should be checked.
+    interpret : DocumentationInterpreter
+        Convert documentation and required result section to shared evidence.
+
+    Returns
+    -------
+    list[str]
+        Contract findings in rule order, or empty for noncallable declarations.
+
+    Notes
+    -----
+    Presence and spacing rules remain the caller's responsibility. Interpreter
+    exceptions propagate; no syntax parsing or consumer execution occurs.
+    """
+    if facts.kind not in callable_kinds:
+        return []
+    return contract_findings(
+        facts,
+        config,
+        relative,
+        interpret(facts.documentation, facts.return_section),
+    )
 
 
 def contract_findings(

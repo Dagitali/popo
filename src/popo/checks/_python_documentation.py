@@ -12,7 +12,7 @@ from ._python_declarations import CALLABLE_KINDS, Declaration
 from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
-    contract_findings,
+    callable_findings,
 )
 from ._source_documentation import (
     documentation_findings as collect_documentation_findings,
@@ -70,15 +70,9 @@ def _declaration_findings(
         failures.append(
             f'{relative}:{facts.line}: missing declaration documentation',
         )
-    if facts.kind in CALLABLE_KINDS:
-        failures.extend(
-            contract_findings(
-                facts,
-                config,
-                relative,
-                _documentation(doc, facts.return_section),
-            ),
-        )
+    failures.extend(
+        callable_findings(facts, config, relative, CALLABLE_KINDS, _documentation),
+    )
     return failures
 
 
