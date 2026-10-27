@@ -5,25 +5,52 @@ Exercise strict report schema, configurable acceptance and private diagnostics.
 """
 
 import json
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
+from unittest.mock import Mock
 
 import pytest
 
 from popo.checks.test_results import validate, xcode_summary
 from popo.config.test_results import THRESHOLDS, load_test_results_config
+from popo.config.test_results import TestResultsConfig as ResultConfig
 
 # SECTION: FIXTURES
 
 
+@pytest.fixture(name='result_config')
+def result_config_fixture(
+    tmp_path: Path,
+) -> ResultConfig:
+    """
+    Load independent report selection and thresholds for each input test.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Disposable consumer root used by the requesting test.
+
+    Returns
+    -------
+    ResultConfig
+        JSON selection and fresh acceptance settings from the public loader.
+    """
+    (tmp_path / 'popo.toml').write_text(
+        '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
+        encoding='utf-8',
+    )
+    return load_test_results_config(tmp_path)
+
+
 @pytest.fixture(name='passing')
-def passing_fixture() -> dict[str, Any]:
+def passing_fixture() -> dict[str, object]:
     """
     Supply one accepted Xcode-summary record per scenario.
 
     Returns
     -------
-    dict[str, Any]
+    dict[str, object]
         Independent native counts with no failures, skips or warnings.
     """
     return dict(totalTestCount=1, passedTests=1, failedTests=0, skippedTests=0)
@@ -45,7 +72,7 @@ class TestResultAdapter:
     @pytest.mark.parametrize('value', (True, False, -1, '1', 1.0, None, ...))
     def test_counts_are_required_nonnegative_integers(
         self: Self,
-        passing: dict[str, Any],
+        passing: dict[str, object],
         field: str,
         value: object,
     ) -> None:
@@ -54,7 +81,7 @@ class TestResultAdapter:
 
         Parameters
         ----------
-        passing : dict[str, Any]
+        passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
         field : str
             Required native count field selected for mutation.
@@ -84,14 +111,14 @@ class TestResultAdapter:
 
     def test_inconsistent_totals_are_not_threshold_overrides(
         self: Self,
-        passing: dict[str, Any],
+        passing: dict[str, object],
     ) -> None:
         """
         Always require internally consistent counts even with relaxed limits.
 
         Parameters
         ----------
-        passing : dict[str, Any]
+        passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
         """
         passing['totalTestCount'] = 2
@@ -111,8 +138,8 @@ class TestResultAdapter:
     )
     def test_acceptance_is_consumer_configurable(
         self: Self,
-        passing: dict[str, Any],
-        changes: dict[str, Any],
+        passing: dict[str, object],
+        changes: dict[str, object],
         threshold: str,
     ) -> None:
         """
@@ -120,9 +147,9 @@ class TestResultAdapter:
 
         Parameters
         ----------
-        passing : dict[str, Any]
+        passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
-        changes : dict[str, Any]
+        changes : dict[str, object]
             Count or warning replacements introducing one acceptance violation.
         threshold : str
             Consumer acceptance setting expected to reject the modified report.
@@ -143,7 +170,7 @@ class TestResultAdapter:
     @pytest.mark.parametrize('warnings', (False, 0, {}, '', None))
     def test_warning_collections_must_be_lists(
         self: Self,
-        passing: dict[str, Any],
+        passing: dict[str, object],
         warnings: object,
     ) -> None:
         """
@@ -151,7 +178,7 @@ class TestResultAdapter:
 
         Parameters
         ----------
-        passing : dict[str, Any]
+        passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
         warnings : object
             Malformed false-like warning value that must not count as clean
@@ -172,6 +199,7 @@ class TestResultInputs:
     def test_unusable_evidence_fails_closed(
         self: Self,
         tmp_path: Path,
+        result_config: ResultConfig,
         case: str,
     ) -> None:
         """
@@ -182,13 +210,12 @@ class TestResultInputs:
         tmp_path : Path
             Pytest-managed directory containing only disposable consumer
             inputs.
+        result_config : ResultConfig
+            Fresh loaded policy selecting JSON reports in this consumer root.
         case : str
             Independent missing, malformed, unreadable or escaping input
             scenario.
         """
-        (tmp_path / 'popo.toml').write_text(
-            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
-        )
         path = tmp_path / 'summary.json'
         if case == 'invalid-json':
             path.write_text('{PRIVATE')
@@ -196,14 +223,15 @@ class TestResultInputs:
             path.write_bytes(b'\xff')
         elif case == 'escaped':
             path.symlink_to(tmp_path.parent / 'outside.json')
-        findings = validate(load_test_results_config(tmp_path))
+        findings = validate(result_config)
         assert findings
         assert 'PRIVATE' not in str(findings)
 
     def test_single_summary_is_literal_and_does_not_read_siblings(
         self: Self,
         tmp_path: Path,
-        passing: dict[str, Any],
+        result_config: ResultConfig,
+        passing: dict[str, object],
     ) -> None:
         """
         Escape filename glob characters and honor only the explicit report.
@@ -213,21 +241,21 @@ class TestResultInputs:
         tmp_path : Path
             Pytest-managed directory containing only disposable consumer
             inputs.
-        passing : dict[str, Any]
+        result_config : ResultConfig
+            Fresh loaded policy selecting JSON reports in this consumer root.
+        passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
         """
-        (tmp_path / 'popo.toml').write_text(
-            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
-        )
         selected = tmp_path / 'summary[1].json'
         selected.write_text(json.dumps(passing))
         (tmp_path / 'summary1.json').write_text('PRIVATE invalid JSON')
-        assert validate(load_test_results_config(tmp_path), summary=selected) == []
+        assert validate(result_config, summary=selected) == []
 
     def test_all_selected_reports_must_pass(
         self: Self,
         tmp_path: Path,
-        passing: dict[str, Any],
+        result_config: ResultConfig,
+        passing: dict[str, object],
     ) -> None:
         """
         A clean sibling cannot hide malformed or failed result evidence.
@@ -237,15 +265,14 @@ class TestResultInputs:
         tmp_path : Path
             Pytest-managed directory containing only disposable consumer
             inputs.
-        passing : dict[str, Any]
+        result_config : ResultConfig
+            Fresh loaded policy selecting JSON reports in this consumer root.
+        passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
         """
-        (tmp_path / 'popo.toml').write_text(
-            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
-        )
         (tmp_path / 'good.json').write_text(json.dumps(passing))
         (tmp_path / 'bad.json').write_text('{}')
-        assert validate(load_test_results_config(tmp_path)) == [
+        assert validate(result_config) == [
             'bad.json: malformed native test counts',
         ]
 
@@ -257,20 +284,15 @@ class TestDirectResultConfiguration:
     def test_unsupported_adapter_preserves_json_error_precedence(
         self,
         tmp_path: Path,
+        result_config: ResultConfig,
         valid_json: bool,
     ) -> None:
         """Reject unknown adapters without hiding malformed JSON evidence."""
-        from dataclasses import replace
-
-        (tmp_path / 'popo.toml').write_text(
-            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
-            encoding='utf-8',
-        )
         (tmp_path / 'report.json').write_text(
             '{}' if valid_json else '{PRIVATE',
             encoding='utf-8',
         )
-        config = replace(load_test_results_config(tmp_path), adapter='unknown')
+        config = replace(result_config, adapter='unknown')
         expected = (
             'unsupported test-result adapter'
             if valid_json
@@ -281,17 +303,12 @@ class TestDirectResultConfiguration:
     def test_conflicting_overrides_fail_before_discovery(
         self,
         tmp_path: Path,
+        result_config: ResultConfig,
     ) -> None:
-        """Do not inspect artifacts when root and summary overrides conflict."""
-        from popo.config.source_checks import SourceCheckConfig
-        from popo.config.test_results import TestResultsConfig
-
-        config = TestResultsConfig(
-            SourceCheckConfig(tmp_path, 'test-results', ('*.json',), (), {}),
-            'xcode-summary',
-            THRESHOLDS,
-        )
-        assert validate(config, tmp_path, tmp_path / 'missing.json') == [
+        """
+        Do not inspect artifacts when root and summary overrides conflict.
+        """
+        assert validate(result_config, tmp_path, tmp_path / 'missing.json') == [
             'choose either a result root or a single summary',
         ]
 
@@ -299,22 +316,13 @@ class TestDirectResultConfiguration:
     def test_root_resolution_errors_are_redacted(
         self,
         tmp_path: Path,
+        result_config: ResultConfig,
         monkeypatch: pytest.MonkeyPatch,
         error_type: type[Exception],
     ) -> None:
         """Report unusable artifact roots without disclosing exception text."""
-        from unittest.mock import Mock
-
-        from popo.config.source_checks import SourceCheckConfig
-        from popo.config.test_results import TestResultsConfig
-
-        config = TestResultsConfig(
-            SourceCheckConfig(tmp_path, 'test-results', ('*.json',), (), {}),
-            'xcode-summary',
-            THRESHOLDS,
-        )
         monkeypatch.setattr(Path, 'resolve', Mock(side_effect=error_type('PRIVATE')))
-        assert validate(config) == ['cannot resolve selected result root']
+        assert validate(result_config) == ['cannot resolve selected result root']
 
 
 # !SECTION
