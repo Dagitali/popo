@@ -8,8 +8,7 @@ import re
 from collections.abc import Collection
 from pathlib import Path
 
-from popo.config.source_boundaries import BoundaryLayer
-from popo.config.swift_boundaries import SwiftBoundariesConfig
+from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 
 from ._source_boundaries import ImportReference, validate_boundaries
 from ._swift_declarations import lexical_view
@@ -165,14 +164,14 @@ def _symbol_findings(
 
 
 def validate(
-    config: SwiftBoundariesConfig,
+    config: BoundaryConfig,
 ) -> list[str]:
     """
     Validate Swift import and cross-layer symbol restrictions offline.
 
     Parameters
     ----------
-    config : SwiftBoundariesConfig
+    config : BoundaryConfig
         Validated layers with confined source selections and import rules.
 
     Returns

@@ -8,8 +8,7 @@ import ast
 from collections.abc import Collection
 from pathlib import Path
 
-from popo.config.python_boundaries import PythonBoundariesConfig
-from popo.config.source_boundaries import BoundaryLayer
+from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 
 from ._source_boundaries import ImportReference, validate_boundaries
 
@@ -216,14 +215,14 @@ def _symbol_findings(
 
 
 def validate(
-    config: PythonBoundariesConfig,
+    config: BoundaryConfig,
 ) -> list[str]:
     """
     Validate Python import-layer and explicit symbol restrictions offline.
 
     Parameters
     ----------
-    config : PythonBoundariesConfig
+    config : BoundaryConfig
         Validated layers with confined source selections and import rules.
 
     Returns
