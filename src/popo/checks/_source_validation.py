@@ -12,14 +12,21 @@ from popo.config.source_checks import SourceCheckConfig
 from ._source_documentation import guide_findings
 from ._source_inputs import discover, read_source
 
-# SECTION: FUNCTIONS
+# SECTION: TYPE ALIASES
+
+
+type SourceInspector = Callable[[SourceCheckConfig, Path, str], list[str]]
+
+
+# !SECTION
+
 
 # SECTION: FUNCTIONS
 
 
 def validate_sources(
     config: SourceCheckConfig,
-    source_findings: Callable[[SourceCheckConfig, Path, str], list[str]],
+    source_findings: SourceInspector,
 ) -> list[str]:
     """
     Collect discovery, guide, read and language-specific findings in order.
@@ -28,7 +35,7 @@ def validate_sources(
     ----------
     config : SourceCheckConfig
         Consumer-owned source selection, guide and convention settings.
-    source_findings : callable
+    source_findings : SourceInspector
         Language-specific inspector receiving config, path and UTF-8 text.
         Called once per readable selected file, in sorted path order.
 

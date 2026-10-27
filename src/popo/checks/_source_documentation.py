@@ -5,13 +5,13 @@ Share callable evidence, source-size, documentation-width and guide checks.
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import DeclarationFacts
+from ._source_declarations import DeclarationFacts, SourceFacts
 from ._source_inputs import read_source
 
 # SECTION: DATA CLASSES
@@ -103,6 +103,44 @@ def contract_findings(
         for key, failed, message in rules
         if config.settings[key] and failed
     ]
+
+
+def documentation_findings[Declaration](
+    source: SourceFacts[Declaration],
+    config: SourceCheckConfig,
+    relative: str,
+    declaration_findings: Callable[[Declaration, SourceCheckConfig, str], list[str]],
+) -> list[str]:
+    """
+    Collect overview findings before language-specific declaration findings.
+
+    Parameters
+    ----------
+    source : SourceFacts[Declaration]
+        Precomputed overview and declarations in source order.
+    config : SourceCheckConfig
+        Consumer-owned documentation settings passed to each inspector.
+    relative : str
+        Repository-relative diagnostic filename; no file is read here.
+    declaration_findings : callable
+        Language-specific inspector called once per declaration, in order.
+        Retains responsibility for markup, spacing and contract semantics.
+
+    Returns
+    -------
+    list[str]
+        Overview findings followed by each declaration's findings, preserving
+        inspector order without deduplication or source-text disclosure.
+
+    Notes
+    -----
+    No syntax parsing, source reads or consumer execution occurs here.
+    Inspector exceptions propagate; inspectors own diagnostic redaction.
+    """
+    failures = overview_findings(source.has_overview, config, relative)
+    for declaration in source.declarations:
+        failures.extend(declaration_findings(declaration, config, relative))
+    return failures
 
 
 def guide_findings(

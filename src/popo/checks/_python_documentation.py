@@ -13,7 +13,9 @@ from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
     contract_findings,
-    overview_findings,
+)
+from ._source_documentation import (
+    documentation_findings as collect_documentation_findings,
 )
 
 # SECTION: CONSTANTS
@@ -206,10 +208,12 @@ def documentation_findings(
     Explicit raises include locally caught ones; exception escape analysis,
     indirect exceptions, prose quality and type descriptions are not validated.
     """
-    failures = overview_findings(source.has_overview, config, relative)
-    for declaration in source.declarations:
-        failures.extend(_declaration_findings(declaration, config, relative))
-    return failures
+    return collect_documentation_findings(
+        source,
+        config,
+        relative,
+        _declaration_findings,
+    )
 
 
 # !SECTION

@@ -12,7 +12,9 @@ from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
     contract_findings,
-    overview_findings,
+)
+from ._source_documentation import (
+    documentation_findings as collect_documentation_findings,
 )
 from ._swift_declarations import CALLABLE_KINDS, NOMINAL_KINDS, Declaration
 
@@ -215,10 +217,12 @@ def documentation_findings(
     Triple-slash comments are the supported notation; full DocC validation and
     the front end's unsupported Swift grammar remain separate responsibilities.
     """
-    failures = overview_findings(source.has_overview, config, relative)
-    for declaration in source.declarations:
-        failures.extend(_declaration_findings(declaration, config, relative))
-    return failures
+    return collect_documentation_findings(
+        source,
+        config,
+        relative,
+        _declaration_findings,
+    )
 
 
 # !SECTION
