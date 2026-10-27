@@ -20,10 +20,10 @@ Maintainer Notes
 
 ## Status and Scope
 
-These are unreleased, opt-in offline commands. They do not run tests, compile Swift, export result
-bundles, invoke consumer tools or write files. All use the existing text/JSON check-result schema
-and aggregate selection/continuation behavior. No default application identity or folder layout is
-imposed. Configuration is loaded from standalone `popo.toml`, otherwise `[tool.popo]` in
+These opt-in offline commands were added in v0.12.0. They do not run tests, compile Swift, export
+result bundles, invoke consumer tools or write files. All use the existing text/JSON check-result
+schema and aggregate selection/continuation behavior. No default application identity or folder
+layout is imposed. Configuration is loaded from standalone `popo.toml`, otherwise `[tool.popo]` in
 `pyproject.toml`; standalone examples below omit that prefix.
 
 ## Native Test Results
@@ -154,6 +154,6 @@ checks = ["check-test-results"]
 
 Explicit profiles do not activate automatically. With implicit selection, each configured domain
 adds its corresponding check; use a separate command for reports created only after test execution.
-Consumers should retain released local checks until an immutable released dependency contains these
-commands and positive/negative parity is verified. Generic implementation tests belong here;
-consumer tests retain policy selection, configured thresholds and runner integration.
+Consumers should adopt an immutable v0.12.0-or-later dependency containing these commands only after
+positive/negative parity is verified. Generic implementation tests belong here; consumer tests
+retain policy selection, configured thresholds and runner integration.
