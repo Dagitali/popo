@@ -382,6 +382,73 @@ class TestTemplateContracts:
         assert validate(config)
         assert validate(config, pins_only=True) == []
 
+    @pytest.mark.parametrize('operation', ['glob', 'is_file'])
+    @pytest.mark.parametrize('error', [PermissionError, ValueError])
+    @pytest.mark.parametrize('pins_only', [False, True])
+    def test_orphan_metadata_failures_keep_later_findings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+        error: type[Exception],
+        pins_only: bool,
+    ) -> None:
+        """Keep independent metadata findings and the pins-only bypass."""
+        for directory in ('first', 'second'):
+            write_file(f'{directory}/ci.yml', 'on: push')
+            write_file(
+                f'{directory}/ci.properties.json',
+                '{"name":"CI","description":"CI"}',
+            )
+            write_file(f'{directory}/orphan.properties.json', '{}')
+        extra = write_file('first/z-later.properties.json', '{}')
+        config = AutomationConfig(
+            tmp_path,
+            workflow_globs=(),
+            template_globs=('first/*.yml', 'second/*.yml'),
+        )
+        first = tmp_path / 'first'
+        original_glob = Path.glob
+        original_is_file = Path.is_file
+
+        def glob(
+            path: Path,
+            pattern: str,
+        ) -> Iterator[Path]:
+            yield from original_glob(path, pattern)
+            if operation == 'glob' and path == first and pattern == '*.properties.json':
+                raise error('PRIVATE DISCOVERY DETAILS')
+
+        def is_file(
+            path: Path,
+        ) -> bool:
+            if operation == 'is_file' and path == first / 'orphan.yml':
+                raise error('PRIVATE INSPECTION DETAILS')
+            return original_is_file(path)
+
+        expected = []
+        if not pins_only:
+            expected = (
+                [f'{first}: cannot discover template metadata']
+                if operation == 'glob'
+                else [
+                    f'{first / 'orphan.properties.json'}: '
+                    'cannot inspect template companion',
+                    f'{extra}: orphan template metadata',
+                ]
+            )
+            expected.append(
+                f'{tmp_path / 'second/orphan.properties.json'}: '
+                'orphan template metadata',
+            )
+        before = snapshot_files(tmp_path)
+        with monkeypatch.context() as patcher:
+            patcher.setattr(Path, 'glob', glob)
+            patcher.setattr(Path, 'is_file', is_file)
+            assert validate(config, pins_only=pins_only) == expected
+        assert snapshot_files(tmp_path) == before
+
     @pytest.mark.parametrize(
         'reference,template,ok',
         [
