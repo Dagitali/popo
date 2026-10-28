@@ -5,7 +5,7 @@ Collect Swift declaration facts through concrete syntax and bounded contracts.
 """
 
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 
 from ._source_declarations import (
@@ -198,7 +198,7 @@ class Declaration:
 def _declaration(
     syntax: _DeclarationSyntax,
     lines: list[str],
-    documentation: set[int],
+    documentation: Collection[int],
 ) -> Declaration:
     """
     Convert one declaration's syntax into facts and observations.
@@ -209,7 +209,7 @@ def _declaration(
         Nominal, member or callable record from _declaration_syntax.
     lines : list[str]
         Original source lines used to retain documentation text and spacing.
-    documentation : set[int]
+    documentation : collections.abc.Collection[int]
         One-based triple-slash documentation lines from concrete-syntax
         masking.
 
@@ -389,7 +389,7 @@ def _declaration_syntax(
 def _declarations(
     syntax: Iterable[_DeclarationSyntax],
     lines: list[str],
-    documentation: set[int],
+    documentation: Collection[int],
 ) -> Iterator[Declaration]:
     """
     Convert declaration syntax into shared facts and Swift observations.
@@ -400,7 +400,7 @@ def _declarations(
         Native/recovered declaration observations in discovery order.
     lines : list[str]
         Original source lines used to retain documentation text and spacing.
-    documentation : set[int]
+    documentation : collections.abc.Collection[int]
         One-based triple-slash documentation lines from concrete-syntax
         masking.
 
@@ -418,7 +418,7 @@ def _declarations(
 def _documentation(
     syntax: _DeclarationSyntax,
     lines: list[str],
-    documentation: set[int],
+    documentation: Collection[int],
 ) -> tuple[str, int, bool]:
     """
     Extract attached documentation using native syntax conventions.
@@ -429,7 +429,7 @@ def _documentation(
         Native/recovered declaration with attachment boundary observations.
     lines : list[str]
         Original source lines retaining comment prefixes and blank lines.
-    documentation : set[int]
+    documentation : collections.abc.Collection[int]
         One-based standalone triple-slash lines recognized by native syntax.
 
     Returns
@@ -458,7 +458,7 @@ def _documentation(
 def _file_overview(
     code: str,
     lines: list[str],
-    documentation: set[int],
+    documentation: Collection[int],
 ) -> bool:
     """
     Identify a file overview using the front end's documentation convention.
@@ -469,7 +469,7 @@ def _file_overview(
         Position-preserving masked Swift source from the native syntax view.
     lines : list[str]
         Original source lines retaining comment prefixes and indentation.
-    documentation : set[int]
+    documentation : collections.abc.Collection[int]
         One-based triple-slash documentation lines from concrete-syntax
         masking.
 
@@ -500,7 +500,7 @@ def _parameter_lines(
     code: str,
     position: int,
     parameters_start: int,
-    parameters: list[_ParameterSyntax],
+    parameters: Sequence[_ParameterSyntax],
 ) -> bool:
     """
     Check physical parameter/default spans using lexical source offsets.
@@ -513,7 +513,7 @@ def _parameter_lines(
         Declaration-keyword end offset identifying the declaration line.
     parameters_start : int
         Offset immediately after the signature's opening parenthesis.
-    parameters : list[_ParameterSyntax]
+    parameters : collections.abc.Sequence[_ParameterSyntax]
         Lexical offset/text records relative to parameters_start from
         _parameters.
 
@@ -542,15 +542,16 @@ def _parameter_lines(
 
 
 def _parameter_names(
-    parameters: list[_ParameterSyntax],
+    parameters: Sequence[_ParameterSyntax],
 ) -> tuple[str, ...] | None:
     """
     Interpret documentable names from native parameter syntax.
 
     Parameters
     ----------
-    parameters : list[_ParameterSyntax]
+    parameters : collections.abc.Sequence[_ParameterSyntax]
         Masked lexical fragments in source order from _parameters.
+        The sequence is inspected without modification.
 
     Returns
     -------
@@ -715,8 +716,8 @@ def _signature(
     -----
     Swift retains bounded signature interpretation over masked concrete
     syntax. Python instead reads its native AST arguments. Neither front end
-    executes consumer code or resolves types. Name interpretation uses a bounded
-    Swift grammar subset; unnamed arguments do not require documentation.
+    executes consumer code or resolves types. Names use a bounded Swift grammar
+    subset; unnamed arguments do not require documentation.
     """
     opening = code.find('(', position)
     if opening < 0 or any(char in code[position:opening] for char in '{};'):
@@ -817,7 +818,7 @@ def parse(
     resolves types or establishes compiler or semantic validation.
     """
     syntax = parse_syntax(source)
-    code, documentation = syntax.code, set(syntax.documentation)
+    code, documentation = syntax.code, syntax.documentation
     lines = source.splitlines()
     declarations = _declarations(
         _declaration_syntax(code, syntax),

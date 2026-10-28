@@ -5,7 +5,7 @@ Collect Python declaration facts through the standard-library AST.
 """
 
 import ast
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 
 from ._python_syntax import DocstringOwner, documentation_lines, nodes
@@ -314,7 +314,7 @@ def _file_overview(
 
 def _parameter_lines(
     node: _CallableSyntax,
-    parameters: list[_ParameterSyntax],
+    parameters: Sequence[_ParameterSyntax],
 ) -> bool:
     """
     Check physical parameter/default spans using native AST locations.
@@ -323,7 +323,7 @@ def _parameter_lines(
     ----------
     node : _CallableSyntax
         Function or async-function node identifying the declaration line.
-    parameters : list[_ParameterSyntax]
+    parameters : collections.abc.Sequence[_ParameterSyntax]
         Native ast.arg nodes from _parameters; defaults come from node.args.
 
     Returns
@@ -359,7 +359,7 @@ def _parameter_lines(
 
 def _parameter_names(
     node: _CallableSyntax,
-    parameters: list[_ParameterSyntax],
+    parameters: Sequence[_ParameterSyntax],
 ) -> tuple[str, ...]:
     """
     Interpret documentable names from native parameter syntax.
@@ -368,8 +368,9 @@ def _parameter_names(
     ----------
     node : _CallableSyntax
         Callable node identifying positional receiver placement.
-    parameters : list[_ParameterSyntax]
+    parameters : collections.abc.Sequence[_ParameterSyntax]
         Native argument nodes in the established _parameters grouping order.
+        The sequence is inspected without modification.
 
     Returns
     -------
