@@ -46,6 +46,71 @@ class CallableDocumentation:
 
 
 @dataclass(frozen=True, slots=True)
+class DocumentationDialect:
+    """
+    Bind native markup readers and section mappings to shared evidence
+    assembly.
+
+    Attributes
+    ----------
+    read_parameters : collections.abc.Callable[[str], set[str]]
+        Native reader for documented argument names, retaining case rules.
+    read_section : collections.abc.Callable[[str, str], str]
+        Native reader for stripped content of one named markup section.
+    raises_section : str
+        Exception label understood by the native reader: Raises or Throws.
+    result_section : str or None
+        Fixed result label when native markup uses one form. None preserves
+        the requested conceptual section, such as Python Returns or Yields.
+
+    Notes
+    -----
+    Native adapters supply implementation readers; consumer configuration does
+    not supply callbacks. Markup parsing and policy selection stay separate.
+    """
+
+    read_parameters: Callable[[str], set[str]]
+    read_section: Callable[[str, str], str]
+    raises_section: str
+    result_section: str | None = None
+
+    def interpret(
+        self,
+        doc: str,
+        return_section: str,
+    ) -> CallableDocumentation:
+        """
+        Collect callable documentation evidence using the language's markup.
+
+        Parameters
+        ----------
+        doc : str
+            Native documentation text supplied by a declaration collector.
+        return_section : str
+            Required conceptual result section, or empty when unneeded.
+
+        Returns
+        -------
+        CallableDocumentation
+            Immutable names and content-bearing result/exception evidence.
+            An absent result requirement never requests result evidence.
+
+        Notes
+        -----
+        Reader exceptions propagate unchanged. This assembles observations;
+        it does not validate prose, types, syntax or exception escape behavior.
+        """
+        result = (
+            self.result_section if self.result_section is not None else return_section
+        )
+        return CallableDocumentation(
+            frozenset(self.read_parameters(doc)),
+            bool(self.read_section(doc, result)) if return_section else False,
+            bool(self.read_section(doc, self.raises_section)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class DocumentationPresence:
     """
     Store native presence and spacing decisions for one declaration.

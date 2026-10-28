@@ -12,6 +12,7 @@ from ._python_declarations import CALLABLE_KINDS, Declaration
 from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
+    DocumentationDialect,
     DocumentationPresence,
     declaration_findings,
 )
@@ -19,7 +20,7 @@ from ._source_documentation import (
     documentation_findings as collect_documentation_findings,
 )
 
-# SECTION: CONSTANTS
+# SECTION: CONSTANTS (1 of 2)
 
 
 PARAMETER_PATTERN = re.compile(r'(?m)^(\*{0,2}\w+(?:,\s*\*{0,2}\w+)*)[ \t]*:')
@@ -106,11 +107,7 @@ def _documentation(
     Returns or Yields, and Raises supplies exception evidence. Section content
     is inspected without validating prose, types or exception escape behavior.
     """
-    return CallableDocumentation(
-        frozenset(_parameters(doc)),
-        bool(_section(doc, return_section)) if return_section else False,
-        bool(_section(doc, 'Raises')),
-    )
+    return DIALECT.interpret(doc, return_section)
 
 
 def _parameters(
@@ -169,6 +166,20 @@ def _section(
     remainder = doc[match.end() :]
     end = SECTION_END_PATTERN.search(remainder)
     return remainder[: end.start() if end else len(remainder)].strip()
+
+
+# !SECTION
+
+
+# SECTION: CONSTANTS (1 of 2)
+
+
+# Bind after native readers are defined; evidence assembly does not parse code.
+DIALECT = DocumentationDialect(
+    read_parameters=_parameters,
+    read_section=_section,
+    raises_section='Raises',
+)
 
 
 # !SECTION

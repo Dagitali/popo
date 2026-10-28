@@ -11,6 +11,7 @@ from popo.config.source_checks import SourceCheckConfig
 from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
+    DocumentationDialect,
     DocumentationPresence,
     declaration_findings,
 )
@@ -19,7 +20,7 @@ from ._source_documentation import (
 )
 from ._swift_declarations import CALLABLE_KINDS, NOMINAL_KINDS, Declaration
 
-# SECTION: CONSTANTS
+# SECTION: CONSTANTS (1 of 2)
 
 
 PARAMETER_PATTERN = re.compile(r'(?m)^[ \t]*-[ \t]*`?(\w+)`?:')
@@ -123,11 +124,7 @@ def _documentation(
     arguments. Returns and Throws fields supply result and exception evidence.
     This is bounded DocC notation, not compiler or full DocC validation.
     """
-    return CallableDocumentation(
-        frozenset(_parameters(doc)),
-        bool(_section(doc, 'Returns')) if return_section else False,
-        bool(_section(doc, 'Throws')),
-    )
+    return DIALECT.interpret(doc, return_section)
 
 
 def _parameters(
@@ -180,6 +177,21 @@ def _section(
     """
     match = SECTION_PATTERNS[name].search(doc)
     return match[1].strip() if match else ''
+
+
+# !SECTION
+
+
+# SECTION: CONSTANTS (1 of 2)
+
+
+# Bind after native readers are defined; evidence assembly does not parse code.
+DIALECT = DocumentationDialect(
+    read_parameters=_parameters,
+    read_section=_section,
+    raises_section='Throws',
+    result_section='Returns',
+)
 
 
 # !SECTION
