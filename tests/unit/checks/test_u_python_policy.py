@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from popo.checks.python_policy import validate
+from popo.checks.python_policy import _workflow_observations, validate
 from popo.config import PythonPolicyConfig
 from tests.support.files import FileWriter, snapshot_files
 
@@ -536,3 +536,50 @@ class TestScopedPythonPolicy:
             == expected
         )
         assert snapshot_files(tmp_path) == before
+
+
+class TestWorkflowObservationProvenance:
+    """Keep observation provenance independent of Python policy comparison."""
+
+    @pytest.mark.parametrize('parser', ('text', 'scoped'))
+    def test_reader_modes_retain_runtime_observations(
+        self,
+        tmp_path: Path,
+        parser: Literal['text', 'scoped'],
+    ) -> None:
+        """Retain source and native selector without executing a workflow."""
+        path = tmp_path / 'ci.yml'
+        path.write_text(
+            'jobs:\n  build:\n    steps:\n      - with:\n'
+            '          python-version: "3.13"\n',
+            encoding='utf-8',
+        )
+        before = snapshot_files(tmp_path)
+        observations, failures = _workflow_observations(path, parser)
+        assert failures == []
+        assert len(observations) == 1
+        observation = observations[0]
+        assert observation.source == path
+        assert observation.value == '3.13'
+        assert observation.kind == 'runtime'
+        assert observation.location == (
+            'python-version'
+            if parser == 'text'
+            else 'jobs.build.steps[0].with.python-version'
+        )
+        assert snapshot_files(tmp_path) == before
+
+    def test_unresolved_legacy_reference_retains_its_value(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Leave unsupported textual values visible to membership checking."""
+        path = tmp_path / 'ci.yml'
+        value = '${{ env.MISSING }}'
+        path.write_text(f'python-version: {value}\n', encoding='utf-8')
+        observations, failures = _workflow_observations(path, 'text')
+        assert failures == []
+        assert tuple(item.value for item in observations) == (value,)
+
+
+# !SECTION

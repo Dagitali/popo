@@ -137,7 +137,7 @@ class TestPythonDocumentation:
         )
 
     @pytest.mark.parametrize(
-        'body,return_section,raises',
+        'body,result_section,raises',
         [
             ('return 1', 'Returns', False),
             ('yield 1', 'Yields', False),
@@ -147,7 +147,7 @@ class TestPythonDocumentation:
     def test_signature_facts_exclude_body_requirements(
         self: Self,
         body: str,
-        return_section: str,
+        result_section: str,
         raises: bool,
     ) -> None:
         """
@@ -161,8 +161,8 @@ class TestPythonDocumentation:
         assert signature.annotated
         assert not signature.returns
         facts = _python_declarations._declaration(syntax).facts
-        assert facts.return_section == return_section
-        assert facts.raises is raises
+        assert facts.result_section == result_section
+        assert facts.exception_required is raises
 
 
 class TestPythonSource:

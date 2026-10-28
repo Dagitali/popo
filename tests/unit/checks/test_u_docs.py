@@ -247,18 +247,28 @@ class TestMarkdownLinks:
 
     @pytest.mark.parametrize(
         'target',
-        ['http://[broken', '//[broken', 'https://example.com／path'],
+        [
+            'http://[broken',
+            '//[broken',
+            'https://example.com／path',
+            'bad%00.md',
+            'bad%00.md#intro',
+        ],
     )
-    @pytest.mark.parametrize('reference', [False, True])
-    def test_malformed_url_keeps_later_findings(
+    @pytest.mark.parametrize('kind', ('link', 'image', 'reference'))
+    def test_invalid_destination_keeps_later_findings(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         target: str,
-        reference: bool,
+        kind: str,
     ) -> None:
-        """Report malformed URLs and continue checking independent links."""
-        line = f'[bad]: {target}' if reference else f'[bad]({target})'
+        """Report invalid URLs/paths and continue checking later links."""
+        line = (
+            f'[bad]: {target}'
+            if kind == 'reference'
+            else f'{'!' if kind == 'image' else ''}[bad]({target})'
+        )
         source = write_file('README.md', line + '\n[missing](missing.md)\n')
         before = snapshot_files(tmp_path)
         assert validate(tmp_path) == [
@@ -446,6 +456,97 @@ class TestMarkdownLinks:
         assert validate(tmp_path) == [
             f'{readme}:1: anchor does not exist: guide.MD#missing',
         ]
+
+
+class TestTitledDestinations:
+    """Normalize supported titles and wrappers before local path checks."""
+
+    @pytest.mark.parametrize('image', (False, True), ids=('link', 'image'))
+    @pytest.mark.parametrize('present', (False, True), ids=('missing', 'present'))
+    @pytest.mark.parametrize(
+        'destination',
+        ('guide.md', 'guide.md#intro', 'my guide.md#intro'),
+    )
+    def test_titled_angle_destinations(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        image: bool,
+        present: bool,
+        destination: str,
+    ) -> None:
+        """Resolve wrapped paths/fragments and report normalized failures."""
+        readme = write_file(
+            'README.md',
+            f'{'!' if image else ''}[Guide](<{destination}> "Guide title")\n',
+        )
+        if present:
+            write_file(destination.partition('#')[0], '# Intro\n')
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == (
+            []
+            if present
+            else [f'{readme}:1: local target does not exist: {destination}']
+        )
+        assert snapshot_files(tmp_path) == before
+
+
+class TestHeadingSlugCollisions:
+    """Allocate unique heading suffixes without affecting explicit anchors."""
+
+    @pytest.mark.parametrize(
+        'headings,expected',
+        (
+            (
+                ('Echo', 'Echo', 'Echo 1', 'Echo-1', 'Echo'),
+                ('echo', 'echo-1', 'echo-1-1', 'echo-1-2', 'echo-2'),
+            ),
+            (
+                ('Foxtrot-1', 'Foxtrot', 'Foxtrot'),
+                ('foxtrot-1', 'foxtrot', 'foxtrot-2'),
+            ),
+            (
+                ('A-1', 'A-2', 'A', 'A', 'A'),
+                ('a-1', 'a-2', 'a', 'a-3', 'a-4'),
+            ),
+        ),
+    )
+    def test_generated_suffixes_reserve_heading_names(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        headings: tuple[str, ...],
+        expected: tuple[str, ...],
+    ) -> None:
+        """
+        Resolve links to headings colliding with generated or natural IDs.
+        """
+        path = write_file(
+            'README.md',
+            '\n'.join(
+                [
+                    *(f'# {heading}' for heading in headings),
+                    *(f'[Heading](#{slug})' for slug in expected),
+                ],
+            ),
+        )
+        before = snapshot_files(tmp_path)
+        assert docs._anchors(path) == set(expected)
+        assert validate(tmp_path) == []
+        assert snapshot_files(tmp_path) == before
+
+    def test_explicit_anchors_do_not_reserve_heading_suffixes(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """Keep HTML anchors separate from heading suffix allocation."""
+        path = write_file(
+            'README.md',
+            '<a id="echo-1"></a>\n# Echo\n# Echo\n',
+        )
+        assert docs._anchors(path) == {'echo', 'echo-1'}
+        assert validate(tmp_path) == []
 
 
 # !SECTION

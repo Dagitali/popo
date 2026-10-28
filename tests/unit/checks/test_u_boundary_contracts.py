@@ -168,13 +168,15 @@ class TestOverlappingBoundaryLayers:
         read.assert_called_once_with(tmp_path / 'source', tmp_path)
         assert failures == []
 
-    def test_overlapping_selections_parse_once(
+    @pytest.mark.parametrize('readable', (False, True))
+    def test_overlapping_selections_prepare_once(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         boundary_case: BoundaryCase,
+        readable: bool,
     ) -> None:
-        """Apply both layers' restrictions to one shared parsed source."""
+        """Prepare each input once and preserve independent layer findings."""
         analyzer = (
             python_boundaries._PythonBoundaryAnalyzer
             if boundary_case.domain == 'python-boundaries'
@@ -182,6 +184,8 @@ class TestOverlappingBoundaryLayers:
         )
         parse = Mock(wraps=analyzer.parse)
         monkeypatch.setattr(analyzer, 'parse', staticmethod(parse))
+        targets = Mock(wraps=analyzer.targets)
+        monkeypatch.setattr(analyzer, 'targets', staticmethod(targets))
         domain = boundary_case.domain
         (tmp_path / 'popo.toml').write_text(
             ''.join(
@@ -191,14 +195,74 @@ class TestOverlappingBoundaryLayers:
             ),
             encoding='utf-8',
         )
-        (tmp_path / 'source').write_text('import Blocked', encoding='utf-8')
+        path = tmp_path / 'source'
+        if readable:
+            text = 'import Blocked\n' + (
+                'class Owned:\n pass'
+                if domain == 'python-boundaries'
+                else 'struct Owned {}'
+            )
+            path.write_text(text, encoding='utf-8')
+        else:
+            path.write_bytes(b'PRIVATE\xff')
         before = snapshot_files(tmp_path)
-        assert boundary_case.validate(load_boundaries_config(tmp_path, domain)) == [
-            f'source:1: {name}: forbidden import Blocked'
-            for name in ('first', 'second')
-        ]
-        parse.assert_called_once()
+        assert boundary_case.validate(load_boundaries_config(tmp_path, domain)) == (
+            [
+                f'source:1: {name}: forbidden import Blocked'
+                for name in ('first', 'second')
+            ]
+            if readable
+            else ['source: cannot read UTF-8 input']
+        )
+        if readable:
+            parse.assert_called_once()
+        else:
+            parse.assert_not_called()
+        targets.assert_called_once()
+        assert targets.call_args.args[:2] == (path, tmp_path)
+        assert (targets.call_args.args[2] is None) is (not readable)
         assert snapshot_files(tmp_path) == before
+
+
+class TestSymbolReporting:
+    """
+    Share exact matching, deduplication and order across native collectors.
+    """
+
+    @pytest.mark.parametrize('forbidden', [(), ('Blocked', 'Other')])
+    def test_native_candidates_are_filtered_once_in_location_order(
+        self,
+        forbidden: tuple[str, ...],
+    ) -> None:
+        """
+        Consume an unordered iterator without repeating matching findings.
+        """
+        reference = _source_boundaries.SymbolReference
+        candidates = iter(
+            (
+                reference(3, 'Other'),
+                reference(2, 'Other'),
+                reference(2, 'Blocked'),
+                reference(2, 'Blocked'),
+                reference(1, 'blocked'),
+                reference(1, 'Allowed'),
+            ),
+        )
+        assert _source_boundaries.symbol_findings(
+            candidates,
+            forbidden,
+            'source',
+            'Core',
+        ) == (
+            [
+                'source:2: Core: forbidden symbol Blocked',
+                'source:2: Core: forbidden symbol Other',
+                'source:3: Core: forbidden symbol Other',
+            ]
+            if forbidden
+            else []
+        )
+        assert list(candidates) == []
 
 
 # !SECTION

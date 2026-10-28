@@ -8,18 +8,26 @@ import ast
 from collections.abc import Callable
 from pathlib import Path
 from typing import Self
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
 from popo.checks import (
     _python_declarations,
+    _python_syntax,
+    _source_inputs,
     _swift_declarations,
+    _swift_syntax,
     logs,
     python_source,
     swift_source,
 )
-from popo.checks._source_declarations import CallableRequirements
+from popo.checks._source_declarations import (
+    CallableRequirements,
+    ParameterSpan,
+    ResultSection,
+    parameter_lines,
+)
 from popo.config import ConfigurationError
 from popo.config.source_checks import SourceCheckConfig, load_source_check
 from tests.support.files import FileWriter, snapshot_files
@@ -118,8 +126,8 @@ class TestSourceConventions:
         assert len(parsed.declarations) == 1
         facts = parsed.declarations[0].facts
         assert facts.parameter_names == ('value',)
-        assert facts.return_section == 'Returns'
-        assert facts.raises
+        assert facts.result_section == 'Returns'
+        assert facts.exception_required
         assert facts.documentation.strip() == 'Return an item.'
 
     def test_collectors_keep_nominal_and_callable_facts(
@@ -169,8 +177,8 @@ class TestSourceConventions:
         assert callable_.documentation.strip() == 'Callable documentation.'
         assert callable_.parameter_names == ('value',)
         assert callable_.parameter_lines
-        assert callable_.return_section == 'Returns'
-        assert not callable_.raises
+        assert callable_.result_section == 'Returns'
+        assert not callable_.exception_required
 
     def test_common_diagnostics(
         self: Self,
@@ -262,8 +270,8 @@ class TestSourceConventions:
             assert len(parsed.declarations) == 2
             inner = parsed.declarations[1].facts
             assert inner.parameter_names == ('value', 'option', 'args', 'kwargs')
-            assert inner.return_section == 'Yields'
-            assert inner.raises
+            assert inner.result_section == 'Yields'
+            assert inner.exception_required
         else:
             parsed = _swift_declarations.parse(
                 'func outer() {\n'
@@ -272,8 +280,8 @@ class TestSourceConventions:
             assert len(parsed.declarations) == 1
         outer = parsed.declarations[0].facts
         assert outer.parameter_names == ()
-        assert outer.return_section == ''
-        assert not outer.raises
+        assert outer.result_section == ''
+        assert not outer.exception_required
 
     @pytest.mark.parametrize('setting', ['docstring-width=79', 'max-module-lines=1000'])
     def test_prerelease_option_names_are_rejected(
@@ -354,8 +362,8 @@ class TestSourceConventions:
         facts = declaration.facts
         assert facts.documentation.strip() == 'Details.'
         assert facts.parameter_names == (() if kind == 'nominal' else ('value',))
-        assert facts.return_section == ('' if kind == 'nominal' else 'Returns')
-        assert not facts.raises
+        assert facts.result_section == ('' if kind == 'nominal' else 'Returns')
+        assert not facts.exception_required
 
 
 class TestSourceInputFailures:
@@ -562,6 +570,185 @@ class TestParsedSourceEvaluation:
         assert findings[3] == f'{filename}:1: parameters require separate lines'
         assert len(findings) == 4
         assert snapshot_files(tmp_path) == before
+
+
+class TestNativeSyntaxContracts:
+    """
+    Preserve comparable locations and purposeful parser-failure semantics.
+    """
+
+    def test_unicode_declaration_locations(
+        self,
+        source_case: SourceCase,
+    ) -> None:
+        """
+        Use physical declaration lines regardless of UTF-8 identifier width.
+        """
+        domain, _, _ = source_case
+        parsed = (
+            _python_declarations.parse('"""Overview 😀."""\nclass Ω:\n    pass')
+            if domain == 'python-source'
+            else _swift_declarations.parse('/// Overview 😀.\nstruct Ω {}')
+        )
+        assert parsed.has_overview
+        assert parsed.documentation_lines == (1,)
+        assert len(parsed.declarations) == 1
+        assert parsed.declarations[0].facts.line == 2
+        assert parsed.declarations[0].facts.kind == (
+            'class' if domain == 'python-source' else 'struct'
+        )
+
+    def test_native_failure_and_recovery_remain_distinct(
+        self,
+        source_case: SourceCase,
+    ) -> None:
+        """
+        Reject invalid Python but retain explicit unsupported Swift facts.
+        """
+        domain, _, _ = source_case
+        if domain == 'python-source':
+            with pytest.raises(SyntaxError):
+                _python_declarations.parse('def broken(')
+        else:
+            parsed = _swift_declarations.parse('func broken(')
+            assert len(parsed.declarations) == 1
+            assert parsed.declarations[0].facts.parameter_names is None
+
+    @pytest.mark.parametrize(
+        'parser',
+        (_python_syntax.parse, _swift_syntax.parse),
+        ids=('python', 'swift'),
+    )
+    def test_native_parsers_reject_unencodable_text(
+        self,
+        parser: Callable[[str], object],
+    ) -> None:
+        """
+        Expose the same UTF-8 encoding contract for direct parser callers.
+        """
+        with pytest.raises(UnicodeEncodeError):
+            parser('\ud800')
+
+
+class TestCallableRequirementNormalization:
+    """
+    Select shared vocabulary after each language collects native evidence.
+    """
+
+    @pytest.mark.parametrize('exceptions', (False, True))
+    @pytest.mark.parametrize(
+        'returns,yields,section',
+        (
+            (False, False, ''),
+            (True, False, 'Returns'),
+            (False, True, 'Yields'),
+            (True, True, 'Yields'),
+        ),
+    )
+    def test_result_priority_and_independent_exception_requirements(
+        self,
+        returns: bool,
+        yields: bool,
+        exceptions: bool,
+        section: ResultSection,
+    ) -> None:
+        """Keep generator priority and preserve the native exception flag."""
+        result = CallableRequirements.from_observations(
+            returns=returns,
+            yields=yields,
+            exceptions=exceptions,
+        )
+        assert result == CallableRequirements(section, exceptions)
+        assert result.result_section == section
+        assert result.exception_required is exceptions
+
+
+class TestParameterLayout:
+    """
+    Evaluate comparable spans while preserving native parameter discovery.
+    """
+
+    @pytest.mark.parametrize(
+        'spans,expected',
+        (
+            ((), True),
+            (((2, 2),), True),
+            (((3, 3), (2, 2)), True),
+            (((1, 1),), False),
+            (((0, 0),), False),
+            (((2, 3),), False),
+            (((2, None),), False),
+            (((2, 2), (2, 2)), False),
+        ),
+    )
+    def test_distinct_single_line_spans_follow_the_declaration(
+        self,
+        spans: tuple[tuple[int, int | None], ...],
+        expected: bool,
+    ) -> None:
+        """
+        Accept unordered iterators and reject each physical-layout failure.
+        """
+        assert (
+            parameter_lines(
+                1,
+                (ParameterSpan(start, end) for start, end in spans),
+            )
+            is expected
+        )
+
+
+class TestSourceInspection:
+    """Keep shared reads ordered, redacted and independent of domain policy."""
+
+    @pytest.mark.parametrize('failure', ('decode', 'missing'))
+    def test_reads_once_and_continues_after_input_errors(
+        self,
+        tmp_path: Path,
+        failure: str,
+    ) -> None:
+        """
+        Retain duplicate findings and skip inspection of unreadable inputs.
+        """
+        first, bad, last = (tmp_path / name for name in ('first', 'bad', 'last'))
+        first.write_text('one', encoding='utf-8')
+        last.write_text('two', encoding='utf-8')
+        if failure == 'decode':
+            bad.write_bytes(b'PRIVATE\xff')
+        paths = (first, bad, last)
+        before = snapshot_files(tmp_path)
+        inspect = Mock(side_effect=lambda path, source: iter((path.name,) * 2))
+        with patch.object(
+            _source_inputs,
+            'read_source',
+            wraps=_source_inputs.read_source,
+        ) as read:
+            findings = _source_inputs.inspect_sources(iter(paths), tmp_path, inspect)
+        assert findings == [
+            'first',
+            'first',
+            'bad: cannot read UTF-8 input',
+            'last',
+            'last',
+        ]
+        assert read.call_args_list == [call(path, tmp_path) for path in paths]
+        assert inspect.call_args_list == [call(first, 'one'), call(last, 'two')]
+        assert snapshot_files(tmp_path) == before
+
+    def test_inspector_failures_propagate(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Propagate inspector failures instead of reporting partial success.
+        """
+        path = tmp_path / 'input'
+        path.write_text('text', encoding='utf-8')
+        error = RuntimeError('inspection failed')
+        inspect = Mock(side_effect=error)
+        with pytest.raises(RuntimeError, match='inspection failed') as raised:
+            _source_inputs.inspect_sources((path,), tmp_path, inspect)
+        assert raised.value is error
 
 
 # !SECTION

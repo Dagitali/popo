@@ -4,8 +4,8 @@
 Compare callable documentation evidence without merging markup conventions.
 """
 
-from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -15,14 +15,20 @@ from popo.checks import (
     _swift_declarations,
     _swift_documentation,
 )
-from popo.checks._source_declarations import DeclarationFacts
-from popo.checks._source_documentation import CallableDocumentation, contract_findings
+from popo.checks._source_declarations import DeclarationFacts, ResultSection
+from popo.checks._source_documentation import (
+    CallableDocumentation,
+    DocumentationDialect,
+    DocumentationInterpreter,
+    DocumentationPresence,
+    contract_findings,
+)
 from popo.config.source_checks import DOMAINS, SourceCheckConfig
 
 # SECTION: TYPE ALIASES
 
 
-type DocumentationCase = tuple[str, Callable[[str, str], CallableDocumentation]]
+type DocumentationCase = tuple[str, DocumentationInterpreter]
 
 
 # !SECTION
@@ -144,7 +150,7 @@ class TestCallableDocumentation:
             'numpy': 'returns\n-------\nint\n    Result.\n',
             'docc': '- rEtUrNs: Result.\n',
         }[style]
-        assert interpret(doc, 'Returns').return_documented is (style == 'docc')
+        assert interpret(doc, 'Returns').result_documented is (style == 'docc')
 
     def test_variadic_and_singular_parameter_notation(
         self,
@@ -190,14 +196,20 @@ class TestDeclarationDocumentation:
             settings['declaration-docs'] = required
             facts = DeclarationFacts(5, 'class' if nominal else 'function', doc, ())
             declaration = _python_declarations.Declaration(facts)
+            presence = _python_documentation._presence
             check = _python_documentation._declaration_findings
         else:
             settings['declaration-docs'] = required if nominal else not required
             settings['member-docs'] = not required if nominal else required
             facts = DeclarationFacts(5, 'struct' if nominal else 'func', doc, ())
             declaration = _swift_declarations.Declaration(facts, 1, True)
+            presence = _swift_documentation._presence
             check = _swift_documentation._declaration_findings
         config = SourceCheckConfig(tmp_path, domain, (), (), settings)
+        assert presence(declaration, config) == DocumentationPresence(
+            required=required,
+            present=documented,
+        )
         assert check(declaration, config, 'sample') == (
             ['sample:5: missing declaration documentation']
             if required and not documented
@@ -213,12 +225,12 @@ class TestNumPyDocumentation:
     def test_result_section_selection(
         self,
         section: str,
-        required: str,
+        required: ResultSection,
     ) -> None:
         """Require the section selected by the declaration's own facts."""
         doc = f'{section}\n-------\nint\n    Result.\n'
         evidence = _python_documentation._documentation(doc, required)
-        assert evidence.return_documented is (section == required)
+        assert evidence.result_documented is (section == required)
 
 
 class TestDocumentationRunner:
@@ -274,7 +286,9 @@ class TestDisabledCallableContracts:
         tmp_path: Path,
         language: str,
     ) -> None:
-        """Leave absent callable markup valid when all relevant rules are off."""
+        """
+        Leave absent callable markup valid when all relevant rules are off.
+        """
         domain = f'{language}-source'
         settings = dict(DOMAINS[domain]) | {
             'file-overviews': False,
@@ -298,6 +312,97 @@ class TestDisabledCallableContracts:
             )
             == []
         )
+
+
+class TestDeclarationDocumentationOrder:
+    """Share reporting order while preserving native whitespace and spacing."""
+
+    @pytest.mark.parametrize('doc', ('', '   ', 'PRIVATE overview.'))
+    def test_presence_spacing_and_contract_precedence(
+        self,
+        documentation_case: DocumentationCase,
+        tmp_path: Path,
+        doc: str,
+    ) -> None:
+        """
+        Retain missing/spacing precedence and still check callable contracts.
+        """
+        style, _ = documentation_case
+        domain = 'python-source' if style == 'numpy' else 'swift-source'
+        settings = dict(DOMAINS[domain]) | {
+            'declaration-docs': True,
+            'return-docs': True,
+        }
+        kind = 'function' if style == 'numpy' else 'func'
+        facts = DeclarationFacts(7, kind, doc, (), 'Returns')
+        if style == 'numpy':
+            declaration = _python_declarations.Declaration(facts)
+            findings = _python_documentation._declaration_findings(
+                declaration,
+                SourceCheckConfig(tmp_path, domain, (), (), settings),
+                'source',
+            )
+            expected = [] if doc else ['source:7: missing declaration documentation']
+        else:
+            settings |= {'member-docs': True, 'declaration-spacing': True}
+            declaration = _swift_declarations.Declaration(facts, 6, False)
+            findings = _swift_documentation._declaration_findings(
+                declaration,
+                SourceCheckConfig(tmp_path, domain, (), (), settings),
+                'source',
+            )
+            expected = [
+                'source:7: missing declaration documentation'
+                if not doc.strip()
+                else 'source:6: missing blank line before documentation',
+            ]
+        assert findings == [*expected, 'source:7: return documentation missing']
+        assert 'PRIVATE' not in '\n'.join(findings)
+
+
+class TestDocumentationDialectMapping:
+    """Map shared result requirements through each native markup dialect."""
+
+    @pytest.mark.parametrize('required', ('', 'Returns', 'Yields'))
+    def test_result_section_mapping_preserves_native_semantics(
+        self,
+        documentation_case: DocumentationCase,
+        required: ResultSection,
+    ) -> None:
+        """
+        Keep NumPy result selection and DocC's fixed Returns field distinct.
+        """
+        style, interpret = documentation_case
+        doc = (
+            'Yields\n------\nint\n    Values.\n'
+            if style == 'numpy'
+            else '- Returns: A value.'
+        )
+        evidence = interpret(doc, required)
+        assert evidence.parameter_names == frozenset()
+        assert not evidence.exception_documented
+        assert evidence.result_documented == (
+            required == 'Yields' if style == 'numpy' else bool(required)
+        )
+
+
+class TestDocumentationReaderContract:
+    """Accept native name iterables without imposing mutable collections."""
+
+    def test_single_pass_names_retain_case_and_are_frozen(
+        self,
+    ) -> None:
+        """Consume one-shot evidence once and skip unrequested result reads."""
+        names = iter(('value', 'value', 'Value'))
+        read_names = Mock(return_value=names)
+        read_section = Mock(return_value='')
+        dialect = DocumentationDialect(read_names, read_section, 'Throws')
+        assert dialect.interpret('Native text.', '') == CallableDocumentation(
+            frozenset({'value', 'Value'}),
+        )
+        read_names.assert_called_once_with('Native text.')
+        read_section.assert_called_once_with('Native text.', 'Throws')
+        assert list(names) == []
 
 
 # !SECTION

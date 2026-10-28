@@ -10,12 +10,14 @@ import json
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
+from popo.checks import safety
 from popo.checks.safety import validate
 from popo.config.safety import SafetyConfig, SafetyException
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -116,25 +118,33 @@ class TestNpmPairs:
         )
 
     @pytest.mark.parametrize(
-        'root_version,resolved,message',
-        [
-            ('2.0.0', '2.0.0', ''),
-            ('1.0.0', '2.0.0', 'root dependencies'),
-            ('2.0.0', '1.0.0', 'resolved lib'),
-        ],
+        'group',
+        ('dependencies', 'devDependencies', 'optionalDependencies'),
+    )
+    @pytest.mark.parametrize(
+        'spec',
+        ('2.0.0', '2.0.0-rc.1', '2.0.0+build.7', '2.0.0-rc.1+build.7'),
+    )
+    @pytest.mark.parametrize(
+        'root_matches,resolved_matches,problem',
+        ((True, True, ''), (False, True, 'root'), (True, False, 'resolved')),
     )
     def test_metadata_drift(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        root_version: str,
-        resolved: str,
-        message: str,
+        group: str,
+        spec: str,
+        root_matches: bool,
+        resolved_matches: bool,
+        problem: str,
     ) -> None:
-        """Detect both dependency specifications and exact resolved drift."""
+        """
+        Detect root and resolved drift across groups and literal pin forms.
+        """
         write_file(
             'source/package.json',
-            json.dumps({'dependencies': {'lib': '2.0.0'}}),
+            json.dumps({group: {'lib': spec}}),
         )
         write_file(
             'locked/package-lock.json',
@@ -142,21 +152,26 @@ class TestNpmPairs:
                 {
                     'lockfileVersion': 3,
                     'packages': {
-                        '': {'dependencies': {'lib': root_version}},
-                        'node_modules/lib': {'version': resolved},
+                        '': {group: {'lib': spec if root_matches else '1.0.0'}},
+                        'node_modules/lib': {
+                            'version': spec if resolved_matches else '1.0.0',
+                        },
                     },
                 },
             ),
         )
+        before = snapshot_files(tmp_path)
         failures = validate(
             SafetyConfig(
                 tmp_path,
                 npm_pairs=(('source/package.json', 'locked/package-lock.json'),),
             ),
         )
-        assert bool(failures) == bool(message)
-        if message:
-            assert any(message in item for item in failures)
+        detail = f'root {group}' if problem == 'root' else 'resolved lib'
+        assert bool(failures) == bool(problem)
+        if problem:
+            assert any(detail in item for item in failures)
+        assert snapshot_files(tmp_path) == before
 
 
 class TestSafetyFailureIsolation:
@@ -277,27 +292,27 @@ class TestWorkflowAliases:
             )
         if unsafe:
             expected.append('ci.yml: event data interpolated directly into run')
-        assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == expected
+        with patch.object(safety, 'mapping_nodes', wraps=safety.mapping_nodes) as walk:
+            assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == expected
+        walk.assert_called_once()
         assert path.read_text(encoding='utf-8') == source
 
+    @pytest.mark.parametrize('shared', (False, True))
     def test_repeated_alias_is_inspected_once(
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        shared: bool,
     ) -> None:
         """
-        Avoid duplicate diagnostics for one run mapping reused through aliases.
+        Deduplicate shared mappings while retaining separate identical scripts.
         """
-        write_file(
-            'ci.yml',
-            (
-                'on: push\njobs: {check: {steps: ['
-                '&step {run: "echo ${{ github.event.issue.title }}"}, *step]}}'
-            ),
-        )
+        step = '{run: "echo ${{ github.event.issue.title }}"}'
+        steps = f'&step {step}, *step' if shared else f'{step}, {step}'
+        write_file('ci.yml', f'on: push\njobs: {{check: {{steps: [{steps}]}}}}')
         assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == [
             'ci.yml: event data interpolated directly into run',
-        ]
+        ] * (1 if shared else 2)
 
 
 class TestWorkflowSafety:
