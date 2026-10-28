@@ -59,7 +59,7 @@ DECLARATION_PATTERN = re.compile(
 )
 FUNCTION_NAME_PATTERN = re.compile(r'\s+`?\w+')
 PARAMETER_NAME_PATTERN = re.compile(r'`?(\w+)`?')
-RETURN_PATTERN = re.compile(r'->\s*(.*?)\s*(?:\bwhere\b|$)', re.S)
+RETURN_PATTERN = re.compile(r'->\s*(.*?)\s*(?:\bwhere\b|$)', re.DOTALL)
 SIGNATURE_CONTINUATION_PATTERN = re.compile(r'\s*(?:async|throws|rethrows|->|where)')
 THROWS_PATTERN = re.compile(r'\b(?:rethrows|throws)\b')
 
