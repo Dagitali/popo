@@ -9,7 +9,11 @@ from pathlib import Path
 from popo.config.source_checks import SourceCheckConfig
 
 from ._source_declarations import SourceFacts
-from ._source_validation import parsed_source_findings, validate_sources
+from ._source_validation import (
+    parsed_source_findings,
+    signature_findings,
+    validate_sources,
+)
 from ._swift_declarations import CALLABLE_KINDS, Declaration, parse
 from ._swift_documentation import documentation_findings
 
@@ -44,7 +48,8 @@ def _convention_findings(
     Inspect recognized callables only. Unsupported parameter signatures produce
     a finding when any of parameter-docs, return-docs, raises-docs or
     parameter-lines is enabled. Such a finding takes precedence over parameter
-    layout.
+    layout. Shared signature_findings evaluates support before layout after
+    this adapter selects applicable callables.
     With all four switches disabled this function returns no findings. Python
     annotation and method-order rules are not imposed on Swift.
     """
@@ -63,11 +68,9 @@ def _convention_findings(
         facts = declaration.facts
         if facts.kind not in CALLABLE_KINDS:
             continue
-        location = f'{relative}:{facts.line}'
-        if facts.parameter_names is None:
-            failures.append(f'{location}: unsupported callable signature')
-        elif config.settings['parameter-lines'] and not facts.parameter_lines:
-            failures.append(f'{location}: parameters require separate lines')
+        failures.extend(
+            signature_findings(facts, config, relative, report_unsupported=True),
+        )
     return failures
 
 

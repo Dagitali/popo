@@ -9,7 +9,7 @@ from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import DeclarationRecord, SourceFacts
+from ._source_declarations import DeclarationFacts, DeclarationRecord, SourceFacts
 from ._source_documentation import guide_findings, limits
 from ._source_inputs import discover, read_source
 
@@ -79,6 +79,55 @@ def parsed_source_findings[Declaration: DeclarationRecord](
         *documentation(parsed, config, relative),
         *conventions(parsed, config, relative),
     ]
+
+
+def signature_findings(
+    facts: DeclarationFacts,
+    config: SourceCheckConfig,
+    relative: str,
+    *,
+    report_unsupported: bool = False,
+) -> list[str]:
+    """
+    Report native signature support before common parameter-layout findings.
+
+    Parameters
+    ----------
+    facts : DeclarationFacts
+        Precomputed parameter names and native layout decision.
+    config : SourceCheckConfig
+        Consumer-owned parameter-lines switch.
+    relative : str
+        Repository-relative filename for location-only diagnostics.
+    report_unsupported : bool, optional
+        Report None parameter names as unsupported instead of evaluating
+        layout. The caller determines whether support checking is enabled
+        and which native declaration kinds are applicable.
+
+    Returns
+    -------
+    list[str]
+        One unsupported-signature or enabled parameter-layout finding, or an
+        empty list. An unsupported finding takes precedence over layout.
+
+    Raises
+    ------
+    KeyError
+        The parameter-lines setting is absent when layout is evaluated.
+
+    Notes
+    -----
+    Python's native AST collector supplies supported signatures. Swift enables
+    support reporting only when a callable contract/layout switch is active.
+    Annotation, ordering, receiver and signature parsing rules remain native.
+    No source is read, parsed or executed here.
+    """
+    location = f'{relative}:{facts.line}'
+    if report_unsupported and facts.parameter_names is None:
+        return [f'{location}: unsupported callable signature']
+    if config.settings['parameter-lines'] and not facts.parameter_lines:
+        return [f'{location}: parameters require separate lines']
+    return []
 
 
 def validate_sources(
