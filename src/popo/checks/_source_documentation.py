@@ -45,6 +45,33 @@ class CallableDocumentation:
     raises_documented: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class DocumentationPresence:
+    """
+    Store native presence and spacing decisions for one declaration.
+
+    Attributes
+    ----------
+    required : bool
+        Whether this declaration's language-specific policy requires docs.
+    present : bool
+        Whether native documentation satisfies that language's presence rule.
+        Python uses cleaned-string truthiness; Swift ignores whitespace alone.
+    spacing_line : int or None
+        One-based location of a candidate spacing finding, or None when
+        spacing passes or is not enabled. Missing required docs take priority.
+
+    Notes
+    -----
+    This record carries policy observations, not another source syntax model.
+    Language adapters select rules; shared evaluation owns diagnostic order.
+    """
+
+    required: bool
+    present: bool
+    spacing_line: int | None = None
+
+
 # !SECTION
 
 
@@ -155,6 +182,57 @@ def contract_findings(
         for key, failed, message in rules
         if config.settings[key] and failed
     ]
+
+
+def declaration_findings(
+    facts: DeclarationFacts,
+    config: SourceCheckConfig,
+    relative: str,
+    presence: DocumentationPresence,
+    callable_kinds: Collection[str],
+    interpret: DocumentationInterpreter,
+) -> list[str]:
+    """
+    Evaluate native presence/spacing observations before callable contracts.
+
+    Parameters
+    ----------
+    facts : DeclarationFacts
+        Shared declaration location and signature/documentation evidence.
+    config : SourceCheckConfig
+        Consumer-owned callable documentation switches.
+    relative : str
+        Repository-relative diagnostic filename.
+    presence : DocumentationPresence
+        Language-derived presence requirements and optional spacing location.
+    callable_kinds : collections.abc.Collection[str]
+        Language-specific kinds with callable documentation requirements.
+    interpret : DocumentationInterpreter
+        Native markup interpreter; syntax and attachment are already known.
+
+    Returns
+    -------
+    list[str]
+        Missing required documentation or a spacing finding, followed by
+        callable-contract findings. Missing docs do not suppress contracts.
+
+    Notes
+    -----
+    Native adapters retain whitespace, nominal/member and spacing policies.
+    No source is read or parsed; interpreter exceptions propagate unchanged.
+    """
+    failures: list[str] = []
+    if presence.required and not presence.present:
+        failures.append(f'{relative}:{facts.line}: missing declaration documentation')
+    elif presence.spacing_line is not None:
+        failures.append(
+            f'{relative}:{presence.spacing_line}: '
+            'missing blank line before documentation',
+        )
+    failures.extend(
+        callable_findings(facts, config, relative, callable_kinds, interpret),
+    )
+    return failures
 
 
 def documentation_findings[Declaration](

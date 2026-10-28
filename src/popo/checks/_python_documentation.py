@@ -12,7 +12,8 @@ from ._python_declarations import CALLABLE_KINDS, Declaration
 from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
-    callable_findings,
+    DocumentationPresence,
+    declaration_findings,
 )
 from ._source_documentation import (
     documentation_findings as collect_documentation_findings,
@@ -60,20 +61,23 @@ def _declaration_findings(
     Notes
     -----
     Declaration presence applies to Python classes and functions alike.
-    Callable evidence uses NumPy sections; syntax requirements were collected
+    Shared evaluation orders presence before callable findings. Callable
+    evidence uses NumPy sections; syntax requirements were collected
     independently, including receiver exclusion and explicit body requirements.
     """
-    failures: list[str] = []
     facts = declaration.facts
-    doc = facts.documentation
-    if config.settings['declaration-docs'] and not doc:
-        failures.append(
-            f'{relative}:{facts.line}: missing declaration documentation',
-        )
-    failures.extend(
-        callable_findings(facts, config, relative, CALLABLE_KINDS, _documentation),
+    presence = DocumentationPresence(
+        required=bool(config.settings['declaration-docs']),
+        present=bool(facts.documentation),
     )
-    return failures
+    return declaration_findings(
+        facts,
+        config,
+        relative,
+        presence,
+        CALLABLE_KINDS,
+        _documentation,
+    )
 
 
 def _documentation(

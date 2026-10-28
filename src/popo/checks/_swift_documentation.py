@@ -11,7 +11,8 @@ from popo.config.source_checks import SourceCheckConfig
 from ._source_declarations import SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
-    callable_findings,
+    DocumentationPresence,
+    declaration_findings,
 )
 from ._source_documentation import (
     documentation_findings as collect_documentation_findings,
@@ -21,6 +22,7 @@ from ._swift_declarations import CALLABLE_KINDS, NOMINAL_KINDS, Declaration
 # SECTION: CONSTANTS
 
 
+PARAMETER_PATTERN = re.compile(r'(?m)^[ \t]*-[ \t]*`?(\w+)`?:')
 SECTION_PATTERNS = {
     name: re.compile(
         rf'(?ims)^[ \t]*-[ \t]*{name}:[ \t]*(.*?)'
@@ -28,7 +30,6 @@ SECTION_PATTERNS = {
     )
     for name in ('Parameters', 'Returns', 'Throws')
 }
-PARAMETER_PATTERN = re.compile(r'(?m)^[ \t]*-[ \t]*`?(\w+)`?:')
 SINGULAR_PARAMETER_PATTERN = re.compile(r'(?im)^[ \t]*-[ \t]*Parameter[ \t]+`?(\w+)`?:')
 
 
@@ -65,29 +66,34 @@ def _declaration_findings(
     Nominals use declaration-docs; other recognized members use member-docs.
     A missing required doc takes precedence over a spacing finding. Callable
     evidence uses DocC fields. Syntax and attachment facts are consumed
-    without reconstructing signatures or compiling Swift.
+    without reconstructing signatures or compiling Swift. Shared evaluation
+    owns finding order after these native policy observations are derived.
     """
-    failures: list[str] = []
     facts = declaration.facts
     doc = facts.documentation
-    required = (
+    required = bool(
         config.settings['declaration-docs']
         if facts.kind in NOMINAL_KINDS
-        else config.settings['member-docs']
+        else config.settings['member-docs'],
     )
-    if required and not doc.strip():
-        failures.append(
-            f'{relative}:{facts.line}: missing declaration documentation',
-        )
-    elif doc and config.settings['declaration-spacing'] and not declaration.separated:
-        failures.append(
-            f'{relative}:{declaration.documentation_start}: '
-            'missing blank line before documentation',
-        )
-    failures.extend(
-        callable_findings(facts, config, relative, CALLABLE_KINDS, _documentation),
+    present = bool(doc.strip())
+    spacing_line = (
+        declaration.documentation_start
+        if (not required or present)
+        and doc
+        and config.settings['declaration-spacing']
+        and not declaration.separated
+        else None
     )
-    return failures
+    presence = DocumentationPresence(required, present, spacing_line)
+    return declaration_findings(
+        facts,
+        config,
+        relative,
+        presence,
+        CALLABLE_KINDS,
+        _documentation,
+    )
 
 
 def _documentation(
