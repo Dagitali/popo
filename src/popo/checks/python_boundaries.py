@@ -208,7 +208,34 @@ def _module(
     path: Path,
     root: Path,
 ) -> str:
-    """Map paths to modules; strip a src directory, never a src.py filename."""
+    """
+    Derive dotted Python module identity from a repository-relative path.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Selected Python source path; existence and syntax are not inspected.
+    root : pathlib.Path
+        Consumer root used for lexical relative-path conversion.
+
+    Returns
+    -------
+    str
+        Dotted identity after removing the suffix, a leading src directory
+        and a final __init__ component. A root src.py keeps its module name;
+        a root __init__.py yields an empty identity.
+
+    Raises
+    ------
+    ValueError
+        The path is lexically outside root.
+
+    Notes
+    -----
+    Alternate source roots, installed packages and runtime imports are not
+    resolved. Swift ownership uses declared type names rather than filenames,
+    so it does not require an equivalent path-to-module helper.
+    """
     parts = list(path.relative_to(root).with_suffix('').parts)
     if len(parts) > 1 and parts[0] == 'src':
         parts.pop(0)
@@ -276,11 +303,35 @@ def _symbol_findings(
     layer_name: str,
 ) -> list[str]:
     """
-    Report configured Python symbols once per source line.
+    Report forbidden native symbol observations in stable location order.
 
-    Match names and dotted attributes, including expanded import aliases.
-    Deduplicate each (line, configured symbol) pair and sort by line/name.
-    Local shadows, re-exports and runtime bindings are not resolved.
+    Parameters
+    ----------
+    tree : ast.AST
+        Parsed Python source reused for name and dotted-attribute inspection.
+    imports : list[ImportReference]
+        Recognized imports supplying conservative local alias expansion.
+    forbidden_symbols : collections.abc.Collection[str]
+        Explicit configured symbols, independent of module ownership.
+    relative : str
+        Repository-relative diagnostic filename.
+    layer_name : str
+        Consumer-owned layer name used to label findings.
+
+    Returns
+    -------
+    list[str]
+        One finding per matching line/configured-symbol pair, sorted by line
+        then symbol. Matching is exact and case-sensitive; source excerpts
+        and duplicate observations are excluded from reporting.
+
+    Notes
+    -----
+    Match original names and dotted attributes as well as expanded aliases.
+    Local shadows, re-exports and runtime bindings remain unresolved. Import
+    declarations alone do not supply symbol observations.
+    Native candidate collection stays in _symbols; shared symbol_findings
+    owns restriction filtering, deduplication and diagnostic order.
     """
     return symbol_findings(
         _symbols(tree, imports),

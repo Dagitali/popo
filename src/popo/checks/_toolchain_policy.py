@@ -37,7 +37,8 @@ type ObservationKind = Literal['runtime', 'compiler', 'preferred', 'tools']
 
 @dataclass(frozen=True, slots=True)
 class VersionObservation:
-    """Retain a version's source, selector and interpretation.
+    """
+    Retain a version's source, selector and interpretation.
 
     Attributes
     ----------

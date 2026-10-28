@@ -216,12 +216,34 @@ def _symbol_findings(
     layer_name: str,
 ) -> list[str]:
     """
-    Report configured Swift symbols once per source line.
+    Report forbidden native symbol observations in stable location order.
 
-    Match whole identifier tokens in masked text. Deduplicate each
-    (line, configured symbol) pair and sort by line/name. The supplied
-    restrictions combine explicit symbols and forbidden-layer type names;
-    lexical matches do not resolve scopes or runtime bindings.
+    Parameters
+    ----------
+    code : str
+        Position-preserving Swift text with comments, strings and regex
+        literals masked before whole-identifier matching.
+    forbidden_symbols : collections.abc.Collection[str]
+        Explicit symbols combined with forbidden-layer type names after
+        locally owned types are excluded from cross-layer restrictions.
+    relative : str
+        Repository-relative diagnostic filename.
+    layer_name : str
+        Consumer-owned layer name used to label findings.
+
+    Returns
+    -------
+    list[str]
+        One finding per matching line/configured-symbol pair, sorted by line
+        then symbol. Matching is exact and case-sensitive; source excerpts
+        and duplicate observations are excluded from reporting.
+
+    Notes
+    -----
+    Match whole identifier tokens, including import tokens, without dotted
+    alias expansion. Lexical matches do not resolve scopes or runtime bindings.
+    Native candidate collection stays in _symbols; shared symbol_findings
+    owns restriction filtering, deduplication and diagnostic order.
     """
     return symbol_findings(
         _symbols(code),
