@@ -13,7 +13,9 @@ from ._python_syntax import parse as parse_syntax
 from ._source_declarations import (
     CallableRequirements,
     DeclarationFacts,
+    ParameterSpan,
     SourceFacts,
+    parameter_lines,
 )
 
 # SECTION: TYPE ALIASES
@@ -321,16 +323,11 @@ def _parameter_lines(
             if default is not None
         ),
     ]
-    return (
-        len({arg.lineno for arg in parameters}) == len(parameters)
-        and all(
-            arg.lineno > node.lineno and arg.lineno == arg.end_lineno
-            for arg in parameters
-        )
-        and all(
-            arg.lineno == default.lineno == default.end_lineno
-            for arg, default in defaults
-        )
+    return parameter_lines(
+        node.lineno,
+        (ParameterSpan(arg.lineno, arg.end_lineno) for arg in parameters),
+    ) and all(
+        arg.lineno == default.lineno == default.end_lineno for arg, default in defaults
     )
 
 

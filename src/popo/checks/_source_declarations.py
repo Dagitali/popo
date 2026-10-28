@@ -4,6 +4,7 @@
 Store the declaration facts shared by source-policy front ends.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, Self
 
@@ -119,6 +120,30 @@ class DeclarationFacts:
 
 
 @dataclass(frozen=True, slots=True)
+class ParameterSpan:
+    """
+    Store physical parameter extent independently of native syntax locations.
+
+    Attributes
+    ----------
+    start : int
+        One-based first parameter line, excluding leading whitespace.
+    end : int or None
+        One-based final parameter line, excluding trailing whitespace, or None
+        when native syntax does not provide an end location.
+
+    Notes
+    -----
+    Native collectors select the extent. Python supplies AST argument spans
+    and checks defaults separately; Swift includes type/default text in spans.
+    Receiver exceptions remain native policy decisions.
+    """
+
+    start: int
+    end: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class SourceFacts[Declaration]:
     """
     Describe a parsed source file without executing consumer code.
@@ -137,6 +162,49 @@ class SourceFacts[Declaration]:
     has_overview: bool
     documentation_lines: tuple[int, ...]
     declarations: tuple[Declaration, ...]
+
+
+# !SECTION
+
+
+# SECTION: FUNCTIONS
+
+
+def parameter_lines(
+    declaration_line: int,
+    spans: Iterable[ParameterSpan],
+) -> bool:
+    """
+    Require distinct single-line parameters after the declaration line.
+
+    Parameters
+    ----------
+    declaration_line : int
+        One-based native declaration line.
+    spans : collections.abc.Iterable[ParameterSpan]
+        Native parameter extents; each span is consumed once in any order.
+
+    Returns
+    -------
+    bool
+        True for no parameters or distinct single-line spans strictly after
+        declaration_line. Missing end locations fail the single-line rule.
+
+    Notes
+    -----
+    Native adapters own receiver exceptions, default-expression checks and
+    syntax support. No source is parsed, read, modified or executed here.
+    """
+    seen: set[int] = set()
+    for span in spans:
+        if (
+            span.start <= declaration_line
+            or span.start != span.end
+            or span.start in seen
+        ):
+            return False
+        seen.add(span.start)
+    return True
 
 
 # !SECTION

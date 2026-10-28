@@ -11,7 +11,9 @@ from dataclasses import dataclass
 from ._source_declarations import (
     CallableRequirements,
     DeclarationFacts,
+    ParameterSpan,
     SourceFacts,
+    parameter_lines,
 )
 from ._swift_syntax import ParsedSwiftSource
 from ._swift_syntax import parse as parse_syntax
@@ -494,11 +496,13 @@ def _parameter_lines(
         - len(parameter.text.lstrip())
         for parameter in parameters
     ]
-    line_numbers = [code.count('\n', 0, offset) for offset in positions]
-    return (
-        len(set(line_numbers)) == len(parameters)
-        and all(number > code.count('\n', 0, position) for number in line_numbers)
-        and all('\n' not in parameter.text.strip() for parameter in parameters)
+    line_numbers = [code.count('\n', 0, offset) + 1 for offset in positions]
+    return parameter_lines(
+        code.count('\n', 0, position) + 1,
+        (
+            ParameterSpan(number, number + parameter.text.strip().count('\n'))
+            for number, parameter in zip(line_numbers, parameters, strict=True)
+        ),
     )
 
 
