@@ -25,7 +25,7 @@ from ._common import (
 # SECTION: DATA CLASSES
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExceptionPolicy:
     """
     Hold a scoped approval attestation for an expiring deviation.
@@ -55,7 +55,7 @@ class ExceptionPolicy:
     expires: date
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RepositoryPolicy:
     """
     Hold explicit expectations for one GitHub repository.
@@ -87,7 +87,7 @@ class RepositoryPolicy:
     branches: dict[str, tuple[str, ...]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class HostedConfig:
     """
     Group repository expectations and explicit exception records.
@@ -137,8 +137,8 @@ def _exception_policy(
     ------
     ConfigurationError
         Fields, expiry, scope or evidence URL (including its port) are invalid.
-        Evidence is parsed
-        locally; its existence and authenticity are not verified.
+        Evidence is parsed locally; its existence and authenticity are not
+        verified.
     """
     row = require_table(entry, name='hosted exception')
     keys = {
@@ -310,7 +310,7 @@ def load_hosted_config(
     entries = table.get('repositories')
     if not isinstance(entries, list) or not entries:
         raise ConfigurationError('hosted.repositories must be a nonempty array')
-    repositories = [_repository_policy(entry) for entry in entries]
+    repositories = tuple(_repository_policy(entry) for entry in entries)
     if len({repo.name.lower() for repo in repositories}) != len(repositories):
         raise ConfigurationError('duplicate repository policy')
     repository_checks = {repo.name: expected_checks(repo) for repo in repositories}
@@ -319,10 +319,10 @@ def load_hosted_config(
     entries = table.get('exceptions', [])
     if not isinstance(entries, list):
         raise ConfigurationError('hosted.exceptions must be an array')
-    exceptions = [_exception_policy(entry, repository_checks) for entry in entries]
+    exceptions = tuple(_exception_policy(entry, repository_checks) for entry in entries)
     if len({(item.repository, item.check) for item in exceptions}) != len(exceptions):
         raise ConfigurationError('duplicate exception scope')
-    return HostedConfig(tuple(repositories), tuple(exceptions))
+    return HostedConfig(repositories, exceptions)
 
 
 # !SECTION
