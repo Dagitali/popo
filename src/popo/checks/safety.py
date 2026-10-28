@@ -31,26 +31,6 @@ def _file(
     return path
 
 
-def _head_checkout(
-    value: object,
-) -> bool:
-    """Find direct pull-request head refs passed to the checkout action."""
-    for node in mapping_nodes(value):
-        action = node.get('uses')
-        settings = node.get('with')
-        if (
-            isinstance(action, str)
-            and action.startswith('actions/checkout@')
-            and isinstance(settings, dict)
-            and any(
-                isinstance(item, str) and 'github.event.pull_request.head' in item
-                for item in settings.values()
-            )
-        ):
-            return True
-    return False
-
-
 def _npm_findings(
     root: Path,
     manifest: str,
@@ -95,22 +75,54 @@ def _npm_findings(
                         yield f'{label}: resolved {name} differs from {spec}'
 
 
-def _scripts(
-    value: object,
-) -> list[str]:
-    """Collect nested run commands once without interpreting their language."""
-    return [
-        script
-        for node in mapping_nodes(value)
-        if isinstance(script := node.get('run'), str)
-    ]
-
-
 def _workflow(
     path: Path,
 ) -> dict[str, object]:
     """Parse a mapping with duplicate-key rejection and string event keys."""
     return read_mapping(path, label='workflow')
+
+
+def _workflow_content(
+    value: object,
+) -> tuple[bool, tuple[str, ...]]:
+    """
+    Collect checkout and script observations in one cycle-safe traversal.
+
+    Parameters
+    ----------
+    value : object
+        Parsed workflow graph; only mappings and lists are traversed.
+
+    Returns
+    -------
+    tuple[bool, tuple[str, ...]]
+        Whether a checkout directly references pull-request head data, and run
+        strings in native mapping traversal order. Recursive/shared containers
+        are visited once; identical scripts on distinct mappings are retained.
+
+    Notes
+    -----
+    Checkout observations apply only when the caller identifies a privileged
+    trigger. Scripts are collected for every workflow. Findings remain the
+    caller's responsibility; no command language or expression is evaluated.
+    """
+    head_checkout = False
+    scripts: list[str] = []
+    for node in mapping_nodes(value):
+        if isinstance(script := node.get('run'), str):
+            scripts.append(script)
+        action = node.get('uses')
+        settings = node.get('with')
+        head_checkout = head_checkout or (
+            isinstance(action, str)
+            and action.startswith('actions/checkout@')
+            and isinstance(settings, dict)
+            and any(
+                isinstance(item, str) and 'github.event.pull_request.head' in item
+                for item in settings.values()
+            )
+        )
+    return head_checkout, tuple(scripts)
 
 
 def _workflow_paths(
@@ -198,9 +210,10 @@ def validate(
                     )
                 elif exception.expires < day:
                     failures.append(f'{relative}: expired {trigger} exception')
-            if privileged and _head_checkout(document):
+            head_checkout, scripts = _workflow_content(document)
+            if privileged and head_checkout:
                 failures.append(f'{relative}: privileged checkout of pull-request head')
-            for script in _scripts(document):
+            for script in scripts:
                 if re.search(
                     r'\$\{\{[^}]*github\.event\.(pull_request|issue|comment|discussion)\b',
                     script,
