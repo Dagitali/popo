@@ -201,14 +201,13 @@ def _declaration(
     signature = _signature(syntax)
     requirements = _requirements(syntax, signature)
     return Declaration(
-        DeclarationFacts(
-            syntax.lineno,
-            'function',
-            ast.get_docstring(syntax) or '',
-            signature.parameter_names,
-            requirements.return_section,
-            requirements.raises,
-            signature.parameter_lines,
+        DeclarationFacts.from_requirements(
+            line=syntax.lineno,
+            kind='function',
+            documentation=ast.get_docstring(syntax) or '',
+            parameter_names=signature.parameter_names,
+            requirements=requirements,
+            parameter_lines=signature.parameter_lines,
         ),
         signature.annotated,
     )

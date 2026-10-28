@@ -118,6 +118,58 @@ class DeclarationFacts:
     raises: bool = False
     parameter_lines: bool = True
 
+    @classmethod
+    def from_requirements(
+        cls,
+        *,
+        line: int,
+        kind: str,
+        documentation: str,
+        parameter_names: tuple[str, ...] | None,
+        requirements: CallableRequirements,
+        parameter_lines: bool = True,
+    ) -> Self:
+        """
+        Assemble shared declaration facts from native observations.
+
+        Parameters
+        ----------
+        line : int
+            One-based declaration line selected by the native collector.
+        kind : str
+            Native declaration keyword or category.
+        documentation : str
+            Attached documentation with source-language delimiters removed.
+        parameter_names : tuple[str, ...] or None
+            Documentable names, or None for an unsupported signature.
+            Native receiver and unnamed-argument exclusions remain intact.
+        requirements : CallableRequirements
+            Previously derived conceptual result and exception requirements.
+        parameter_lines : bool, optional
+            Native signature-layout decision, including language exceptions.
+
+        Returns
+        -------
+        Self
+            Declaration facts retaining supplied observations unchanged.
+
+        Notes
+        -----
+        This factory owns the requirement-to-field mapping, not syntax,
+        documentation attachment, policy evaluation or requirement derivation.
+        Direct construction remains available for already flattened facts.
+        No source is read, parsed, validated or executed.
+        """
+        return cls(
+            line=line,
+            kind=kind,
+            documentation=documentation,
+            parameter_names=parameter_names,
+            return_section=requirements.return_section,
+            raises=requirements.raises,
+            parameter_lines=parameter_lines,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ParameterSpan:

@@ -230,14 +230,13 @@ def _declaration(
     doc = '\n'.join(
         line.lstrip()[3:] for line in lines[start : syntax.attachment_start]
     )
-    facts = DeclarationFacts(
-        syntax.line,
-        syntax.kind,
-        doc,
-        syntax.parameter_names,
-        syntax.requirements.return_section,
-        syntax.requirements.raises,
-        syntax.parameter_lines,
+    facts = DeclarationFacts.from_requirements(
+        line=syntax.line,
+        kind=syntax.kind,
+        documentation=doc,
+        parameter_names=syntax.parameter_names,
+        requirements=syntax.requirements,
+        parameter_lines=syntax.parameter_lines,
     )
     return Declaration(facts, start + 1, not start or not lines[start - 1].strip())
 
