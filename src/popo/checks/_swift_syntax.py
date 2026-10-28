@@ -51,7 +51,8 @@ class ParsedSwiftSource:
     documentation : frozenset[int]
         One-based standalone triple-slash comment lines.
     line_offsets : tuple[int, ...]
-        Character offsets of LF-separated line starts for byte conversion.
+        Character offsets of LF-separated line starts for byte conversion,
+        followed by an unused end sentinel at len(decoded source) + 1.
 
     Notes
     -----
@@ -73,6 +74,31 @@ class ParsedSwiftSource:
     ) -> int:
         """
         Translate a node's UTF-8 byte position to an original text offset.
+
+        Parameters
+        ----------
+        node : tree_sitter.Node
+            Native node from this view's original source or recovered prefix.
+            Byte positions and line numbers must belong to that same input.
+
+        Returns
+        -------
+        int
+            Zero-based character offset of the node's start in original text.
+            Non-ASCII prefixes and CRLF line endings retain original lengths.
+
+        Raises
+        ------
+        IndexError
+            A node from incompatible input refers beyond the line-offset table.
+        UnicodeDecodeError
+            Incompatible byte positions split the stored UTF-8 line prefix.
+
+        Notes
+        -----
+        This converts a location without reading or reparsing source. Matching
+        node provenance is a caller contract, not checked by tree identity.
+        Python callers retain native AST locations without this Swift view.
         """
         row, column = node.start_point
         return self.line_offsets[row] + len(

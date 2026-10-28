@@ -89,7 +89,7 @@ class _DeclarationSyntax:
         Return and exception documentation requirements from bounded signature
         text; bodies are not analyzed and types are not resolved.
     parameter_lines : bool
-        Whether parameter/default spans satisfy the physical-layout rule.
+        Whether native parameter/default spans satisfy the layout rule.
     attach_documentation : bool
         Whether preceding doc lines may attach; false after same-line code.
     """
@@ -132,7 +132,7 @@ class _ParameterSyntax:
 @dataclass(frozen=True, slots=True)
 class _Signature:
     """
-    Store one callable's signature observations and lexical boundaries.
+    Store native callable signature observations.
 
     Attributes
     ----------
@@ -140,7 +140,7 @@ class _Signature:
         Documentable internal names in source order, omitting unnamed
         arguments; None marks an unsupported signature.
     parameter_lines : bool
-        Whether parameter/default spans satisfy the physical-layout rule.
+        Whether native parameter/default spans satisfy the layout rule.
     tail : str
         Bounded text after the parameter list for return/throws inspection.
     end : int
@@ -714,10 +714,9 @@ def _signature(
     Notes
     -----
     Swift retains bounded signature interpretation over masked concrete
-    syntax. Python instead reads its native AST arguments; neither front end
-    executes consumer code or resolves types. Named argument syntax is bounded
-    rather than a full Swift grammar, and unnamed arguments do not require
-    docs.
+    syntax. Python instead reads its native AST arguments. Neither front end
+    executes consumer code or resolves types. Name interpretation uses a bounded
+    Swift grammar subset; unnamed arguments do not require documentation.
     """
     opening = code.find('(', position)
     if opening < 0 or any(char in code[position:opening] for char in '{};'):

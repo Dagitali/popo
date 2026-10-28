@@ -60,7 +60,7 @@ DECLARATION_NODE_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 @dataclass(frozen=True, slots=True)
 class _Signature:
     """
-    Store one callable's signature observations before body analysis.
+    Store native callable signature observations.
 
     Attributes
     ----------
@@ -68,7 +68,7 @@ class _Signature:
         Documentable names in established AST grouping, excluding a leading
         positional self or cls receiver.
     parameter_lines : bool
-        Whether parameter/default spans satisfy the physical-layout rule.
+        Whether native parameter/default spans satisfy the layout rule.
     returns : bool
         Whether the return annotation alone requires a Returns section.
         Explicit value returns or yields can add requirements in _requirements.
@@ -279,7 +279,7 @@ def _documentation(
     Notes
     -----
     Python needs no separate attachment/spacing observations, unlike Swift's
-    triple-slash convention. Cleaning preserves ast.get_docstring behavior;
+    triple-slash convention. Cleaning preserves ast.get_docstring behavior.
     Documentation-line spans are collected separately without cleaning.
     No markup contracts are interpreted and no source is executed.
     """
