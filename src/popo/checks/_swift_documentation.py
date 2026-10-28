@@ -128,9 +128,14 @@ def _parameter_names(
         nested Parameters lists, with optional backticks removed. Field names
         are case-insensitive; descriptions and types are not validated.
     """
-    names = set(SINGULAR_PARAMETER_PATTERN.findall(doc))
-    names.update(PARAMETER_PATTERN.findall(_section(doc, 'Parameters')))
-    return names
+    return {
+        match[1]
+        for pattern, text in (
+            (SINGULAR_PARAMETER_PATTERN, doc),
+            (PARAMETER_PATTERN, _section(doc, 'Parameters')),
+        )
+        for match in pattern.finditer(text)
+    }
 
 
 def _presence(

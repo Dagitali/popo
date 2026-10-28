@@ -235,7 +235,7 @@ def contract_findings(
     rules = (
         (
             'parameter-docs',
-            not set(facts.parameter_names) <= documentation.parameter_names,
+            not documentation.parameter_names.issuperset(facts.parameter_names),
             'parameter documentation incomplete',
         ),
         (
@@ -383,7 +383,7 @@ def guide_findings(
     guide, failures = read_source(path, config.root)
     if guide is None:
         return failures
-    entries = set(re.findall(r'`([^`\n]+)`', guide))
+    entries = {match[1] for match in re.finditer(r'`([^`\n]+)`', guide)}
     return [
         f'{path.relative_to(config.root).as_posix()}: missing source-guide entry'
         for path in paths

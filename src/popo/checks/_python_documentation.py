@@ -125,8 +125,8 @@ def _parameter_names(
     """
     return {
         name.strip().lstrip('*')
-        for names in PARAMETER_PATTERN.findall(_section(doc, 'Parameters'))
-        for name in names.split(',')
+        for match in PARAMETER_PATTERN.finditer(_section(doc, 'Parameters'))
+        for name in match[1].split(',')
     }
 
 
