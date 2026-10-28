@@ -424,7 +424,7 @@ def _requirements(
     signature: _Signature,
 ) -> CallableRequirements:
     """
-    Derive callable return and exception documentation requirements.
+    Derive callable result and exception documentation requirements.
 
     Parameters
     ----------
@@ -437,9 +437,10 @@ def _requirements(
     -------
     CallableRequirements
         Yields for generators, otherwise Returns for a value-bearing annotation
-        or explicit value return, and raise coverage for explicit statements.
-        None-valued returns alone do not require a section. Nested scopes do
-        not contribute; locally caught raises still require documentation.
+        or explicit value return, plus exception documentation for explicit
+        raise statements. None-valued returns alone do not require a section.
+        Nested scopes do not contribute; locally caught raises still require
+        documentation.
 
     Notes
     -----

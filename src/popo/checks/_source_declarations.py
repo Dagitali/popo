@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks._source_declarations` module.
 
-Store the declaration facts shared by source-policy front ends.
+Share declaration observations and physical parameter-layout rules.
 """
 
 from collections.abc import Iterable
@@ -69,7 +69,7 @@ class SignatureRecord(Protocol):
 @dataclass(frozen=True, slots=True)
 class CallableRequirements:
     """
-    Describe derived return and exception documentation requirements.
+    Describe derived result and exception documentation requirements.
 
     Attributes
     ----------

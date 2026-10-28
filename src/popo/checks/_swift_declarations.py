@@ -86,7 +86,7 @@ class _DeclarationSyntax:
     parameter_names : tuple[str, ...] or None
         Internal argument names, or None when a signature is unsupported.
     requirements : CallableRequirements
-        Return and exception documentation requirements from bounded signature
+        Result and exception documentation requirements from bounded signature
         text; bodies are not analyzed and types are not resolved.
     parameter_lines : bool
         Whether native parameter/default spans satisfy the layout rule.
@@ -626,7 +626,7 @@ def _requirements(
     tail: str,
 ) -> CallableRequirements:
     """
-    Derive callable return and exception documentation requirements.
+    Derive callable result and exception documentation requirements.
 
     Parameters
     ----------
@@ -639,9 +639,10 @@ def _requirements(
     Returns
     -------
     CallableRequirements
-        Returns for a recognized non-Void/non-Never result, and raise coverage
-        for throws/rethrows before the return arrow. Other declaration kinds
-        do not require a return section. Swift does not derive Yields here.
+        Returns for a recognized non-Void/non-Never result, plus exception
+        documentation for throws/rethrows before the return arrow. Other
+        declaration kinds do not require a result section. Swift does not
+        derive Yields here.
 
     Notes
     -----
