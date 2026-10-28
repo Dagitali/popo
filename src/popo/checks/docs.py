@@ -60,8 +60,10 @@ def _anchors(
     -------
     set[str]
         Lowercase heading slugs and lowercased HTML anchor names or IDs.
-        Repeated heading slugs receive ``-1``, ``-2``, and later suffixes;
-        explicit anchors do not increment heading-duplicate counters.
+        Repeated heading slugs receive ``-1``, ``-2``, and later suffixes,
+        skipping names already allocated to any heading. Naturally suffixed
+        headings participate in collision checks; explicit HTML anchors do
+        not increment or reserve heading-duplicate counters.
 
     Raises
     ------
@@ -83,9 +85,12 @@ def _anchors(
         if match is None:
             continue
         base = _slugify(match.group('heading'))
-        count = counts.get(base, 0)
-        counts[base] = count + 1
-        anchors.add(base if count == 0 else f'{base}-{count}')
+        slug = base
+        while slug in counts:
+            counts[base] += 1
+            slug = f'{base}-{counts[base]}'
+        counts[slug] = 0
+        anchors.add(slug)
     return anchors
 
 
