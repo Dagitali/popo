@@ -200,11 +200,17 @@ def _source_findings(
     Notes
     -----
     Import allowlists match exact modules; symbol rules use masked tokens.
+    An absent allowlist skips native import collection, while an empty one
+    rejects every import. Symbol analysis remains independent of that choice.
     Forbidden-layer type names have already been combined with explicit
     symbols by the adapter, preserving locally owned type exclusions.
     """
     return [
-        *_import_findings(_imports(source), layer, relative),
+        *_import_findings(
+            _imports(source) if layer.allowed_imports is not None else [],
+            layer,
+            relative,
+        ),
         *_symbol_findings(source.code, forbidden_symbols, relative, layer.name),
     ]
 
