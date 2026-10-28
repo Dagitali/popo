@@ -614,15 +614,44 @@ def _requirements(
     types, executes code or proves exception escape behavior. Shared
     normalization selects the result section after native observations.
     """
+    return CallableRequirements.from_observations(
+        returns=_returns(kind, tail),
+        raises=bool(THROWS_PATTERN.search(tail.partition('->')[0])),
+    )
+
+
+def _returns(
+    kind: str,
+    tail: str,
+) -> bool:
+    """
+    Determine whether native result syntax requires documentation.
+
+    Parameters
+    ----------
+    kind : str
+        Native declaration keyword; only func and subscript supply results.
+    tail : str
+        Bounded signature text after the parameter list.
+
+    Returns
+    -------
+    bool
+        Whether an eligible declaration has a recognized return arrow whose
+        stripped result spelling is outside NONVALUE_RETURN_TYPES. Missing
+        arrows and other declaration kinds do not require result sections.
+
+    Notes
+    -----
+    Swift uses bounded signature text and does not infer body return/yield
+    requirements. Its non-value spellings differ from Python's annotation
+    spellings; this classification neither resolves types nor compiles source.
+    """
     result = RETURN_PATTERN.search(tail)
-    returns = (
+    return (
         kind in {'func', 'subscript'}
         and result is not None
         and result[1].strip() not in NONVALUE_RETURN_TYPES
-    )
-    return CallableRequirements.from_observations(
-        returns=returns,
-        raises=bool(THROWS_PATTERN.search(tail.partition('->')[0])),
     )
 
 

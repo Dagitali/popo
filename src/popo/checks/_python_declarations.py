@@ -438,6 +438,37 @@ def _requirements(
     )
 
 
+def _returns(
+    annotation: ast.expr | None,
+) -> bool:
+    """
+    Determine whether native result syntax requires documentation.
+
+    Parameters
+    ----------
+    annotation : ast.expr or None
+        Native return annotation, or None when absent.
+
+    Returns
+    -------
+    bool
+        Whether the annotation spelling is outside NONVALUE_RETURN_TYPES.
+        Absent annotations do not require result documentation by themselves.
+        String-literal annotations use their exact contents; other expressions
+        use ast.unparse. Aliases and whitespace in quoted text are unresolved.
+
+    Notes
+    -----
+    Body returns and yields can add requirements later in _requirements.
+    Python's non-value spellings differ from Swift's Void/Never spellings;
+    this classification neither resolves types nor executes annotations.
+    """
+    text = ast.unparse(annotation) if annotation is not None else ''
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        text = annotation.value
+    return text not in NONVALUE_RETURN_TYPES
+
+
 def _signature(
     node: _CallableSyntax,
 ) -> _Signature:
@@ -465,15 +496,10 @@ def _signature(
     """
     parameters = _parameters(node)
     names = _parameter_names(node, parameters)
-    result_type = node.returns
-    annotation = ast.unparse(result_type) if result_type is not None else ''
-    if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
-        annotation = result_type.value
-    returns = annotation not in NONVALUE_RETURN_TYPES
     return _Signature(
         names,
         _parameter_lines(node, parameters),
-        returns,
+        _returns(node.returns),
         node.returns is not None
         and all(arg.annotation is not None for arg in parameters),
     )
