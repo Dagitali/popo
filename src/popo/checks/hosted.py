@@ -26,9 +26,26 @@ from ..config.hosted import HostedConfig, RepositoryPolicy, expected_checks
 type Status = Literal['verified', 'missing', 'inaccessible', 'excepted']
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Finding:
-    """Record a narrow observation and its evidence endpoint."""
+    """
+    Record a narrow observation and its evidence location.
+
+    Attributes
+    ----------
+    repository, check : str
+        Exact owner/repository and configured expectation identifiers.
+    status : Status
+        Verified, missing, inaccessible or excepted evidence classification.
+    detail : str
+        Narrow diagnostic supplied by the adapter or approval handling.
+    evidence : str
+        GitHub endpoint URL or configured approval-evidence URL.
+
+    Notes
+    -----
+    Direct construction does not validate or redact caller-supplied fields.
+    """
 
     repository: str
     check: str
@@ -37,9 +54,18 @@ class Finding:
     evidence: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Audit:
-    """Record a timestamped audit, not an enforcement or delivery guarantee."""
+    """
+    Record a timestamped audit, not an enforcement or delivery guarantee.
+
+    Attributes
+    ----------
+    observed_at : str
+        UTC observation timestamp supplied by the auditor.
+    findings : tuple[Finding, ...]
+        Ordered narrow observations; raw API responses are not retained here.
+    """
 
     observed_at: str
     findings: tuple[Finding, ...]
@@ -67,7 +93,7 @@ class Audit:
         return json.dumps(asdict(self), indent=2)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Response:
     """
     Represent API data or a failure returned by the read-only adapter.
@@ -121,7 +147,8 @@ def _github_get(
     -------
     Response
         Parsed data or a sanitized failure. Authentication, launch, timeout,
-        API, and malformed JSON errors remain unavailable evidence.
+        API, malformed JSON and parser-depth errors remain unavailable
+        evidence. HTTP failures retain recognized absence evidence separately.
 
     Notes
     -----
@@ -147,17 +174,19 @@ def _github_get(
         result = subprocess.run(command, capture_output=True, text=True, timeout=60)
     except (OSError, subprocess.TimeoutExpired, UnicodeError):
         return Response(error='GitHub CLI unavailable, timed out, or undecodable')
+    try:
+        data = json.loads(result.stdout)
+    except (ValueError, TypeError, RecursionError):
+        if not result.returncode:
+            return Response(error='invalid JSON response')
+        data = None
     if result.returncode:
         match = re.search(r'\(HTTP (\d{3})\)', result.stderr)
         status = int(match[1]) if match else None
         # Retain only a recognized absence message, never arbitrary API text.
-        try:
-            body = json.loads(result.stdout)
-        except (ValueError, TypeError):
-            body = None
         message = (
             'Branch not protected'
-            if isinstance(body, dict) and body.get('message') == 'Branch not protected'
+            if isinstance(data, dict) and data.get('message') == 'Branch not protected'
             else None
         )
         return Response(
@@ -165,17 +194,13 @@ def _github_get(
             error=f'GitHub GET failed (HTTP {status or 'unknown'})',
             status=status,
         )
-    try:
-        data = json.loads(result.stdout)
-        if paginate:
-            if not isinstance(data, list) or any(
-                not isinstance(page, list) for page in data
-            ):
-                return Response(error='unexpected paginated response')
-            data = [item for page in data for item in page]
-        return Response(data=data)
-    except ValueError:
-        return Response(error='invalid JSON response')
+    if paginate:
+        if not isinstance(data, list) or any(
+            not isinstance(page, list) for page in data
+        ):
+            return Response(error='unexpected paginated response')
+        data = [item for page in data for item in page]
+    return Response(data=data)
 
 
 def _repository(
