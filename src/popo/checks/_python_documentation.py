@@ -191,9 +191,8 @@ def _section(
     match = SECTION_PATTERNS[name].search(doc)
     if match is None:
         return ''
-    remainder = doc[match.end() :]
-    end = SECTION_END_PATTERN.search(remainder)
-    return remainder[: end.start() if end else len(remainder)].strip()
+    end = SECTION_END_PATTERN.search(doc, match.end())
+    return doc[match.end() : end.start() if end else len(doc)].strip()
 
 
 # !SECTION
