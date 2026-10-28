@@ -72,7 +72,11 @@ class TestInstalledValidation:
             policy = '[swift-boundaries]\n[[swift-boundaries.layers]]\n'
             policy += 'name="core"\ninclude=["*.swift"]\nallowed-imports=["Foundation"]'
             path = tmp_path / 'Rule.swift'
-            valid = 'import Foundation\nstruct Rule {}'
+            policy += '\nforbidden-symbols=["SwiftUI"]'
+            valid = (
+                'import Foundation\nlet pattern = /SwiftUI/; struct Rule {}'
+                '\n/* unfinished\nimport SwiftUI\n'
+            )
             invalid = 'import SwiftUI\nlet account = "PRIVATE BALANCE"'
             extra = []
         (tmp_path / 'popo.toml').write_text(policy)
