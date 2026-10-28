@@ -5,6 +5,7 @@ Observe scoped workflow toolchain declarations without execution.
 """
 
 import re
+from collections import ChainMap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -89,9 +90,11 @@ def _resolve(
         return (_literal(value),)
     scope, name = match.groups()
     if scope == 'env':
-        environment: dict[str, object] = {}
-        for owner in (workflow, job, step):
-            environment.update(require_mapping(owner.get('env', {}), 'env'))
+        environments = [
+            require_mapping(owner.get('env', {}), 'env')
+            for owner in (workflow, job, step)
+        ]
+        environment = ChainMap(*reversed(environments))
         return (_literal(environment.get(name)),)
     strategy = require_mapping(job.get('strategy', {}), 'strategy')
     matrix = require_mapping(strategy.get('matrix', {}), 'matrix')
