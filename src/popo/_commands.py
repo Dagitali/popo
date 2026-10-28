@@ -208,7 +208,8 @@ def _docs(
     Returns
     -------
     tuple[list[str], str]
-        Markdown diagnostics and the message to use only on success.
+        Markdown diagnostics and the message to use only on success. Invalid
+        URL destinations become findings so later links are still checked.
 
     Raises
     ------
@@ -217,9 +218,8 @@ def _docs(
     UnicodeError
         If inspected Markdown cannot be decoded as UTF-8.
     ValueError
-        If a Markdown destination is rejected by URL parsing, such as an
-        invalid bracketed host. This error propagates rather than becoming
-        a validation diagnostic.
+        A local destination cannot be resolved as a filesystem path, such as
+        one containing a NUL character. URL-parsing errors become findings.
     """
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
