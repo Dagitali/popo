@@ -11,7 +11,7 @@ from pathlib import Path
 from popo.config.source_checks import SourceCheckConfig
 from popo.config.test_results import TestResultsConfig
 
-from ._source_inputs import discover, read_source
+from ._source_inputs import discover, inspect_sources
 
 # SECTION: CONSTANTS
 
@@ -141,16 +141,18 @@ def validate(
     except (OSError, ValueError):
         return ['cannot resolve selected result root']
     paths, failures = discover(inputs, boundary)
-    for path in paths:
-        source, errors = read_source(path, boundary)
-        failures.extend(errors)
-        if source is None:
-            continue
+
+    def inspect(
+        path: Path,
+        source: str,
+    ) -> list[str]:
+        """Label adapter findings without disclosing report contents."""
         relative = path.relative_to(boundary).as_posix()
-        failures.extend(
+        return [
             f'{relative}: {finding}' for finding in _report_findings(source, config)
-        )
-    return failures
+        ]
+
+    return [*failures, *inspect_sources(paths, boundary, inspect)]
 
 
 # !SECTION
