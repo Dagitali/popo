@@ -218,8 +218,8 @@ def _docs(
     UnicodeError
         If inspected Markdown cannot be decoded as UTF-8.
     ValueError
-        A local destination cannot be resolved as a filesystem path, such as
-        one containing a NUL character. URL-parsing errors become findings.
+        The supplied repository root cannot resolve as a filesystem path.
+        Invalid URL/local destinations instead become validation findings.
     """
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
