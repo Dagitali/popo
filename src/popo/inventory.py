@@ -71,7 +71,14 @@ def _blob_files(
     ValueError
         Headers, IDs, types, sizes or separators are malformed, or trailing
         data remains. Messages omit raw header text and source bytes.
+
+    Notes
+    -----
+    Hash read-only views into the original batch buffer rather than copying
+    each blob. The complete batch remains in memory; returned records retain
+    checksums, not source buffers.
     """
+    view = memoryview(stream)
     files = []
     offset = 0
     for path, mode, oid in entries:
@@ -90,7 +97,7 @@ def _blob_files(
             or stream[stop : stop + 1] != b'\n'
         ):
             raise ValueError('malformed Git blob response')
-        contents = stream[start:stop]
+        contents = view[start:stop]
         files.append(
             SourceFile(
                 path,
