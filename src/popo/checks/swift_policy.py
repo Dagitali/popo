@@ -123,7 +123,7 @@ def _workflow_observations(
     config: SwiftPolicyConfig,
 ) -> tuple[list[VersionObservation], list[str]]:
     """
-    Discover confined workflows and collect scoped compiler observations.
+    Collect workflow version observations without comparing policy versions.
 
     Parameters
     ----------
@@ -138,7 +138,8 @@ def _workflow_observations(
 
     Notes
     -----
-    Deduplicate and sort files selected by explicit consumer globs. Return
+    Unlike Python's per-file reader, this adapter also discovers confined
+    workflows. Deduplicate and sort files selected by consumer globs. Return
     discovery, containment and scoped YAML errors as findings; version syntax,
     membership and preferred compiler coverage are checked later. No workflow
     is run, and arbitrary expressions are not resolved.

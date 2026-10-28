@@ -8,7 +8,7 @@ import re
 import sys
 import tomllib
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
@@ -16,7 +16,7 @@ from packaging.version import InvalidVersion, Version
 from popo.config import PythonPolicyConfig
 from popo.support import automation_paths
 
-from ._toolchain_policy import workflow_observations
+from ._toolchain_policy import VersionObservation, workflow_observations
 
 # SECTION: CONSTANTS
 
@@ -300,27 +300,10 @@ def _workflow_findings(
     if config.workflow_parser == 'scoped' and not paths:
         failures.append('no Python policy workflows found')
     for path in paths:
-        if config.workflow_parser == 'scoped':
-            observations, errors = workflow_observations(
-                path,
-                'python-version',
-                kind='runtime',
-            )
-            failures.extend(f'{path}: {error}' for error in errors)
-            configured = [observation.value for observation in observations]
-        else:
-            content = path.read_text(encoding='utf-8')
-            configured = [
-                resolved
-                for raw in map(
-                    _normalize_scalar,
-                    WORKFLOW_VERSION_PATTERN.findall(content),
-                )
-                for resolved in (_resolve_versions(raw, content) or (raw,))
-            ]
-            if 'actions/setup-python@' in content and not configured:
-                failures.append(f'{path}: setup-python requires an explicit version')
-        for value in configured:
+        observations, errors = _workflow_observations(path, config.workflow_parser)
+        failures.extend(f'{path}: {error}' for error in errors)
+        for observation in observations:
+            value = observation.value
             try:
                 accepted = Version(value) in supported
             except InvalidVersion:
@@ -328,6 +311,58 @@ def _workflow_findings(
             if not accepted:
                 failures.append(f'{path}: unsupported Python version {value!r}')
     return failures
+
+
+def _workflow_observations(
+    path: Path,
+    parser: Literal['text', 'scoped'],
+) -> tuple[tuple[VersionObservation, ...], list[str]]:
+    """
+    Collect workflow version observations without comparing policy versions.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Selected workflow file; discovery remains the caller's responsibility.
+    parser : {'text', 'scoped'}
+        Legacy textual resolution or the shared scoped YAML observer.
+
+    Returns
+    -------
+    tuple[tuple[VersionObservation, ...], list[str]]
+        Runtime declarations retaining source, selector and value, followed by
+        input/resolution findings without the caller's filename prefix.
+        Version syntax and range membership are evaluated separately.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        The workflow cannot be read or decoded in legacy text mode. Scoped
+        mode returns read/decode errors as findings instead.
+
+    Notes
+    -----
+    Legacy observations use the python-version selector without claiming YAML
+    scope. Preserve unresolved textual references as values for subsequent
+    rejection. Legacy mode requires an input only for setup-python markers;
+    scoped mode requires one per file and retains resolved field selectors.
+    Like Swift observations, these records do not prove workflow execution or
+    tool identity. No workflow is run or arbitrary expression evaluated.
+    """
+    if parser == 'scoped':
+        return workflow_observations(path, 'python-version', kind='runtime')
+    content = path.read_text(encoding='utf-8')
+    observations = tuple(
+        VersionObservation(path, 'python-version', resolved, 'runtime')
+        for raw in map(_normalize_scalar, WORKFLOW_VERSION_PATTERN.findall(content))
+        for resolved in (_resolve_versions(raw, content) or (raw,))
+    )
+    failures = (
+        ['setup-python requires an explicit version']
+        if 'actions/setup-python@' in content and not observations
+        else []
+    )
+    return observations, failures
 
 
 # !SECTION

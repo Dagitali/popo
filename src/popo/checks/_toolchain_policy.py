@@ -43,8 +43,10 @@ class VersionObservation:
     ----------
     source : pathlib.Path or None
         Input file, or None for an explicitly supplied compiler observation.
+        Native adapters retain provenance even for legacy textual readers.
     location : str
-        Field selector or CLI option identifying the observation.
+        Field selector or CLI option identifying the observation. Legacy Python
+        text uses an input key without claiming YAML scope.
     value : str
         Declared version text; language-specific comparison validates it.
     kind : ObservationKind
