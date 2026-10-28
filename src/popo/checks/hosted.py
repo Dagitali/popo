@@ -419,7 +419,9 @@ def _required_contexts(
     -----
     Perform no endpoint reads or response mutation. This parser does not verify
     check-source identity.
-    Unrelated effective-rule types do not contribute required contexts.
+    Unrelated effective-rule types do not contribute required contexts. Null
+    or omitted legacy required checks retain the empty-evidence case; other
+    values must be mappings, including when they are falsy.
     """
     if rules.error or not isinstance(rules.data, list):
         raise ValueError('effective rules unavailable')
@@ -434,7 +436,11 @@ def _required_contexts(
             contexts.update(item['context'] for item in required_rules)
     legacy_known = not legacy.error and isinstance(legacy.data, dict)
     if legacy_known:
-        required = legacy.data.get('required_status_checks') or {}
+        required = legacy.data.get('required_status_checks')
+        if required is None:
+            required = {}
+        elif not isinstance(required, dict):
+            raise ValueError('unexpected legacy required checks')
         legacy_contexts = required.get('contexts', [])
         legacy_checks = required.get('checks', [])
         if not isinstance(legacy_contexts, list) or not isinstance(
