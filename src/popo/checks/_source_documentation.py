@@ -185,14 +185,24 @@ def callable_findings(
     Returns
     -------
     list[str]
-        Contract findings in rule order, or empty for noncallable declarations.
+        Contract findings in rule order, or empty for noncallable declarations,
+        unsupported signatures or disabled callable rules.
 
     Notes
     -----
     Presence and spacing rules remain the caller's responsibility. Interpreter
-    exceptions propagate; no syntax parsing or consumer execution occurs.
+    exceptions propagate when interpretation is needed; disabled rules and
+    unsupported signatures do not request markup evidence. No syntax parsing
+    or consumer execution occurs.
     """
-    if facts.kind not in callable_kinds:
+    if (
+        facts.kind not in callable_kinds
+        or facts.parameter_names is None
+        or not any(
+            config.settings[key]
+            for key in ('parameter-docs', 'return-docs', 'raises-docs')
+        )
+    ):
         return []
     return contract_findings(
         facts,
