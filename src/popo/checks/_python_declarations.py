@@ -449,6 +449,8 @@ def _requirements(
     derives these requirements from bounded signatures; neither approach
     resolves types, executes code or proves exception escape behavior. Shared
     normalization selects the result section after native observations.
+    Stop scanning once yield and raise observations fully determine the
+    contract; later return observations cannot override a generator section.
     """
     returns = signature.returns
     yields = raises = False
@@ -461,6 +463,8 @@ def _requirements(
             returns |= item.value is not None and not (
                 isinstance(item.value, ast.Constant) and item.value.value is None
             )
+        if yields and raises:
+            break
     return CallableRequirements.from_observations(
         returns=returns,
         yields=yields,
