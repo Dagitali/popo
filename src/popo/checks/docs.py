@@ -259,29 +259,30 @@ def _target_findings(
     ------
     OSError, UnicodeError
         Target resolution, inspection, reading or UTF-8 decoding fails.
-    ValueError
-        A local destination cannot be resolved as a filesystem path, such as
-        one containing a NUL character. URL-parsing errors become findings.
 
     Notes
     -----
-    Keep malformed URLs local to this diagnostic so later links are checked.
+    Malformed URLs and invalid local paths become diagnostics so later links
+    are checked; filesystem I/O and decoding errors still propagate.
     Existing directory links need no README unless they include a fragment.
     """
     raw_target = target.strip().split(' "', maxsplit=1)[0].strip('<>')
     try:
         parsed = urlsplit(raw_target)
+        if parsed.scheme or parsed.netloc:
+            return []
+        target_path = (
+            source if not parsed.path else source.parent / unquote(parsed.path)
+        )
+        directory = target_path.is_dir()
+        if directory and parsed.fragment:
+            target_path = target_path / 'README.md'
+        resolved_target = target_path.resolve()
     except ValueError:
         return [f'{source}:{line_number}: invalid link target: {raw_target}']
-    if parsed.scheme or parsed.netloc:
-        return []
-    target_path = source if not parsed.path else source.parent / unquote(parsed.path)
-    if target_path.is_dir() and parsed.fragment:
-        target_path = target_path / 'README.md'
-    resolved_target = target_path.resolve()
     if not resolved_target.is_relative_to(resolved_root):
         return [f'{source}:{line_number}: link escapes repository: {raw_target}']
-    if target_path.is_dir() and not parsed.fragment and not image:
+    if directory and not parsed.fragment and not image:
         return []
     if not target_path.is_file():
         return [f'{source}:{line_number}: local target does not exist: {raw_target}']
@@ -316,7 +317,7 @@ def validate(
     -------
     list[str]
         Missing-root, missing-target, missing-anchor, repository-escape,
-        invalid-reference and malformed-URL findings. Link/reference findings
+        invalid-reference and malformed-URL/local-path findings. Diagnostics
         retain the source path and original line number.
 
     Raises
@@ -325,9 +326,6 @@ def validate(
         If a discovered source or inspected Markdown target cannot be read.
     UnicodeError
         If inspected Markdown cannot be decoded as UTF-8.
-    ValueError
-        A local destination cannot be resolved as a filesystem path, such as
-        one containing a NUL character. URL-parsing errors become findings.
 
     Notes
     -----
@@ -337,7 +335,8 @@ def validate(
     reference labels with whitespace folding and case folding; reject
     conflicting destinations and undefined full or collapsed reference uses.
     Shortcut reference syntax and nested/escaped link syntax are not fully
-    supported. Malformed URLs become findings without stopping later links.
+    supported. Malformed URLs and invalid decoded local paths become findings
+    without stopping later links.
     External URLs are skipped without network requests. Fragments are validated
     only for Markdown targets; other local targets are checked for existence.
     Files are never modified.
