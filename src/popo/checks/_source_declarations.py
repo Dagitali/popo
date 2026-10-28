@@ -73,7 +73,7 @@ class CallableRequirements:
 
     Attributes
     ----------
-    return_section : ResultSection
+    result_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
         Documentation interpreters map this to the language's notation.
     raises : bool
@@ -89,7 +89,7 @@ class CallableRequirements:
     normalizes result-section priority and retains the supplied raise flag.
     """
 
-    return_section: ResultSection = ''
+    result_section: ResultSection = ''
     raises: bool = False
 
     @classmethod
@@ -145,7 +145,7 @@ class DeclarationFacts:
     parameter_names : tuple[str, ...] or None
         Names requiring documentation, or None for unsupported signatures.
         Python receivers and unnamed Swift arguments are excluded.
-    return_section : ResultSection
+    result_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
         Documentation interpreters map this to the language's notation.
     raises : bool
@@ -159,7 +159,7 @@ class DeclarationFacts:
     kind: str
     documentation: str
     parameter_names: tuple[str, ...] | None
-    return_section: ResultSection = ''
+    result_section: ResultSection = ''
     raises: bool = False
     parameter_lines: bool = True
 
@@ -207,7 +207,7 @@ class DeclarationFacts:
             kind=kind,
             documentation=documentation,
             parameter_names=signature.parameter_names,
-            return_section=requirements.return_section,
+            result_section=requirements.result_section,
             raises=requirements.raises,
             parameter_lines=signature.parameter_lines,
         )

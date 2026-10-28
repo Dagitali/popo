@@ -82,7 +82,7 @@ def _declaration_findings(
 
 def _documentation(
     doc: str,
-    return_section: ResultSection,
+    result_section: ResultSection,
 ) -> CallableDocumentation:
     """
     Collect callable documentation evidence using the language's markup.
@@ -91,7 +91,7 @@ def _documentation(
     ----------
     doc : str
         Attached DocC triple-slash text supplied by the declaration collector.
-    return_section : ResultSection
+    result_section : ResultSection
         Returns when a result is required, or empty when unneeded. Swift's
         collector does not request Python's Yields convention.
 
@@ -107,7 +107,7 @@ def _documentation(
     arguments. Returns and Throws fields supply result and exception evidence.
     This is bounded DocC notation, not compiler or full DocC validation.
     """
-    return DIALECT.interpret(doc, return_section)
+    return DIALECT.interpret(doc, result_section)
 
 
 def _parameter_names(

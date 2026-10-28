@@ -32,10 +32,10 @@ class CallableDocumentation:
     parameter_names : frozenset[str]
         Documented names normalized by the language's markup interpreter;
         spelling remains case-sensitive. This does not validate descriptions.
-    return_documented : bool
+    result_documented : bool
         Whether notation for the required return/yield section has content.
         This observation is interpreted alongside declaration requirements.
-    raises_documented : bool
+    exception_documented : bool
         Whether the language's exception section/field has content.
 
     Notes
@@ -46,8 +46,8 @@ class CallableDocumentation:
     """
 
     parameter_names: frozenset[str] = frozenset()
-    return_documented: bool = False
-    raises_documented: bool = False
+    result_documented: bool = False
+    exception_documented: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,7 +81,7 @@ class DocumentationDialect:
     def interpret(
         self,
         doc: str,
-        return_section: ResultSection,
+        result_section: ResultSection,
     ) -> CallableDocumentation:
         """
         Collect callable documentation evidence using the language's markup.
@@ -90,7 +90,7 @@ class DocumentationDialect:
         ----------
         doc : str
             Native documentation text supplied by a declaration collector.
-        return_section : ResultSection
+        result_section : ResultSection
             Required conceptual result section, or empty when unneeded.
 
         Returns
@@ -105,11 +105,11 @@ class DocumentationDialect:
         it does not validate prose, types, syntax or exception escape behavior.
         """
         result = (
-            self.result_section if self.result_section is not None else return_section
+            self.result_section if self.result_section is not None else result_section
         )
         return CallableDocumentation(
             frozenset(self.read_parameter_names(doc)),
-            bool(self.read_section(doc, result)) if return_section else False,
+            bool(self.read_section(doc, result)) if result_section else False,
             bool(self.read_section(doc, self.exception_section)),
         )
 
@@ -195,7 +195,7 @@ def callable_findings(
         facts,
         config,
         relative,
-        interpret(facts.documentation, facts.return_section),
+        interpret(facts.documentation, facts.result_section),
     )
 
 
@@ -237,12 +237,12 @@ def contract_findings(
         ),
         (
             'return-docs',
-            bool(facts.return_section) and not documentation.return_documented,
+            bool(facts.result_section) and not documentation.result_documented,
             'return documentation missing',
         ),
         (
             'raises-docs',
-            facts.raises and not documentation.raises_documented,
+            facts.raises and not documentation.exception_documented,
             'raises documentation missing',
         ),
     )

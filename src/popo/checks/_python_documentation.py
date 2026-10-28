@@ -78,7 +78,7 @@ def _declaration_findings(
 
 def _documentation(
     doc: str,
-    return_section: ResultSection,
+    result_section: ResultSection,
 ) -> CallableDocumentation:
     """
     Collect callable documentation evidence using the language's markup.
@@ -87,7 +87,7 @@ def _documentation(
     ----------
     doc : str
         Cleaned NumPy docstring supplied by the declaration collector.
-    return_section : ResultSection
+    result_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
 
     Returns
@@ -102,7 +102,7 @@ def _documentation(
     Returns or Yields, and Raises supplies exception evidence. Section content
     is inspected without validating prose, types or exception escape behavior.
     """
-    return DIALECT.interpret(doc, return_section)
+    return DIALECT.interpret(doc, result_section)
 
 
 def _parameter_names(
