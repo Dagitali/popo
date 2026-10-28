@@ -376,9 +376,9 @@ def _symbols(
     for node in nodes(tree):
         if not isinstance(node, (ast.Name, ast.Attribute)):
             continue
-        name = ast.unparse(node)
-        head, *tail = name.split('.')
-        expanded = '.'.join([aliases.get(head, head), *tail])
+        name = node.id if isinstance(node, ast.Name) else ast.unparse(node)
+        head, separator, tail = name.partition('.')
+        expanded = aliases.get(head, head) + separator + tail
         yield SymbolReference(node.lineno, name)
         yield SymbolReference(node.lineno, expanded)
 
