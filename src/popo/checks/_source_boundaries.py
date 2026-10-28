@@ -273,9 +273,8 @@ def import_findings(
         names: Collection[str],
     ) -> bool:
         """Apply exact matching with an optional dotted-descendant rule."""
-        return any(
-            target == name or (allow_descendants and target.startswith(name + '.'))
-            for name in names
+        return target in names or (
+            allow_descendants and any(target.startswith(name + '.') for name in names)
         )
 
     failures: list[str] = []
