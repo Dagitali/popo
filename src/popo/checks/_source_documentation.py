@@ -53,8 +53,7 @@ class CallableDocumentation:
 @dataclass(frozen=True, slots=True)
 class DocumentationDialect:
     """
-    Bind native markup readers and section mappings to shared evidence
-    assembly.
+    Bind native markup readers and section labels for shared evidence.
 
     Attributes
     ----------
@@ -62,7 +61,7 @@ class DocumentationDialect:
         Native reader for documented argument names, retaining case rules.
     read_section : collections.abc.Callable[[str, str], str]
         Native reader for stripped content of one named markup section.
-    raises_section : str
+    exception_section : str
         Exception label understood by the native reader: Raises or Throws.
     result_section : str or None
         Fixed result label when native markup uses one form. None preserves
@@ -76,7 +75,7 @@ class DocumentationDialect:
 
     read_parameter_names: Callable[[str], set[str]]
     read_section: Callable[[str, str], str]
-    raises_section: str
+    exception_section: str
     result_section: str | None = None
 
     def interpret(
@@ -111,7 +110,7 @@ class DocumentationDialect:
         return CallableDocumentation(
             frozenset(self.read_parameter_names(doc)),
             bool(self.read_section(doc, result)) if return_section else False,
-            bool(self.read_section(doc, self.raises_section)),
+            bool(self.read_section(doc, self.exception_section)),
         )
 
 

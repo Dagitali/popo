@@ -218,7 +218,7 @@ def _section(
 DIALECT = DocumentationDialect(
     read_parameter_names=_parameter_names,
     read_section=_section,
-    raises_section='Throws',
+    exception_section='Throws',
     result_section='Returns',
 )
 
