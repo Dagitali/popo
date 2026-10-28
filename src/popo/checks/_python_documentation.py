@@ -236,7 +236,9 @@ def documentation_findings(
     Returns
     -------
     list[str]
-        Missing documentation and incomplete parameter/return/raise sections.
+        Missing documentation and incomplete parameter/result/exception
+        contracts, in native declaration order. Result coverage includes the
+        Returns or Yields section selected by the declaration facts.
 
     Notes
     -----

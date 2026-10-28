@@ -249,7 +249,10 @@ def documentation_findings(
     Returns
     -------
     list[str]
-        Missing documentation, spacing and callable contract findings.
+        Missing documentation and incomplete parameter/result/exception
+        contracts, in native declaration order. Enabled spacing findings
+        precede callable contracts for each declaration; result/exception
+        evidence comes from DocC Returns/Throws fields.
 
     Notes
     -----
