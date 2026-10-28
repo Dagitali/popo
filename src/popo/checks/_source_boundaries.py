@@ -1,9 +1,10 @@
 """
 :mod:`popo.checks._source_boundaries` module.
 
-Share import facts and read architecture inputs across layer selections.
+Share dependency facts, symbol reporting and architecture input discovery.
 """
 
+from collections.abc import Collection, Iterable
 from pathlib import Path
 from typing import NamedTuple, Protocol
 
@@ -31,6 +32,23 @@ class ImportReference(NamedTuple):
     line: int
     target: str
     alias: str = ''
+
+
+class SymbolReference(NamedTuple):
+    """
+    Store a statically recognized symbol candidate and its location.
+
+    Attributes
+    ----------
+    line : int
+        One-based source line containing the candidate reference.
+    name : str
+        Native spelling or expanded Python alias, compared case-sensitively.
+        Recognition does not prove runtime binding or dependency ownership.
+    """
+
+    line: int
+    name: str
 
 
 # !SECTION
@@ -122,6 +140,45 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
 
 
 # SECTION: FUNCTIONS
+
+
+def symbol_findings(
+    references: Iterable[SymbolReference],
+    forbidden_symbols: Collection[str],
+    relative: str,
+    layer_name: str,
+) -> list[str]:
+    """
+    Filter native symbol candidates and report each line/name pair once.
+
+    Parameters
+    ----------
+    references : collections.abc.Iterable[SymbolReference]
+        Native observations, including duplicates or expanded alias spellings.
+        Input order is unrestricted; the iterable is consumed once.
+    forbidden_symbols : collections.abc.Collection[str]
+        Exact case-sensitive names prohibited by the current layer.
+    relative : str
+        Repository-relative diagnostic filename.
+    layer_name : str
+        Consumer-owned layer name used to label findings.
+
+    Returns
+    -------
+    list[str]
+        Findings sorted by line then symbol, without source excerpts.
+
+    Notes
+    -----
+    Native collectors own syntax, alias expansion and masking. This function
+    performs no parsing, scope resolution, source reads or consumer execution.
+    """
+    forbidden = set(forbidden_symbols)
+    matches = {reference for reference in references if reference.name in forbidden}
+    return [
+        f'{relative}:{line}: {layer_name}: forbidden symbol {name}'
+        for line, name in sorted(matches)
+    ]
 
 
 def validate_boundaries[ParsedSource](

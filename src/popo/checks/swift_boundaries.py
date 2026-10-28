@@ -5,12 +5,17 @@ Inspect Swift import and symbol boundaries through concrete syntax.
 """
 
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from pathlib import Path
 
 from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 
-from ._source_boundaries import ImportReference, validate_boundaries
+from ._source_boundaries import (
+    ImportReference,
+    SymbolReference,
+    symbol_findings,
+    validate_boundaries,
+)
 from ._swift_syntax import ParsedSwiftSource, nodes
 from ._swift_syntax import parse as parse_syntax
 
@@ -154,15 +159,39 @@ def _symbol_findings(
     restrictions combine explicit symbols and forbidden-layer type names;
     lexical matches do not resolve scopes or runtime bindings.
     """
-    failures: list[str] = []
+    return symbol_findings(
+        _symbols(code),
+        forbidden_symbols,
+        relative,
+        layer_name,
+    )
+
+
+def _symbols(
+    code: str,
+) -> Iterator[SymbolReference]:
+    """
+    Collect native symbol candidates without resolving runtime bindings.
+
+    Parameters
+    ----------
+    code : str
+        Swift text with comments, strings and regex literals already masked.
+
+    Yields
+    ------
+    SymbolReference
+        Whole identifier tokens with their one-based physical source lines.
+        Duplicate candidates are retained for shared filtering/reporting.
+
+    Notes
+    -----
+    Import tokens remain candidates. Unlike Python AST analysis, dotted-name
+    expansion and scope resolution are not performed by this token guard.
+    """
     for number, line in enumerate(code.splitlines(), start=1):
-        for symbol in sorted(
-            set(re.findall(r'\b\w+\b', line)).intersection(forbidden_symbols),
-        ):
-            failures.append(
-                f'{relative}:{number}: {layer_name}: forbidden symbol {symbol}',
-            )
-    return failures
+        for name in re.findall(r'\b\w+\b', line):
+            yield SymbolReference(number, name)
 
 
 # !SECTION

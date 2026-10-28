@@ -5,14 +5,19 @@ Inspect Python import and symbol boundaries through static AST analysis.
 """
 
 import ast
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from pathlib import Path
 
 from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 
 from ._python_syntax import nodes, syntax_findings
 from ._python_syntax import parse as parse_syntax
-from ._source_boundaries import ImportReference, validate_boundaries
+from ._source_boundaries import (
+    ImportReference,
+    SymbolReference,
+    symbol_findings,
+    validate_boundaries,
+)
 
 # SECTION: PROTECTED CLASSES
 
@@ -185,7 +190,39 @@ def _symbol_findings(
     Deduplicate each (line, configured symbol) pair and sort by line/name.
     Local shadows, re-exports and runtime bindings are not resolved.
     """
-    failures: list[str] = []
+    return symbol_findings(
+        _symbols(tree, imports),
+        forbidden_symbols,
+        relative,
+        layer_name,
+    )
+
+
+def _symbols(
+    tree: ast.AST,
+    imports: list[ImportReference],
+) -> Iterator[SymbolReference]:
+    """
+    Collect native symbol candidates without resolving runtime bindings.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        Parsed Python source; comments and literal text are not reparsed.
+    imports : list[ImportReference]
+        Recognized imports used for conservative local alias expansion.
+
+    Yields
+    ------
+    SymbolReference
+        Names and dotted attributes with original and expanded spellings.
+        Duplicate candidates are retained for shared filtering/reporting.
+
+    Notes
+    -----
+    Local shadows, re-exports and runtime bindings are not resolved. Unlike
+    Swift token matching, import declarations alone do not yield references.
+    """
     aliases = {item.alias: item.target for item in imports}
     for node in nodes(tree):
         if isinstance(node, ast.Import):
@@ -193,21 +230,14 @@ def _symbol_findings(
                 if item.asname is None:
                     head = item.name.split('.')[0]
                     aliases[head] = head
-    matches: set[tuple[int, str]] = set()
     for node in nodes(tree):
         if not isinstance(node, (ast.Name, ast.Attribute)):
             continue
         name = ast.unparse(node)
         head, *tail = name.split('.')
         expanded = '.'.join([aliases.get(head, head), *tail])
-        for symbol in forbidden_symbols:
-            if symbol in (name, expanded):
-                matches.add((node.lineno, symbol))
-    failures.extend(
-        f'{relative}:{line}: {layer_name}: forbidden symbol {symbol}'
-        for line, symbol in sorted(matches)
-    )
-    return failures
+        yield SymbolReference(node.lineno, name)
+        yield SymbolReference(node.lineno, expanded)
 
 
 # !SECTION
