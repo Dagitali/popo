@@ -259,15 +259,16 @@ def _target_findings(
     ------
     OSError, UnicodeError
         Target resolution, inspection, reading or UTF-8 decoding fails.
+    ValueError
+        A local destination cannot be resolved as a filesystem path, such as
+        one containing a NUL character. URL-parsing errors become findings.
 
     Notes
     -----
     Keep malformed URLs local to this diagnostic so later links are checked.
     Existing directory links need no README unless they include a fragment.
     """
-    raw_target = target.strip().strip('<>')
-    if ' "' in raw_target:
-        raw_target = raw_target.split(' "', maxsplit=1)[0]
+    raw_target = target.strip().split(' "', maxsplit=1)[0].strip('<>')
     try:
         parsed = urlsplit(raw_target)
     except ValueError:
@@ -324,6 +325,9 @@ def validate(
         If a discovered source or inspected Markdown target cannot be read.
     UnicodeError
         If inspected Markdown cannot be decoded as UTF-8.
+    ValueError
+        A local destination cannot be resolved as a filesystem path, such as
+        one containing a NUL character. URL-parsing errors become findings.
 
     Notes
     -----
