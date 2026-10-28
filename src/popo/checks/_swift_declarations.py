@@ -152,6 +152,7 @@ class _Signature:
     Swift requires lexical balancing; this is not a compiler AST. Unsupported
     signatures have None names, false layout and an empty tail. Python's
     counterpart stores native-AST annotation facts instead of text boundaries.
+    Its parameter fields structurally satisfy the shared SignatureRecord.
     """
 
     parameter_names: tuple[str, ...] | None
@@ -235,9 +236,8 @@ def _declaration(
         line=syntax.line,
         kind=syntax.kind,
         documentation=doc,
-        parameter_names=syntax.parameter_names,
+        signature=syntax,
         requirements=syntax.requirements,
-        parameter_lines=syntax.parameter_lines,
     )
     return Declaration(facts, start + 1, not start or not lines[start - 1].strip())
 

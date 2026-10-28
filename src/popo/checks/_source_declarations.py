@@ -18,6 +18,51 @@ type ResultSection = Literal['', 'Returns', 'Yields']
 # !SECTION
 
 
+# SECTION: PROTOCOLS (1 of 2)
+
+
+class SignatureRecord(Protocol):
+    """
+    Expose native parameter observations without replacing signature syntax.
+
+    Notes
+    -----
+    Native frozen records satisfy this structural contract through read-only
+    fields. Python retains annotation observations; Swift retains lexical
+    boundaries and unsupported-signature markers. No inheritance, wrapper or
+    runtime protocol check is required. Result/exception requirements are
+    derived separately and are not inferred from these parameter observations.
+    """
+
+    @property
+    def parameter_lines(self) -> bool:
+        """
+        Return the native parameter-layout decision, including exceptions.
+
+        Returns
+        -------
+        bool
+            Precomputed physical-layout result; access performs no analysis.
+        """
+        ...
+
+    @property
+    def parameter_names(self) -> tuple[str, ...] | None:
+        """
+        Return documentable names or an unsupported-signature marker.
+
+        Returns
+        -------
+        tuple[str, ...] or None
+            Native names with receiver/unnamed exclusions, or None when the
+            signature is unsupported. An empty tuple is a supported empty set.
+        """
+        ...
+
+
+# !SECTION
+
+
 # SECTION: DATA CLASSES (1 of 2)
 
 
@@ -125,9 +170,8 @@ class DeclarationFacts:
         line: int,
         kind: str,
         documentation: str,
-        parameter_names: tuple[str, ...] | None,
+        signature: SignatureRecord,
         requirements: CallableRequirements,
-        parameter_lines: bool = True,
     ) -> Self:
         """
         Assemble shared declaration facts from native observations.
@@ -140,13 +184,11 @@ class DeclarationFacts:
             Native declaration keyword or category.
         documentation : str
             Attached documentation with source-language delimiters removed.
-        parameter_names : tuple[str, ...] or None
-            Documentable names, or None for an unsupported signature.
-            Native receiver and unnamed-argument exclusions remain intact.
+        signature : SignatureRecord
+            Native parameter names and layout observations. Receiver/unnamed
+            exclusions and unsupported-signature markers remain intact.
         requirements : CallableRequirements
             Previously derived conceptual result and exception requirements.
-        parameter_lines : bool, optional
-            Native signature-layout decision, including language exceptions.
 
         Returns
         -------
@@ -164,10 +206,10 @@ class DeclarationFacts:
             line=line,
             kind=kind,
             documentation=documentation,
-            parameter_names=parameter_names,
+            parameter_names=signature.parameter_names,
             return_section=requirements.return_section,
             raises=requirements.raises,
-            parameter_lines=parameter_lines,
+            parameter_lines=signature.parameter_lines,
         )
 
 
@@ -198,7 +240,7 @@ class ParameterSpan:
 # !SECTION
 
 
-# SECTION: PROTOCOLS
+# SECTION: PROTOCOLS (2 of 2)
 
 
 class DeclarationRecord(Protocol):

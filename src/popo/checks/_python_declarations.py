@@ -80,6 +80,7 @@ class _Signature:
     -----
     Native AST arguments already provide parsed syntax. This record retains
     derived signature facts, not another syntax tree or body observations.
+    Its parameter fields structurally satisfy the shared SignatureRecord.
     """
 
     parameter_names: tuple[str, ...]
@@ -206,9 +207,8 @@ def _declaration(
             line=syntax.lineno,
             kind='function',
             documentation=ast.get_docstring(syntax) or '',
-            parameter_names=signature.parameter_names,
+            signature=signature,
             requirements=requirements,
-            parameter_lines=signature.parameter_lines,
         ),
         signature.annotated,
     )
