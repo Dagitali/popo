@@ -17,6 +17,18 @@ import yaml
 from ..config.safety import SafetyConfig
 from ._yaml import mapping_nodes, read_mapping
 
+# SECTION: CONSTANTS
+
+
+NPM_EXACT_VERSION_PATTERN = re.compile(
+    r'\d+\.\d+\.\d+(?:-[\w.-]+)?'
+    r'(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?',
+)
+
+
+# !SECTION
+
+
 # SECTION: PROTECTED FUNCTIONS
 
 
@@ -66,7 +78,7 @@ def _npm_findings(
             for name, spec in expected.items():
                 if not isinstance(spec, str) or not spec.strip():
                     raise ValueError(f'{key} specifications must be strings')
-                if re.fullmatch(r'\d+\.\d+\.\d+(?:-[\w.-]+)?', spec):
+                if NPM_EXACT_VERSION_PATTERN.fullmatch(spec):
                     installed = packages.get(f'node_modules/{name}')
                     if (
                         not isinstance(installed, dict)
