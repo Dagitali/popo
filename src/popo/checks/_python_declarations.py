@@ -8,6 +8,8 @@ import ast
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
+from ._python_syntax import documentation_lines, nodes
+from ._python_syntax import parse as parse_syntax
 from ._source_declarations import (
     CallableRequirements,
     DeclarationFacts,
@@ -43,7 +45,8 @@ NONVALUE_RETURN_TYPES = frozenset(
     },
 )
 
-DECLARATION_NODES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+# Native Python AST classes identify declarations before facts are derived.
+DECLARATION_NODE_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 # !SECTION
@@ -155,7 +158,7 @@ def _declaration(
     syntax: _DeclarationSyntax,
 ) -> Declaration:
     """
-    Convert one declaration's native syntax into facts and observations.
+    Convert one declaration's syntax into facts and observations.
 
     Parameters
     ----------
@@ -213,7 +216,7 @@ def _declaration_syntax(
     tree: ast.Module,
 ) -> Iterator[_DeclarationSyntax]:
     """
-    Yield native declaration nodes from one breadth-first AST traversal.
+    Discover declaration syntax through native node-type classification.
 
     Parameters
     ----------
@@ -224,11 +227,11 @@ def _declaration_syntax(
     ------
     _DeclarationSyntax
         Native class, function and async-function nodes, including nested
-        declarations. Python supplies complete syntax nodes rather than
-        lexical records.
+        declarations, in breadth-first AST order. Python retains complete
+        native nodes; Swift normalizes native/recovered signature observations.
     """
-    for node in ast.walk(tree):
-        if isinstance(node, DECLARATION_NODES):
+    for node in nodes(tree):
+        if isinstance(node, DECLARATION_NODE_TYPES):
             yield node
 
 
@@ -274,7 +277,8 @@ def _file_overview(
     Notes
     -----
     Python's parser supplies module-docstring identity. Swift instead uses
-    lexical comment locations before the first code line. Neither front end
+    concrete-syntax comment locations before the first code line. Neither front
+    end
     executes inspected code or validates the overview's prose quality.
     """
     return bool(ast.get_docstring(tree))
@@ -481,24 +485,19 @@ def parse(
     Notes
     -----
     Positional-only, keyword-only, async and variadic signatures are included.
-    Nested functions and classes receive their own records. Their bodies do
-    not contribute return/yield/raise requirements to the enclosing function.
+    Discovery retains breadth-first AST order, rather than Swift's source
+    order. Nested functions and classes receive their own records. Their
+    bodies do not contribute return/yield/raise requirements to the enclosing
+    function.
     Quoted non-value return annotations use the same rules as unquoted ones.
     Explicit raises include locally caught ones; indirect exceptions and escape
     analysis are not inferred. Type annotations are observed, not validated.
     """
-    tree = ast.parse(source)
-    documentation: set[int] = set()
+    tree = parse_syntax(source)
     syntax = tuple(_declaration_syntax(tree))
-    for node in (tree, *syntax):
-        if ast.get_docstring(node, clean=False) is not None:
-            doc = node.body[0]
-            documentation.update(
-                range(doc.lineno, (doc.end_lineno or doc.lineno) + 1),
-            )
     return SourceFacts(
         _file_overview(tree),
-        tuple(sorted(documentation)),
+        documentation_lines((tree, *syntax)),
         tuple(_declarations(syntax)),
     )
 

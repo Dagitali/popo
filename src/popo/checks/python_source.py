@@ -10,6 +10,7 @@ from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import NOMINAL_KINDS, Declaration, parse
 from ._python_documentation import documentation_findings
+from ._python_syntax import syntax_findings
 from ._source_declarations import SourceFacts
 from ._source_documentation import limits
 from ._source_validation import parsed_source_findings, validate_sources
@@ -107,7 +108,7 @@ def _source_findings(
         parsed = parse(source)
     except SyntaxError as error:
         failures.extend(limits(config, path, lines, ()))
-        failures.append(f'{relative}:{error.lineno}: invalid Python source')
+        failures.extend(syntax_findings(error, relative))
         return failures
     return parsed_source_findings(
         parsed,

@@ -10,6 +10,8 @@ from pathlib import Path
 
 from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 
+from ._python_syntax import nodes, syntax_findings
+from ._python_syntax import parse as parse_syntax
 from ._source_boundaries import ImportReference, validate_boundaries
 
 # SECTION: PROTECTED CLASSES
@@ -44,9 +46,9 @@ class _PythonBoundaryAnalyzer:
     ) -> tuple[ast.Module | None, list[str]]:
         """Parse without execution; return syntax failures as diagnostics."""
         try:
-            return ast.parse(source), []
+            return parse_syntax(source), []
         except SyntaxError as error:
-            return None, [f'{relative}:{error.lineno}: invalid Python source']
+            return None, syntax_findings(error, relative)
 
     @staticmethod
     def targets(
@@ -103,7 +105,7 @@ def _imports(
     not scope-aware resolution.
     """
     imports: list[ImportReference] = []
-    for node in ast.walk(tree):
+    for node in nodes(tree):
         if isinstance(node, ast.Import):
             imports.extend(
                 ImportReference(
@@ -185,14 +187,14 @@ def _symbol_findings(
     """
     failures: list[str] = []
     aliases = {item.alias: item.target for item in imports}
-    for node in ast.walk(tree):
+    for node in nodes(tree):
         if isinstance(node, ast.Import):
             for item in node.names:
                 if item.asname is None:
                     head = item.name.split('.')[0]
                     aliases[head] = head
     matches: set[tuple[int, str]] = set()
-    for node in ast.walk(tree):
+    for node in nodes(tree):
         if not isinstance(node, (ast.Name, ast.Attribute)):
             continue
         name = ast.unparse(node)

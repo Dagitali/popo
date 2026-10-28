@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks._swift_declarations` module.
 
-Collect Swift declaration facts through bounded lexical syntax.
+Collect Swift declaration facts through concrete syntax and bounded contracts.
 """
 
 import re
@@ -13,6 +13,8 @@ from ._source_declarations import (
     DeclarationFacts,
     SourceFacts,
 )
+from ._swift_syntax import ParsedSwiftSource
+from ._swift_syntax import parse as parse_syntax
 
 # SECTION: CONSTANTS
 
@@ -29,6 +31,23 @@ NONVALUE_RETURN_TYPES = frozenset(
     },
 )
 
+# Native Swift grammar node types identify declarations before keyword handling.
+# Selective imports also contain declaration keywords and must not be classified
+# by their tokens alone. Typealiases remain outside source-documentation policy.
+DECLARATION_NODE_TYPES = frozenset(
+    {
+        'class_declaration',
+        'protocol_declaration',
+        'function_declaration',
+        'protocol_function_declaration',
+        'init_declaration',
+        'deinit_declaration',
+        'subscript_declaration',
+        'property_declaration',
+        'protocol_property_declaration',
+    },
+)
+
 DECLARATION_PATTERN = re.compile(
     r'^\s*(?:(?:@\w+(?:\([^\n]*\))?|public|private|fileprivate|internal|'
     r'final|nonisolated|open|package|indirect|distributed|static|class|override|'
@@ -39,7 +58,6 @@ DECLARATION_PATTERN = re.compile(
 FUNCTION_NAME_PATTERN = re.compile(r'\s+`?\w+')
 PARAMETER_NAME_PATTERN = re.compile(r'`?(\w+)`?')
 RETURN_PATTERN = re.compile(r'->\s*(.*?)\s*(?:\bwhere\b|$)', re.S)
-STRING_START_PATTERN = re.compile(r'(#+)?("""|")')
 THROWS_PATTERN = re.compile(r'\b(?:rethrows|throws)\b')
 
 
@@ -52,7 +70,7 @@ THROWS_PATTERN = re.compile(r'\b(?:rethrows|throws)\b')
 @dataclass(frozen=True, slots=True)
 class _DeclarationSyntax:
     """
-    Retain bounded lexical declaration syntax for the Swift front end.
+    Normalize native/recovered syntax and documentation attachment context.
 
     Attributes
     ----------
@@ -70,6 +88,8 @@ class _DeclarationSyntax:
         text; bodies are not analyzed and types are not resolved.
     parameter_lines : bool
         Whether parameter/default spans satisfy the physical-layout rule.
+    attach_documentation : bool
+        Whether preceding doc lines may attach; false after same-line code.
     """
 
     line: int
@@ -78,6 +98,7 @@ class _DeclarationSyntax:
     parameter_names: tuple[str, ...] | None = ()
     requirements: CallableRequirements = CallableRequirements()
     parameter_lines: bool = True
+    attach_documentation: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,7 +172,8 @@ class Declaration:
     Attributes
     ----------
     facts : DeclarationFacts
-        Documentation and signature requirements from the lexical front end.
+        Documentation/signature requirements from the concrete-syntax front
+        end.
     documentation_start : int
         One-based attached documentation line for spacing findings.
     separated : bool
@@ -175,7 +197,7 @@ def _declaration(
     documentation: set[int],
 ) -> Declaration:
     """
-    Convert one declaration's lexical syntax into facts and observations.
+    Convert one declaration's syntax into facts and observations.
 
     Parameters
     ----------
@@ -184,7 +206,8 @@ def _declaration(
     lines : list[str]
         Original source lines used to retain documentation text and spacing.
     documentation : set[int]
-        One-based triple-slash documentation lines from lexical masking.
+        One-based triple-slash documentation lines from concrete-syntax
+        masking.
 
     Returns
     -------
@@ -195,12 +218,12 @@ def _declaration(
 
     Notes
     -----
-    Bounded signature facts and _requirements were collected lexically.
+    Discovery uses native syntax or recovery; signatures retain bounded rules.
     Swift return and raise requirements come from signature syntax;
     declaration conversion neither compiles code nor infers body semantics.
     """
     start = syntax.attachment_start
-    while start and start in documentation:
+    while syntax.attach_documentation and start and start in documentation:
         start -= 1
     doc = '\n'.join(
         line.lstrip()[3:] for line in lines[start : syntax.attachment_start]
@@ -217,7 +240,7 @@ def _declaration(
     return Declaration(facts, start + 1, not start or not lines[start - 1].strip())
 
 
-def _declaration_syntax(
+def _lexical_declaration_syntax(
     code: str,
 ) -> Iterator[_DeclarationSyntax]:
     """
@@ -288,6 +311,84 @@ def _declaration_syntax(
         offset += len(line)
 
 
+def _declaration_syntax(
+    code: str,
+    syntax: ParsedSwiftSource | None = None,
+) -> Iterator[_DeclarationSyntax]:
+    """
+    Discover declaration syntax through native node-type classification.
+
+    Parameters
+    ----------
+    code : str
+        Character-position-preserving masked source used by signature rules.
+    syntax : ParsedSwiftSource or None, optional
+        Native tree from original source. Direct helper callers may omit it;
+        their supplied view is parsed instead.
+
+    Yields
+    ------
+    _DeclarationSyntax
+        Nominal/member declarations in source order, excluding callable and
+        closure bodies. Native nodes support same-line declarations.
+
+    Notes
+    -----
+    Keep bounded signature rules and their unsupported markers. If the grammar
+    recovers malformed or unsupported source, use the established lexical
+    discovery path so recovery cannot silently discard those diagnostics.
+    Neither native trees nor recovery provide compiler validation.
+    """
+    syntax = syntax or parse_syntax(code)
+    if syntax.root.has_error:
+        yield from _lexical_declaration_syntax(code)
+        return
+    pending = list(reversed(syntax.root.named_children))
+    while pending:
+        node = pending.pop()
+        if node.type not in DECLARATION_NODE_TYPES:
+            continue
+        keyword = next(
+            child
+            for child in node.children
+            if child.type
+            in NOMINAL_KINDS
+            | CALLABLE_KINDS
+            | {
+                'deinit',
+                'value_binding_pattern',
+                'pattern',
+            }
+        )
+        kind = (keyword.text or b'').decode().split()[0]
+        position = syntax.offset(keyword) + len(kind)
+        signature = _signature(code, position) if kind in CALLABLE_KINDS else None
+        parameters = signature.parameter_names if signature else ()
+        if kind == 'func' and not FUNCTION_NAME_PATTERN.match(code[position:]):
+            parameters = None
+        yield _DeclarationSyntax(
+            keyword.start_point.row + 1,
+            node.start_point.row,
+            kind,
+            parameters,
+            _requirements(kind, signature.tail if signature else ''),
+            signature.parameter_lines if signature else True,
+            not code[
+                syntax.line_offsets[node.start_point.row] : syntax.offset(node)
+            ].strip(),
+        )
+        if kind in NOMINAL_KINDS:
+            pending.extend(
+                reversed(
+                    [
+                        child
+                        for body in node.children_by_field_name('body')
+                        for child in body.named_children
+                    ],
+                ),
+            )
+
+
 def _declarations(
     syntax: Iterable[_DeclarationSyntax],
     lines: list[str],
@@ -299,11 +400,12 @@ def _declarations(
     Parameters
     ----------
     syntax : collections.abc.Iterable[_DeclarationSyntax]
-        Lexical declaration records in discovery order.
+        Native/recovered declaration observations in discovery order.
     lines : list[str]
         Original source lines used to retain documentation text and spacing.
     documentation : set[int]
-        One-based triple-slash documentation lines from lexical masking.
+        One-based triple-slash documentation lines from concrete-syntax
+        masking.
 
     Yields
     ------
@@ -331,7 +433,8 @@ def _file_overview(
     lines : list[str]
         Original source lines retaining comment prefixes and indentation.
     documentation : set[int]
-        One-based triple-slash documentation lines from lexical masking.
+        One-based triple-slash documentation lines from concrete-syntax
+        masking.
 
     Returns
     -------
@@ -342,7 +445,7 @@ def _file_overview(
 
     Notes
     -----
-    Swift uses lexical comment locations rather than Python's module-docstring
+    Swift uses concrete-syntax comment spans rather than module-docstring
     identity. This is a bounded comment convention, not compiler validation;
     neither front end executes code or validates the overview's prose quality.
     """
@@ -505,8 +608,9 @@ def _signature(
 
     Notes
     -----
-    Swift needs lexical balancing because no compiler AST is available here.
-    Python instead reads its native AST arguments; neither front end executes
+    Swift retains bounded signature interpretation over masked concrete
+    syntax. Python instead reads its native AST arguments; neither front end
+    executes
     consumer code or resolves types. Named argument syntax is bounded rather
     than a full Swift grammar, and unnamed arguments do not require docs.
     """
@@ -570,56 +674,13 @@ def lexical_view(
 
     Notes
     -----
-    Nested block comments and ordinary, multiline and raw strings are masked.
-    Regex literals and interpolation expressions are not parsed as Swift code.
-    This lexical view is not syntax validation or a compiler substitute.
+    Tree-sitter locates nested block comments and ordinary, multiline/raw
+    strings and regex literals. Entire literals, including interpolation, are
+    masked. UTF-8 node offsets are converted without changing character or
+    line positions. Recovery nodes do not establish valid Swift syntax.
     """
-    result = list(source)
-    documentation: set[int] = set()
-    index, line = 0, 1
-    while index < len(source):
-        start = index
-        if source.startswith('//', index):
-            if (
-                source.startswith('///', index)
-                and not source[source.rfind('\n', 0, index) + 1 : index].strip()
-            ):
-                documentation.add(line)
-            end = source.find('\n', index)
-            index = len(source) if end == -1 else end
-        elif source.startswith('/*', index):
-            index += 2
-            depth = 1
-            while index < len(source) and depth:
-                if source.startswith('/*', index):
-                    depth += 1
-                    index += 2
-                elif source.startswith('*/', index):
-                    depth -= 1
-                    index += 2
-                else:
-                    index += 1
-        elif match := STRING_START_PATTERN.match(source, index):
-            hashes = match.group(1) or ''
-            closing = match.group(2) + hashes
-            index += len(match.group())
-            while index < len(source):
-                if source.startswith('\\' + hashes, index):
-                    index += 2 + len(hashes)
-                elif source.startswith(closing, index):
-                    index += len(closing)
-                    break
-                else:
-                    index += 1
-        else:
-            line += source[index] == '\n'
-            index += 1
-            continue
-        for offset in range(start, min(index, len(source))):
-            if result[offset] != '\n':
-                result[offset] = ' '
-        line += source[start:index].count('\n')
-    return ''.join(result), documentation
+    syntax = parse_syntax(source)
+    return syntax.code, set(syntax.documentation)
 
 
 def parse(
@@ -642,14 +703,23 @@ def parse(
 
     Notes
     -----
-    Mask nested comments and ordinary, multiline and raw strings first. Docs
-    attach across attribute-only lines. Callable and closure bodies do not
-    supply member declarations. Balanced parentheses support named signatures;
-    this remains a lexical subset, not Swift syntax or semantic validation.
+    Use Tree-sitter concrete syntax for comment/literal masking and structural
+    declaration discovery. Docs attach across attribute-only lines, but not
+    after preceding code on the same line. Callable and closure bodies do not
+    supply member declarations, unlike Python's nested-declaration discovery.
+    Source order is preserved. Balanced signature rules retain explicit
+    unsupported markers. Grammar recovery uses bounded lexical discovery to
+    preserve diagnostics for malformed/unsupported inputs. Neither path
+    resolves types or establishes compiler or semantic validation.
     """
-    code, documentation = lexical_view(source)
+    syntax = parse_syntax(source)
+    code, documentation = syntax.code, set(syntax.documentation)
     lines = source.splitlines()
-    declarations = _declarations(_declaration_syntax(code), lines, documentation)
+    declarations = _declarations(
+        _declaration_syntax(code, syntax),
+        lines,
+        documentation,
+    )
     return SourceFacts(
         _file_overview(code, lines, documentation),
         tuple(sorted(documentation)),

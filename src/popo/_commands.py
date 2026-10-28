@@ -530,7 +530,7 @@ def _swift_boundaries(
     Returns
     -------
     tuple[list[str], str]
-        Lexical boundary findings and success-only summary.
+        Syntax-based boundary findings and success-only summary.
 
     Raises
     ------

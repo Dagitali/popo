@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks.swift_source` module.
 
-Inspect Swift source conventions through bounded lexical declaration checks.
+Inspect Swift source conventions through concrete syntax and bounded rules.
 """
 
 from pathlib import Path
@@ -94,7 +94,7 @@ def _source_findings(
     list[str]
         Physical file-length and documentation-width findings, followed by
         documentation and convention findings; empty when all checks pass.
-        Parsing uses the bounded Swift lexical subset, not compiler validation.
+        Collection uses recoverable concrete syntax, not compiler validation.
 
     Raises
     ------
@@ -164,18 +164,19 @@ def validate(
     glob matches, unsafe paths and input read/decode failures become redacted
     findings rather than raw filesystem or decoding exceptions.
 
-    Mask nested comments and ordinary, multiline and raw strings before
-    recognizing line-leading declarations. Triple-slash comments attach across
-    attribute-only lines. Nominal documentation follows the consumer's
-    declaration-docs setting; member documentation and callable contract rules
-    are separately opt-in.
+    Tree-sitter locates nested comments, strings and regex literals for
+    masking, and discovers structural declarations including same-line forms.
+    Triple-slash comments attach across attribute-only lines, but not to later
+    declarations after same-line code. Nominal documentation follows the
+    declaration-docs setting; member docs and callable contracts remain opt-in.
 
     Named function, init and subscript signatures use balanced parentheses.
     Documentation names use internal parameters and DocC list fields. This
-    lexical subset does not validate Swift syntax, operator signatures, regex
-    literals, macros or conditional compilation. Enabled callable checks fail
-    unsupported recognized signatures explicitly. Compiler and DocC validation
-    remain separate responsibilities; no consumer code or tools are executed.
+    bounded contract subset does not resolve operator signatures, macros or
+    conditional compilation. Grammar errors use bounded lexical declaration
+    recovery; neither path proves Swift compiler validity. Enabled callable
+    checks fail unsupported recognized signatures explicitly. Compiler and
+    DocC validation remain separate; no consumer code or tools are executed.
     """
     return validate_sources(config, _source_findings)
 
