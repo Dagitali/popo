@@ -80,7 +80,9 @@ def _anchors(
     anchors: set[str] = set()
     counts: dict[str, int] = {}
     for _, line in _content_lines(path):
-        anchors.update(value.lower() for value in EXPLICIT_ANCHOR_PATTERN.findall(line))
+        anchors.update(
+            match[1].lower() for match in EXPLICIT_ANCHOR_PATTERN.finditer(line)
+        )
         match = HEADING_PATTERN.match(line)
         if match is None:
             continue
@@ -375,20 +377,22 @@ def validate(
             references.setdefault(label, target)
         for line_number, line in lines:
             reference = REFERENCE_PATTERN.match(line)
+            targets: Iterator[tuple[str, bool]]
             if reference is not None:
-                targets = [(reference.group('target'), False)]
+                targets = iter(((reference.group('target'), False),))
             else:
                 line = INLINE_CODE_PATTERN.sub('', line)
-                for text, label in REFERENCE_USE_PATTERN.findall(line):
+                for match in REFERENCE_USE_PATTERN.finditer(line):
+                    text, label = match.groups()
                     label = label or text
                     if ' '.join(label.split()).casefold() not in references:
                         failures.append(
                             f'{source}:{line_number}: undefined reference: {label}',
                         )
-                targets = [
+                targets = (
                     (match.group('target'), bool(match.group('image')))
                     for match in LINK_PATTERN.finditer(line)
-                ]
+                )
             for target, image in targets:
                 failures.extend(
                     _target_findings(
