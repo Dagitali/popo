@@ -8,7 +8,7 @@ import re
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import SourceFacts
+from ._source_declarations import ResultSection, SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
     DocumentationDialect,
@@ -70,28 +70,11 @@ def _declaration_findings(
     without reconstructing signatures or compiling Swift. Shared evaluation
     owns finding order after these native policy observations are derived.
     """
-    facts = declaration.facts
-    doc = facts.documentation
-    required = bool(
-        config.settings['declaration-docs']
-        if facts.kind in NOMINAL_KINDS
-        else config.settings['member-docs'],
-    )
-    present = bool(doc.strip())
-    spacing_line = (
-        declaration.documentation_start
-        if (not required or present)
-        and doc
-        and config.settings['declaration-spacing']
-        and not declaration.separated
-        else None
-    )
-    presence = DocumentationPresence(required, present, spacing_line)
     return declaration_findings(
-        facts,
+        declaration.facts,
         config,
         relative,
-        presence,
+        _presence(declaration, config),
         CALLABLE_KINDS,
         _documentation,
     )
@@ -99,7 +82,7 @@ def _declaration_findings(
 
 def _documentation(
     doc: str,
-    return_section: str,
+    return_section: ResultSection,
 ) -> CallableDocumentation:
     """
     Collect callable documentation evidence using the language's markup.
@@ -108,7 +91,7 @@ def _documentation(
     ----------
     doc : str
         Attached DocC triple-slash text supplied by the declaration collector.
-    return_section : str
+    return_section : ResultSection
         Returns when a result is required, or empty when unneeded. Swift's
         collector does not request Python's Yields convention.
 
@@ -150,6 +133,52 @@ def _parameters(
     return names
 
 
+def _presence(
+    declaration: Declaration,
+    config: SourceCheckConfig,
+) -> DocumentationPresence:
+    """
+    Derive native documentation presence and spacing observations.
+
+    Parameters
+    ----------
+    declaration : Declaration
+        Shared declaration facts and language-specific observations.
+    config : SourceCheckConfig
+        Consumer-owned declaration-presence and spacing switches.
+
+    Returns
+    -------
+    DocumentationPresence
+        Presence requirement, native presence decision and optional spacing
+        location. Shared evaluation owns diagnostic order and wording.
+
+    Notes
+    -----
+    Swift applies declaration-docs to nominals and member-docs to other
+    recognized members. Whitespace alone is absent. Spacing is considered only
+    when documentation is optional or present, preserving native precedence.
+    No markup contracts are interpreted and no source is read or parsed.
+    """
+    facts = declaration.facts
+    doc = facts.documentation
+    required = bool(
+        config.settings['declaration-docs']
+        if facts.kind in NOMINAL_KINDS
+        else config.settings['member-docs'],
+    )
+    present = bool(doc.strip())
+    spacing_line = (
+        declaration.documentation_start
+        if (not required or present)
+        and doc
+        and config.settings['declaration-spacing']
+        and not declaration.separated
+        else None
+    )
+    return DocumentationPresence(required, present, spacing_line)
+
+
 def _section(
     doc: str,
     name: str,
@@ -182,7 +211,7 @@ def _section(
 # !SECTION
 
 
-# SECTION: CONSTANTS (1 of 2)
+# SECTION: CONSTANTS (2 of 2)
 
 
 # Bind after native readers are defined; evidence assembly does not parse code.

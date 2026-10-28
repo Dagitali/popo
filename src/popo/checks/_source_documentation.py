@@ -11,7 +11,7 @@ from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import DeclarationFacts, SourceFacts
+from ._source_declarations import DeclarationFacts, ResultSection, SourceFacts
 from ._source_inputs import read_source
 
 # SECTION: DATA CLASSES
@@ -77,7 +77,7 @@ class DocumentationDialect:
     def interpret(
         self,
         doc: str,
-        return_section: str,
+        return_section: ResultSection,
     ) -> CallableDocumentation:
         """
         Collect callable documentation evidence using the language's markup.
@@ -86,7 +86,7 @@ class DocumentationDialect:
         ----------
         doc : str
             Native documentation text supplied by a declaration collector.
-        return_section : str
+        return_section : ResultSection
             Required conceptual result section, or empty when unneeded.
 
         Returns
@@ -143,7 +143,7 @@ class DocumentationPresence:
 # SECTION: TYPE ALIASES
 
 
-type DocumentationInterpreter = Callable[[str, str], CallableDocumentation]
+type DocumentationInterpreter = Callable[[str, ResultSection], CallableDocumentation]
 
 
 # !SECTION

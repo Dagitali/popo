@@ -9,7 +9,7 @@ import re
 from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import CALLABLE_KINDS, Declaration
-from ._source_declarations import SourceFacts
+from ._source_declarations import ResultSection, SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
     DocumentationDialect,
@@ -66,16 +66,11 @@ def _declaration_findings(
     evidence uses NumPy sections; syntax requirements were collected
     independently, including receiver exclusion and explicit body requirements.
     """
-    facts = declaration.facts
-    presence = DocumentationPresence(
-        required=bool(config.settings['declaration-docs']),
-        present=bool(facts.documentation),
-    )
     return declaration_findings(
-        facts,
+        declaration.facts,
         config,
         relative,
-        presence,
+        _presence(declaration, config),
         CALLABLE_KINDS,
         _documentation,
     )
@@ -83,7 +78,7 @@ def _declaration_findings(
 
 def _documentation(
     doc: str,
-    return_section: str,
+    return_section: ResultSection,
 ) -> CallableDocumentation:
     """
     Collect callable documentation evidence using the language's markup.
@@ -92,7 +87,7 @@ def _documentation(
     ----------
     doc : str
         Cleaned NumPy docstring supplied by the declaration collector.
-    return_section : str
+    return_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
 
     Returns
@@ -135,6 +130,39 @@ def _parameters(
     }
 
 
+def _presence(
+    declaration: Declaration,
+    config: SourceCheckConfig,
+) -> DocumentationPresence:
+    """
+    Derive native documentation presence and spacing observations.
+
+    Parameters
+    ----------
+    declaration : Declaration
+        Shared declaration facts and language-specific observations.
+    config : SourceCheckConfig
+        Consumer-owned declaration-presence and spacing switches.
+
+    Returns
+    -------
+    DocumentationPresence
+        Presence requirement, native presence decision and optional spacing
+        location. Shared evaluation owns diagnostic order and wording.
+
+    Notes
+    -----
+    Python applies declaration-docs to both classes and functions. Cleaned
+    docstring truthiness determines presence; no spacing rule is imposed.
+    No markup contracts are interpreted and no source is read or parsed.
+    """
+    facts = declaration.facts
+    return DocumentationPresence(
+        required=bool(config.settings['declaration-docs']),
+        present=bool(facts.documentation),
+    )
+
+
 def _section(
     doc: str,
     name: str,
@@ -171,7 +199,7 @@ def _section(
 # !SECTION
 
 
-# SECTION: CONSTANTS (1 of 2)
+# SECTION: CONSTANTS (2 of 2)
 
 
 # Bind after native readers are defined; evidence assembly does not parse code.
