@@ -6,7 +6,7 @@ Store the declaration facts shared by source-policy front ends.
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Literal, Self
+from typing import Literal, Protocol, Self
 
 # SECTION: TYPE ALIASES
 
@@ -18,7 +18,7 @@ type ResultSection = Literal['', 'Returns', 'Yields']
 # !SECTION
 
 
-# SECTION: DATA CLASSES
+# SECTION: DATA CLASSES (1 of 2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,8 +195,46 @@ class ParameterSpan:
     end: int | None
 
 
+# !SECTION
+
+
+# SECTION: PROTOCOLS
+
+
+class DeclarationRecord(Protocol):
+    """
+    Expose shared declaration facts without replacing native observations.
+
+    Notes
+    -----
+    Native frozen records satisfy this structural contract through their facts
+    field. A read-only property permits immutable implementations without
+    requiring inheritance, wrappers or runtime protocol checks. Python retains
+    annotation/order observations; Swift retains attachment/spacing facts.
+    """
+
+    @property
+    def facts(self) -> DeclarationFacts:
+        """
+        Return precomputed shared documentation and signature observations.
+
+        Returns
+        -------
+        DeclarationFacts
+            Native declaration location, documentation and callable facts.
+            Access must not parse, read, modify or execute consumer source.
+        """
+        ...
+
+
+# !SECTION
+
+
+# SECTION: DATA CLASSES (2 of 2)
+
+
 @dataclass(frozen=True, slots=True)
-class SourceFacts[Declaration]:
+class SourceFacts[Declaration: DeclarationRecord]:
     """
     Describe a parsed source file without executing consumer code.
 
@@ -207,9 +245,9 @@ class SourceFacts[Declaration]:
     documentation_lines : tuple[int, ...]
         One-based physical documentation lines for common width checks.
     declarations : tuple[Declaration, ...]
-        Language-specific records containing shared DeclarationFacts and only
-        the additional observations needed by that language's rules. Native
-        discovery order is retained: Python breadth-first, Swift source order.
+        Native records satisfying DeclarationRecord, retaining shared facts
+        and language-specific observations. Native discovery order is retained:
+        Python breadth-first, Swift source order.
     """
 
     has_overview: bool

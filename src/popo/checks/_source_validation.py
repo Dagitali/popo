@@ -9,14 +9,14 @@ from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import SourceFacts
+from ._source_declarations import DeclarationRecord, SourceFacts
 from ._source_documentation import guide_findings, limits
 from ._source_inputs import discover, read_source
 
 # SECTION: TYPE ALIASES
 
 
-type ParsedSourceInspector[Declaration] = Callable[
+type ParsedSourceInspector[Declaration: DeclarationRecord] = Callable[
     [SourceFacts[Declaration], SourceCheckConfig, str],
     list[str],
 ]
@@ -29,7 +29,7 @@ type SourceInspector = Callable[[SourceCheckConfig, Path, str], list[str]]
 # SECTION: FUNCTIONS
 
 
-def parsed_source_findings[Declaration](
+def parsed_source_findings[Declaration: DeclarationRecord](
     parsed: SourceFacts[Declaration],
     config: SourceCheckConfig,
     path: Path,

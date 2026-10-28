@@ -11,7 +11,12 @@ from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import DeclarationFacts, ResultSection, SourceFacts
+from ._source_declarations import (
+    DeclarationFacts,
+    DeclarationRecord,
+    ResultSection,
+    SourceFacts,
+)
 from ._source_inputs import read_source
 
 # SECTION: DATA CLASSES
@@ -300,7 +305,7 @@ def declaration_findings(
     return failures
 
 
-def documentation_findings[Declaration](
+def documentation_findings[Declaration: DeclarationRecord](
     source: SourceFacts[Declaration],
     config: SourceCheckConfig,
     relative: str,

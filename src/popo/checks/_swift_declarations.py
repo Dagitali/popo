@@ -182,6 +182,7 @@ class Declaration:
         Whether a blank line precedes documentation, or it begins the file.
     """
 
+    # Structurally satisfies DeclarationRecord; native observations stay here.
     facts: DeclarationFacts
     documentation_start: int
     separated: bool

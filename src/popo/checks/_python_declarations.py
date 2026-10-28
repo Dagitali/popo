@@ -111,6 +111,7 @@ class Declaration:
         in declaration order; empty for functions and classes without them.
     """
 
+    # Structurally satisfies DeclarationRecord; native observations stay here.
     facts: DeclarationFacts
     annotated: bool = True
     instance_methods: tuple[str, ...] = ()
