@@ -462,7 +462,7 @@ def _requirements(
     return CallableRequirements.from_observations(
         returns=returns,
         yields=yields,
-        raises=raises,
+        exceptions=raises,
     )
 
 

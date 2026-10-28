@@ -652,7 +652,7 @@ def _requirements(
     """
     return CallableRequirements.from_observations(
         returns=_returns(kind, tail),
-        raises=bool(THROWS_PATTERN.search(tail.partition('->')[0])),
+        exceptions=bool(THROWS_PATTERN.search(tail.partition('->')[0])),
     )
 
 

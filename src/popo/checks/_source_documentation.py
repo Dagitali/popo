@@ -242,7 +242,7 @@ def contract_findings(
         ),
         (
             'raises-docs',
-            facts.raises and not documentation.exception_documented,
+            facts.exception_required and not documentation.exception_documented,
             'raises documentation missing',
         ),
     )

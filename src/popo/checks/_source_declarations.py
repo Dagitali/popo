@@ -76,7 +76,7 @@ class CallableRequirements:
     result_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
         Documentation interpreters map this to the language's notation.
-    raises : bool
+    exception_required : bool
         Whether explicit raise or throws/rethrows syntax requires coverage.
         This does not establish exception escape behavior.
 
@@ -86,11 +86,11 @@ class CallableRequirements:
     contribute these requirements. Parameter documentation remains represented
     separately by DeclarationFacts.parameter_names. The record performs no
     validation, code execution or type resolution. from_observations only
-    normalizes result-section priority and retains the supplied raise flag.
+    normalizes result-section priority and retains the supplied exception flag.
     """
 
     result_section: ResultSection = ''
-    raises: bool = False
+    exception_required: bool = False
 
     @classmethod
     def from_observations(
@@ -98,7 +98,7 @@ class CallableRequirements:
         *,
         returns: bool = False,
         yields: bool = False,
-        raises: bool = False,
+        exceptions: bool = False,
     ) -> Self:
         """
         Normalize native callable observations into shared requirements.
@@ -110,7 +110,7 @@ class CallableRequirements:
         yields : bool, optional
             Native evidence requires generator-result documentation, taking
             precedence over returns. Swift currently supplies no yield flag.
-        raises : bool, optional
+        exceptions : bool, optional
             Native evidence requires exception documentation; this remains
             independent of the result section and proves no escape behavior.
 
@@ -126,7 +126,7 @@ class CallableRequirements:
         resolving types or executing code. Direct construction remains valid
         for already normalized requirements and default empty requirements.
         """
-        return cls('Yields' if yields else 'Returns' if returns else '', raises)
+        return cls('Yields' if yields else 'Returns' if returns else '', exceptions)
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,7 +148,7 @@ class DeclarationFacts:
     result_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
         Documentation interpreters map this to the language's notation.
-    raises : bool
+    exception_required : bool
         Whether explicit raise or throws/rethrows syntax requires coverage.
         This does not establish exception escape behavior.
     parameter_lines : bool
@@ -160,7 +160,7 @@ class DeclarationFacts:
     documentation: str
     parameter_names: tuple[str, ...] | None
     result_section: ResultSection = ''
-    raises: bool = False
+    exception_required: bool = False
     parameter_lines: bool = True
 
     @classmethod
@@ -208,7 +208,7 @@ class DeclarationFacts:
             documentation=documentation,
             parameter_names=signature.parameter_names,
             result_section=requirements.result_section,
-            raises=requirements.raises,
+            exception_required=requirements.exception_required,
             parameter_lines=signature.parameter_lines,
         )
 
