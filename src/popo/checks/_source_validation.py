@@ -5,13 +5,14 @@ Run shared source discovery, guide checks and read-only file inspection.
 """
 
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
 from ._source_declarations import DeclarationFacts, DeclarationRecord, SourceFacts
 from ._source_documentation import guide_findings, limits
-from ._source_inputs import discover, read_source
+from ._source_inputs import discover, inspect_sources
 
 # SECTION: TYPE ALIASES
 
@@ -159,12 +160,10 @@ def validate_sources(
     """
     paths, failures = discover(config)
     failures.extend(guide_findings(config, paths))
-    for path in paths:
-        source, errors = read_source(path, config.root)
-        failures.extend(errors)
-        if source is not None:
-            failures.extend(source_findings(config, path, source))
-    return failures
+    return [
+        *failures,
+        *inspect_sources(paths, config.root, partial(source_findings, config)),
+    ]
 
 
 # !SECTION
