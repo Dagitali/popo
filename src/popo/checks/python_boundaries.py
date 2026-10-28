@@ -143,19 +143,37 @@ def _import_findings(
 
 
 def _imports(
-    tree: ast.AST,
+    source: ast.AST,
     module: str,
     package: bool,
 ) -> list[ImportReference]:
     """
-    Collect Python imports in line/target/alias order without execution.
+    Collect native import observations without executing consumer code.
 
-    Relative imports use module/package identity; an unresolved relative
-    import has an empty target and alias. Aliases describe local bindings,
-    not scope-aware resolution.
+    Parameters
+    ----------
+    source : ast.AST
+        Parsed Python source, including nested and conditional imports.
+    module : str
+        Dotted module identity derived from the repository-relative path.
+    package : bool
+        Whether source belongs to an __init__.py package module.
+
+    Returns
+    -------
+    list[ImportReference]
+        Imports sorted by line, target and alias, retaining duplicates.
+        Relative imports use module/package identity; unresolved relative
+        imports have empty targets and aliases. Aliases describe local
+        bindings, not scope-aware resolution.
+
+    Notes
+    -----
+    Native AST nodes retain dotted imports, from-import members and aliases.
+    Dynamic imports and runtime module lookup are not evaluated.
     """
     imports: list[ImportReference] = []
-    for node in nodes(tree):
+    for node in nodes(source):
         if isinstance(node, ast.Import):
             imports.extend(
                 ImportReference(
@@ -200,7 +218,7 @@ def _module(
 
 
 def _source_findings(
-    tree: ast.AST,
+    source: ast.AST,
     module: str,
     package: bool,
     layer: BoundaryLayer,
@@ -208,16 +226,45 @@ def _source_findings(
     relative: str,
 ) -> list[str]:
     """
-    Collect Python import findings before explicit symbol findings per file.
+    Collect import findings before symbol findings for one parsed source.
 
-    Resolve relative imports using the supplied module/package identity.
-    Forbidden targets identify modules from other configured layers; explicit
-    symbol restrictions remain independent of module ownership.
+    Parameters
+    ----------
+    source : ast.AST
+        Parsed Python source reused for import and symbol collection.
+    module : str
+        Dotted module identity for resolving relative imports.
+    package : bool
+        Whether the source is an __init__.py package module.
+    layer : BoundaryLayer
+        Consumer-owned import and explicit-symbol restrictions.
+    forbidden_targets : set[str]
+        Module names owned by forbidden layers, applied to import rules.
+    relative : str
+        Repository-relative filename for diagnostics.
+
+    Returns
+    -------
+    list[str]
+        Import findings in native observation order, then symbol findings
+        sorted by line/name. No source is read, parsed again or executed.
+
+    Notes
+    -----
+    Relative imports resolve using the supplied module/package identity.
+    Explicit symbols remain independent of module ownership; alias expansion
+    does not establish runtime binding or local scope resolution.
     """
-    imports = _imports(tree, module, package)
+    imports = _imports(source, module, package)
     return [
         *_import_findings(imports, layer, forbidden_targets, relative),
-        *_symbol_findings(tree, imports, layer.forbidden_symbols, relative, layer.name),
+        *_symbol_findings(
+            source,
+            imports,
+            layer.forbidden_symbols,
+            relative,
+            layer.name,
+        ),
     ]
 
 

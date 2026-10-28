@@ -135,22 +135,35 @@ def _import_findings(
 
 
 def _imports(
-    syntax: ParsedSwiftSource,
+    source: ParsedSwiftSource,
 ) -> list[ImportReference]:
     """
-    Collect Swift imports in source order from native import nodes.
+    Collect native import observations without executing consumer code.
 
-    Attributed and selective imports retain the module name and its source
-    line. Alias fields remain empty because this checker does not resolve
-    Swift aliases. Native spans recognize same-line and attributed imports
-    without treating comment, string or regex contents as declarations.
+    Parameters
+    ----------
+    source : ParsedSwiftSource
+        Native syntax view with comment/literal contents shielded.
+
+    Returns
+    -------
+    list[ImportReference]
+        Imports in native source order, retaining duplicates. Attributed and
+        selective forms retain module names and source lines. Alias fields
+        remain empty because this checker does not resolve Swift aliases.
+
+    Notes
+    -----
+    Native spans recognize same-line and attributed imports without treating
+    comments, strings or regex contents as declarations. Imported members do
+    not replace the module name used for allowlist checks.
     """
     return [
         ImportReference(
             name.start_point.row + 1,
             (name.text or b'').decode('utf-8').split('.')[0].strip('`'),
         )
-        for node in nodes(syntax.root)
+        for node in nodes(source.root)
         if node.type == 'import_declaration'
         for name in node.named_children
         if name.type == 'identifier'
@@ -158,20 +171,41 @@ def _imports(
 
 
 def _source_findings(
-    syntax: ParsedSwiftSource,
+    source: ParsedSwiftSource,
     layer: BoundaryLayer,
-    forbidden_targets: set[str],
+    forbidden_symbols: set[str],
     relative: str,
 ) -> list[str]:
     """
-    Collect Swift import findings before cross-layer symbol findings per file.
+    Collect import findings before symbol findings for one parsed source.
 
-    Inspect parsed source. Forbidden targets already combine explicit symbols
-    with other layers' type names after excluding locally owned type names.
+    Parameters
+    ----------
+    source : ParsedSwiftSource
+        Native syntax for imports and masked text for symbol collection.
+    layer : BoundaryLayer
+        Consumer-owned import and explicit-symbol restrictions.
+    forbidden_symbols : set[str]
+        Combined explicit symbols and forbidden-layer type names, after local
+        ownership exclusions. These are symbol restrictions, not module names.
+    relative : str
+        Repository-relative filename for diagnostics.
+
+    Returns
+    -------
+    list[str]
+        Import findings in native observation order, then symbol findings
+        sorted by line/name. No source is read, parsed again or executed.
+
+    Notes
+    -----
+    Import allowlists match exact modules; symbol rules use masked tokens.
+    Forbidden-layer type names have already been combined with explicit
+    symbols by the adapter, preserving locally owned type exclusions.
     """
     return [
-        *_import_findings(_imports(syntax), layer, relative),
-        *_symbol_findings(syntax.code, forbidden_targets, relative, layer.name),
+        *_import_findings(_imports(source), layer, relative),
+        *_symbol_findings(source.code, forbidden_symbols, relative, layer.name),
     ]
 
 
