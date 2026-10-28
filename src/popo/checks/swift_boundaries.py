@@ -13,6 +13,7 @@ from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 from ._source_boundaries import (
     ImportReference,
     SymbolReference,
+    import_findings,
     symbol_findings,
     validate_boundaries,
 )
@@ -103,15 +104,34 @@ def _import_findings(
     layer: BoundaryLayer,
     relative: str,
 ) -> list[str]:
-    """Report Swift modules excluded by the layer's exact import allowlist."""
-    failures: list[str] = []
-    for reference in imports:
-        line, target = reference.line, reference.target
-        if layer.allowed_imports is not None and target not in layer.allowed_imports:
-            failures.append(
-                f'{relative}:{line}: {layer.name}: forbidden import {target}',
-            )
-    return failures
+    """
+    Evaluate native imports using shared boundary reporting.
+
+    Parameters
+    ----------
+    imports : list[ImportReference]
+        Native import observations in established reporting order.
+    layer : BoundaryLayer
+        Current layer's diagnostic name and optional import allowlist.
+    relative : str
+        Repository-relative diagnostic filename.
+
+    Returns
+    -------
+    list[str]
+        Import findings in observation order, without deduplication.
+
+    Notes
+    -----
+    Swift compares module names exactly. Forbidden-layer type ownership is
+    evaluated through symbol rules rather than import-module restrictions.
+    Native collection remains separate; no dependency resolution is performed.
+    """
+    return import_findings(
+        imports,
+        layer,
+        relative,
+    )
 
 
 def _imports(

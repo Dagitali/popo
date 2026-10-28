@@ -15,6 +15,7 @@ from ._python_syntax import parse as parse_syntax
 from ._source_boundaries import (
     ImportReference,
     SymbolReference,
+    import_findings,
     symbol_findings,
     validate_boundaries,
 )
@@ -106,24 +107,39 @@ def _import_findings(
     forbidden_targets: set[str],
     relative: str,
 ) -> list[str]:
-    """Report unresolved, forbidden-layer and disallowed Python imports."""
-    failures: list[str] = []
-    for reference in imports:
-        line, target = reference.line, reference.target
-        location = f'{relative}:{line}: {layer.name}'
-        if not target:
-            failures.append(f'{location}: unresolved relative import')
-        elif any(
-            target == name or target.startswith(name + '.')
-            for name in forbidden_targets
-        ):
-            failures.append(f'{location}: forbidden layer import {target}')
-        elif layer.allowed_imports is not None and not any(
-            target == name or target.startswith(name + '.')
-            for name in layer.allowed_imports
-        ):
-            failures.append(f'{location}: forbidden import {target}')
-    return failures
+    """
+    Evaluate native imports using shared boundary reporting.
+
+    Parameters
+    ----------
+    imports : list[ImportReference]
+        Native import observations in established reporting order.
+    layer : BoundaryLayer
+        Current layer's diagnostic name and optional import allowlist.
+    forbidden_targets : set[str]
+        Module names owned by layers prohibited by the current one.
+    relative : str
+        Repository-relative diagnostic filename.
+
+    Returns
+    -------
+    list[str]
+        Import findings in observation order, without deduplication.
+
+    Notes
+    -----
+    Python reports unresolved relative imports, checks forbidden-layer
+    modules before allowlists and permits configured dotted descendants.
+    Native collection remains separate; no dependency resolution is performed.
+    """
+    return import_findings(
+        imports,
+        layer,
+        relative,
+        forbidden_targets=forbidden_targets,
+        allow_descendants=True,
+        report_unresolved=True,
+    )
 
 
 def _imports(

@@ -1,7 +1,7 @@
 """
 :mod:`popo.checks._source_boundaries` module.
 
-Share dependency facts, symbol reporting and architecture input discovery.
+Share dependency facts, boundary reporting and architecture input discovery.
 """
 
 from collections.abc import Collection, Iterable
@@ -221,6 +221,76 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
 
 
 # SECTION: FUNCTIONS
+
+
+def import_findings(
+    imports: Iterable[ImportReference],
+    layer: BoundaryLayer,
+    relative: str,
+    *,
+    forbidden_targets: Collection[str] = (),
+    allow_descendants: bool = False,
+    report_unresolved: bool = False,
+) -> list[str]:
+    """
+    Compare native imports with explicit matching and reporting policies.
+
+    Parameters
+    ----------
+    imports : collections.abc.Iterable[ImportReference]
+        Recognized imports in native diagnostic order, consumed once.
+    layer : BoundaryLayer
+        Diagnostic name and optional module allowlist. None disables allowlist
+        restrictions; an empty allowlist rejects every recognized import.
+    relative : str
+        Repository-relative diagnostic filename.
+    forbidden_targets : collections.abc.Collection[str], optional
+        Imported targets owned by forbidden layers, independent of allowlists.
+    allow_descendants : bool, optional
+        Match dotted descendants as well as exact names, as Python requires.
+        Swift uses exact module matching instead.
+    report_unresolved : bool, optional
+        Report empty targets as unresolved relative imports, as Python does.
+        Native Swift import recognition does not emit unresolved placeholders.
+
+    Returns
+    -------
+    list[str]
+        At most one finding per import, preserving order and duplicates.
+        Unresolved references precede forbidden-layer checks, which precede
+        allowlist checks. This function does not report symbol findings.
+
+    Notes
+    -----
+    Native adapters own import discovery, alias handling and applicability.
+    Matching is case-sensitive; descendant matching requires a dot boundary.
+    No source is read, parsed or executed and no policy collection is mutated.
+    """
+
+    def matches(
+        target: str,
+        names: Collection[str],
+    ) -> bool:
+        """Apply exact matching with an optional dotted-descendant rule."""
+        return any(
+            target == name or (allow_descendants and target.startswith(name + '.'))
+            for name in names
+        )
+
+    failures: list[str] = []
+    for reference in imports:
+        target = reference.target
+        location = f'{relative}:{reference.line}: {layer.name}'
+        if report_unresolved and not target:
+            failures.append(f'{location}: unresolved relative import')
+        elif matches(target, forbidden_targets):
+            failures.append(f'{location}: forbidden layer import {target}')
+        elif layer.allowed_imports is not None and not matches(
+            target,
+            layer.allowed_imports,
+        ):
+            failures.append(f'{location}: forbidden import {target}')
+    return failures
 
 
 def symbol_findings(
