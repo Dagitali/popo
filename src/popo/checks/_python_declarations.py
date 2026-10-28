@@ -7,6 +7,7 @@ Collect Python declaration facts through the standard-library AST.
 import ast
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from itertools import chain
 
 from ._python_syntax import DocstringOwner, documentation_lines, nodes
 from ._python_syntax import parse as parse_syntax
@@ -188,7 +189,7 @@ def _declaration(
             member.name
             for member in syntax.body
             if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and (parameters := [*member.args.posonlyargs, *member.args.args])
+            and (parameters := member.args.posonlyargs or member.args.args)
             and parameters[0].arg == 'self'
         )
         return Declaration(
@@ -337,18 +338,18 @@ def _parameter_lines(
         return True
     args = node.args
     positional = [*args.posonlyargs, *args.args]
-    defaults = [
-        *zip(
+    defaults = chain(
+        zip(
             positional[len(positional) - len(args.defaults) :],
             args.defaults,
             strict=True,
         ),
-        *(
+        (
             (arg, default)
             for arg, default in zip(args.kwonlyargs, args.kw_defaults, strict=True)
             if default is not None
         ),
-    ]
+    )
     return parameter_lines(
         node.lineno,
         (ParameterSpan(arg.lineno, arg.end_lineno) for arg in parameters),
@@ -384,7 +385,7 @@ def _parameter_names(
     bounded text interpretation, native AST arguments need no unsupported-name
     marker. Layout checks remain separate; no defaults are executed.
     """
-    positional = [*node.args.posonlyargs, *node.args.args]
+    positional = node.args.posonlyargs or node.args.args
     names = [arg.arg for arg in parameters]
     if positional and positional[0].arg in {'self', 'cls'}:
         names.remove(positional[0].arg)
