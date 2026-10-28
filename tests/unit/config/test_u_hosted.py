@@ -174,6 +174,21 @@ class TestHostedConfiguration:
             ),
             (
                 'https://example.com/review',
+                'https://example.com:abc/review',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://example.com:-1/review',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://example.com:65536/review',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
                 'https://user:secret@example.com/review',
                 'HTTPS evidence URL',
             ),
@@ -199,17 +214,30 @@ class TestHostedConfiguration:
         with pytest.raises(ConfigurationError, match=message):
             load_hosted_config(tmp_path)
 
+    @pytest.mark.parametrize(
+        'approval',
+        (
+            'https://example.com/review',
+            'https://example.com:443/review',
+            'https://[::1]:8443/review',
+        ),
+    )
     def test_valid_exception(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         hosted_exception_config: str,
+        approval: str,
     ) -> None:
         """
         Load the exact approved scope and its inclusive expiry date.
         """
-        write_file('pyproject.toml', hosted_exception_config)
+        write_file(
+            'pyproject.toml',
+            hosted_exception_config.replace('https://example.com/review', approval),
+        )
         config = load_hosted_config(tmp_path)
+        assert config.exceptions[0].approval == approval
         assert config.exceptions[0].expires == date(2026, 10, 31)
         assert config.repositories[0].labels == ('bug',)
 
