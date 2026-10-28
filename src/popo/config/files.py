@@ -159,7 +159,7 @@ def _header_exception(
 ) -> HeaderException:
     """Validate an explicit preservation scope and its nonblank reason."""
     row = require_table(entry, name='header exception')
-    if set(row) != {'patterns', 'reason'}:
+    if row.keys() != {'patterns', 'reason'}:
         raise ConfigurationError('header exception requires patterns and reason')
     patterns = _paths(row['patterns'], 'exception patterns', patterns=True)
     if not patterns:
@@ -175,7 +175,7 @@ def _header_rule(
 ) -> HeaderRule:
     """Validate one ordered header rule without reading consumer source."""
     row = require_table(entry, name='header rule')
-    if set(row) - {
+    if row.keys() - {
         'patterns',
         'format',
         'prefix',
@@ -286,7 +286,13 @@ def load_headers_config(
     if 'headers' not in popo:
         return None
     table = require_table(popo['headers'], name='tool.popo.headers')
-    if set(table) - {'project', 'notice', 'rules', 'exceptions', 'ignored-directories'}:
+    if table.keys() - {
+        'project',
+        'notice',
+        'rules',
+        'exceptions',
+        'ignored-directories',
+    }:
         raise ConfigurationError('unknown tool.popo.headers setting')
     entries = table.get('rules', [])
     if not isinstance(entries, list) or not entries:
@@ -363,7 +369,7 @@ def load_required_files_config(
     if 'files' not in popo:
         return None
     table = require_table(popo['files'], name='tool.popo.files')
-    if set(table) != {'required'}:
+    if table.keys() != {'required'}:
         raise ConfigurationError('tool.popo.files requires only required')
     paths = _paths(table['required'], 'files.required', patterns=False)
     if not paths:

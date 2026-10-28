@@ -188,7 +188,7 @@ def load_safety_config(
     root = root.resolve()
     popo = read_popo(root)
     table = require_table(popo.get('safety', {}), name='tool.popo.safety')
-    if set(table) - {'workflow-globs', 'exceptions', 'npm-pairs'}:
+    if table.keys() - {'workflow-globs', 'exceptions', 'npm-pairs'}:
         raise ConfigurationError('unknown tool.popo.safety setting')
     arrays: dict[str, list[object]] = {}
     for key in ('workflow-globs', 'exceptions', 'npm-pairs'):

@@ -130,7 +130,8 @@ def _exception_policy(
     Raises
     ------
     ConfigurationError
-        Fields, expiry, scope or evidence URL are invalid. Evidence is parsed
+        Fields, expiry, scope or evidence URL (including its port) are invalid.
+        Evidence is parsed
         locally; its existence and authenticity are not verified.
     """
     row = require_table(entry, name='hosted exception')
@@ -143,7 +144,7 @@ def _exception_policy(
         'approval',
         'expires',
     }
-    if set(row) != keys or any(
+    if row.keys() != keys or any(
         not isinstance(value, str) or not value.strip() for value in row.values()
     ):
         raise ConfigurationError('exceptions require all documented string fields')
@@ -161,6 +162,8 @@ def _exception_policy(
         )
     try:
         approval = urlsplit(values['approval'])
+        # Parsing the authority alone leaves port validation deferred.
+        _ = approval.port
     except ValueError as error:
         raise ConfigurationError('invalid exception approval URL') from error
     if (
@@ -204,7 +207,7 @@ def _repository_policy(
         Keys, repository name, setting types, labels or branches are invalid.
     """
     row = require_table(entry, name='hosted repository')
-    if set(row) - {'name', 'settings', 'labels', 'codeowners', 'branches'}:
+    if row.keys() - {'name', 'settings', 'labels', 'codeowners', 'branches'}:
         raise ConfigurationError('unknown hosted repository key')
     name = row.get('name')
     if not isinstance(name, str) or not re.fullmatch(
@@ -213,7 +216,7 @@ def _repository_policy(
     ):
         raise ConfigurationError('repository name must be owner/repository')
     settings = require_table(row.get('settings', {}), name='settings')
-    if set(settings) - {
+    if settings.keys() - {
         'private-vulnerability-reporting',
         'secret-scanning',
         'secret-scanning-push-protection',
@@ -298,7 +301,7 @@ def load_hosted_config(
         If configuration cannot be read or decoded.
     """
     table = require_table(read_popo(root).get('hosted'), name='tool.popo.hosted')
-    if set(table) - {'repositories', 'exceptions'}:
+    if table.keys() - {'repositories', 'exceptions'}:
         raise ConfigurationError('unknown hosted configuration key')
     entries = table.get('repositories')
     if not isinstance(entries, list) or not entries:
