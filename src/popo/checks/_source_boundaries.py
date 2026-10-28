@@ -5,6 +5,7 @@ Share dependency facts, boundary reporting and architecture input discovery.
 """
 
 from collections.abc import Collection, Iterable
+from itertools import chain
 from pathlib import Path
 from typing import NamedTuple, Protocol
 
@@ -350,7 +351,9 @@ def validate_boundaries[ParsedSource](
     -------
     list[str]
         Read/discovery findings, then parse findings, then layer/file findings.
-        Parse each readable file once; skip failed parses during inspection.
+        Parse each readable file and index each selected path's ownership once
+        per invocation. Skip failed parses during rule inspection; native path
+        ownership can remain available when reading or parsing fails.
 
     Raises
     ------
@@ -371,12 +374,12 @@ def validate_boundaries[ParsedSource](
         failures.extend(errors)
         if source is not None:
             sources[path] = source
+    targets_by_path = {
+        path: analyzer.targets(path, config.root, sources.get(path))
+        for path in dict.fromkeys(chain.from_iterable(paths_by_layer.values()))
+    }
     targets_by_layer = {
-        name: {
-            target
-            for path in paths
-            for target in analyzer.targets(path, config.root, sources.get(path))
-        }
+        name: {target for path in paths for target in targets_by_path[path]}
         for name, paths in paths_by_layer.items()
     }
     for layer in config.layers:
