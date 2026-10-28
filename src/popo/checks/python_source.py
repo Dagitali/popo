@@ -4,6 +4,7 @@
 Inspect configured Python conventions through ASTs without importing code.
 """
 
+from itertools import pairwise
 from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
@@ -59,10 +60,9 @@ def _convention_findings(
         facts = declaration.facts
         location = f'{relative}:{facts.line}'
         if facts.kind in NOMINAL_KINDS:
-            if config.settings[
-                'alphabetical-methods'
-            ] and declaration.instance_methods != tuple(
-                sorted(declaration.instance_methods),
+            if config.settings['alphabetical-methods'] and any(
+                first > second
+                for first, second in pairwise(declaration.instance_methods)
             ):
                 failures.append(f'{location}: instance methods not alphabetical')
         elif config.settings['annotations'] and not declaration.annotated:
