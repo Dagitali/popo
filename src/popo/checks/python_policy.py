@@ -330,7 +330,8 @@ def _workflow_observations(
     Returns
     -------
     tuple[tuple[VersionObservation, ...], list[str]]
-        Runtime declarations retaining source, selector and value, followed by
+        Immutable runtime declarations retaining source, selector and value,
+        followed by
         input/resolution findings without the caller's filename prefix.
         Version syntax and range membership are evaluated separately.
 

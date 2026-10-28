@@ -31,7 +31,7 @@ TOOLS_HEADER_PATTERN = re.compile(
 
 def _local_observations(
     config: SwiftPolicyConfig,
-) -> tuple[list[VersionObservation], list[str]]:
+) -> tuple[tuple[VersionObservation, ...], list[str]]:
     """
     Collect local compiler and first-line manifest minimum observations.
 
@@ -42,8 +42,9 @@ def _local_observations(
 
     Returns
     -------
-    tuple[list[VersionObservation], list[str]]
-        Collected declarations and input findings, in configured input order.
+    tuple[tuple[VersionObservation, ...], list[str]]
+        Immutable declaration batch and a list of input findings, both in
+        configured input order.
 
     Raises
     ------
@@ -81,7 +82,7 @@ def _local_observations(
         observations.append(
             VersionObservation(path, 'local declaration', text.strip(), kind),
         )
-    return observations, failures
+    return tuple(observations), failures
 
 
 def _read_text(
@@ -121,7 +122,7 @@ def _read_text(
 
 def _workflow_observations(
     config: SwiftPolicyConfig,
-) -> tuple[list[VersionObservation], list[str]]:
+) -> tuple[tuple[VersionObservation, ...], list[str]]:
     """
     Collect workflow version observations without comparing policy versions.
 
@@ -132,9 +133,9 @@ def _workflow_observations(
 
     Returns
     -------
-    tuple[list[VersionObservation], list[str]]
-        Collected declarations and discovery/input findings. Observations are
-        ordered by sorted file path and then by declaration traversal order.
+    tuple[tuple[VersionObservation, ...], list[str]]
+        Immutable declaration batch and a list of discovery/input findings.
+        Observations retain sorted file order, then declaration traversal order.
 
     Notes
     -----
@@ -171,7 +172,7 @@ def _workflow_observations(
         failures.extend(
             f'{path.relative_to(config.root).as_posix()}: {error}' for error in errors
         )
-    return ci, failures
+    return tuple(ci), failures
 
 
 # !SECTION
@@ -221,10 +222,10 @@ def validate(
     Language modes, deployment targets and dependency resolution are outside
     this check. Explicit observed compilers need membership, not preference.
     """
-    observations, failures = _local_observations(config)
+    local, failures = _local_observations(config)
     ci, errors = _workflow_observations(config)
     failures.extend(errors)
-    observations.extend(ci)
+    observations = [*local, *ci]
     if compiler_version is not None:
         observations.append(
             VersionObservation(None, '--compiler-version', compiler_version),
