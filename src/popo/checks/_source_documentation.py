@@ -57,8 +57,9 @@ class DocumentationDialect:
 
     Attributes
     ----------
-    read_parameter_names : collections.abc.Callable[[str], set[str]]
-        Native reader for documented argument names, retaining case rules.
+    read_parameter_names : collections.abc.Callable[[str], Iterable[str]]
+        Native reader yielding documented names, retaining case rules. Shared
+        assembly consumes the iterable once and freezes/deduplicates names.
     read_section : collections.abc.Callable[[str, str], str]
         Native reader for stripped content of one named markup section.
     exception_section : str
@@ -73,7 +74,7 @@ class DocumentationDialect:
     not supply callbacks. Markup parsing and policy selection stay separate.
     """
 
-    read_parameter_names: Callable[[str], set[str]]
+    read_parameter_names: Callable[[str], Iterable[str]]
     read_section: Callable[[str, str], str]
     exception_section: str
     result_section: str | None = None
@@ -101,8 +102,10 @@ class DocumentationDialect:
 
         Notes
         -----
-        Reader exceptions propagate unchanged. This assembles observations;
-        it does not validate prose, types, syntax or exception escape behavior.
+        Reader and iteration exceptions propagate unchanged. Parameter names
+        are consumed once and frozen without changing case. This assembles
+        observations without validating prose, types, syntax or exception
+        escape behavior.
         """
         result = (
             self.result_section if self.result_section is not None else result_section
