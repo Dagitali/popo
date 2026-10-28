@@ -23,7 +23,15 @@ from ._source_boundaries import (
 
 
 class _PythonBoundaryAnalyzer:
-    """Adapt AST parsing, path-based ownership and Python dependency rules."""
+    """
+    Adapt native syntax, ownership and dependency rules to BoundaryAnalyzer.
+
+    Notes
+    -----
+    Native helpers collect imports, symbols and ownership targets. The shared
+    runner owns discovery, read reuse and layer/file ordering; this adapter
+    neither executes source nor resolves runtime dependency bindings.
+    """
 
     @staticmethod
     def findings(
@@ -34,7 +42,14 @@ class _PythonBoundaryAnalyzer:
         forbidden_targets: set[str],
         owned_targets: set[str],
     ) -> list[str]:
-        """Check imports and explicit symbols without scope analysis."""
+        """
+        Evaluate native boundary rules without modifying target ownership.
+
+        Notes
+        -----
+        Python applies forbidden module targets to imports and keeps explicit
+        symbol restrictions independent of ownership. owned_targets is unused.
+        """
         return _source_findings(
             source,
             _module(path, root),
@@ -49,7 +64,14 @@ class _PythonBoundaryAnalyzer:
         source: str,
         relative: str,
     ) -> tuple[ast.Module | None, list[str]]:
-        """Parse without execution; return syntax failures as diagnostics."""
+        """
+        Collect native syntax and redacted parse findings without execution.
+
+        Notes
+        -----
+        Python converts SyntaxError to a redacted diagnostic and returns None.
+        Other parser exceptions propagate under the native syntax contract.
+        """
         try:
             return parse_syntax(source), []
         except SyntaxError as error:
@@ -61,8 +83,15 @@ class _PythonBoundaryAnalyzer:
         root: Path,
         source: ast.Module | None,
     ) -> set[str]:
-        """Index path-owned modules independently of read or parse success."""
-        return {_module(path, root)}
+        """
+        Index native ownership from parsed input or sufficient path identity.
+
+        Notes
+        -----
+        Python needs only path identity, including after read/parse failure.
+        source remains unused because module ownership is path-derived.
+        """
+        return _targets(path, root)
 
 
 # !SECTION
@@ -238,6 +267,39 @@ def _symbols(
         expanded = '.'.join([aliases.get(head, head), *tail])
         yield SymbolReference(node.lineno, name)
         yield SymbolReference(node.lineno, expanded)
+
+
+def _targets(
+    path: Path,
+    root: Path,
+) -> set[str]:
+    """
+    Collect ownership targets using the language's native identity rules.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Selected Python source path, including unreadable or invalid files.
+    root : pathlib.Path
+        Consumer root used to derive repository-relative module identity.
+
+    Returns
+    -------
+    set[str]
+        One dotted module name, stripping a leading src directory and a final
+        __init__ component. A root __init__.py retains the empty module name.
+
+    Raises
+    ------
+    ValueError
+        The path is lexically outside root.
+
+    Notes
+    -----
+    Ownership does not require parsed syntax, unlike Swift declared types.
+    Alternate source roots and installed-package resolution are not inferred.
+    """
+    return {_module(path, root)}
 
 
 # !SECTION

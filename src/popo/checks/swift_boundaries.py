@@ -23,7 +23,15 @@ from ._swift_syntax import parse as parse_syntax
 
 
 class _SwiftBoundaryAnalyzer:
-    """Adapt native syntax, declaration ownership and Swift token rules."""
+    """
+    Adapt native syntax, ownership and dependency rules to BoundaryAnalyzer.
+
+    Notes
+    -----
+    Native helpers collect imports, symbols and ownership targets. The shared
+    runner owns discovery, read reuse and layer/file ordering; this adapter
+    neither executes source nor resolves runtime dependency bindings.
+    """
 
     @staticmethod
     def findings(
@@ -34,7 +42,14 @@ class _SwiftBoundaryAnalyzer:
         forbidden_targets: set[str],
         owned_targets: set[str],
     ) -> list[str]:
-        """Exclude locally owned types before adding explicit symbol rules."""
+        """
+        Evaluate native boundary rules without modifying target ownership.
+
+        Notes
+        -----
+        Swift excludes locally owned types from forbidden-layer targets before
+        adding explicit symbols. Neither supplied target set is modified.
+        """
         forbidden_symbols = (forbidden_targets - owned_targets) | set(
             layer.forbidden_symbols,
         )
@@ -51,7 +66,12 @@ class _SwiftBoundaryAnalyzer:
         relative: str,
     ) -> tuple[ParsedSwiftSource, list[str]]:
         """
-        Parse recoverable Swift syntax without asserting compiler validity.
+        Collect native syntax and redacted parse findings without execution.
+
+        Notes
+        -----
+        Swift retains recovery nodes and returns no parse diagnostics. Recovery
+        does not establish compiler validity; parser exceptions propagate.
         """
         return parse_syntax(source), []
 
@@ -62,24 +82,14 @@ class _SwiftBoundaryAnalyzer:
         source: ParsedSwiftSource | None,
     ) -> set[str]:
         """
-        Index native type declarations only when source syntax is available.
+        Index native ownership from parsed input or sufficient path identity.
+
+        Notes
+        -----
+        Swift needs parsed declarations; absent source supplies no ownership.
+        path and root remain unused because filenames do not establish types.
         """
-        return (
-            {
-                (name.text or b'').decode('utf-8').strip('`')
-                for node in nodes(source.root)
-                if node.type
-                in {
-                    'class_declaration',
-                    'protocol_declaration',
-                    'typealias_declaration',
-                }
-                and not any(child.type == 'extension' for child in node.children)
-                if (name := node.child_by_field_name('name')) is not None
-            }
-            if source is not None
-            else set()
-        )
+        return _targets(source)
 
 
 # !SECTION
@@ -192,6 +202,48 @@ def _symbols(
     for number, line in enumerate(code.splitlines(), start=1):
         for name in re.findall(r'\b\w+\b', line):
             yield SymbolReference(number, name)
+
+
+def _targets(
+    source: ParsedSwiftSource | None,
+) -> set[str]:
+    """
+    Collect ownership targets using the language's native identity rules.
+
+    Parameters
+    ----------
+    source : ParsedSwiftSource or None
+        Native syntax view, or None after an input read failure.
+
+    Returns
+    -------
+    set[str]
+        Declared nominal/typealias names with backticks removed, excluding
+        extensions. Missing source supplies an empty set, not filename-derived
+        ownership. Duplicate names collapse without inferring qualified names.
+
+    Notes
+    -----
+    Ownership requires parsed declarations, unlike Python module paths.
+    Native traversal masks noncode; recovery does not prove compiler validity.
+    No macro expansion or runtime dependency resolution is performed.
+    """
+    return (
+        {
+            (name.text or b'').decode('utf-8').strip('`')
+            for node in nodes(source.root)
+            if node.type
+            in {
+                'class_declaration',
+                'protocol_declaration',
+                'typealias_declaration',
+            }
+            and not any(child.type == 'extension' for child in node.children)
+            if (name := node.child_by_field_name('name')) is not None
+        }
+        if source is not None
+        else set()
+    )
 
 
 # !SECTION
