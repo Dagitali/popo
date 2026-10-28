@@ -58,7 +58,7 @@ class DocumentationDialect:
 
     Attributes
     ----------
-    read_parameters : collections.abc.Callable[[str], set[str]]
+    read_parameter_names : collections.abc.Callable[[str], set[str]]
         Native reader for documented argument names, retaining case rules.
     read_section : collections.abc.Callable[[str, str], str]
         Native reader for stripped content of one named markup section.
@@ -74,7 +74,7 @@ class DocumentationDialect:
     not supply callbacks. Markup parsing and policy selection stay separate.
     """
 
-    read_parameters: Callable[[str], set[str]]
+    read_parameter_names: Callable[[str], set[str]]
     read_section: Callable[[str, str], str]
     raises_section: str
     result_section: str | None = None
@@ -109,7 +109,7 @@ class DocumentationDialect:
             self.result_section if self.result_section is not None else return_section
         )
         return CallableDocumentation(
-            frozenset(self.read_parameters(doc)),
+            frozenset(self.read_parameter_names(doc)),
             bool(self.read_section(doc, result)) if return_section else False,
             bool(self.read_section(doc, self.raises_section)),
         )

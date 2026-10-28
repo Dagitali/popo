@@ -105,7 +105,7 @@ def _documentation(
     return DIALECT.interpret(doc, return_section)
 
 
-def _parameters(
+def _parameter_names(
     doc: str,
 ) -> set[str]:
     """
@@ -204,7 +204,7 @@ def _section(
 
 # Bind after native readers are defined; evidence assembly does not parse code.
 DIALECT = DocumentationDialect(
-    read_parameters=_parameters,
+    read_parameter_names=_parameter_names,
     read_section=_section,
     raises_section='Raises',
 )
