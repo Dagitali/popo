@@ -226,12 +226,7 @@ def _declaration(
     Swift return and raise requirements come from signature syntax;
     declaration conversion neither compiles code nor infers body semantics.
     """
-    start = syntax.attachment_start
-    while syntax.attach_documentation and start and start in documentation:
-        start -= 1
-    doc = '\n'.join(
-        line.lstrip()[3:] for line in lines[start : syntax.attachment_start]
-    )
+    doc, start, separated = _documentation(syntax, lines, documentation)
     facts = DeclarationFacts.from_requirements(
         line=syntax.line,
         kind=syntax.kind,
@@ -239,7 +234,7 @@ def _declaration(
         signature=syntax,
         requirements=syntax.requirements,
     )
-    return Declaration(facts, start + 1, not start or not lines[start - 1].strip())
+    return Declaration(facts, start, separated)
 
 
 def _lexical_declaration_syntax(
@@ -418,6 +413,46 @@ def _declarations(
     """
     for item in syntax:
         yield _declaration(item, lines, documentation)
+
+
+def _documentation(
+    syntax: _DeclarationSyntax,
+    lines: list[str],
+    documentation: set[int],
+) -> tuple[str, int, bool]:
+    """
+    Extract attached documentation using native syntax conventions.
+
+    Parameters
+    ----------
+    syntax : _DeclarationSyntax
+        Native/recovered declaration with attachment boundary observations.
+    lines : list[str]
+        Original source lines retaining comment prefixes and blank lines.
+    documentation : set[int]
+        One-based standalone triple-slash lines recognized by native syntax.
+
+    Returns
+    -------
+    tuple[str, int, bool]
+        Attached text without comment prefixes, one-based documentation start
+        and whether a blank line precedes it or it starts the file. Without
+        attached text, retain the established attachment-boundary location.
+
+    Notes
+    -----
+    Attachment crosses attribute-only lines but is disabled after same-line
+    code. Unlike Python's native docstring ownership, Swift requires explicit
+    attachment and spacing observations. No markup contracts are interpreted
+    and no source is executed; missing-documentation policy is evaluated later.
+    """
+    start = syntax.attachment_start
+    while syntax.attach_documentation and start and start in documentation:
+        start -= 1
+    doc = '\n'.join(
+        line.lstrip()[3:] for line in lines[start : syntax.attachment_start]
+    )
+    return doc, start + 1, not start or not lines[start - 1].strip()
 
 
 def _file_overview(

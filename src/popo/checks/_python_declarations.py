@@ -8,7 +8,7 @@ import ast
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
-from ._python_syntax import documentation_lines, nodes
+from ._python_syntax import DocstringOwner, documentation_lines, nodes
 from ._python_syntax import parse as parse_syntax
 from ._source_declarations import (
     CallableRequirements,
@@ -195,7 +195,7 @@ def _declaration(
             DeclarationFacts(
                 syntax.lineno,
                 'class',
-                ast.get_docstring(syntax) or '',
+                _documentation(syntax),
                 (),
             ),
             instance_methods=methods,
@@ -206,7 +206,7 @@ def _declaration(
         DeclarationFacts.from_requirements(
             line=syntax.lineno,
             kind='function',
-            documentation=ast.get_docstring(syntax) or '',
+            documentation=_documentation(syntax),
             signature=signature,
             requirements=requirements,
         ),
@@ -259,6 +259,33 @@ def _declarations(
         yield _declaration(item)
 
 
+def _documentation(
+    syntax: DocstringOwner,
+) -> str:
+    """
+    Extract attached documentation using native syntax conventions.
+
+    Parameters
+    ----------
+    syntax : DocstringOwner
+        Native module, class or callable node that can own a docstring.
+
+    Returns
+    -------
+    str
+        Cleaned leading docstring, or an empty string when absent. Native AST
+        ownership supplies attachment; unrelated string expressions do not.
+
+    Notes
+    -----
+    Python needs no separate attachment/spacing observations, unlike Swift's
+    triple-slash convention. Cleaning preserves ast.get_docstring behavior;
+    Documentation-line spans are collected separately without cleaning.
+    No markup contracts are interpreted and no source is executed.
+    """
+    return ast.get_docstring(syntax) or ''
+
+
 def _file_overview(
     tree: ast.Module,
 ) -> bool:
@@ -282,7 +309,7 @@ def _file_overview(
     concrete-syntax comment locations before the first code line. Neither
     front end executes code or validates the overview's prose quality.
     """
-    return bool(ast.get_docstring(tree))
+    return bool(_documentation(tree))
 
 
 def _parameter_lines(
