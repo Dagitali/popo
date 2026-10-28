@@ -306,7 +306,8 @@ def symbol_findings(
     ----------
     references : collections.abc.Iterable[SymbolReference]
         Native observations, including duplicates or expanded alias spellings.
-        Input order is unrestricted; the iterable is consumed once.
+        Input order is unrestricted; consume once when restrictions are
+        configured; otherwise, leave the iterable untouched.
     forbidden_symbols : collections.abc.Collection[str]
         Exact case-sensitive names prohibited by the current layer.
     relative : str
@@ -324,6 +325,8 @@ def symbol_findings(
     Native collectors own syntax, alias expansion and masking. This function
     performs no parsing, scope resolution, source reads or consumer execution.
     """
+    if not forbidden_symbols:
+        return []
     forbidden = set(forbidden_symbols)
     matches = {reference for reference in references if reference.name in forbidden}
     return [
