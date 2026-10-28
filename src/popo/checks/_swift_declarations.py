@@ -506,6 +506,42 @@ def _parameter_lines(
     )
 
 
+def _parameter_names(
+    parameters: list[_ParameterSyntax],
+) -> tuple[str, ...] | None:
+    """
+    Interpret documentable names from native parameter syntax.
+
+    Parameters
+    ----------
+    parameters : list[_ParameterSyntax]
+        Masked lexical fragments in source order from _parameters.
+
+    Returns
+    -------
+    tuple[str, ...] or None
+        Internal argument names, excluding unnamed arguments, or None when
+        bounded name syntax is unsupported. An empty tuple is supported and
+        differs from that unsupported marker.
+
+    Notes
+    -----
+    External labels do not replace internal names. Unlike Python AST receiver
+    exclusion, this bounded interpretation validates named-argument prefixes.
+    Layout checks remain separate; no defaults or consumer code are executed.
+    """
+    names: list[str] = []
+    for parameter in parameters:
+        # Deliberately accept named arguments, not arbitrary signature syntax.
+        prefix, colon, _ = parameter.text.partition(':')
+        identifiers = PARAMETER_NAME_PATTERN.findall(prefix)
+        if not colon or not identifiers or '(' in prefix:
+            return None
+        if identifiers[-1] != '_':
+            names.append(identifiers[-1])
+    return tuple(names)
+
+
 def _parameters(
     text: str,
 ) -> list[_ParameterSyntax]:
@@ -595,7 +631,7 @@ def _signature(
     position: int,
 ) -> _Signature:
     """
-    Extract one callable's signature observations from bounded source text.
+    Extract one callable's native signature observations.
 
     Parameters
     ----------
@@ -615,9 +651,9 @@ def _signature(
     -----
     Swift retains bounded signature interpretation over masked concrete
     syntax. Python instead reads its native AST arguments; neither front end
-    executes
-    consumer code or resolves types. Named argument syntax is bounded rather
-    than a full Swift grammar, and unnamed arguments do not require docs.
+    executes consumer code or resolves types. Named argument syntax is bounded
+    rather than a full Swift grammar, and unnamed arguments do not require
+    docs.
     """
     opening = code.find('(', position)
     if opening < 0 or any(char in code[position:opening] for char in '{};'):
@@ -628,16 +664,10 @@ def _signature(
         end += 1
     if depth:
         return _Signature(None, False, '', position)
-    names: list[str] = []
     parameters = _parameters(code[opening + 1 : end - 1])
-    for parameter in parameters:
-        # Deliberately accept named arguments, not arbitrary signature syntax.
-        prefix, colon, _ = parameter.text.partition(':')
-        identifiers = PARAMETER_NAME_PATTERN.findall(prefix)
-        if not colon or not identifiers or '(' in prefix:
-            return _Signature(None, False, '', position)
-        if identifiers[-1] != '_':
-            names.append(identifiers[-1])
+    names = _parameter_names(parameters)
+    if names is None:
+        return _Signature(None, False, '', position)
     stop = end
     while stop < len(code) and code[stop] not in '{};':
         if code[stop] == '\n':
@@ -648,7 +678,7 @@ def _signature(
                     break
         stop += 1
     return _Signature(
-        tuple(names),
+        names,
         _parameter_lines(code, position, opening + 1, parameters),
         code[end:stop],
         stop,

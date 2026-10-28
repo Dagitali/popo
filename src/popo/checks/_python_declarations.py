@@ -330,6 +330,39 @@ def _parameter_lines(
     )
 
 
+def _parameter_names(
+    node: _CallableSyntax,
+    parameters: list[_ParameterSyntax],
+) -> tuple[str, ...]:
+    """
+    Interpret documentable names from native parameter syntax.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Callable node identifying positional receiver placement.
+    parameters : list[_ParameterSyntax]
+        Native argument nodes in the established _parameters grouping order.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Names excluding an initial positional self or cls receiver. An empty
+        tuple is a supported signature with no documentable parameters.
+
+    Notes
+    -----
+    Receiver exclusion does not waive annotation requirements. Unlike Swift's
+    bounded text interpretation, native AST arguments need no unsupported-name
+    marker. Layout checks remain separate; no defaults are executed.
+    """
+    positional = [*node.args.posonlyargs, *node.args.args]
+    names = [arg.arg for arg in parameters]
+    if positional and positional[0].arg in {'self', 'cls'}:
+        names.remove(positional[0].arg)
+    return tuple(names)
+
+
 def _parameters(
     node: _CallableSyntax,
 ) -> list[_ParameterSyntax]:
@@ -409,7 +442,7 @@ def _signature(
     node: _CallableSyntax,
 ) -> _Signature:
     """
-    Extract one callable's signature observations from native AST nodes.
+    Extract one callable's native signature observations.
 
     Parameters
     ----------
@@ -430,19 +463,15 @@ def _signature(
     _requirements, which uses _body to exclude nested scopes. No consumer code
     executes.
     """
-    args = node.args
-    positional = [*args.posonlyargs, *args.args]
     parameters = _parameters(node)
-    names = [arg.arg for arg in parameters]
-    if positional and positional[0].arg in {'self', 'cls'}:
-        names.remove(positional[0].arg)
+    names = _parameter_names(node, parameters)
     result_type = node.returns
     annotation = ast.unparse(result_type) if result_type is not None else ''
     if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
         annotation = result_type.value
     returns = annotation not in NONVALUE_RETURN_TYPES
     return _Signature(
-        tuple(names),
+        names,
         _parameter_lines(node, parameters),
         returns,
         node.returns is not None
