@@ -54,7 +54,8 @@ def _npm_findings(
     lock: object = json.loads(_file(root, lockfile).read_text('utf-8'))
     if not isinstance(package, dict) or not isinstance(lock, dict):
         raise ValueError('npm documents must be objects')
-    if lock.get('lockfileVersion') not in (2, 3):
+    version = lock.get('lockfileVersion')
+    if type(version) is not int or version not in (2, 3):
         raise ValueError('only npm lockfile versions 2 and 3 are supported')
     packages = lock.get('packages')
     if not isinstance(packages, dict) or not isinstance(packages.get(''), dict):
