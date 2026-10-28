@@ -41,7 +41,7 @@ def discover(
     paths: set[Path] = set()
     failures = []
     for pattern in config.include:
-        matches = []
+        matched = False
         try:
             for path in boundary.glob(pattern):
                 relative = path.relative_to(boundary).as_posix()
@@ -51,14 +51,14 @@ def discover(
                     if not path.resolve().is_relative_to(boundary):
                         failures.append(f'{relative}: input escapes selected root')
                     elif path.is_file():
-                        matches.append(path)
+                        paths.add(path)
+                        matched = True
                 except (OSError, ValueError):
                     failures.append(f'{relative}: cannot inspect selected input')
         except (OSError, ValueError):
             failures.append('cannot discover configured source inputs')
-        if not matches:
+        if not matched:
             failures.append(f'no inputs match: {pattern}')
-        paths.update(matches)
     return sorted(paths), failures
 
 
