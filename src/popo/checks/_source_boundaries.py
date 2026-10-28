@@ -103,7 +103,9 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
     Define language analysis consumed by the shared boundary runner.
 
     Implementations preserve read-only inspection and redacted findings.
-    ParsedSource retains the language's native AST or masked lexical text.
+    ParsedSource retains the native Python AST or Swift concrete-syntax view.
+    Native adapters own parsing, ownership and reference recognition.
+    The shared runner controls discovery, read reuse and layer/file ordering.
     """
 
     def findings(
@@ -115,7 +117,37 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
         forbidden_targets: set[str],
         owned_targets: set[str],
     ) -> list[str]:
-        """Return imports before symbols; leave target sets unchanged."""
+        """
+        Evaluate native boundary rules without modifying target ownership.
+
+        Parameters
+        ----------
+        source : ParsedSource
+            Parsed native input; implementations must not read it again.
+        path : pathlib.Path
+            Input path lexically inside root, used for identity and reporting.
+        root : pathlib.Path
+            Consumer repository root.
+        layer : BoundaryLayer
+            Current layer's import, dependency and explicit-symbol rules.
+        forbidden_targets : set[str]
+            Ownership targets from the layers prohibited by the current one.
+        owned_targets : set[str]
+            Current layer's targets, used when native ownership rules need it.
+
+        Returns
+        -------
+        list[str]
+            Location-based import findings before symbol findings. Native
+            analysis selects matching rules without changing either target set.
+
+        Notes
+        -----
+        Python targets are modules; Swift targets are declared type names.
+        Swift excludes locally owned types from cross-layer restrictions;
+        explicit forbidden symbols still apply. Python uses module import
+        restrictions and does not subtract current ownership from them.
+        """
         ...
 
     def parse(
@@ -123,7 +155,33 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
         source: str,
         relative: str,
     ) -> tuple[ParsedSource | None, list[str]]:
-        """Return parsed input or redacted parse diagnostics."""
+        """
+        Collect native syntax and redacted parse findings without execution.
+
+        Parameters
+        ----------
+        source : str
+            Decoded source text supplied by the shared read-only runner.
+        relative : str
+            Repository-relative filename for location-only parse diagnostics.
+
+        Returns
+        -------
+        tuple[ParsedSource or None, list[str]]
+            Native parsed input and parse findings. None skips rule evaluation
+            while still allowing ownership indexing when paths are sufficient.
+
+        Raises
+        ------
+        UnicodeEncodeError
+            Direct text cannot be encoded as UTF-8 by the native parser.
+
+        Notes
+        -----
+        Python converts SyntaxError to a diagnostic and returns no AST. Swift
+        retains recoverable syntax; recovery does not prove compiler validity.
+        Implementations do not execute source or invoke consumer toolchains.
+        """
         ...
 
     def targets(
@@ -132,7 +190,30 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
         root: Path,
         source: ParsedSource | None,
     ) -> set[str]:
-        """Index owned targets from parsed input or paths when sufficient."""
+        """
+        Index native ownership from parsed input or sufficient path identity.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            Selected source path lexically inside root.
+        root : pathlib.Path
+            Consumer root used to derive repository-relative identity.
+        source : ParsedSource or None
+            Available native input, or None after a read or parse failure.
+
+        Returns
+        -------
+        set[str]
+            Native ownership targets used for cross-layer restrictions.
+            An empty set means no targets could be established for this input.
+
+        Notes
+        -----
+        Python module paths establish ownership even without readable syntax.
+        Swift requires parsed declarations; extensions do not establish new
+        ownership. Neither implementation resolves runtime dependencies.
+        """
         ...
 
 

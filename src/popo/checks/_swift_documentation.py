@@ -240,7 +240,7 @@ def documentation_findings(
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Precomputed lexical facts; signatures are not reinterpreted here.
+        Precomputed native facts; no syntax is parsed or traversed here.
     config : SourceCheckConfig
         Consumer-owned documentation switches.
     relative : str

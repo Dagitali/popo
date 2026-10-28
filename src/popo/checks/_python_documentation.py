@@ -227,7 +227,7 @@ def documentation_findings(
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Precomputed Python facts; this interpreter does not traverse the AST.
+        Precomputed native facts; no syntax is parsed or traversed here.
     config : SourceCheckConfig
         Consumer-owned documentation switches.
     relative : str

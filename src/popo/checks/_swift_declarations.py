@@ -431,7 +431,7 @@ def _file_overview(
     Parameters
     ----------
     code : str
-        Position-preserving masked Swift source from lexical_view.
+        Position-preserving masked Swift source from the native syntax view.
     lines : list[str]
         Original source lines retaining comment prefixes and indentation.
     documentation : set[int]
@@ -697,7 +697,8 @@ def parse(
     Parameters
     ----------
     source : str
-        Swift source; no compiler or consumer code is executed.
+        Decoded source text; consumer modules and defaults are not executed.
+        No consumer files are read or written.
 
     Returns
     -------
@@ -705,6 +706,11 @@ def parse(
         Overview, real triple-slash documentation lines and declarations.
         Syntax discovery and fact construction are separate stages. Unsupported
         recognized signatures retain None parameter names.
+
+    Raises
+    ------
+    UnicodeEncodeError
+        Direct text contains code points that cannot be encoded as UTF-8.
 
     Notes
     -----

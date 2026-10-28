@@ -279,9 +279,8 @@ def _file_overview(
     Notes
     -----
     Python's parser supplies module-docstring identity. Swift instead uses
-    concrete-syntax comment locations before the first code line. Neither front
-    end
-    executes inspected code or validates the overview's prose quality.
+    concrete-syntax comment locations before the first code line. Neither
+    front end executes code or validates the overview's prose quality.
     """
     return bool(ast.get_docstring(tree))
 
@@ -466,7 +465,8 @@ def parse(
     Parameters
     ----------
     source : str
-        Source text; modules are never imported or executed.
+        Decoded source text; consumer modules and defaults are not executed.
+        No consumer files are read or written.
 
     Returns
     -------
@@ -480,6 +480,8 @@ def parse(
     SyntaxError
         If the standard-library parser rejects the source. The file validator
         converts this into a location-only diagnostic.
+    UnicodeEncodeError
+        Direct text contains code points that cannot be encoded as UTF-8.
 
     Notes
     -----

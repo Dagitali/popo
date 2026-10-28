@@ -312,7 +312,8 @@ def documentation_findings[Declaration](
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Precomputed overview and declarations in source order.
+        Precomputed overview and declarations in native discovery order.
+        Python retains breadth-first AST order; Swift retains source order.
     config : SourceCheckConfig
         Consumer-owned documentation settings passed to each inspector.
     relative : str

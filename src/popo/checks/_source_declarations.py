@@ -156,7 +156,8 @@ class SourceFacts[Declaration]:
         One-based physical documentation lines for common width checks.
     declarations : tuple[Declaration, ...]
         Language-specific records containing shared DeclarationFacts and only
-        the additional observations needed by that language's rules.
+        the additional observations needed by that language's rules. Native
+        discovery order is retained: Python breadth-first, Swift source order.
     """
 
     has_overview: bool
