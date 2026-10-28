@@ -388,7 +388,8 @@ def _requirements(
     -----
     Python combines annotations with AST body observations. Swift instead
     derives these requirements from bounded signatures; neither approach
-    resolves types, executes code or proves exception escape behavior.
+    resolves types, executes code or proves exception escape behavior. Shared
+    normalization selects the result section after native observations.
     """
     returns = signature.returns
     yields = raises = False
@@ -401,9 +402,10 @@ def _requirements(
             returns |= item.value is not None and not (
                 isinstance(item.value, ast.Constant) and item.value.value is None
             )
-    return CallableRequirements(
-        'Yields' if yields else 'Returns' if returns else '',
-        raises,
+    return CallableRequirements.from_observations(
+        returns=returns,
+        yields=yields,
+        raises=raises,
     )
 
 

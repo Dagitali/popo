@@ -571,7 +571,8 @@ def _requirements(
     -----
     Swift inspects bounded signature syntax. Python instead combines native
     annotations and explicit body observations; neither approach resolves
-    types, executes code or proves exception escape behavior.
+    types, executes code or proves exception escape behavior. Shared
+    normalization selects the result section after native observations.
     """
     result = RETURN_PATTERN.search(tail)
     returns = (
@@ -579,9 +580,9 @@ def _requirements(
         and result is not None
         and result[1].strip() not in NONVALUE_RETURN_TYPES
     )
-    return CallableRequirements(
-        'Returns' if returns else '',
-        bool(THROWS_PATTERN.search(tail.partition('->')[0])),
+    return CallableRequirements.from_observations(
+        returns=returns,
+        raises=bool(THROWS_PATTERN.search(tail.partition('->')[0])),
     )
 
 
