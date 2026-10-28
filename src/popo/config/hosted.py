@@ -14,7 +14,13 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from ._common import ConfigurationError, read_popo, read_strings, require_table
+from ._common import (
+    ConfigurationError,
+    parse_iso_date,
+    read_popo,
+    read_strings,
+    require_table,
+)
 
 # SECTION: DATA CLASSES
 
@@ -150,9 +156,7 @@ def _exception_policy(
         raise ConfigurationError('exceptions require all documented string fields')
     values = {key: str(value) for key, value in row.items()}
     try:
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', values['expires']):
-            raise ValueError('noncanonical date')
-        expires = date.fromisoformat(values['expires'])
+        expires = parse_iso_date(values['expires'])
     except ValueError as error:
         raise ConfigurationError('exception expires must be an ISO date') from error
     checks = repository_checks.get(values['repository'], set())
