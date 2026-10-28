@@ -4,9 +4,9 @@
 Parse Swift syntax and locate documentation without consumer-code execution.
 """
 
+import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from itertools import accumulate
 
 import tree_sitter_swift
 from tree_sitter import Language, Node, Parser
@@ -200,7 +200,7 @@ def documentation_lines(
                 node.start_point.row + 1
                 for node in owners
                 if node.type == 'comment'
-                and source[node.start_byte : node.end_byte].startswith(b'///')
+                and source.startswith(b'///', node.start_byte, node.end_byte)
                 and not source[
                     node.start_byte - node.start_point.column : node.start_byte
                 ]
@@ -289,7 +289,7 @@ def parse(
         raw,
         code,
         frozenset(documentation_lines(comments, raw)),
-        tuple(accumulate((len(line) + 1 for line in source.split('\n')), initial=0)),
+        (0, *(match.end() for match in re.finditer('\n', source)), len(source) + 1),
     )
 
 
