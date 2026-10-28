@@ -307,11 +307,6 @@ def _repository(
                 for item in tree.data['tree']
             )
         )
-        paths = (
-            {item['path'] for item in tree.data['tree'] if item['type'] == 'blob'}
-            if valid
-            else set()
-        )
         if not valid:
             add(
                 'codeowners',
@@ -319,8 +314,10 @@ def _repository(
                 tree.error or 'unavailable or truncated tree',
                 endpoint,
             )
-        elif not paths.intersection(
-            {'.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'},
+        elif not any(
+            item['type'] == 'blob'
+            and item['path'] in {'.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'}
+            for item in tree.data['tree']
         ):
             add('codeowners', False, 'no CODEOWNERS file on default branch', endpoint)
         else:
