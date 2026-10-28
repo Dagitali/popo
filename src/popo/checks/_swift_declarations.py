@@ -60,6 +60,7 @@ DECLARATION_PATTERN = re.compile(
 FUNCTION_NAME_PATTERN = re.compile(r'\s+`?\w+')
 PARAMETER_NAME_PATTERN = re.compile(r'`?(\w+)`?')
 RETURN_PATTERN = re.compile(r'->\s*(.*?)\s*(?:\bwhere\b|$)', re.S)
+SIGNATURE_CONTINUATION_PATTERN = re.compile(r'\s*(?:async|throws|rethrows|->|where)')
 THROWS_PATTERN = re.compile(r'\b(?:rethrows|throws)\b')
 
 
@@ -361,7 +362,7 @@ def _declaration_syntax(
         position = syntax.offset(keyword) + len(kind)
         signature = _signature(code, position) if kind in CALLABLE_KINDS else None
         parameters = signature.parameter_names if signature else ()
-        if kind == 'func' and not FUNCTION_NAME_PATTERN.match(code[position:]):
+        if kind == 'func' and not FUNCTION_NAME_PATTERN.match(code, position):
             parameters = None
         yield _DeclarationSyntax(
             keyword.start_point.row + 1,
@@ -735,12 +736,12 @@ def _signature(
         return _Signature(None, False, '', position)
     stop = end
     while stop < len(code) and code[stop] not in '{};':
-        if code[stop] == '\n':
-            following = code[stop + 1 :].lstrip()
-            tail = code[end:stop].rstrip()
-            if not following.startswith(('async', 'throws', 'rethrows', '->', 'where')):
-                if not tail.endswith(('->', ',', 'where')):
-                    break
+        if (
+            code[stop] == '\n'
+            and not SIGNATURE_CONTINUATION_PATTERN.match(code, stop + 1)
+            and not code[end:stop].rstrip().endswith(('->', ',', 'where'))
+        ):
+            break
         stop += 1
     return _Signature(
         names,
