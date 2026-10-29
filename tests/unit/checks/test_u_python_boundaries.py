@@ -22,7 +22,14 @@ class TestPythonBoundaries:
         self,
         python_boundary_case: tuple[Path, str | None],
     ) -> None:
-        """Resolve relative imports and aliases without evaluating source."""
+        """
+        Resolve relative imports and aliases without evaluating source.
+
+        Parameters
+        ----------
+        python_boundary_case : tuple[Path, str | None]
+            Isolated Python consumer and its expected boundary failure.
+        """
         root, expected = python_boundary_case
         before = snapshot_files(root)
         findings = validate(load_python_boundaries_config(root))
@@ -36,7 +43,14 @@ class TestPythonBoundaries:
         self,
         tmp_path: Path,
     ) -> None:
-        """Resolve an initializer's relative import within its own package."""
+        """
+        Resolve an initializer's relative import within its own package.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         (tmp_path / 'pkg').mkdir()
         (tmp_path / 'pkg/__init__.py').write_text('from . import ui', encoding='utf-8')
         (tmp_path / 'pkg/ui.py').write_text('', encoding='utf-8')
@@ -63,7 +77,16 @@ class TestPythonModuleOwnership:
         tmp_path: Path,
         owner: str,
     ) -> None:
-        """Reject imports from each owned module without executing its code."""
+        """
+        Reject imports from each owned module without executing its code.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        owner : str
+            Policy owner or workflow scope selected for the scenario.
+        """
         path = tmp_path / owner
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('raise RuntimeError("must not execute")', encoding='utf-8')

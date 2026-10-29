@@ -354,7 +354,6 @@ def validate(
     a link-target policy, not a filesystem sandbox for source discovery.
     Cache Markdown anchors only within this invocation, keyed by resolved path.
     """
-
     if not root.is_dir():
         return [f'repository root does not exist: {root}']
     resolved_root = root.resolve()

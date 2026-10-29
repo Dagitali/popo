@@ -31,7 +31,20 @@ class TestSourceSelectionPolicy:
         setting: str,
         pattern: str,
     ) -> None:
-        """Reject unsafe includes and excludes with specific setting names."""
+        """
+        Reject unsafe includes and excludes with specific setting names.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        domain : str
+            Native check domain selected for the scenario.
+        setting : str
+            Configuration setting selected for mutation.
+        pattern : str
+            Glob or literal selection passed to the operation.
+        """
         selected = (
             str(tmp_path.parent / 'outside') if pattern == 'absolute' else pattern
         )
@@ -60,7 +73,18 @@ class TestSourceSelectionPolicy:
         domain: str,
         exclusions: tuple[str, ...] | None,
     ) -> None:
-        """Preserve pattern order with omitted, empty or explicit exclusions."""
+        """
+        Preserve pattern order with omitted, empty or explicit exclusions.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        domain : str
+            Native check domain selected for the scenario.
+        exclusions : tuple[str, ...] | None
+            Excluded input patterns, or None to use policy defaults.
+        """
         selection = '' if exclusions is None else f'exclude={list(exclusions)!r}\n'
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude=["second/*", "first/*"]\n'

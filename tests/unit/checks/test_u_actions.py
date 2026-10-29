@@ -31,6 +31,8 @@ class TestActions:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify checks nested composite actions and ignores local steps.
+
         Verify recursive action discovery reports only the unpinned remote
         step.
 
@@ -84,7 +86,7 @@ class TestActions:
         template: str,
     ) -> None:
         """
-        Accept full-SHA/local/container references and reject malformed remotes.
+        Validate immutable, local and container action references.
 
         Require precise line-numbered failures regardless of YAML quoting or
         trailing comments, without fetching or executing referenced actions.

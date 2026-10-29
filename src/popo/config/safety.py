@@ -142,7 +142,24 @@ def _exception(
 def _path(
     value: object,
 ) -> str:
-    """Require a nonempty repository-relative policy path."""
+    """
+    Require a nonempty repository-relative policy path.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    str
+        The original nonblank repository-relative path string.
+
+    Raises
+    ------
+    ConfigurationError
+        If the value is blank, absolute or contains a parent path component.
+    """
     if (
         not isinstance(value, str)
         or not value.strip()

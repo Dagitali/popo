@@ -32,6 +32,8 @@ class TestPackageArtifacts:
         artifact: Path,
     ) -> None:
         """
+        Verify distribution contract.
+
         Verify wheel and sdist contents, metadata, typing, and entry-point
         contracts.
 

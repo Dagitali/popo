@@ -89,7 +89,24 @@ class TestActionlintFailures:
         write_file: FileWriter,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Return precise selection and command errors without execution."""
+        """
+        Return precise selection and command errors without execution.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        paths : list[str]
+            Input paths supplied to the scenario.
+        command : str
+            Command selected for invocation in the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        """
         write_file('ci.yml', 'on: push')
         runner = Mock(
             side_effect=AssertionError('Invalid input must not launch a tool'),
@@ -112,7 +129,20 @@ class TestActionlintNormalization:
         count: int,
         newline: str,
     ) -> None:
-        """Replace original character spans without changing adjacent text."""
+        """
+        Replace original character spans without changing adjacent text.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        count : int
+            Count supplied to the result-validation scenario.
+        newline : str
+            Line-ending sequence used in the source input.
+        """
         write_file('actions/test/action.yml', 'name: Test')
         source = newline.join(
             [
@@ -150,6 +180,15 @@ class TestActionlintNormalization:
     ) -> None:
         """
         Normalize quoted, aliased, and block values without rewriting scripts.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        source : str
+            Decoded input text to inspect without executing it.
         """
         write_file('actions/test/action.yml', 'name: Test')
         script = 'run: |\n  uses: $/actions/test\n'
@@ -171,7 +210,20 @@ class TestActionlintSourceView:
         monkeypatch: pytest.MonkeyPatch,
         status: int,
     ) -> None:
-        """Copy implicit configuration once and clean the temporary view."""
+        """
+        Copy implicit configuration once and clean the temporary view.
+
+        Parameters
+        ----------
+        linter_repository : Path
+            Isolated automation repository for the actionlint scenario.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        status : int
+            Expected CLI exit status or hosted response state.
+        """
         before = snapshot_files(tmp_path)
         # Unrelated consumer files must never enter the compatibility view.
         (tmp_path / 'private.txt').write_text('consumer data', encoding='utf-8')
@@ -180,7 +232,22 @@ class TestActionlintSourceView:
             arguments: list[str],
             **options: object,
         ) -> subprocess.CompletedProcess[str]:
-            """Inspect the live mirror before returning the tool's status."""
+            """
+            Inspect the live mirror before returning the tool's status.
+
+            Parameters
+            ----------
+            arguments : list[str]
+                Command arguments supplied to the process test double.
+            **options : object
+                Keyword arguments forwarded to the simulated operation.
+
+            Returns
+            -------
+            subprocess.CompletedProcess[str]
+                Simulated successful actionlint process after inspecting its
+                source view.
+            """
             mirror = Path(str(options['cwd']))
             assert mirror != tmp_path
             assert snapshot_files(mirror) == before
@@ -202,7 +269,16 @@ class TestActionlintSourceView:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Clean the temporary view when process startup raises an error."""
+        """
+        Clean the temporary view when process startup raises an error.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        """
         before = snapshot_files(tmp_path)
         error = OSError('fixture launch failure')
         runner = Mock(side_effect=error)
@@ -223,7 +299,18 @@ class TestActionlintSourceView:
         write_file: FileWriter,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Read shared and cyclic targets once from the same snapshot."""
+        """
+        Read shared and cyclic targets once from the same snapshot.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        """
         workflow = write_file(
             'ci.yml',
             'jobs: {check: {steps: [{uses: "$/actions/check"}, '
@@ -241,6 +328,25 @@ class TestActionlintSourceView:
             arguments: list[str],
             **options: object,
         ) -> subprocess.CompletedProcess[str]:
+            """
+            Inspect normalized temporary sources and simulate successful.
+
+            Inspect normalized temporary sources and simulate successful
+            actionlint.
+
+            Parameters
+            ----------
+            arguments : list[str]
+                Command arguments supplied to the process test double.
+            **options : object
+                Keyword arguments forwarded to the simulated operation.
+
+            Returns
+            -------
+            subprocess.CompletedProcess[str]
+                Simulated successful actionlint process after inspecting its
+                source view.
+            """
             mirror = Path(str(options['cwd']))
             assert './actions/check' in (mirror / 'ci.yml').read_text()
             assert (
@@ -253,6 +359,28 @@ class TestActionlintSourceView:
             encoding: str | None = None,
             errors: str | None = None,
         ) -> str:
+            """
+            Count selected source reads and reject repeated snapshot reads.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+            encoding : str | None
+                Explicit text encoding, or None to use the reader default.
+            errors : str | None
+                Text decoding error policy, or None for the reader default.
+
+            Returns
+            -------
+            str
+                Original decoded file contents after recording the source read.
+
+            Raises
+            ------
+            AssertionError
+                If a selected source is read more than once.
+            """
             if path in (workflow, action):
                 reads[path] += 1
                 assert reads[path] == 1, 'Source must not be reread after validation'
@@ -280,7 +408,20 @@ class TestReferenceResolutionReuse:
         monkeypatch: pytest.MonkeyPatch,
         reference: str,
     ) -> None:
-        """Share resolutions across normalization and workflow dependencies."""
+        """
+        Share resolutions across normalization and workflow dependencies.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        reference : str
+            Automation reference resolved against the consumer repository.
+        """
         target = write_file('action.yml', 'name: Local\nruns: {using: composite}')
         text = f'jobs: {{check: {{steps: [{{uses: "{reference}"}}]}}}}'
         selected = [write_file(name, text) for name in ('one.yml', 'two.yml')]

@@ -26,6 +26,8 @@ NO_FILENAMES = 'pass_filenames: false'
 
 class TestGuardrailParity:
     """
+    Cover guardrail parity.
+
     Collect independent drift without invoking any configured consumer tool.
     """
 
@@ -37,6 +39,11 @@ class TestGuardrailParity:
         An empty list preserves the canonical Make invocation.
 
         Permit an explicitly empty argument list without weakening type checks.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
         """
         path = guardrail_consumer.hooks
         path.write_text(
@@ -105,6 +112,19 @@ class TestGuardrailParity:
 
         Reject drift in the declared workflow step, root or job selection.
         Each mutation runs against an independent consumer fixture.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_diagnostics : dict[str, str]
+            Expected parity diagnostics indexed by entry point.
+        old : str
+            Original value replaced by the scenario.
+        new : str
+            Replacement value supplied by the scenario.
+        failure : str
+            Expected failure text, or None for a successful scenario.
         """
         path = (
             guardrail_consumer.hooks
@@ -122,7 +142,14 @@ class TestGuardrailParity:
         self,
         guardrail_consumer: GuardrailsConfig,
     ) -> None:
-        """Report every missing contract file in one invocation."""
+        """
+        Report every missing contract file in one invocation.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        """
         paths = (
             guardrail_consumer.makefile,
             guardrail_consumer.hooks,
@@ -180,6 +207,17 @@ class TestGuardrailParity:
 
         Permit Make's silent prefix and whitespace between literal targets.
         Preserve consumer comments and leave all fixture inputs unchanged.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_diagnostics : dict[str, str]
+            Expected parity diagnostics indexed by entry point.
+        recipe : str
+            Literal Make recipe used in the parity scenario.
+        failure : str | None
+            Expected failure text, or None for a successful scenario.
         """
         guardrail_consumer.makefile.write_text(recipe, encoding='utf-8')
         before = snapshot_files(guardrail_consumer.root)
@@ -206,6 +244,17 @@ class TestGuardrailParity:
     ) -> None:
         """
         Unexpected YAML structures produce diagnostics rather than crashes.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_diagnostics : dict[str, str]
+            Expected parity diagnostics indexed by entry point.
+        content : str
+            Text written to the scenario input.
+        parse_error : str | None
+            Expected parse diagnostic, or None for successful parsing.
         """
         guardrail_consumer.workflow.write_text(content, encoding='utf-8')
         guardrail_consumer.hooks.write_text(content, encoding='utf-8')
@@ -225,7 +274,14 @@ class TestGuardrailParity:
         self,
         guardrail_consumer: GuardrailsConfig,
     ) -> None:
-        """Accept the explicit chain and preserve every consumer input byte."""
+        """
+        Accept the explicit chain and preserve every consumer input byte.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        """
         root = guardrail_consumer.root
         original = snapshot_files(root)
         assert set(original) == {

@@ -24,8 +24,9 @@ class TestFilePolicyConfig:
         tmp_path: Path,
     ) -> None:
         """
-        Leave existing consumers unaffected when file tables are
-        absent.
+        Verify absent settings are opt in.
+
+        Leave existing consumers unaffected when file tables are absent.
 
         Parameters
         ----------
@@ -243,8 +244,9 @@ prefix = "HEADER"
         message: str,
     ) -> None:
         """
-        Reject empty, unsafe, ambiguous and misspelled required-file
-        inputs.
+        Verify invalid required policy.
+
+        Reject empty, unsafe, ambiguous and misspelled required-file inputs.
 
         Parameters
         ----------
@@ -267,8 +269,9 @@ prefix = "HEADER"
         write_file: FileWriter,
     ) -> None:
         """
-        Keep identity, ordered formats and explicit exception reasons
-        intact.
+        Verify valid header policy.
+
+        Keep identity, ordered formats and explicit exception reasons intact.
 
         Parameters
         ----------
@@ -302,8 +305,9 @@ reason = "Binary artwork"
         write_file: FileWriter,
     ) -> None:
         """
-        Resolve root paths while leaving existence checks to the
-        validator.
+        Verify valid required policy.
+
+        Resolve root paths while leaving existence checks to the validator.
 
         Parameters
         ----------

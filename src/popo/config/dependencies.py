@@ -25,6 +25,8 @@ type DependencyMode = Literal['minimum-constraints', 'exact']
 @dataclass(frozen=True, slots=True)
 class DependencyConfig:
     """
+    Store immutable dependency-boundary inputs.
+
     Store immutable dependency-boundary inputs without validating their
     contents.
 
@@ -59,6 +61,8 @@ def _detect_dependencies(
     root: Path,
 ) -> DependencyConfig:
     """
+    Select the first existing dependency-input layout.
+
     Select dependency inputs using the first existing metadata/requirements
     pair.
 

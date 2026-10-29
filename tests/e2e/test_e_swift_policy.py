@@ -17,6 +17,8 @@ from tests.support.installation import Installation
 
 class TestInstalledSwiftPolicy:
     """
+    Cover installed swift policy.
+
     Check wheel/sdist console/module behavior and preserve consumer bytes.
     """
 
@@ -27,6 +29,18 @@ class TestInstalledSwiftPolicy:
         swift_policy_consumer: Path,
         module: bool,
     ) -> None:
+        """
+        Verify consumer policy.
+
+        Parameters
+        ----------
+        installation : Installation
+            Artifact installed in an isolated environment outside the checkout.
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        module : bool
+            Whether source is treated as a module in the scenario.
+        """
         root = swift_policy_consumer
         before = snapshot_files(root)
         result = installation.run(

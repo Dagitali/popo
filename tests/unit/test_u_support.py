@@ -27,7 +27,16 @@ class TestReleaseNormalization:
         version: str,
         prefix: str,
     ) -> None:
-        """Preserve ASCII version components and remove only the v prefix."""
+        """
+        Preserve ASCII version components and remove only the v prefix.
+
+        Parameters
+        ----------
+        version : str
+            Version value supplied to the parser or policy comparison.
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        """
         assert normalize_release(prefix + version) == version
 
     @pytest.mark.parametrize('digit', ['١', '１'])
@@ -38,7 +47,18 @@ class TestReleaseNormalization:
         component: int,
         prefix: str,
     ) -> None:
-        """Reject Unicode digits even after a valid ASCII leading digit."""
+        """
+        Reject Unicode digits even after a valid ASCII leading digit.
+
+        Parameters
+        ----------
+        digit : str
+            Digit spelling supplied to release-version parsing.
+        component : int
+            Numeric version component selected for mutation.
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        """
         parts = ['1', '2', '3']
         parts[component] += digit
         with pytest.raises(ValueError, match='release version must use'):
@@ -66,13 +86,24 @@ class TestReleaseNormalization:
         prefix: str,
         version: str,
     ) -> None:
-        """Reject partial versions, zero padding, suffixes and extra syntax."""
+        """
+        Reject partial versions, zero padding, suffixes and extra syntax.
+
+        Parameters
+        ----------
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        version : str
+            Version value supplied to the parser or policy comparison.
+        """
         with pytest.raises(ValueError, match='^release version must use '):
             normalize_release(prefix + version)
 
 
 class TestSupport:
     """
+    Verify safe defaults when optional repository or installation data is.
+
     Verify safe defaults when optional repository or installation data is
     absent.
 

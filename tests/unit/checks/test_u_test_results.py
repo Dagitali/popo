@@ -340,6 +340,13 @@ class TestDirectResultConfiguration:
     ) -> None:
         """
         Do not inspect artifacts when root and summary overrides conflict.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        result_config : ResultConfig
+            Isolated test-result policy and report-writing helpers.
         """
         assert validate(result_config, tmp_path, tmp_path / 'missing.json') == [
             'choose either a result root or a single summary',
@@ -353,7 +360,20 @@ class TestDirectResultConfiguration:
         monkeypatch: pytest.MonkeyPatch,
         error_type: type[Exception],
     ) -> None:
-        """Report unusable artifact roots without disclosing exception text."""
+        """
+        Report unusable artifact roots without disclosing exception text.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        result_config : ResultConfig
+            Isolated test-result policy and report-writing helpers.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        error_type : type[Exception]
+            Exception class injected into the inspected operation.
+        """
         monkeypatch.setattr(Path, 'resolve', Mock(side_effect=error_type('PRIVATE')))
         assert validate(result_config) == ['cannot resolve selected result root']
 
@@ -364,7 +384,18 @@ class TestDirectResultConfiguration:
         result_config: ResultConfig,
         valid_json: bool,
     ) -> None:
-        """Reject unknown adapters without hiding malformed JSON evidence."""
+        """
+        Reject unknown adapters without hiding malformed JSON evidence.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        result_config : ResultConfig
+            Isolated test-result policy and report-writing helpers.
+        valid_json : bool
+            Whether the report contains syntactically valid JSON.
+        """
         (tmp_path / 'report.json').write_text(
             '{}' if valid_json else '{PRIVATE',
             encoding='utf-8',

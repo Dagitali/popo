@@ -115,7 +115,19 @@ class ParsedSwiftSource:
 def _mask(
     text: str,
 ) -> str:
-    """Preserve character positions and newlines while shielding noncode."""
+    """
+    Preserve character positions and newlines while shielding noncode.
+
+    Parameters
+    ----------
+    text : str
+        Original text from which a header or masked view is derived.
+
+    Returns
+    -------
+    str
+        Spaces replacing noncode characters, with newlines unchanged.
+    """
     return ''.join('\n' if char == '\n' else ' ' for char in text)
 
 
@@ -129,6 +141,23 @@ def _source_view(
     The returned root excludes an unterminated block-comment tail that grammar
     recovery could reinterpret as code. Masking preserves character positions
     and newlines. Documentation recognition remains in documentation_lines.
+
+    Parameters
+    ----------
+    root : Node
+        Native Tree-sitter root corresponding to the source bytes.
+    source : bytes
+        UTF-8 source bytes corresponding to the native syntax root.
+
+    Returns
+    -------
+    tuple[Node, str, tuple[Node, ...]]
+        Usable syntax root, position-preserving masked text and comment nodes.
+
+    Raises
+    ------
+    UnicodeDecodeError
+        If the source is not valid UTF-8 or node spans split a character.
     """
     raw = source
     chunks: list[str] = []

@@ -72,7 +72,14 @@ class Audit:
 
     @property
     def failed(self) -> bool:
-        """Return whether confirmed drift or unavailable evidence remains."""
+        """
+        Return whether confirmed drift or unavailable evidence remains.
+
+        Returns
+        -------
+        bool
+            Whether the audit contains a missing or inaccessible finding.
+        """
         return any(item.status in {'missing', 'inaccessible'} for item in self.findings)
 
     def to_json(self) -> str:
@@ -207,7 +214,22 @@ def _repository(
     policy: RepositoryPolicy,
     get: Fetcher,
 ) -> list[Finding]:
-    """Compare explicit expectations with authenticated hosted observations."""
+    """
+    Compare explicit expectations with authenticated hosted observations.
+
+    Parameters
+    ----------
+    policy : RepositoryPolicy
+        Consumer-owned expectations used by the operation.
+    get : Fetcher
+        Injected read-only hosted-evidence fetcher.
+
+    Returns
+    -------
+    list[Finding]
+        Ordered findings distinguishing verified, missing and inaccessible
+        evidence.
+    """
     base = f'repos/{policy.name}'
     findings: list[Finding] = []
 
@@ -219,6 +241,17 @@ def _repository(
     ) -> None:
         """
         Record unknown evidence separately from a confirmed match or drift.
+
+        Parameters
+        ----------
+        check : str
+            Check identity used in policy selection or hosted evidence.
+        state : bool | None
+            Observed audit state or scenario condition.
+        detail : str
+            Sanitized explanation attached to the hosted finding.
+        endpoint : str
+            GitHub API endpoint requested by the audit.
         """
         findings.append(
             Finding(

@@ -70,7 +70,24 @@ class VersionObservation:
 def _literal(
     value: object,
 ) -> str:
-    """Require nonblank string versions without nested expressions."""
+    """
+    Require nonblank string versions without nested expressions.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    str
+        Stripped nonblank literal version string.
+
+    Raises
+    ------
+    ValueError
+        If the value is not a nonblank literal string version.
+    """
     if not isinstance(value, str) or not value.strip() or '${{' in value:
         raise ValueError('expected literal string version')
     return value.strip()
@@ -82,7 +99,30 @@ def _resolve(
     job: dict[str, object],
     step: dict[str, object],
 ) -> tuple[str, ...]:
-    """Resolve only literals, scoped environment values and simple matrices."""
+    """
+    Resolve only literals, scoped environment values and simple matrices.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+    workflow : dict[str, object]
+        Workflow document supplying workflow-scoped environment values.
+    job : dict[str, object]
+        Current workflow job, including scoped environment and matrix values.
+    step : dict[str, object]
+        Current workflow step, including its scoped environment values.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Resolved literal versions in matrix order or a single scoped value.
+
+    Raises
+    ------
+    ValueError
+        If a scope, matrix or referenced version has an unsupported shape.
+    """
     if not isinstance(value, str):
         raise ValueError('expected string version')
     match = REFERENCE_PATTERN.fullmatch(value.strip())

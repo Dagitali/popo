@@ -28,6 +28,16 @@ class TestPythonDocumentation:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify complete contracts and nested scope.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         write_file(
             'popo.toml',
             '[python-source]\ninclude=["*.py"]\nparameter-docs=true\nreturn-docs=true\nraises-docs=true',
@@ -103,6 +113,22 @@ class TestPythonDocumentation:
         option: str,
         expected: str,
     ) -> None:
+        """
+        Verify missing contracts.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        source : str
+            Decoded input text to inspect without executing it.
+        option : str
+            Configuration option selected for the scenario.
+        expected : str
+            Expected result for the selected parameterized scenario.
+        """
         write_file('popo.toml', f'[python-source]\ninclude=["*.py"]\n{option}=true')
         write_file('sample.py', source)
         findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
@@ -125,6 +151,19 @@ class TestPythonDocumentation:
     ) -> None:
         """
         Treat forward references equally while retaining explicit returns.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        annotation : str
+            Return annotation used in the documentation scenario.
+        quoted : bool
+            Whether the annotation or workflow value is quoted.
+        body : str
+            Source or workflow body inserted into the scenario input.
         """
         write_file(
             'popo.toml',
@@ -160,6 +199,17 @@ class TestPythonDocumentation:
     ) -> None:
         """
         Keep native signature annotations separate from explicit body facts.
+
+        Parameters
+        ----------
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        body : str
+            Source or workflow body inserted into the scenario input.
+        result_section : str
+            Native result-documentation section used by the scenario.
+        raises : bool
+            Whether the callable contains explicit exception evidence.
         """
         source = f'{prefix}def f(value: int) -> None:\n    {body}\n'
         syntax = ast.parse(source).body[0]
@@ -180,6 +230,14 @@ class TestPythonSource:
         self: Self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify annotated multiline signatures and self exception.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[python-source]\ninclude = ["*.py"]\nannotations = true\n'
             'parameter-lines = true\nalphabetical-methods = true',
@@ -202,6 +260,19 @@ class TestPythonSource:
         symlink: Callable[[Path, Path], None],
         kind: str,
     ) -> None:
+        """
+        Verify inputs fail closed.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
+        kind : str
+            Native syntax kind or policy variant under test.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[python-source]\ninclude = ["*.py"]\nexclude = ["ignored.py"]',
         )
@@ -253,7 +324,20 @@ class TestPythonSource:
         names: tuple[str, ...],
         ordered: bool,
     ) -> None:
-        """Retain duplicate, case, underscore and Unicode ordering semantics."""
+        """
+        Retain duplicate, case, underscore and Unicode ordering semantics.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        names : tuple[str, ...]
+            Names checked against the selected matching rule.
+        ordered : bool
+            Whether declarations are already alphabetically ordered.
+        """
         write_file(
             'popo.toml',
             '[python-source]\ninclude=["sample.py"]\nalphabetical-methods=true\n',
@@ -283,6 +367,16 @@ class TestPythonSource:
         tmp_path: Path,
         settings: str,
     ) -> None:
+        """
+        Verify invalid configuration.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        settings : str
+            Consumer policy text inserted into the scenario.
+        """
         (tmp_path / 'popo.toml').write_text('[python-source]\n' + settings)
         with pytest.raises(ConfigurationError):
             load_source_check(tmp_path, 'python-source')
@@ -291,6 +385,14 @@ class TestPythonSource:
         self: Self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify missing policy is explicit.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         with pytest.raises(ConfigurationError):
             load_source_check(tmp_path, 'python-source')
 
@@ -298,6 +400,8 @@ class TestPythonSource:
         self: Self,
     ) -> None:
         """
+        Retain native parameter nodes and grouping order.
+
         Keep native parameter locations and the documented grouping order.
         """
         syntax = ast.parse(
@@ -348,6 +452,20 @@ class TestPythonSource:
         option: str,
         diagnostic: str,
     ) -> None:
+        """
+        Verify python rules.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        source : str
+            Decoded input text to inspect without executing it.
+        option : str
+            Configuration option selected for the scenario.
+        diagnostic : str
+            Expected diagnostic text or fragment.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[python-source]\ninclude = ["*.py"]\n' + option,
         )
@@ -373,7 +491,18 @@ class TestPythonSource:
         names: tuple[str, ...],
         instance: bool,
     ) -> None:
-        """Only the first positional name establishes a receiver contract."""
+        """
+        Only the first positional name establishes a receiver contract.
+
+        Parameters
+        ----------
+        parameters : str
+            Callable parameter syntax supplied to the parser.
+        names : tuple[str, ...]
+            Names checked against the selected matching rule.
+        instance : bool
+            Whether the callable is an instance method.
+        """
         source = f'class C:\n    def method({parameters}): pass\n'
         nominal, method = _python_declarations.parse(source).declarations
         assert nominal.instance_methods == (('method',) if instance else ())

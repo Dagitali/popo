@@ -45,13 +45,48 @@ def _collect_sources(
     reference resolver. Later collections resolve afresh. Retain
     implicit linter configuration without adding unrelated consumer files.
     Read, decode, YAML and target errors propagate before creating the mirror.
+
+    Parameters
+    ----------
+    config : AutomationConfig
+        Configuration supplying the input paths and validation rules.
+    selected : list[Path]
+        Selected input path or paths to inspect.
+
+    Returns
+    -------
+    dict[Path, str]
+        Confined paths mapped to normalized automation/configuration snapshots.
+
+    Raises
+    ------
+    OSError, UnicodeError, ValueError, yaml.YAMLError
+        If source reading, decoding, YAML parsing or local target validation
+        fails.
     """
 
     @cache
     def resolve(
         reference: str,
     ) -> Path | None:
-        """Resolve each reference once within this collection snapshot."""
+        """
+        Resolve each reference once within this collection snapshot.
+
+        Parameters
+        ----------
+        reference : str
+            Automation reference resolved against the consumer repository.
+
+        Returns
+        -------
+        Path | None
+            Validated local target, or None outside the configured local forms.
+
+        Raises
+        ------
+        OSError, ValueError
+            If path resolution, containment or local target validation fails.
+        """
         return _target(config, reference)
 
     root = config.root
@@ -92,6 +127,26 @@ def _normalize(
     Targets are resolved through native contract validation; errors propagate.
     A supplied resolver shares per-collection reference observations with graph
     discovery. Without one, resolve directly using the supplied configuration.
+
+    Parameters
+    ----------
+    source : str
+        Decoded input text to inspect without executing it.
+    config : AutomationConfig
+        Configuration supplying the input paths and validation rules.
+    resolve : Callable[[str], Path | None] | None
+        Optional resolver sharing validated reference observations.
+
+    Returns
+    -------
+    str
+        Automation text with self references replaced for actionlint
+        compatibility.
+
+    Raises
+    ------
+    OSError, ValueError, yaml.YAMLError
+        If YAML parsing, path resolution or local target validation fails.
     """
     pending = [yaml.compose(source, Loader=yaml.SafeLoader)]
     seen: set[int] = set()

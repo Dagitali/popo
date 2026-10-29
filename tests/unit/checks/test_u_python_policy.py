@@ -74,7 +74,19 @@ def policy(
 def unresolved_reference(
     request: pytest.FixtureRequest,
 ) -> str:
-    """Supply recognized version references with no matching declaration."""
+    """
+    Supply recognized version references with no matching declaration.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    str
+        Workflow expression selected for the unresolved-reference scenario.
+    """
     return str(request.param)
 
 
@@ -199,6 +211,8 @@ class TestPythonPolicy:
         message: str,
     ) -> None:
         """
+        Verify inconsistent files.
+
         Verify changed policy inputs produce the expected inconsistency
         diagnostic.
 
@@ -227,6 +241,8 @@ class TestPythonPolicy:
         policy: PythonPolicyConfig,
     ) -> None:
         """
+        Verify invalid specifier.
+
         Verify an invalid configured Python requirement becomes a policy
         diagnostic.
 
@@ -279,6 +295,8 @@ class TestPythonPolicy:
         valid: bool,
     ) -> None:
         """
+        Verify separate ruff configuration.
+
         Verify top-level settings in a separate Ruff file match the policy
         target.
 
@@ -389,6 +407,8 @@ class TestPythonPolicy:
         version: str,
     ) -> None:
         """
+        Verify unsupported workflow version.
+
         Verify invalid or unsupported workflow versions produce an exact
         diagnostic.
 
@@ -418,7 +438,18 @@ class TestPythonPolicyInputBoundaries:
         write_file: FileWriter,
         parser: Literal['text', 'scoped'],
     ) -> None:
-        """Preserve runtime, local and per-workflow diagnostic order."""
+        """
+        Preserve runtime, local and per-workflow diagnostic order.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        parser : Literal['text', 'scoped']
+            Parser implementation or workflow reader mode under test.
+        """
         policy.python_version_file.write_text('3.12', encoding='utf-8')
         first = write_file(
             '.github/workflows/a.yml',
@@ -456,7 +487,16 @@ class TestPythonPolicyInputBoundaries:
         policy: PythonPolicyConfig,
         missing: bool,
     ) -> None:
-        """Avoid duplicate diagnostics for one package/Ruff metadata input."""
+        """
+        Avoid duplicate diagnostics for one package/Ruff metadata input.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        missing : bool
+            Whether the selected input or policy field is absent.
+        """
         if missing:
             policy.metadata.unlink()
         else:
@@ -469,7 +509,14 @@ class TestPythonPolicyInputBoundaries:
         self,
         policy: PythonPolicyConfig,
     ) -> None:
-        """Use one observation for package, mypy and embedded Ruff settings."""
+        """
+        Use one observation for package, mypy and embedded Ruff settings.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        """
         with patch.object(
             Path,
             'read_text',
@@ -495,6 +542,17 @@ class TestPythonPolicyInputBoundaries:
     ) -> None:
         """
         Reject unresolved declarations even when another version is supported.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        unresolved_reference : str
+            Unresolved workflow expression supplied by the fixture.
+        unresolved_first : bool
+            Whether an unresolved version precedes a valid declaration.
         """
         declarations = [
             'python-version: "3.13"',
@@ -529,7 +587,20 @@ class TestScopedPythonPolicy:
         scenario: str,
         message: str | None,
     ) -> None:
-        """Validate each scoped observation case with independent inputs."""
+        """
+        Validate each scoped observation case with independent inputs.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        scenario : str
+            Selected parameterized behavior or input variant.
+        message : str | None
+            Expected error message or scenario diagnostic.
+        """
         workflow = policy.workflow_directory / 'ci.yml'
         if scenario == 'missing-workflow':
             workflow.unlink()
@@ -572,7 +643,16 @@ class TestWorkflowObservationProvenance:
         tmp_path: Path,
         parser: Literal['text', 'scoped'],
     ) -> None:
-        """Retain source and native selector without executing a workflow."""
+        """
+        Retain source and native selector without executing a workflow.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        parser : Literal['text', 'scoped']
+            Parser implementation or workflow reader mode under test.
+        """
         path = tmp_path / 'ci.yml'
         path.write_text(
             'jobs:\n  build:\n    steps:\n      - with:\n'
@@ -598,7 +678,14 @@ class TestWorkflowObservationProvenance:
         self,
         tmp_path: Path,
     ) -> None:
-        """Leave unsupported textual values visible to membership checking."""
+        """
+        Leave unsupported textual values visible to membership checking.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         path = tmp_path / 'ci.yml'
         value = '${{ env.MISSING }}'
         path.write_text(f'python-version: {value}\n', encoding='utf-8')

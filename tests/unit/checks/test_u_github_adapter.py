@@ -60,7 +60,28 @@ class TestGitHubReadAdapter:
         failed: bool,
         status: int | None,
     ) -> None:
-        """Preserve GET boundaries and sanitize parsed or failed responses."""
+        """
+        Preserve GET boundaries and sanitize parsed or failed responses.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        stdout : str
+            Standard output supplied by the simulated process.
+        returncode : int
+            Exit status returned by the simulated process.
+        stderr : str
+            Standard error supplied by the simulated process.
+        paginate : bool
+            Whether the fetcher requests paginated array evidence.
+        expected : object
+            Expected result for the selected parameterized scenario.
+        failed : bool
+            Whether the simulated operation fails.
+        status : int | None
+            Expected CLI exit status or hosted response state.
+        """
         runner = Mock(
             return_value=subprocess.CompletedProcess([], returncode, stdout, stderr),
         )
@@ -102,7 +123,16 @@ class TestGitHubReadAdapter:
         monkeypatch: pytest.MonkeyPatch,
         error_factory: Callable[[], Exception],
     ) -> None:
-        """Return sanitized unavailable evidence without exception contents."""
+        """
+        Return sanitized unavailable evidence without exception contents.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        error_factory : Callable[[], Exception]
+            Factory producing a fresh exception for each invocation.
+        """
         monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error_factory()))
         assert _github_get('repos/example/library') == Response(
             error='GitHub CLI unavailable, timed out, or undecodable',
@@ -114,7 +144,16 @@ class TestGitHubReadAdapter:
         monkeypatch: pytest.MonkeyPatch,
         returncode: int,
     ) -> None:
-        """Handle parser-depth failures on successful and failed HTTP paths."""
+        """
+        Handle parser-depth failures on successful and failed HTTP paths.
+
+        Parameters
+        ----------
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        returncode : int
+            Exit status returned by the simulated process.
+        """
         monkeypatch.setattr(
             subprocess,
             'run',

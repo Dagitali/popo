@@ -26,6 +26,16 @@ class TestSourceCommands:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify explicit external log root redacts financial contents.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        """
         consumer = tmp_path / 'consumer'
         artifact = tmp_path / 'artifacts'
         consumer.mkdir()
@@ -80,6 +90,32 @@ class TestSourceCommands:
         cli_format: str | None,
         format_arguments: tuple[str, ...],
     ) -> None:
+        """
+        Verify selected dispatch preserves inputs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        command : str
+            Command selected for invocation in the scenario.
+        domain : str
+            Native check domain selected for the scenario.
+        filename : str
+            Input filename used in the scenario.
+        source : str
+            Decoded input text to inspect without executing it.
+        select_check : Callable[[Path, str], tuple[str, ...]]
+            Fixture selecting individual, aggregate or profiled execution.
+        present : bool
+            Whether the selected input or evidence field exists.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
+        """
         extra = '\npatterns = { failure = "FORBIDDEN" }' if domain == 'logs' else ''
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude = ["{filename}"]{extra}',

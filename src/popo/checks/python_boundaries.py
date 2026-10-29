@@ -46,6 +46,27 @@ class _PythonBoundaryAnalyzer:
         """
         Evaluate native boundary rules without modifying target ownership.
 
+        Parameters
+        ----------
+        source : ast.Module
+            Parsed Python module whose imports and symbols are inspected.
+        path : Path
+            Input path inspected by the operation.
+        root : Path
+            Consumer repository root used to resolve and label input paths.
+        layer : BoundaryLayer
+            Boundary layer supplying import and symbol restrictions.
+        forbidden_targets : set[str]
+            Ownership targets belonging to forbidden layers.
+        owned_targets : set[str]
+            Ownership targets belonging to the current layer.
+
+        Returns
+        -------
+        list[str]
+            Ordered diagnostics for the native source and configured boundary
+            rules.
+
         Notes
         -----
         Python applies forbidden module targets to imports and keeps explicit
@@ -68,6 +89,24 @@ class _PythonBoundaryAnalyzer:
         """
         Collect native syntax and redacted parse findings without execution.
 
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+        relative : str
+            Repository-relative path used in diagnostics or input selection.
+
+        Returns
+        -------
+        tuple[ast.Module | None, list[str]]
+            Parsed Python module and no findings, or None and redacted syntax
+            diagnostics.
+
+        Raises
+        ------
+        UnicodeError
+            If the supplied text cannot be encoded for the native parser.
+
         Notes
         -----
         Python converts SyntaxError to a redacted diagnostic and returns None.
@@ -86,6 +125,20 @@ class _PythonBoundaryAnalyzer:
     ) -> set[str]:
         """
         Index native ownership from parsed input or sufficient path identity.
+
+        Parameters
+        ----------
+        path : Path
+            Input path inspected by the operation.
+        root : Path
+            Consumer repository root used to resolve and label input paths.
+        source : ast.Module | None
+            Parsed Python module, or None after a read or parse failure.
+
+        Returns
+        -------
+        set[str]
+            Native ownership targets available from the supplied input.
 
         Notes
         -----

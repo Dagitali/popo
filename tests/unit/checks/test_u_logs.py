@@ -63,6 +63,16 @@ class TestRedactedLogs:
         tmp_path: Path,
         patterns: str,
     ) -> None:
+        """
+        Verify invalid patterns.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        patterns : str
+            Pattern declarations encoded in the scenario configuration.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[logs]\ninclude = ["*.log"]\npatterns = ' + patterns,
         )
@@ -80,7 +90,18 @@ class TestRedactedLogs:
         separator: str,
         trailing: bool,
     ) -> None:
-        """Reject literals that cannot occur within a scanned log line."""
+        """
+        Reject literals that cannot occur within a scanned log line.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        separator : str
+            Separator spelling used by the scenario.
+        trailing : bool
+            Whether the input includes a trailing separator.
+        """
         literal = 'WARNING' + separator + ('' if trailing else 'PRIVATE')
         (tmp_path / 'popo.toml').write_text(
             '[logs]\ninclude=["*.log"]\npatterns={warning=' + json.dumps(literal) + '}',
@@ -94,6 +115,16 @@ class TestRedactedLogs:
         tmp_path: Path,
         artifact_root: Path | None,
     ) -> None:
+        """
+        Verify named literal findings and clean inputs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        artifact_root : Path | None
+            Explicit artifact directory, or None to use the consumer root.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[logs]\ninclude = ["**/*.log"]\n'
             '[logs.patterns]\nlayout = "Invalid frame dimension"',
@@ -113,7 +144,16 @@ class TestRedactedLogs:
         tmp_path: Path,
         artifact_root: Path | None,
     ) -> None:
-        """Report each matching rule once per line, in declaration order."""
+        """
+        Report each matching rule once per line, in declaration order.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        artifact_root : Path | None
+            Explicit artifact directory, or None to use the consumer root.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[logs]\ninclude=["**/*.log"]\npatterns={warning="WARN", broad="WAR"}',
             encoding='utf-8',
@@ -144,6 +184,17 @@ class TestRedactedLogs:
     ) -> None:
         """
         Report inaccessible input roots without exposing exception details.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        error : type[Exception]
+            Error value or exception class injected by the scenario.
+        artifact_root : Path | None
+            Explicit artifact directory, or None to use the consumer root.
         """
         (tmp_path / 'popo.toml').write_text(
             '[logs]\ninclude=["*.log"]\npatterns={warning="WARNING"}',
@@ -153,6 +204,19 @@ class TestRedactedLogs:
         def fail_resolution(
             path: Path,
         ) -> Path:
+            """
+            Raise the selected error instead of resolving the private log root.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+
+            Raises
+            ------
+            OSError, ValueError
+                Always raise the exception selected by the enclosing scenario.
+            """
             raise error('PRIVATE ROOT')
 
         monkeypatch.setattr(Path, 'resolve', fail_resolution)

@@ -46,6 +46,27 @@ class _SwiftBoundaryAnalyzer:
         """
         Evaluate native boundary rules without modifying target ownership.
 
+        Parameters
+        ----------
+        source : ParsedSwiftSource
+            Parsed Swift syntax view used for native boundary observations.
+        path : Path
+            Input path inspected by the operation.
+        root : Path
+            Consumer repository root used to resolve and label input paths.
+        layer : BoundaryLayer
+            Boundary layer supplying import and symbol restrictions.
+        forbidden_targets : set[str]
+            Ownership targets belonging to forbidden layers.
+        owned_targets : set[str]
+            Ownership targets belonging to the current layer.
+
+        Returns
+        -------
+        list[str]
+            Ordered diagnostics for the native source and configured boundary
+            rules.
+
         Notes
         -----
         Swift excludes locally owned types from forbidden-layer targets before
@@ -69,6 +90,24 @@ class _SwiftBoundaryAnalyzer:
         """
         Collect native syntax and redacted parse findings without execution.
 
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+        relative : str
+            Repository-relative path used in diagnostics or input selection.
+
+        Returns
+        -------
+        tuple[ParsedSwiftSource, list[str]]
+            Recovery-capable Swift syntax view and an empty parse-diagnostic
+            list.
+
+        Raises
+        ------
+        UnicodeError
+            If the supplied text cannot be encoded for the native parser.
+
         Notes
         -----
         Swift retains recovery nodes and returns no parse diagnostics. Recovery
@@ -84,6 +123,20 @@ class _SwiftBoundaryAnalyzer:
     ) -> set[str]:
         """
         Index native ownership from parsed input or sufficient path identity.
+
+        Parameters
+        ----------
+        path : Path
+            Input path inspected by the operation.
+        root : Path
+            Consumer repository root used to resolve and label input paths.
+        source : ParsedSwiftSource | None
+            Parsed Swift syntax view, or None when no source is available.
+
+        Returns
+        -------
+        set[str]
+            Native ownership targets available from the supplied input.
 
         Notes
         -----

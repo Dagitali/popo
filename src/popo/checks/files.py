@@ -78,7 +78,26 @@ def _header(
     text: str,
     rule: HeaderRule,
 ) -> str:
-    """Extract a leading comment while preserving consumer directives."""
+    """
+    Extract a leading comment while preserving consumer directives.
+
+    Parameters
+    ----------
+    text : str
+        Original text from which a header or masked view is derived.
+    rule : HeaderRule
+        Header format, identity and directive requirements to apply.
+
+    Returns
+    -------
+    str
+        Extracted leading header text, without its comment delimiters.
+
+    Raises
+    ------
+    ValueError
+        If a required directive, Python syntax or leading comment is invalid.
+    """
     if rule.first_line or rule.first_line_prefix:
         first, separator, text = text.partition('\n')
         if (
@@ -128,7 +147,30 @@ def _problem(
     rule: HeaderRule,
     config: HeadersConfig,
 ) -> str | None:
-    """Apply literal identity/purpose contracts after extracting the header."""
+    """
+    Apply literal identity/purpose contracts after extracting the header.
+
+    Parameters
+    ----------
+    relative : str
+        Repository-relative path used in diagnostics or input selection.
+    text : str
+        Original text from which a header or masked view is derived.
+    rule : HeaderRule
+        Header format, identity and directive requirements to apply.
+    config : HeadersConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    str | None
+        First unmet header requirement, or None when all requirements pass.
+
+    Raises
+    ------
+    ValueError
+        If header extraction fails or direct template formatting is invalid.
+    """
     header = _header(text, rule)
     path = Path(relative)
     prefix = rule.prefix.format(
@@ -150,7 +192,25 @@ def _problem(
 def _sources(
     config: HeadersConfig,
 ) -> list[Path]:
-    """Discover tracked/unignored sources, with bounded non-Git fallback."""
+    """
+    Discover tracked/unignored sources, with bounded non-Git fallback.
+
+    Parameters
+    ----------
+    config : HeadersConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    list[Path]
+        Sorted eligible paths, including dangling symlinks for later
+        validation.
+
+    Raises
+    ------
+    OSError
+        If filesystem inspection or fallback directory traversal fails.
+    """
     paths = _git_sources(config)
     ignored = set(config.ignored_directories)
     if paths is None:
@@ -170,7 +230,19 @@ def _sources(
 def _walk_error(
     error: OSError,
 ) -> None:
-    """Keep unreadable fallback directories from silently reducing coverage."""
+    """
+    Keep unreadable fallback directories from silently reducing coverage.
+
+    Parameters
+    ----------
+    error : OSError
+        Error value or exception class injected by the scenario.
+
+    Raises
+    ------
+    OSError
+        Always re-raise the supplied directory traversal error.
+    """
     raise error
 
 

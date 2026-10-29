@@ -35,7 +35,18 @@ class TestGuardrailConfiguration:
         attribute: str,
         relative: str,
     ) -> None:
-        """Resolve each default path under the consumer root."""
+        """
+        Resolve each default path under the consumer root.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        attribute : str
+            Attribute whose observation is replaced in this scenario.
+        relative : str
+            Repository-relative path used in diagnostics or input selection.
+        """
         assert guardrail_consumer.target == 'guardrails'
         assert (
             getattr(guardrail_consumer, attribute) == guardrail_consumer.root / relative
@@ -63,6 +74,17 @@ class TestGuardrailConfiguration:
     ) -> None:
         """
         Fail configuration rather than resolving unsafe paths or commands.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        settings : str
+            Consumer policy text inserted into the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         write_file('popo.toml', settings)
         with pytest.raises(ConfigurationError, match=message):
@@ -75,6 +97,13 @@ class TestGuardrailConfiguration:
     ) -> None:
         """
         The delegated profile may inspect its own inert invocation contract.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
         """
         write_file(
             'popo.toml',
@@ -89,7 +118,19 @@ class TestGuardrailConfiguration:
         symlink: Callable[[Path, Path], None],
         attribute: str,
     ) -> None:
-        """Resolved contract paths must remain within the consumer root."""
+        """
+        Resolved contract paths must remain within the consumer root.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
+        attribute : str
+            Attribute whose observation is replaced in this scenario.
+        """
         path = getattr(guardrail_consumer, attribute)
         path.unlink()
         symlink(path, guardrail_consumer.root.parent / 'outside')
@@ -107,7 +148,18 @@ class TestGuardrailConfigurationSnapshot:
         monkeypatch: pytest.MonkeyPatch,
         filename: str,
     ) -> None:
-        """Do not combine entry points with a subsequently changed profile."""
+        """
+        Do not combine entry points with a subsequently changed profile.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        filename : str
+            Input filename used in the scenario.
+        """
         prefix = '' if filename == 'popo.toml' else 'tool.popo.'
         (tmp_path / filename).write_text(
             f'[{prefix}guardrails]\n'

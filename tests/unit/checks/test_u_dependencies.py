@@ -24,7 +24,19 @@ from tests.support.files import FileWriter, snapshot_files
 def comparison_mode_fixture(
     request: pytest.FixtureRequest,
 ) -> DependencyMode:
-    """Select each comparison policy with independent temporary inputs."""
+    """
+    Select each comparison policy with independent temporary inputs.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    DependencyMode
+        Dependency comparison mode selected by the fixture parameter.
+    """
     return cast(DependencyMode, request.param)
 
 
@@ -157,6 +169,8 @@ class TestDependencyPolicy:
         message: str | None,
     ) -> None:
         """
+        Verify comparison.
+
         Verify dependency comparisons report the expected result for each
         policy mode.
 
@@ -204,7 +218,18 @@ class TestDependencyPolicy:
         names: tuple[str, str],
         suffix: str,
     ) -> None:
-        """Accept equivalent package spelling while preserving other fields."""
+        """
+        Accept equivalent package spelling while preserving other fields.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        names : tuple[str, str]
+            Names checked against the selected matching rule.
+        suffix : str
+            Suffix appended to the version or syntax input.
+        """
         expected, actual = (name + suffix for name in names)
         metadata = write_file(
             'pyproject.toml',
@@ -294,6 +319,15 @@ class TestDependencyPolicy:
     ) -> None:
         """
         Report malformed project tables instead of crashing during lookup.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        project : str
+            Project identity inserted into the header policy.
+        mode : DependencyMode
+            Dependency comparison mode selected for the scenario.
         """
         metadata = write_file('pyproject.toml', f'project = {project}')
         requirements = write_file('requirements.txt', '')
@@ -308,7 +342,18 @@ class TestDependencyPolicy:
         mode: DependencyMode,
         structural: bool,
     ) -> None:
-        """Keep metadata and installer failure ordering stable."""
+        """
+        Keep metadata and installer failure ordering stable.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        mode : DependencyMode
+            Dependency comparison mode selected for the scenario.
+        structural : bool
+            Whether the scenario uses structural declaration syntax.
+        """
         metadata = write_file(
             'pyproject.toml',
             '[project]\ndependencies = '
@@ -342,6 +387,8 @@ class TestDependencyPolicy:
         missing: tuple[str, ...],
     ) -> None:
         """
+        Verify missing files.
+
         Verify absent dependency metadata and constraints each produce a
         diagnostic.
 
@@ -383,7 +430,16 @@ class TestDependencyPolicy:
         write_file: FileWriter,
         suffix: str,
     ) -> None:
-        """Keep non-name dependency drift visible after normalization."""
+        """
+        Keep non-name dependency drift visible after normalization.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        suffix : str
+            Suffix appended to the version or syntax input.
+        """
         metadata = write_file(
             'pyproject.toml',
             '[project]\ndependencies = ["Demo_Pkg==1"]',

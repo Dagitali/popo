@@ -66,6 +66,18 @@ class TestSwiftPolicyConfiguration:
         old: str,
         new: str,
     ) -> None:
+        """
+        Verify invalid configuration.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        old : str
+            Original value replaced by the scenario.
+        new : str
+            Replacement value supplied by the scenario.
+        """
         path = swift_policy_consumer / 'popo.toml'
         text = path.read_text()
         assert old in text
@@ -78,7 +90,16 @@ class TestSwiftPolicyConfiguration:
         swift_policy_consumer: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Parse preloaded settings without reading configuration or inputs."""
+        """
+        Parse preloaded settings without reading configuration or inputs.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        """
         root = swift_policy_consumer
         settings = read_popo(root)
         expected = load_swift_policy_config(root)
@@ -93,6 +114,16 @@ class TestSwiftPolicyConfiguration:
         swift_policy_consumer: Path,
         embedded: bool,
     ) -> None:
+        """
+        Verify policy sources.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        embedded : bool
+            Whether policy is embedded in Python project metadata.
+        """
         root = swift_policy_consumer
         if embedded:
             text = (
@@ -138,7 +169,16 @@ class TestSwiftPolicyConfiguration:
         version: str,
         expected: tuple[int, int, int] | None,
     ) -> None:
-        """Normalize stable ASCII versions and reject unsupported syntax."""
+        """
+        Normalize stable ASCII versions and reject unsupported syntax.
+
+        Parameters
+        ----------
+        version : str
+            Version value supplied to the parser or policy comparison.
+        expected : tuple[int, int, int] | None
+            Expected result for the selected parameterized scenario.
+        """
         if expected is None:
             with pytest.raises(
                 ValueError,

@@ -15,6 +15,8 @@ from tests.support.files import FileWriter
 @pytest.mark.parametrize('key', ('python-version', 'swift-version'))
 class TestWorkflowVersions:
     """
+    Cover workflow versions.
+
     Resolve only explicit literals, scoped env values and simple matrices.
     """
 
@@ -40,7 +42,24 @@ class TestWorkflowVersions:
         step_env: str,
         expected: tuple[str, ...],
     ) -> None:
-        """Validate every scope and preserve invalid higher-scope overrides."""
+        """
+        Validate every scope and preserve invalid higher-scope overrides.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        workflow_env : str
+            Workflow-scoped environment declarations for version resolution.
+        job_env : str
+            Job-scoped environment declarations used for version resolution.
+        step_env : str
+            Step-scoped environment declarations used for version resolution.
+        expected : tuple[str, ...]
+            Expected result for the selected parameterized scenario.
+        """
         source = f"""env: {workflow_env}
 jobs:
   build:
@@ -68,6 +87,16 @@ jobs:
         write_file: FileWriter,
         key: str,
     ) -> None:
+        """
+        Verify job scopes do not leak.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        """
         path = write_file(
             'ci.yml',
             f"""jobs:
@@ -105,6 +134,18 @@ jobs:
         key: str,
         source: str,
     ) -> None:
+        """
+        Verify malformed documents.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        source : str
+            Decoded input text to inspect without executing it.
+        """
         values, errors = workflow_observations(
             write_file('ci.yml', source),
             key,
@@ -127,6 +168,20 @@ jobs:
         expression: str,
         expected: tuple[str, ...],
     ) -> None:
+        """
+        Verify supported declarations.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        expression : str
+            Workflow version expression under test.
+        expected : tuple[str, ...]
+            Expected result for the selected parameterized scenario.
+        """
         path = write_file(
             'ci.yml',
             f"""env: {{ TOOL: "6.0.0" }}
@@ -166,6 +221,18 @@ jobs:
         key: str,
         matrix: str,
     ) -> None:
+        """
+        Verify unsupported matrix forms.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        matrix : str
+            Workflow matrix declarations used for version resolution.
+        """
         path = write_file(
             'ci.yml',
             f"""jobs:
@@ -199,6 +266,18 @@ jobs:
         key: str,
         value: str,
     ) -> None:
+        """
+        Verify unsupported or unresolved values.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        value : str
+            Unvalidated value supplied to the operation.
+        """
         path = write_file(
             'ci.yml',
             f'jobs: {{ build: {{ with: {{ {key}: {value} }} }} }}',
@@ -211,7 +290,11 @@ jobs:
 
 
 class TestObservationInterpretation:
-    """Keep observation roles explicit and independent of action input names."""
+    """
+    Cover observation interpretation.
+
+    Keep observation roles explicit and independent of action input names.
+    """
 
     @pytest.mark.parametrize('kind', ('runtime', 'compiler'))
     @pytest.mark.parametrize('key', ('python-version', 'swift-version'))
@@ -221,7 +304,18 @@ class TestObservationInterpretation:
         key: str,
         kind: str,
     ) -> None:
-        """Record caller semantics without guessing from the workflow key."""
+        """
+        Record caller semantics without guessing from the workflow key.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        key : str
+            Policy key whose value is inspected.
+        kind : str
+            Native syntax kind or policy variant under test.
+        """
         path = write_file('ci.yml', f'jobs:\n  build:\n    with: {{ {key}: "3.13" }}')
         observations, errors = workflow_observations(path, key, kind=kind)
         assert errors == []

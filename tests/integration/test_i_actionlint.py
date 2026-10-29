@@ -27,6 +27,8 @@ from tests.support.files import FileWriter
 
 class TestActionlintCommandLine:
     """
+    Cover actionlint command line.
+
     Exercise compatibility, source validation and validator exit behavior.
     """
 
@@ -40,6 +42,17 @@ class TestActionlintCommandLine:
     ) -> None:
         """
         Preserve both streams, validator status, and source self references.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        status : int
+            Expected CLI exit status or hosted response state.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
         """
         write_file(
             'actions/test/action.yml',
@@ -92,6 +105,19 @@ class TestActionlintCommandLine:
     ) -> None:
         """
         Reject unsafe source before launching even a nonexistent executable.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        source : str
+            Decoded input text to inspect without executing it.
+        expected : str
+            Expected result for the selected parameterized scenario.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
         """
         write_file('.github/workflows/probe.yml', source)
         assert (

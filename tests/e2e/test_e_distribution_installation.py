@@ -26,7 +26,19 @@ from tests.support.inventory import repository
 def artifact_version_fixture(
     artifact: Path,
 ) -> Version:
-    """Read the expected version from a validated wheel or sdist filename."""
+    """
+    Read the expected version from a validated wheel or sdist filename.
+
+    Parameters
+    ----------
+    artifact : Path
+        Validated wheel or source-distribution path.
+
+    Returns
+    -------
+    Version
+        Version parsed from the validated artifact filename.
+    """
     if artifact.suffix == '.whl':
         return parse_wheel_filename(artifact.name)[1]
     return parse_sdist_filename(artifact.name)[1]
@@ -40,7 +52,20 @@ def artifact_version_fixture(
 def use_module_fixture(
     request: pytest.FixtureRequest,
 ) -> bool:
-    """Exercise both installed entry points with independent inputs."""
+    """
+    Exercise both installed entry points with independent inputs.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    bool
+        Whether this independent scenario uses the installed module entry
+        point.
+    """
     return bool(request.param)
 
 
@@ -75,6 +100,8 @@ class TestInstalledCLI:
         status: int,
     ) -> None:
         """
+        Verify automation contracts.
+
         Verify installed automation checking reports pins without rewriting
         inputs.
 
@@ -129,6 +156,8 @@ class TestInstalledCLI:
         message: str,
     ) -> None:
         """
+        Verify checks consumer.
+
         Verify installed Markdown checks report status and preserve consumer
         files.
 
@@ -261,6 +290,8 @@ reason = "Synthetic policy fixture"
         format_: str,
     ) -> None:
         """
+        Verify source inventory.
+
         Inventory committed bytes through installed console and module
         commands.
 
@@ -303,6 +334,8 @@ reason = "Synthetic policy fixture"
 
 class TestInstalledSelection:
     """
+    Cover installed selection.
+
     Verify language-neutral plans through isolated installed entry points.
     """
 
@@ -314,11 +347,25 @@ class TestInstalledSelection:
         guardrail_arguments: tuple[str, ...],
         use_module: bool,
     ) -> None:
-        """Inspect profile wiring from installed packages without running Make.
+        """
+        Inspect profile wiring from installed packages without running Make.
 
         Each command and matching/Make/hook/workflow scenario owns a fresh
         consumer, including the exact profile delegated to Make. Preserve all
         consumer bytes and assert the specific diagnostic from each artifact.
+
+        Parameters
+        ----------
+        installation : Installation
+            Artifact installed in an isolated environment outside the checkout.
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_failure : str | None
+            Expected parity failure, or None for matching entry points.
+        guardrail_arguments : tuple[str, ...]
+            Arguments selecting the example guardrail invocation.
+        use_module : bool
+            Whether to invoke python -m popo instead of its console script.
         """
         root = guardrail_consumer.root
         original = snapshot_files(root)
@@ -366,6 +413,17 @@ class TestInstalledSelection:
     ) -> None:
         """
         Select docs without Python metadata and preserve the consumer bytes.
+
+        Parameters
+        ----------
+        installation : Installation
+            Artifact installed in an isolated environment outside the checkout.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        use_module : bool
+            Whether to invoke python -m popo instead of its console script.
+        valid : bool
+            Whether the scenario input satisfies the selected contract.
         """
         policy = tmp_path / 'popo.toml'
         policy.write_text('[profiles.docs]\nchecks=["check-docs"]\n', encoding='utf-8')

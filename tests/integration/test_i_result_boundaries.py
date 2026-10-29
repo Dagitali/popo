@@ -163,7 +163,20 @@ class TestValidationCommands:
         capsys: pytest.CaptureFixture[str],
         options: tuple[str, ...],
     ) -> None:
-        """Reject ambiguous input requests before reading policy or artifacts."""
+        """
+        Reject ambiguous input requests before reading policy or artifacts.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        options : tuple[str, ...]
+            Additional arguments passed to the operation.
+        """
         reader = Mock(side_effect=AssertionError('unexpected input read'))
         monkeypatch.setattr(Path, 'read_text', reader)
         monkeypatch.setattr(Path, 'read_bytes', reader)
@@ -228,7 +241,18 @@ class TestValidationCommands:
         capsys: pytest.CaptureFixture[str],
         command: str,
     ) -> None:
-        """Report the native boundary outcome through direct/aggregate JSON."""
+        """
+        Report the native boundary outcome through direct/aggregate JSON.
+
+        Parameters
+        ----------
+        python_boundary_case : tuple[Path, str | None]
+            Isolated Python consumer and its expected boundary failure.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        command : str
+            Command selected for invocation in the scenario.
+        """
         root, expected = python_boundary_case
         before = snapshot_files(root)
         assert main([command, '--root', str(root), '--format', 'json']) == int(

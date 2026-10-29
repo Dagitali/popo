@@ -18,7 +18,14 @@ from popo.config.hosted import RepositoryPolicy
 
 @pytest.fixture(name='github_responses')
 def github_responses_fixture() -> dict[str, Response]:
-    """Return complete, successful API evidence for the policy."""
+    """
+    Return complete, successful API evidence for the policy.
+
+    Returns
+    -------
+    dict[str, Response]
+        Fresh successful endpoint responses matching the representative policy.
+    """
     base = 'repos/example/library'
     return {
         base: Response(
@@ -51,7 +58,15 @@ def github_responses_fixture() -> dict[str, Response]:
 
 @pytest.fixture(name='hosted_exception_config')
 def hosted_exception_config_fixture() -> str:
-    """Return an explicit valid policy and approval attestation."""
+    """
+    Return an explicit valid policy and approval attestation.
+
+    Returns
+    -------
+    str
+        TOML containing the representative policy and explicit expiring
+        approval.
+    """
     return """
 [[tool.popo.hosted.repositories]]
 name = "example/library"
@@ -69,7 +84,15 @@ expires = "2026-10-31"
 
 @pytest.fixture(name='hosted_policy')
 def hosted_policy_fixture() -> RepositoryPolicy:
-    """Return a representative consumer-owned inventory."""
+    """
+    Return a representative consumer-owned inventory.
+
+    Returns
+    -------
+    RepositoryPolicy
+        Fresh repository expectations for security, labels, ownership and
+        checks.
+    """
     return RepositoryPolicy(
         'example/library',
         {

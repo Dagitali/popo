@@ -54,7 +54,21 @@ def validate(
         path: Path,
         source: str,
     ) -> list[str]:
-        """Match decoded lines without disclosing their contents."""
+        """
+        Match decoded lines without disclosing their contents.
+
+        Parameters
+        ----------
+        path : Path
+            Input path inspected by the operation.
+        source : str
+            Decoded input text to inspect without executing it.
+
+        Returns
+        -------
+        list[str]
+            Location-prefixed redacted findings for the decoded input.
+        """
         relative = path.relative_to(boundary)
         return [
             f'{relative}:{number}: {name}'

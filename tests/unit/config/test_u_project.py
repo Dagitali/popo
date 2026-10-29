@@ -142,6 +142,8 @@ class TestConfiguration:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify explicit overrides.
+
         Verify consumer settings override discovered paths and derived Python
         defaults.
 
@@ -228,6 +230,8 @@ class TestConfiguration:
         message: str,
     ) -> None:
         """
+        Verify loaders share root validation.
+
         Verify project and automation loaders reject malformed root settings
         alike.
 
@@ -288,6 +292,8 @@ class TestConfiguration:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify python defaults follow dependency metadata.
+
         Verify default Python requirements and Ruff paths follow dependency
         metadata.
 
@@ -337,6 +343,8 @@ class TestConfiguration:
         message: str,
     ) -> None:
         """
+        Verify rejects invalid configuration.
+
         Verify project loading reports the expected invalid-configuration
         error.
 

@@ -25,6 +25,8 @@ from tests.support.files import snapshot_files
 
 class BoundaryCase(NamedTuple):
     """
+    Cover boundary case.
+
     Keep native syntax and expected lexical differences beside a validator.
     """
 
@@ -97,7 +99,16 @@ class TestBoundaryContracts:
         tmp_path: Path,
         boundary_case: BoundaryCase,
     ) -> None:
-        """Keep selection failures before imports and deduplicated symbols."""
+        """
+        Keep selection failures before imports and deduplicated symbols.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        boundary_case : BoundaryCase
+            Language-specific boundary policy and source-writing helpers.
+        """
         domain = boundary_case.domain
         (tmp_path / 'popo.toml').write_text(
             f'[[{domain}.layers]]\nname="core"\n'
@@ -129,6 +140,13 @@ class TestBoundaryContracts:
     ) -> None:
         """
         Return redacted decoding diagnostics for both language front ends.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        boundary_case : BoundaryCase
+            Language-specific boundary policy and source-writing helpers.
         """
         domain = boundary_case.domain
         (tmp_path / 'popo.toml').write_text(
@@ -166,7 +184,22 @@ class TestImportMatching:
         exact: str,
         descendant: str,
     ) -> None:
-        """Keep forbidden ownership ahead of an overlapping allowlist."""
+        """
+        Keep forbidden ownership ahead of an overlapping allowlist.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        descendants : bool
+            Whether dotted descendant matching is enabled.
+        target : str
+            Import target tested against the configured matching rule.
+        exact : str
+            Exact name tested against boundary matching.
+        descendant : str
+            Dotted descendant name tested against the boundary rule.
+        """
         layer = BoundaryLayer(
             'core',
             SourceCheckConfig(tmp_path, 'python-source', (), (), {}),
@@ -195,7 +228,18 @@ class TestOverlappingBoundaryLayers:
         monkeypatch: pytest.MonkeyPatch,
         boundary_case: BoundaryCase,
     ) -> None:
-        """Check overlapping selections without repeating source reads."""
+        """
+        Check overlapping selections without repeating source reads.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        boundary_case : BoundaryCase
+            Language-specific boundary policy and source-writing helpers.
+        """
         read = Mock(wraps=_source_boundaries.read_source)
         monkeypatch.setattr(_source_boundaries, 'read_source', read)
 
@@ -224,7 +268,20 @@ class TestOverlappingBoundaryLayers:
         boundary_case: BoundaryCase,
         readable: bool,
     ) -> None:
-        """Prepare each input once and preserve independent layer findings."""
+        """
+        Prepare each input once and preserve independent layer findings.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        boundary_case : BoundaryCase
+            Language-specific boundary policy and source-writing helpers.
+        readable : bool
+            Whether the selected input can be read.
+        """
         analyzer = (
             python_boundaries._PythonBoundaryAnalyzer
             if boundary_case.domain == 'python-boundaries'
@@ -274,6 +331,8 @@ class TestOverlappingBoundaryLayers:
 
 class TestSymbolReporting:
     """
+    Cover symbol reporting.
+
     Share exact matching, deduplication and order across native collectors.
     """
 
@@ -284,6 +343,11 @@ class TestSymbolReporting:
     ) -> None:
         """
         Skip unused candidates or consume once with unique ordered findings.
+
+        Parameters
+        ----------
+        forbidden : tuple[str, ...]
+            Names explicitly forbidden by the boundary policy.
         """
         reference = _source_boundaries.SymbolReference
         observations = (

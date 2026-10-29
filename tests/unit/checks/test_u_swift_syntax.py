@@ -17,6 +17,8 @@ from tests.support.files import snapshot_files
 
 class TestSwiftSyntax:
     """
+    Cover swift syntax.
+
     Keep native syntax inspection offline and preserve original locations.
     """
 
@@ -55,7 +57,16 @@ class TestSwiftSyntax:
         source: str,
         expected: tuple[int, ...],
     ) -> None:
-        """Count LF boundaries without changing Unicode or the end sentinel."""
+        """
+        Count LF boundaries without changing Unicode or the end sentinel.
+
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+        expected : tuple[int, ...]
+            Expected result for the selected parameterized scenario.
+        """
         assert _swift_syntax.parse(source).line_offsets == expected
 
     @pytest.mark.parametrize(
@@ -75,6 +86,11 @@ class TestSwiftSyntax:
     ) -> None:
         """
         Mask ordinary/raw/regex literals and their interpolation contents.
+
+        Parameters
+        ----------
+        literal : str
+            Literal log pattern or workflow value under test.
         """
         source = f'let text = {literal}\nstruct Real {{}}'
         syntax = _swift_syntax.parse(source)
@@ -109,7 +125,18 @@ class TestSwiftSyntax:
         suffix: str,
         continues: bool,
     ) -> None:
-        """Retain whitespace and keyword boundaries without copying suffixes."""
+        """
+        Retain whitespace and keyword boundaries without copying suffixes.
+
+        Parameters
+        ----------
+        indent : str
+            Indentation used in the source or YAML scenario.
+        suffix : str
+            Suffix appended to the version or syntax input.
+        continues : bool
+            Whether later inputs must still be inspected after a failure.
+        """
         code = f' f()\n{indent}{suffix} {{}}'
         signature = _swift_declarations._signature(code, 0)
         assert signature.parameter_names == ()
@@ -120,6 +147,8 @@ class TestSwiftSyntax:
         self,
     ) -> None:
         """
+        Retain callable diagnostics after grammar recovery.
+
         Preserve bounded contracts when the grammar recovers malformed code.
         """
         source = (
@@ -136,6 +165,8 @@ class TestSwiftSyntax:
         self,
     ) -> None:
         """
+        Attach same-line declaration docs only to their owner.
+
         Discover same-line types/members but attach docs only to their owner.
         """
         facts = _swift_declarations.parse(
@@ -158,7 +189,14 @@ class TestSwiftSyntax:
         self,
         opening: str,
     ) -> None:
-        """Do not let grammar recovery turn an open block comment into code."""
+        """
+        Do not let grammar recovery turn an open block comment into code.
+
+        Parameters
+        ----------
+        opening : str
+            Opening delimiter used by the source or markup scenario.
+        """
         source = (
             f'let prefix = 1\n{opening}\n/// Fake\nimport Blocked\nstruct Ghost {{}}'
         )
@@ -183,6 +221,11 @@ class TestSwiftBoundarySyntax:
     ) -> None:
         """
         Inspect same-line attributed imports but ignore literal fake code.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
         """
         (tmp_path / 'source.swift').write_text(
             'import Foundation; @preconcurrency import struct SwiftUI.View\n'
@@ -219,6 +262,13 @@ class TestSwiftBoundarySyntax:
     ) -> None:
         """
         Recognize native nominal/typealias names including same-line types.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        owner : str
+            Policy owner or workflow scope selected for the scenario.
         """
         (tmp_path / 'owner.swift').write_text(owner, encoding='utf-8')
         (tmp_path / 'core.swift').write_text('let value: Target', encoding='utf-8')
@@ -260,6 +310,11 @@ class TestSwiftDeclarationClassification:
     ) -> None:
         """
         Ignore imported declaration keywords while retaining actual types.
+
+        Parameters
+        ----------
+        kind : str
+            Native syntax kind or policy variant under test.
         """
         source = f'import {kind} Package.Member\nstruct Actual {{}}'
         syntax = _swift_syntax.parse(source)
@@ -280,6 +335,11 @@ class TestSwiftDocumentationLocations:
     ) -> None:
         """
         Ignore literal text and trailing comments while retaining real docs.
+
+        Parameters
+        ----------
+        reverse : bool
+            Whether conflicting CLI arguments appear in reversed order.
         """
         syntax = _swift_syntax.parse(
             '/// Overview 😀.\nlet text = "/// not documentation"\n'

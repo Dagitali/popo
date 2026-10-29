@@ -36,7 +36,26 @@ def _file(
     root: Path,
     relative: str,
 ) -> Path:
-    """Resolve a configured path and reject symlink escapes."""
+    """
+    Resolve a configured path and reject symlink escapes.
+
+    Parameters
+    ----------
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+    relative : str
+        Repository-relative path used in diagnostics or input selection.
+
+    Returns
+    -------
+    Path
+        Resolved input path confined to the repository root.
+
+    Raises
+    ------
+    OSError, ValueError
+        If resolution fails or the resolved path escapes the repository.
+    """
     path = (root / relative).resolve()
     if not path.is_relative_to(root):
         raise ValueError(f'path escapes repository: {relative}')
@@ -48,7 +67,29 @@ def _npm_findings(
     manifest: str,
     lockfile: str,
 ) -> Iterator[str]:
-    """Yield npm drift before later read, parse or shape errors propagate."""
+    """
+    Yield npm drift before later read, parse or shape errors propagate.
+
+    Parameters
+    ----------
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+    manifest : str
+        Repository-relative npm package manifest path.
+    lockfile : str
+        Repository-relative npm lockfile path.
+
+    Yields
+    ------
+    str
+        Manifest/lockfile root or exact-pin drift found before any later error.
+
+    Raises
+    ------
+    OSError, UnicodeError, ValueError
+        If input reading, JSON decoding, containment or document validation
+        fails. Earlier yielded drift remains available.
+    """
     label = f'{manifest} -> {lockfile}'
     package: object = json.loads(_file(root, manifest).read_text('utf-8'))
     lock: object = json.loads(_file(root, lockfile).read_text('utf-8'))
@@ -91,7 +132,19 @@ def _npm_findings(
 def _workflow(
     path: Path,
 ) -> dict[str, object]:
-    """Parse a mapping with duplicate-key rejection and string event keys."""
+    """
+    Parse a mapping with duplicate-key rejection and string event keys.
+
+    Parameters
+    ----------
+    path : Path
+        Input path inspected by the operation.
+
+    Returns
+    -------
+    dict[str, object]
+        Parsed workflow mapping.
+    """
     return read_mapping(path, label='workflow')
 
 
@@ -141,7 +194,20 @@ def _workflow_content(
 def _workflow_paths(
     config: SafetyConfig,
 ) -> tuple[list[Path], list[str]]:
-    """Discover unique workflows, retaining findings for failed patterns."""
+    """
+    Discover unique workflows, retaining findings for failed patterns.
+
+    Parameters
+    ----------
+    config : SafetyConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    tuple[list[Path], list[str]]
+        Sorted unique workflow paths and discovery diagnostics in pattern
+        order.
+    """
     paths: set[Path] = set()
     failures: list[str] = []
     for pattern in config.workflows:

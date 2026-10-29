@@ -246,7 +246,18 @@ class TestSwiftBoundaries:
         monkeypatch: pytest.MonkeyPatch,
         allowed: tuple[str, ...] | None,
     ) -> None:
-        """Skip absent import policy without suppressing import-token symbols."""
+        """
+        Skip absent import policy without suppressing import-token symbols.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        allowed : tuple[str, ...] | None
+            Permitted imports, or None to disable the allowlist.
+        """
         policy = (
             '[[swift-boundaries.layers]]\nname="core"\ninclude=["source.swift"]\n'
             'forbidden-symbols=["Foundation"]\n'

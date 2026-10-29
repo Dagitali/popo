@@ -290,7 +290,24 @@ def _guardrail_parity(
 def _logs(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
-    """Dispatch explicit artifact inspection without revealing log contents."""
+    """
+    Dispatch explicit artifact inspection without revealing log contents.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command arguments, including the consumer root and overrides.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Validation diagnostics and the success message for CLI reporting.
+
+    Raises
+    ------
+    ConfigurationError
+        If loading the consumer log policy fails.
+    """
     config = load_source_check(args.root, 'logs')
     return logs.validate(
         config,

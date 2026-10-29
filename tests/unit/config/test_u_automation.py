@@ -53,6 +53,8 @@ class TestAutomationConfiguration:
         message: str,
     ) -> None:
         """
+        Verify invalid configuration.
+
         Verify automation loading rejects unsupported keys, types, and unsafe
         patterns.
 
@@ -86,7 +88,24 @@ class TestAutomationConfiguration:
         separator: str,
         trailing: bool,
     ) -> None:
-        """Reject embedded and trailing whitespace in exact ref tokens."""
+        """
+        Reject embedded and trailing whitespace in exact ref tokens.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        filename : str
+            Input filename used in the scenario.
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        separator : str
+            Separator spelling used by the scenario.
+        trailing : bool
+            Whether the input includes a trailing separator.
+        """
         token = 'RELEASE' + separator + ('' if trailing else 'SHA')
         write_file(
             filename,
@@ -104,7 +123,22 @@ class TestAutomationConfiguration:
         prefix: str,
         token: str,
     ) -> None:
-        """Keep valid placeholder spelling unchanged across policy sources."""
+        """
+        Keep valid placeholder spelling unchanged across policy sources.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        filename : str
+            Input filename used in the scenario.
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        token : str
+            Literal token inserted into the scenario input.
+        """
         write_file(
             filename,
             prefix + 'template-placeholder-refs=' + json.dumps([token]),
@@ -118,7 +152,20 @@ class TestAutomationConfiguration:
         filename: str,
         prefix: str,
     ) -> None:
-        """Preserve automation's intentional duplicate-array compatibility."""
+        """
+        Preserve automation's intentional duplicate-array compatibility.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        filename : str
+            Input filename used in the scenario.
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        """
         write_file(
             filename,
             prefix + 'workflow-globs=["ci.yml", "ci.yml"]',

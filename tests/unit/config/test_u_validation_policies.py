@@ -82,7 +82,18 @@ class TestResultPolicy:
         field: str,
         value: str,
     ) -> None:
-        """Reject boolean, negative, string and float values for every count."""
+        """
+        Reject boolean, negative, string and float values for every count.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        field : str
+            Configuration or report field selected for mutation.
+        value : str
+            Unvalidated value supplied to the operation.
+        """
         (tmp_path / 'popo.toml').write_text(
             f'[test-results]\n{RESULT_SETTINGS}\n{field}={value}',
             encoding='utf-8',
@@ -169,7 +180,14 @@ class TestBoundaryPolicy:
         self: Self,
         tmp_path: Path,
     ) -> None:
-        """Reject dotted Swift modules through the native configuration loader."""
+        """
+        Reject dotted Swift modules through the native configuration loader.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
             'allowed-imports=["bad.module"]',
@@ -186,6 +204,13 @@ class TestBoundaryPolicy:
     ) -> None:
         """
         Reject misspelled rules instead of silently weakening layer policy.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        language : str
+            Native source language selected by the scenario.
         """
         domain = f'{language}-boundaries'
         (tmp_path / 'popo.toml').write_text(

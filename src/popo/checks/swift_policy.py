@@ -135,7 +135,8 @@ def _workflow_observations(
     -------
     tuple[tuple[VersionObservation, ...], list[str]]
         Immutable declaration batch and a list of discovery/input findings.
-        Observations retain sorted file order, then declaration traversal order.
+        Observations retain sorted file order, then declaration traversal
+        order.
 
     Notes
     -----

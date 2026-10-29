@@ -76,6 +76,8 @@ class TestMarkdownLinks:
         message: str,
     ) -> None:
         """
+        Verify broken links.
+
         Verify missing local files and anchors retain their source line in
         diagnostics.
 
@@ -99,6 +101,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify checks github but ignores generated files.
+
         Verify discovery includes GitHub Markdown and excludes generated/vendor
         paths.
 
@@ -195,7 +199,20 @@ class TestMarkdownLinks:
         target: str,
         kind: str,
     ) -> None:
-        """Report invalid URLs/paths and continue checking later links."""
+        """
+        Report invalid URLs/paths and continue checking later links.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        target : str
+            Import target tested against the configured matching rule.
+        kind : str
+            Native syntax kind or policy variant under test.
+        """
         line = (
             f'[bad]: {target}'
             if kind == 'reference'
@@ -297,7 +314,16 @@ class TestMarkdownLinks:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        """Keep reference-use findings before ordered link/image destinations."""
+        """
+        Keep reference-use findings before ordered link/image destinations.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
         source = write_file(
             'README.md',
             '[Missing][unknown] [Collapsed][] [Known][defined] '
@@ -347,6 +373,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify non markdown fragments still require existing files.
+
         Verify non-Markdown fragment links still require the target file to
         exist.
 
@@ -464,6 +492,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify uppercase markdown extension keeps fragment validation.
+
         Verify uppercase Markdown extensions still receive heading-anchor
         checks.
 
@@ -498,7 +528,22 @@ class TestTitledDestinations:
         present: bool,
         destination: str,
     ) -> None:
-        """Resolve wrapped paths/fragments and report normalized failures."""
+        """
+        Resolve wrapped paths/fragments and report normalized failures.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        image : bool
+            Whether the Markdown destination belongs to an image.
+        present : bool
+            Whether the selected input or evidence field exists.
+        destination : str
+            Markdown destination supplied to link or image validation.
+        """
         readme = write_file(
             'README.md',
             f'{'!' if image else ''}[Guide](<{destination}> "Guide title")\n',
@@ -522,7 +567,16 @@ class TestHeadingSlugCollisions:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        """Keep HTML anchors separate from heading suffix allocation."""
+        """
+        Keep HTML anchors separate from heading suffix allocation.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
         path = write_file(
             'README.md',
             '<a id="echo-1"></a>\n# Echo\n# Echo\n',
@@ -556,6 +610,17 @@ class TestHeadingSlugCollisions:
     ) -> None:
         """
         Resolve links to headings colliding with generated or natural IDs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        headings : tuple[str, ...]
+            Heading sequence used to exercise generated anchor collisions.
+        expected : tuple[str, ...]
+            Expected result for the selected parameterized scenario.
         """
         path = write_file(
             'README.md',

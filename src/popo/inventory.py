@@ -117,7 +117,29 @@ def _git(
     *args: str,
     data: bytes | None = None,
 ) -> bytes:
-    """Run bounded, local-only Git plumbing with sanitized failure messages."""
+    """
+    Run bounded, local-only Git plumbing with sanitized failure messages.
+
+    Parameters
+    ----------
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+    data : bytes | None
+        Input payload supplied to the operation.
+    *args : str
+        Arguments for the local Git plumbing subcommand.
+
+    Returns
+    -------
+    bytes
+        Captured binary standard output from successful local Git plumbing.
+
+    Raises
+    ------
+    ValueError
+        If Git cannot start, times out or exits unsuccessfully. Process error
+        details are sanitized.
+    """
     try:
         result = subprocess.run(
             ['git', '--no-replace-objects', '-C', str(root), *args],

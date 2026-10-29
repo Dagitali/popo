@@ -45,7 +45,19 @@ def write_selection_fixture(
     def write(
         settings: str,
     ) -> Path:
-        """Place the same selection scenario under its policy namespace."""
+        """
+        Place the same selection scenario under its policy namespace.
+
+        Parameters
+        ----------
+        settings : str
+            Consumer policy text inserted into the scenario.
+
+        Returns
+        -------
+        Path
+            Path of the written standalone policy file.
+        """
         if filename == 'pyproject.toml':
             settings = '[tool.popo]\n' + re.sub(r'(?m)^\[', '[tool.popo.', settings)
         return write_file(filename, settings)
@@ -61,6 +73,8 @@ def write_selection_fixture(
 
 class TestCheckSelection:
     """
+    Cover check selection.
+
     Validate explicit selection without imposing a language or running code.
     """
 
@@ -68,7 +82,14 @@ class TestCheckSelection:
         self,
         tmp_path: Path,
     ) -> None:
-        """Absent selection preserves all legacy baseline checks."""
+        """
+        Absent selection preserves all legacy baseline checks.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         plan = load_plan(tmp_path)
         assert plan.checks == BASELINE
         assert plan.source == tmp_path / 'pyproject.toml'
@@ -81,6 +102,13 @@ class TestCheckSelection:
     ) -> None:
         """
         Full command names select only the requested checks in either source.
+
+        Parameters
+        ----------
+        write_selection : Callable[[str], Path]
+            Fixture writing the selected consumer policy.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
         """
         source = write_selection('checks=["check-required-files","check-docs"]')
         plan = load_plan(tmp_path)
@@ -117,7 +145,22 @@ class TestCheckSelection:
         profile: str | None,
         message: str,
     ) -> None:
-        """Reject invalid selections before any validator executes."""
+        """
+        Reject invalid selections before any validator executes.
+
+        Parameters
+        ----------
+        write_selection : Callable[[str], Path]
+            Fixture writing the selected consumer policy.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        settings : str
+            Consumer policy text inserted into the scenario.
+        profile : str | None
+            Named check profile, or None for the default selection.
+        message : str
+            Expected error message or scenario diagnostic.
+        """
         write_selection(settings)
         with pytest.raises(ConfigurationError, match=message):
             load_plan(tmp_path, profile)
@@ -127,7 +170,16 @@ class TestCheckSelection:
         write_selection: Callable[[str], Path],
         tmp_path: Path,
     ) -> None:
-        """Legacy defaults retain declared optional domains in stable order."""
+        """
+        Legacy defaults retain declared optional domains in stable order.
+
+        Parameters
+        ----------
+        write_selection : Callable[[str], Path]
+            Fixture writing the selected consumer policy.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         write_selection(
             '[automation]\n[safety]\n[files]\n[headers]\n[guardrails]',
         )
@@ -145,7 +197,16 @@ class TestCheckSelection:
         write_selection: Callable[[str], Path],
         tmp_path: Path,
     ) -> None:
-        """An explicit profile replaces the default selection."""
+        """
+        An explicit profile replaces the default selection.
+
+        Parameters
+        ----------
+        write_selection : Callable[[str], Path]
+            Fixture writing the selected consumer policy.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         source = write_selection(
             'checks=["check-docs"]\n[profiles.quick]\nchecks=["check-github-actions-pins"]',
         )
@@ -166,7 +227,18 @@ class TestConsumerConfiguration:
         tmp_path: Path,
         content: str,
     ) -> None:
-        """Malformed standalone TOML cannot silently fall back to defaults."""
+        """
+        Malformed standalone TOML cannot silently fall back to defaults.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        content : str
+            Text written to the scenario input.
+        """
         write_file('popo.toml', content)
         with pytest.raises(ConfigurationError, match='invalid TOML'):
             read_popo(tmp_path)
@@ -176,7 +248,16 @@ class TestConsumerConfiguration:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
-        """A standalone policy does not parse or merge Python metadata."""
+        """
+        A standalone policy does not parse or merge Python metadata.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         standalone = write_file('popo.toml', 'checks=["check-docs"]')
         metadata = write_file('pyproject.toml', '[')
         before = [p.read_bytes() for p in (standalone, metadata)]
@@ -193,6 +274,16 @@ class TestConsumerConfiguration:
     ) -> None:
         """
         An invalid standalone input cannot silently select another source.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        kind : str
+            Native syntax kind or policy variant under test.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
         """
         path = tmp_path / 'popo.toml'
         if kind == 'directory':

@@ -45,6 +45,19 @@ class TestHostedConfiguration:
     ) -> None:
         """
         Reject duplicate repository inventory and exception scopes.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        hosted_exception_config : str
+            Valid hosted policy and explicit approval TOML.
+        section : str
+            Documentation section or required result kind under test.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         if section == 'repositories':
             extra = (
@@ -142,6 +155,21 @@ class TestHostedConfiguration:
 
         Accepted records retain the exact approved scope, URL and inclusive
         expiry date.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        hosted_exception_config : str
+            Valid hosted policy and explicit approval TOML.
+        original : str
+            Original source or policy text retained for comparison.
+        replacement : str
+            Replacement text inserted into the scenario input.
+        message : str | None
+            Expected error message or scenario diagnostic.
         """
         assert original in hosted_exception_config, 'Mutation marker missing'
         write_file(
@@ -169,7 +197,20 @@ class TestHostedConfiguration:
         repository: str,
         check: str,
     ) -> None:
-        """Keep exception checks scoped to the exact configured repository."""
+        """
+        Keep exception checks scoped to the exact configured repository.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        repository : str
+            Repository identity used in hosted policy or evidence.
+        check : str
+            Check identity used in policy selection or hosted evidence.
+        """
         write_file(
             'popo.toml',
             '[[hosted.repositories]]\nname="owner/first"\nlabels=["bug"]\n'
@@ -226,6 +267,17 @@ class TestHostedConfiguration:
     ) -> None:
         """
         Reject absent, malformed, or unsupported hosted expectations.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        config : str
+            Consumer configuration text supplied by the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         write_file('pyproject.toml', config)
         with pytest.raises(ConfigurationError, match=message):

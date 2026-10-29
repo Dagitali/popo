@@ -35,6 +35,19 @@ def _report_findings(
     JSON errors take precedence over an unsupported directly constructed
     adapter. Input discovery and relative diagnostic locations belong to the
     caller; no files are read or modified here.
+
+    Parameters
+    ----------
+    source : str
+        Decoded input text to inspect without executing it.
+    config : TestResultsConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    list[str]
+        Redacted JSON, adapter or threshold diagnostics; empty for a passing
+        report.
     """
     try:
         report = json.loads(source)
@@ -98,7 +111,21 @@ def validate(
         path: Path,
         source: str,
     ) -> list[str]:
-        """Label adapter findings without disclosing report contents."""
+        """
+        Label adapter findings without disclosing report contents.
+
+        Parameters
+        ----------
+        path : Path
+            Input path inspected by the operation.
+        source : str
+            Decoded input text to inspect without executing it.
+
+        Returns
+        -------
+        list[str]
+            Location-prefixed redacted findings for the decoded input.
+        """
         relative = path.relative_to(boundary).as_posix()
         return [
             f'{relative}: {finding}' for finding in _report_findings(source, config)

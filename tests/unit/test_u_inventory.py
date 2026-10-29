@@ -36,6 +36,8 @@ GIT_FAILURE_FACTORIES = [
 
 class TestSourceInventory:
     """
+    Cover source inventory.
+
     Exercise inventory semantics using isolated Git objects and CLI output.
     """
 
@@ -246,6 +248,8 @@ class TestSourceInventory:
         blob: bytes,
     ) -> None:
         """
+        Verify malformed batch data fails.
+
         Reject mismatched IDs, types, sizes, truncation and trailing object
         data.
 
@@ -322,6 +326,8 @@ class TestSourceInventory:
         tmp_path: Path,
     ) -> None:
         """
+        Verify spdx generations have distinct namespaces.
+
         Avoid reusing one SPDX namespace across independently created
         documents.
 
@@ -341,6 +347,8 @@ class TestSourceInventory:
         tmp_path: Path,
     ) -> None:
         """
+        Verify subdirectory is not a repository root.
+
         Prevent accidentally inventorying a parent repository's unrelated
         files.
 

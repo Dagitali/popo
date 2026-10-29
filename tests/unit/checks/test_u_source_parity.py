@@ -51,7 +51,19 @@ type SourceCase = tuple[str, str, Callable[[SourceCheckConfig], list[str]]]
 def source_case_fixture(
     request: pytest.FixtureRequest,
 ) -> SourceCase:
-    """Select independent language cases sharing discovery and limit rules."""
+    """
+    Select independent language cases sharing discovery and limit rules.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    SourceCase
+        Native source policy/parser helpers for the selected language.
+    """
     return (
         ('python-source', 'sample.py', python_source.validate)
         if request.param == 'python'
@@ -67,6 +79,8 @@ def source_case_fixture(
 
 class TestSourceConventions:
     """
+    Cover source conventions.
+
     Keep common option names, diagnostics and collector contracts aligned.
     """
 
@@ -78,6 +92,13 @@ class TestSourceConventions:
     ) -> None:
         """
         Share requirement vocabulary while retaining each analysis source.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        case : str
+            Selected parameterized scenario identifier.
         """
         domain, _, _ = source_case
         if domain == 'python-source':
@@ -108,6 +129,14 @@ class TestSourceConventions:
         self: Self,
         source_case: SourceCase,
     ) -> None:
+        """
+        Verify collectors extract shared facts without execution.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        """
         domain, _, _ = source_case
         parsed = (
             _python_declarations.parse(
@@ -136,6 +165,11 @@ class TestSourceConventions:
     ) -> None:
         """
         Retain documentation, locations and language-specific observations.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
         """
         domain, _, _ = source_case
         if domain == 'python-source':
@@ -186,6 +220,18 @@ class TestSourceConventions:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify common diagnostics.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         domain, filename, validate = source_case
         write_file(
             'popo.toml',
@@ -245,7 +291,22 @@ class TestSourceConventions:
         python_overview: bool,
         swift_overview: bool,
     ) -> None:
-        """Preserve each language's leading file-documentation convention."""
+        """
+        Preserve each language's leading file-documentation convention.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        python_text : str
+            Python source supplied to the native parser or checker.
+        swift_text : str
+            Swift source supplied to the native parser or checker.
+        python_overview : bool
+            Whether Python module documentation is present.
+        swift_overview : bool
+            Whether Swift file overview documentation is present.
+        """
         domain, _, _ = source_case
         if domain == 'python-source':
             parsed = _python_declarations.parse(python_text)
@@ -258,7 +319,14 @@ class TestSourceConventions:
         self: Self,
         source_case: SourceCase,
     ) -> None:
-        """Keep AST nesting and lexical callable-body exclusion distinct."""
+        """
+        Keep AST nesting and lexical callable-body exclusion distinct.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        """
         domain, _, _ = source_case
         if domain == 'python-source':
             parsed = _python_declarations.parse(
@@ -291,6 +359,20 @@ class TestSourceConventions:
         tmp_path: Path,
         setting: str,
     ) -> None:
+        """
+        Verify prerelease option names are rejected.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        setting : str
+            Configuration setting selected for mutation.
+        """
         domain, filename, _ = source_case
         write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
         with pytest.raises(ConfigurationError, match='unknown settings'):
@@ -304,6 +386,13 @@ class TestSourceConventions:
     ) -> None:
         """
         Keep signature record roles aligned across native and lexical input.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        multiline : bool
+            Whether the scenario uses multiline source syntax.
         """
         domain, _, _ = source_case
         if domain == 'python-source':
@@ -332,6 +421,13 @@ class TestSourceConventions:
     ) -> None:
         """
         Convert a single nominal or callable independently of aggregation.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        kind : str
+            Native syntax kind or policy variant under test.
         """
         domain, _, _ = source_case
         if domain == 'python-source':
@@ -378,7 +474,22 @@ class TestSourceInputDiscovery:
         monkeypatch: pytest.MonkeyPatch,
         interrupted: bool,
     ) -> None:
-        """Deduplicate paths without treating repeated matches as missing."""
+        """
+        Deduplicate paths without treating repeated matches as missing.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        interrupted : bool
+            Whether discovery fails after yielding partial results.
+        """
         domain, filename, _ = source_case
         path = write_file(filename, 'PRIVATE source')
         before = snapshot_files(tmp_path)
@@ -394,7 +505,28 @@ class TestSourceInputDiscovery:
             directory: Path,
             pattern: str,
         ) -> Iterator[Path]:
-            """Yield a repeated match before an optional traversal failure."""
+            """
+            Yield a repeated match before an optional traversal failure.
+
+            Parameters
+            ----------
+            directory : Path
+                Directory containing the isolated operation inputs.
+            pattern : str
+                Glob or literal selection passed to the operation.
+
+            Yields
+            ------
+            Path
+                Real matching paths yielded before any injected discovery
+                error.
+
+            Raises
+            ------
+            OSError, ValueError
+                If the configured discovery operation fails; earlier matches
+                may already have been yielded.
+            """
             assert directory == tmp_path
             if pattern != 'missing':
                 yield path
@@ -423,6 +555,20 @@ class TestSourceInputFailures:
         tmp_path: Path,
         kind: str,
     ) -> None:
+        """
+        Verify failed inputs.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        kind : str
+            Native syntax kind or policy variant under test.
+        """
         domain, filename, validate = source_case
         write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]')
         path = tmp_path / filename
@@ -445,6 +591,16 @@ class TestSourceInputFailures:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify undecodable logs do not disclose content.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         write_file(
             'popo.toml',
             '[logs]\ninclude=["*.log"]\npatterns={ warning="WARNING" }',
@@ -466,6 +622,20 @@ class TestSourceParity:
         tmp_path: Path,
         setting: str,
     ) -> None:
+        """
+        Verify common limits.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        setting : str
+            Configuration setting selected for mutation.
+        """
         domain, filename, validate = source_case
         write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
         write_file(filename, 'value = 1\nvalue = 2')
@@ -483,7 +653,18 @@ class TestSourceParity:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
-        """Report discovery and guide failures before sorted file findings."""
+        """
+        Report discovery and guide failures before sorted file findings.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         domain, filename, validate = source_case
         suffix = Path(filename).suffix
         first, last = f'a{suffix}', f'z{suffix}'
@@ -509,6 +690,18 @@ class TestSourceParity:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify documentation width and guide.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         domain, filename, validate = source_case
         write_file(
             'popo.toml',
@@ -538,6 +731,23 @@ class TestSourceParity:
         symlink: Callable[[Path, Path], None],
         kind: str,
     ) -> None:
+        """
+        Verify guide failures are diagnostics.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
+        kind : str
+            Native syntax kind or policy variant under test.
+        """
         domain, filename, validate = source_case
         write_file(
             'popo.toml',
@@ -580,6 +790,20 @@ class TestSourceParity:
         tmp_path: Path,
         setting: str,
     ) -> None:
+        """
+        Verify invalid shared options.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        setting : str
+            Configuration setting selected for mutation.
+        """
         domain, filename, _ = source_case
         write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]\n{setting}')
         with pytest.raises(ConfigurationError):
@@ -594,7 +818,16 @@ class TestParsedSourceEvaluation:
         source_case: SourceCase,
         tmp_path: Path,
     ) -> None:
-        """Report limits before documentation and signature-layout findings."""
+        """
+        Report limits before documentation and signature-layout findings.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         domain, filename, validate = source_case
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude=["{filename}"]\nmax-file-lines=1\n'
@@ -620,6 +853,8 @@ class TestParsedSourceEvaluation:
 
 class TestNativeSyntaxContracts:
     """
+    Cover native syntax contracts.
+
     Preserve comparable locations and purposeful parser-failure semantics.
     """
 
@@ -629,6 +864,11 @@ class TestNativeSyntaxContracts:
     ) -> None:
         """
         Reject invalid Python but retain explicit unsupported Swift facts.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
         """
         domain, _, _ = source_case
         if domain == 'python-source':
@@ -650,6 +890,11 @@ class TestNativeSyntaxContracts:
     ) -> None:
         """
         Expose the same UTF-8 encoding contract for direct parser callers.
+
+        Parameters
+        ----------
+        parser : Callable[[str], object]
+            Parser implementation or workflow reader mode under test.
         """
         with pytest.raises(UnicodeEncodeError):
             parser('\ud800')
@@ -660,6 +905,11 @@ class TestNativeSyntaxContracts:
     ) -> None:
         """
         Use physical declaration lines regardless of UTF-8 identifier width.
+
+        Parameters
+        ----------
+        source_case : SourceCase
+            Language-specific source parser, policy and fixture helpers.
         """
         domain, _, _ = source_case
         parsed = (
@@ -678,6 +928,8 @@ class TestNativeSyntaxContracts:
 
 class TestCallableRequirementNormalization:
     """
+    Cover callable requirement normalization.
+
     Select shared vocabulary after each language collects native evidence.
     """
 
@@ -698,7 +950,20 @@ class TestCallableRequirementNormalization:
         exceptions: bool,
         section: ResultSection,
     ) -> None:
-        """Keep generator priority and preserve the native exception flag."""
+        """
+        Keep generator priority and preserve the native exception flag.
+
+        Parameters
+        ----------
+        returns : bool
+            Whether the callable requires result documentation.
+        yields : bool
+            Whether the callable requires generator-result documentation.
+        exceptions : bool
+            Exception evidence or policy selected for the scenario.
+        section : ResultSection
+            Documentation section or required result kind under test.
+        """
         result = CallableRequirements.from_observations(
             returns=returns,
             yields=yields,
@@ -711,6 +976,8 @@ class TestCallableRequirementNormalization:
 
 class TestParameterLayout:
     """
+    Cover parameter layout.
+
     Evaluate comparable spans while preserving native parameter discovery.
     """
 
@@ -734,6 +1001,13 @@ class TestParameterLayout:
     ) -> None:
         """
         Accept unordered iterators and reject each physical-layout failure.
+
+        Parameters
+        ----------
+        spans : tuple[tuple[int, int | None], ...]
+            Physical parameter spans used in layout validation.
+        expected : bool
+            Expected result for the selected parameterized scenario.
         """
         assert (
             parameter_lines(
@@ -753,6 +1027,11 @@ class TestSourceInspection:
     ) -> None:
         """
         Propagate inspector failures instead of reporting partial success.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
         """
         path = tmp_path / 'input'
         path.write_text('text', encoding='utf-8')
@@ -773,6 +1052,13 @@ class TestSourceInspection:
     ) -> None:
         """
         Retain duplicate findings and skip inspection of unreadable inputs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        failure : str
+            Expected failure text, or None for a successful scenario.
         """
         first, bad, last = (tmp_path / name for name in ('first', 'bad', 'last'))
         first.write_text('one', encoding='utf-8')

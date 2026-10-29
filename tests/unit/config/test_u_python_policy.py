@@ -34,7 +34,22 @@ class TestPythonPolicyConfiguration:
         header: str,
         mode: str | None,
     ) -> None:
-        """Keep both loaders aligned across policy sources without mutation."""
+        """
+        Keep both loaders aligned across policy sources without mutation.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        filename : str
+            Input filename used in the scenario.
+        header : str
+            Leading header text supplied to the scenario.
+        mode : str | None
+            Dependency comparison mode selected for the scenario.
+        """
         setting = '' if mode is None else f'workflow-parser="{mode}"'
         metadata = '[project]\nrequires-python=">=3.13,<3.15"\n'
         write_file(

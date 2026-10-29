@@ -25,6 +25,18 @@ def audit_arguments_fixture(
 ) -> list[str]:
     """
     Build the selected format's public CLI arguments for a fresh consumer.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Per-test temporary directory supplied by pytest.
+    format_arguments : tuple[str, ...]
+        CLI arguments selecting text or JSON output.
+
+    Returns
+    -------
+    list[str]
+        CLI arguments pointing to the temporary hosted policy.
     """
     return ['audit-github-settings', '--root', str(tmp_path), *format_arguments]
 
@@ -45,7 +57,20 @@ class TestHostedCommandLine:
         capsys: pytest.CaptureFixture[str],
         cli_format: str | None,
     ) -> None:
-        """Report malformed configuration before invoking the audit adapter."""
+        """
+        Report malformed configuration before invoking the audit adapter.
+
+        Parameters
+        ----------
+        audit_arguments : list[str]
+            CLI arguments selecting the hosted policy under test.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        """
         observer = Mock(side_effect=AssertionError('must not audit invalid policy'))
         monkeypatch.setattr('popo.cli.hosted.audit', observer)
         assert main(audit_arguments) == 1
@@ -79,6 +104,25 @@ class TestHostedCommandLine:
         Parse actual consumer configuration before collecting deterministic API
         observations. Freeze the exception review day so expiry cannot change
         this dispatch test's outcome. No credentials or GitHub calls are used.
+
+        Parameters
+        ----------
+        audit_arguments : list[str]
+            CLI arguments selecting the hosted policy under test.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        hosted_exception_config : str
+            Valid hosted policy and explicit approval TOML.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        denied : bool
+            Whether access is denied in the simulated response.
         """
         write_file('pyproject.toml', hosted_exception_config)
         monkeypatch.setattr(

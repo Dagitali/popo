@@ -423,7 +423,6 @@ def validate(
     diagnostics even when other declarations resolve. Shared package/Ruff
     metadata is read once per validation, including a single parse diagnostic.
     """
-
     try:
         supported = SpecifierSet(config.requires_python)
     except InvalidSpecifier as error:

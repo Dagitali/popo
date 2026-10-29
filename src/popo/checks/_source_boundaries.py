@@ -272,7 +272,21 @@ def import_findings(
         target: str,
         names: Collection[str],
     ) -> bool:
-        """Apply exact matching with an optional dotted-descendant rule."""
+        """
+        Apply exact matching with an optional dotted-descendant rule.
+
+        Parameters
+        ----------
+        target : str
+            Import target tested against the configured matching rule.
+        names : Collection[str]
+            Names checked against the selected matching rule.
+
+        Returns
+        -------
+        bool
+            Whether the target matches exactly or an enabled dotted descendant.
+        """
         return target in names or (
             allow_descendants and any(target.startswith(name + '.') for name in names)
         )

@@ -17,7 +17,11 @@ from tests.support.installation import Installation
 
 
 class TestInstalledValidation:
-    """Exercise wheel and sdist entry points with private synthetic evidence."""
+    """
+    Cover installed validation.
+
+    Exercise wheel and sdist entry points with private synthetic evidence.
+    """
 
     @pytest.mark.parametrize('module', (False, True), ids=('console', 'module'))
     @pytest.mark.parametrize(
@@ -32,7 +36,7 @@ class TestInstalledValidation:
         command: str,
     ) -> None:
         """
-        Reject negative fixtures and accept corrected inputs after installation.
+        Check installed validators before and after correcting inputs.
 
         Parameters
         ----------

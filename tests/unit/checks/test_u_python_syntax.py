@@ -23,6 +23,11 @@ class TestPythonSyntax:
     ) -> None:
         """
         Count delimiters and empty docs without counting ordinary literals.
+
+        Parameters
+        ----------
+        reverse : bool
+            Whether conflicting CLI arguments appear in reversed order.
         """
         tree = _python_syntax.parse(
             '"""Overview 😀.\nMore details.\n"""\n'
@@ -64,7 +69,16 @@ class TestPythonSyntax:
         source: str,
         kind: type[ast.AST],
     ) -> None:
-        """Retain executable syntax as nodes without evaluating any of it."""
+        """
+        Retain executable syntax as nodes without evaluating any of it.
+
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+        kind : type[ast.AST]
+            Native syntax kind or policy variant under test.
+        """
         tree = _python_syntax.parse(source)
         assert isinstance(tree, ast.Module)
         assert isinstance(tree.body[0], kind)
@@ -84,7 +98,16 @@ class TestPythonSyntax:
         prefix: str,
         line: int,
     ) -> None:
-        """Expose only the caller's filename and native syntax-error line."""
+        """
+        Expose only the caller's filename and native syntax-error line.
+
+        Parameters
+        ----------
+        prefix : str
+            Prefix inserted into the source or configuration input.
+        line : int
+            Physical source line used in the expected observation.
+        """
         with pytest.raises(SyntaxError) as raised:
             _python_syntax.parse(prefix + 'PRIVATE(')
         assert _python_syntax.syntax_findings(raised.value, 'source.py') == [
@@ -108,6 +131,11 @@ class TestPythonSyntaxTraversal:
     ) -> None:
         """
         Expose existing AST objects without wrappers or traversal changes.
+
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
         """
         tree = _python_syntax.parse(source)
         expected = list(ast.walk(tree))

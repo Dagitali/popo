@@ -42,7 +42,16 @@ class TestCanonicalDates:
         text: str,
         expected: date | None,
     ) -> None:
-        """Accept valid leap dates and reject alternate or impossible dates."""
+        """
+        Accept valid leap dates and reject alternate or impossible dates.
+
+        Parameters
+        ----------
+        text : str
+            Text or subprocess text-mode flag supplied to the operation.
+        expected : date | None
+            Expected result for the selected parameterized scenario.
+        """
         if expected is None:
             with pytest.raises(ValueError):
                 parse_iso_date(text)
@@ -57,7 +66,14 @@ class TestSafetyConfiguration:
         self,
         tmp_path: Path,
     ) -> None:
-        """Leave aggregate checks unchanged without consumer opt-in."""
+        """
+        Leave aggregate checks unchanged without consumer opt-in.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         config = load_safety_config(tmp_path)
         assert not config.configured
         assert config.workflows == config.npm_pairs == ()
@@ -67,7 +83,16 @@ class TestSafetyConfiguration:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        """Reject ambiguous approvals for the same workflow and event."""
+        """
+        Reject ambiguous approvals for the same workflow and event.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
         entry = (
             '[[tool.popo.safety.exceptions]]\nworkflow="ci.yml"\n'
             'trigger="workflow_run"\nowner="team"\nreason="review"\n'
@@ -102,6 +127,19 @@ class TestSafetyConfiguration:
 
         Reviewed exceptions retain explicit scope and approval details; an
         invalid field must fail for its intended reason without file changes.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        field : str
+            Configuration or report field selected for mutation.
+        value : str
+            Unvalidated value supplied to the operation.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         fields = {
             'workflow': '"ci.yml"',
@@ -140,7 +178,20 @@ class TestSafetyConfiguration:
         content: str,
         message: str,
     ) -> None:
-        """Fail explicitly for unsupported or unsafe configuration."""
+        """
+        Fail explicitly for unsupported or unsafe configuration.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        content : str
+            Text written to the scenario input.
+        message : str
+            Expected error message or scenario diagnostic.
+        """
         write_file('pyproject.toml', '[tool.popo.safety]\n' + content)
         with pytest.raises(ConfigurationError, match=message):
             load_safety_config(tmp_path)
@@ -150,7 +201,16 @@ class TestSafetyConfiguration:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        """Load exact reviewed scopes and configured manifest pairs."""
+        """
+        Load exact reviewed scopes and configured manifest pairs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
         write_file(
             'pyproject.toml',
             '[tool.popo.safety]\nworkflow-globs=["ci.yml"]\n'
