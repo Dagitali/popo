@@ -21,20 +21,6 @@ from tests.support.files import snapshot_files
 class TestSourceCommands:
     """Verify selection, JSON reporting and private-artifact boundaries."""
 
-    @pytest.mark.parametrize(
-        'command',
-        ('check-python-source', 'check-swift-source', 'check-logs'),
-    )
-    def test_absent_configuration_reports_failure(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-    ) -> None:
-        assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert 'configuration:' in report['checks'][0]['diagnostics'][0]['message']
-
     def test_aggregate_continues_after_invalid_domain_configuration(
         self: Self,
         tmp_path: Path,

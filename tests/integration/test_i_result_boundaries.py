@@ -147,7 +147,14 @@ class TestValidationCommands:
 
     @pytest.mark.parametrize(
         'command',
-        ('check-test-results', 'check-swift-boundaries', 'check-python-boundaries'),
+        (
+            'check-test-results',
+            'check-swift-boundaries',
+            'check-python-boundaries',
+            'check-python-source',
+            'check-swift-source',
+            'check-logs',
+        ),
     )
     def test_absent_configuration_fails(
         self: Self,
@@ -168,8 +175,22 @@ class TestValidationCommands:
         command : str
             Explicit public validator selected for this consumer scenario.
         """
+        before = snapshot_files(tmp_path)
         assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
-        assert not json.loads(capsys.readouterr().out)['passed']
+        output = capsys.readouterr()
+        assert output.err == ''
+        report = json.loads(output.out)
+        assert report['command'] == command
+        assert report['passed'] is False
+        assert len(report['checks']) == 1
+        check = report['checks'][0]
+        assert check['check'] == command
+        assert check['passed'] is False
+        assert len(check['diagnostics']) == 1
+        diagnostic = check['diagnostics'][0]
+        assert diagnostic['severity'] == 'error'
+        assert 'configuration:' in diagnostic['message']
+        assert snapshot_files(tmp_path) == before
 
     def test_aggregate_continues_after_domain_configuration_failure(
         self: Self,
