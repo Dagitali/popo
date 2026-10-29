@@ -82,11 +82,11 @@ configured; see the [release policy].
   module ownership supports flat and `src/` layouts, including modules named `src.py`. See [result
   and boundary checks](docs/result-and-boundary-checks.md);
 - Opt-in Python and Swift source conventions, documentation contracts and redacted log checks; the
-  unreleased Swift backend distinguishes declarations from imports through Tree-sitter concrete
-  syntax without a Swift installation; quoted Python return annotations follow unquoted rules,
-  log-root errors stay redacted, and log patterns must be nonblank single-line literals. Source/log
-  include and exclude patterns share root-confinement validation with setting-specific diagnostics.
-  See [source and log checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
+  v0.13.0 Swift backend distinguishes declarations from imports through Tree-sitter concrete syntax
+  without a Swift installation; quoted Python return annotations follow unquoted rules, log-root
+  errors stay redacted, and log patterns must be nonblank single-line literals. Source/log include
+  and exclude patterns share root-confinement validation with setting-specific diagnostics. See
+  [source and log checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
 - Opt-in Swift compiler, package tools-version and scoped CI declaration checks; see [Swift
   toolchain policy](docs/swift-policy.md);
 - Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];

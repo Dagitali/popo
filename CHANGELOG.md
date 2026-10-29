@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.13.0 - 2026-10-29](#0130---2026-10-29)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
@@ -129,6 +130,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+## [0.13.0] - 2026-10-29
+
 ### Added
 
 - Integrate `tree-sitter>=0.26.0,<0.27` and `tree-sitter-swift>=0.7.4,<0.8`, with synchronized
@@ -161,6 +164,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   errors.
 - Hash committed inventory blobs through read-only buffer views, preserving checksums, batch
   validation, path ordering and memory limits; avoid whole-file copies during Swift lexical scans.
+- Alphabetize Python functions and methods while preserving fixture dependencies; complete NumPy
+  docstrings with parameter, result and propagated-exception contracts within 79 columns. Condense
+  changelog history into consistently ordered conventional subsections.
 - Consolidate deterministic class-based tests with parameterized policy/language/input matrices,
   isolated fixtures, fresh exception instances and precise platform-capability skips. Strengthen
   exact ordered/redacted diagnostics, configuration precedence, threshold and version boundaries,
@@ -848,6 +854,7 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.10.0]: docs/releases/v0.10.0.md
 [0.11.0]: docs/releases/v0.11.0.md
 [0.12.0]: docs/releases/v0.12.0.md
+[0.13.0]: docs/releases/v0.13.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
