@@ -154,13 +154,22 @@ class TestResultAdapter:
         ]
 
     @pytest.mark.parametrize(
-        'changes,threshold',
+        'changes,thresholds',
         (
-            ({'totalTestCount': 0, 'passedTests': 0}, 'minimum-tests'),
-            ({'passedTests': 0, 'failedTests': 1}, 'minimum-passed'),
-            ({'totalTestCount': 2, 'failedTests': 1}, 'maximum-failed'),
-            ({'totalTestCount': 2, 'skippedTests': 1}, 'maximum-skipped'),
-            ({'runtimeWarnings': [{'message': 'PRIVATE BALANCE'}]}, 'maximum-warnings'),
+            (
+                {'totalTestCount': 0, 'passedTests': 0},
+                ('minimum-tests', 'minimum-passed'),
+            ),
+            (
+                {'passedTests': 0, 'failedTests': 1},
+                ('minimum-passed', 'maximum-failed'),
+            ),
+            ({'totalTestCount': 2, 'failedTests': 1}, ('maximum-failed',)),
+            ({'totalTestCount': 2, 'skippedTests': 1}, ('maximum-skipped',)),
+            (
+                {'runtimeWarnings': [{'message': 'PRIVATE BALANCE'}]},
+                ('maximum-warnings',),
+            ),
         ),
     )
     def test_acceptance_is_consumer_configurable(
@@ -168,10 +177,10 @@ class TestResultAdapter:
         passing: dict[str, object],
         relaxed_thresholds: dict[str, int],
         changes: dict[str, object],
-        threshold: str,
+        thresholds: tuple[str, ...],
     ) -> None:
         """
-        Reject each threshold violation and permit an explicit relaxed policy.
+        Reject all threshold violations and permit an explicit relaxed policy.
 
         Parameters
         ----------
@@ -180,13 +189,16 @@ class TestResultAdapter:
         relaxed_thresholds : dict[str, int]
             Fresh acceptance limits allowing each selected violation.
         changes : dict[str, object]
-            Count or warning replacements introducing one acceptance violation.
-        threshold : str
-            Consumer acceptance setting expected to reject the modified report.
+            Count or warning replacements introducing acceptance violations.
+        thresholds : tuple[str, ...]
+            Every failing acceptance setting, in diagnostic order.
         """
         report = passing | changes
         findings = xcode_summary(report, THRESHOLDS)
-        assert any(threshold in finding for finding in findings)
+        assert findings == [
+            f'{threshold} acceptance threshold not satisfied'
+            for threshold in thresholds
+        ]
         assert 'PRIVATE BALANCE' not in str(findings)
         assert xcode_summary(report, relaxed_thresholds) == []
 
