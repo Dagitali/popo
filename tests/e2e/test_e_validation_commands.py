@@ -48,17 +48,15 @@ class TestInstalledValidation:
         if command == 'check-test-results':
             policy = '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]'
             path = tmp_path / 'summary.json'
-            valid = json.dumps(
-                dict(totalTestCount=1, passedTests=1, failedTests=0, skippedTests=0),
-            )
+            summary = {
+                'totalTestCount': 1,
+                'passedTests': 1,
+                'failedTests': 0,
+                'skippedTests': 0,
+            }
+            valid = json.dumps(summary)
             invalid = json.dumps(
-                dict(
-                    totalTestCount=1,
-                    passedTests=1,
-                    failedTests=0,
-                    skippedTests=0,
-                    runtimeWarnings=[{'message': 'PRIVATE BALANCE'}],
-                ),
+                summary | {'runtimeWarnings': [{'message': 'PRIVATE BALANCE'}]},
             )
             extra = ['--summary', str(path)]
         elif command == 'check-python-boundaries':
