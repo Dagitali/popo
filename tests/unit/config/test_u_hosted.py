@@ -192,54 +192,44 @@ class TestHostedConfiguration:
                 'https://user:secret@example.com/review',
                 'HTTPS evidence URL',
             ),
+            *(
+                pytest.param('https://example.com/review', approval, None, id=label)
+                for label, approval in (
+                    ('valid-https', 'https://example.com/review'),
+                    ('valid-port', 'https://example.com:443/review'),
+                    ('valid-ipv6', 'https://[::1]:8443/review'),
+                )
+            ),
         ],
     )
-    def test_invalid_exception(
+    def test_exception_contract(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         hosted_exception_config: str,
         original: str,
         replacement: str,
-        message: str,
+        message: str | None,
     ) -> None:
         """
         Reject incomplete approvals, unsafe URLs, and invalid expiry dates.
+
+        Accepted records retain the exact approved scope, URL and inclusive
+        expiry date.
         """
         assert original in hosted_exception_config, 'Mutation marker missing'
         write_file(
             'pyproject.toml',
             hosted_exception_config.replace(original, replacement),
         )
-        with pytest.raises(ConfigurationError, match=message):
-            load_hosted_config(tmp_path)
-
-    @pytest.mark.parametrize(
-        'approval',
-        (
-            'https://example.com/review',
-            'https://example.com:443/review',
-            'https://[::1]:8443/review',
-        ),
-    )
-    def test_valid_exception(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        hosted_exception_config: str,
-        approval: str,
-    ) -> None:
-        """
-        Load the exact approved scope and its inclusive expiry date.
-        """
-        write_file(
-            'pyproject.toml',
-            hosted_exception_config.replace('https://example.com/review', approval),
-        )
-        config = load_hosted_config(tmp_path)
-        assert config.exceptions[0].approval == approval
-        assert config.exceptions[0].expires == date(2026, 10, 31)
-        assert config.repositories[0].labels == ('bug',)
+        if message is not None:
+            with pytest.raises(ConfigurationError, match=message):
+                load_hosted_config(tmp_path)
+        else:
+            config = load_hosted_config(tmp_path)
+            assert config.exceptions[0].approval == replacement
+            assert config.exceptions[0].expires == date(2026, 10, 31)
+            assert config.repositories[0].labels == ('bug',)
 
 
 # !SECTION
