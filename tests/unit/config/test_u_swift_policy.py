@@ -73,9 +73,6 @@ class TestSwiftPolicyConfiguration:
         with pytest.raises(ConfigurationError):
             load_swift_policy_config(swift_policy_consumer)
 
-    def test_omitted_patch_means_zero(self) -> None:
-        assert parse_version('6.1') == parse_version('6.1.0') == (6, 1, 0)
-
     def test_parse_without_reading_inputs(
         self,
         swift_policy_consumer: Path,
@@ -113,15 +110,43 @@ class TestSwiftPolicyConfiguration:
         assert 'check-swift-policy' in load_plan(root).checks
 
     @pytest.mark.parametrize(
-        'version',
-        ['6.1-SNAPSHOT', '6', '06.1', '>=6.0', '6.0.0.1', ''],
+        'version,expected',
+        [
+            ('6.1', (6, 1, 0)),
+            ('6.1.0', (6, 1, 0)),
+            (' \t6.1\n', (6, 1, 0)),
+            ('0.0', (0, 0, 0)),
+            ('12.34.56', (12, 34, 56)),
+            *(
+                (version, None)
+                for version in (
+                    '6.1-SNAPSHOT',
+                    '6',
+                    '06.1',
+                    '>=6.0',
+                    '6.0.0.1',
+                    '',
+                    '6.١',
+                    '6.1+build',
+                    '6.1-rc.1',
+                )
+            ),
+        ],
     )
     def test_version_syntax(
         self,
         version: str,
+        expected: tuple[int, int, int] | None,
     ) -> None:
-        with pytest.raises(ValueError):
-            parse_version(version)
+        """Normalize stable ASCII versions and reject unsupported syntax."""
+        if expected is None:
+            with pytest.raises(
+                ValueError,
+                match=r'^expected stable Swift major\.minor\[\.patch\] version$',
+            ):
+                parse_version(version)
+        else:
+            assert parse_version(version) == expected
 
 
 # !SECTION
