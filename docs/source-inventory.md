@@ -73,7 +73,8 @@ status two. Shell redirection creates output files and may leave an empty file a
 Consumers must propagate exit statuses and publish evidence only after successful generation.
 
 Git must be installed. Bare repositories are unsupported. Git commands are local-only with a
-120-second timeout per invocation; blobs are batch-read into memory, so very large repositories can
+120-second timeout per invocation. Hashing uses read-only views into the batch buffer, avoiding
+per-blob byte copies. The complete batch remains in memory, so very large repositories can still
 require substantial memory. Git error streams and source contents are omitted from failure messages.
 Checksums establish identity, not authenticity or correctness. No network fetch is performed and
 unavailable objects remain failures.
