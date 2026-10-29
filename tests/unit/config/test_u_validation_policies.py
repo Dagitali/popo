@@ -14,6 +14,15 @@ from popo.config.source_boundaries import load_boundaries_config
 from popo.config.swift_boundaries import load_swift_boundaries_config
 from popo.config.test_results import load_test_results_config
 
+# SECTION: CONSTANTS
+
+
+RESULT_SETTINGS = 'adapter="xcode-summary"\ninclude=["*.json"]'
+
+
+# !SECTION
+
+
 # SECTION: TESTS
 
 
@@ -21,25 +30,26 @@ class TestResultPolicy:
     """Keep adapter selection explicit and counts strongly typed."""
 
     @pytest.mark.parametrize(
-        'settings',
+        'settings,message',
         (
-            '',
-            'adapter="unknown"\ninclude=["*.json"]',
-            'adapter="xcode-summary"\ninclude=[]',
-            'adapter="xcode-summary"\ninclude=["../*.json"]',
-            'adapter="xcode-summary"\ninclude=["*.json"]\nmaximum-skipped=true',
-            'adapter="xcode-summary"\ninclude=["*.json"]\nmaximum-warnings=-1',
-            'adapter="xcode-summary"\ninclude=["*.json"]\nminimum-tests="1"',
-            'adapter="xcode-summary"\ninclude=["*.json"]\nquery="arbitrary"',
+            ('', 'adapter must be xcode-summary'),
+            ('adapter="unknown"\ninclude=["*.json"]', 'adapter must be xcode-summary'),
+            ('adapter="xcode-summary"\ninclude=[]', 'include must not be empty'),
+            (
+                'adapter="xcode-summary"\ninclude=["../*.json"]',
+                'include must stay inside the selected root',
+            ),
+            (RESULT_SETTINGS + '\nquery="arbitrary"', 'unknown test-results setting'),
         ),
     )
     def test_invalid_result_policy(
         self: Self,
         tmp_path: Path,
         settings: str,
+        message: str,
     ) -> None:
         """
-        Reject unknown formats, unsafe selection and noninteger thresholds.
+        Reject unknown formats, unsafe selection and unsupported settings.
 
         Parameters
         ----------
@@ -48,9 +58,39 @@ class TestResultPolicy:
             inputs.
         settings : str
             Standalone TOML settings deliberately violating loader contracts.
+        message : str
+            Diagnostic identifying the intended invalid configuration field.
         """
         (tmp_path / 'popo.toml').write_text('[test-results]\n' + settings)
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
+            load_test_results_config(tmp_path)
+
+    @pytest.mark.parametrize(
+        'field',
+        (
+            'minimum-tests',
+            'minimum-passed',
+            'maximum-failed',
+            'maximum-skipped',
+            'maximum-warnings',
+        ),
+    )
+    @pytest.mark.parametrize('value', ('true', '-1', '"1"', '1.0'))
+    def test_thresholds_require_nonnegative_integers(
+        self,
+        tmp_path: Path,
+        field: str,
+        value: str,
+    ) -> None:
+        """Reject boolean, negative, string and float values for every count."""
+        (tmp_path / 'popo.toml').write_text(
+            f'[test-results]\n{RESULT_SETTINGS}\n{field}={value}',
+            encoding='utf-8',
+        )
+        with pytest.raises(
+            ConfigurationError,
+            match=rf'test-results\.{field} requires a nonnegative integer',
+        ):
             load_test_results_config(tmp_path)
 
 
@@ -61,65 +101,81 @@ class TestBoundaryPolicy:
     Apply common policy contracts independently of language syntax.
     """
 
-    @pytest.mark.parametrize(
-        'settings',
-        (
-            'layers=[]',
-            'unknown=true',
-            '[[swift-boundaries.layers]]\nname="bad name"\ninclude=["*.swift"]',
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["../*.swift"]',
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\nforbidden-layers=["unknown"]',
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\nforbidden-layers=["core"]',
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\nallowed-imports=["bad.module"]',
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]',
-        ),
-    )
-    def test_invalid_boundary_policy(
+    def test_swift_imports_reject_dotted_modules(
         self: Self,
         tmp_path: Path,
+    ) -> None:
+        """Reject dotted Swift modules through the native configuration loader."""
+        (tmp_path / 'popo.toml').write_text(
+            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
+            'allowed-imports=["bad.module"]',
+            encoding='utf-8',
+        )
+        with pytest.raises(ConfigurationError, match='must be identifiers'):
+            load_swift_boundaries_config(tmp_path)
+
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    @pytest.mark.parametrize(
+        'settings,message',
+        (
+            ('', 'layers must be a nonempty array'),
+            ('layers=[]', 'layers must be a nonempty array'),
+            ('unknown=true', 'unknown .* setting'),
+            (
+                '[[DOMAIN.layers]]\nname="bad name"\ninclude=["*.SOURCE"]',
+                'name must be a literal identifier',
+            ),
+            (
+                '[[DOMAIN.layers]]\nname="core"\ninclude=["../*.SOURCE"]',
+                'must stay inside the selected root',
+            ),
+            (
+                '[[DOMAIN.layers]]\nname="core"\ninclude=["*.SOURCE"]\n'
+                'forbidden-layers=["unknown"]',
+                'requires other known layer names',
+            ),
+            (
+                '[[DOMAIN.layers]]\nname="core"\ninclude=["*.SOURCE"]\n'
+                'forbidden-layers=["core"]',
+                'requires other known layer names',
+            ),
+            (
+                '[[DOMAIN.layers]]\nname="core"\ninclude=["*.SOURCE"]\n'
+                '[[DOMAIN.layers]]\nname="core"\ninclude=["*.SOURCE"]',
+                'duplicate Boundary layer name',
+            ),
+        ),
+    )
+    def test_invalid_policy(
+        self: Self,
+        tmp_path: Path,
+        language: str,
         settings: str,
+        message: str,
     ) -> None:
         """
         Reject invalid names, unknown/self references and escaping globs.
 
         Parameters
         ----------
-        tmp_path : Path
+        tmp_path : pathlib.Path
             Pytest-managed directory containing only disposable consumer
             inputs.
+        language : str
+            Python or Swift policy namespace, independent of source syntax.
         settings : str
             Standalone TOML settings deliberately violating loader contracts.
+        message : str
+            Expected diagnostic identifying the violated policy contract.
         """
-        (tmp_path / 'popo.toml').write_text('[swift-boundaries]\n' + settings)
-        with pytest.raises(ConfigurationError):
-            load_swift_boundaries_config(tmp_path)
-
-    @pytest.mark.parametrize('language', ('python', 'swift'))
-    @pytest.mark.parametrize(
-        'settings',
-        (
-            '',
-            'layers=[]',
-            'unknown=true',
-            '[[DOMAIN.layers]]\nname="core"\ninclude=["*.SOURCE"]\n'
-            'forbidden-layers=["core"]',
-        ),
-    )
-    def test_invalid_policy(
-        self,
-        tmp_path: Path,
-        language: str,
-        settings: str,
-    ) -> None:
-        """Reject empty, unknown and self-referencing layer policies."""
         domain = f'{language}-boundaries'
-        settings = settings.replace('DOMAIN', domain).replace('SOURCE', language)
+        suffix = 'py' if language == 'python' else 'swift'
+        settings = settings.replace('DOMAIN', domain).replace('SOURCE', suffix)
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\n{settings}',
             encoding='utf-8',
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_boundaries_config(tmp_path, domain)
 
     @pytest.mark.parametrize('language', ('python', 'swift'))

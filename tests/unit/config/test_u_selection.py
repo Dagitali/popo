@@ -4,6 +4,7 @@
 Exercise consumer-language-independent configuration and check planning.
 """
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,6 +14,47 @@ from popo.config import ConfigurationError
 from popo.config._common import read_popo
 from popo.config.selection import BASELINE, load_plan
 from tests.support.files import FileWriter
+
+# SECTION: FIXTURES
+
+
+@pytest.fixture(name='write_selection', params=('popo.toml', 'pyproject.toml'))
+def write_selection_fixture(
+    request: pytest.FixtureRequest,
+    write_file: FileWriter,
+) -> Callable[[str], Path]:
+    """
+    Write selection scenarios to either supported consumer-policy source.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Standalone or embedded policy filename selected for this scenario.
+    write_file : FileWriter
+        UTF-8 writer rooted in the requesting test's temporary repository.
+
+    Returns
+    -------
+    collections.abc.Callable[[str], pathlib.Path]
+        Writer accepting root settings and simple single-bracket table
+        headers. Embedded cases prefix those tables with tool.popo; this
+        fixture does not parse arbitrary TOML or merge existing files.
+    """
+    filename = str(request.param)
+
+    def write(
+        settings: str,
+    ) -> Path:
+        """Place the same selection scenario under its policy namespace."""
+        if filename == 'pyproject.toml':
+            settings = '[tool.popo]\n' + re.sub(r'(?m)^\[', '[tool.popo.', settings)
+        return write_file(filename, settings)
+
+    return write
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -32,22 +74,17 @@ class TestCheckSelection:
         assert plan.source == tmp_path / 'pyproject.toml'
         assert 'legacy' in plan.reason
 
-    @pytest.mark.parametrize(
-        'filename,prefix',
-        [('popo.toml', ''), ('pyproject.toml', '[tool.popo]\n')],
-    )
     def test_explicit_selection(
         self,
-        write_file: FileWriter,
+        write_selection: Callable[[str], Path],
         tmp_path: Path,
-        filename: str,
-        prefix: str,
     ) -> None:
         """
         Full command names select only the requested checks in either source.
         """
-        write_file(filename, prefix + 'checks=["check-required-files","check-docs"]')
+        source = write_selection('checks=["check-required-files","check-docs"]')
         plan = load_plan(tmp_path)
+        assert plan.source == source
         assert plan.checks == ('check-required-files', 'check-docs')
         assert plan.reason == 'explicit checks'
 
@@ -74,25 +111,24 @@ class TestCheckSelection:
     )
     def test_invalid_selection(
         self,
-        write_file: FileWriter,
+        write_selection: Callable[[str], Path],
         tmp_path: Path,
         settings: str,
         profile: str | None,
         message: str,
     ) -> None:
         """Reject invalid selections before any validator executes."""
-        write_file('popo.toml', settings)
+        write_selection(settings)
         with pytest.raises(ConfigurationError, match=message):
             load_plan(tmp_path, profile)
 
     def test_opt_in_defaults(
         self,
-        write_file: FileWriter,
+        write_selection: Callable[[str], Path],
         tmp_path: Path,
     ) -> None:
         """Legacy defaults retain declared optional domains in stable order."""
-        write_file(
-            'popo.toml',
+        write_selection(
             '[automation]\n[safety]\n[files]\n[headers]\n[guardrails]',
         )
         assert load_plan(tmp_path).checks == (
@@ -106,16 +142,17 @@ class TestCheckSelection:
 
     def test_profile(
         self,
-        write_file: FileWriter,
+        write_selection: Callable[[str], Path],
         tmp_path: Path,
     ) -> None:
         """An explicit profile replaces the default selection."""
-        write_file(
-            'popo.toml',
+        source = write_selection(
             'checks=["check-docs"]\n[profiles.quick]\nchecks=["check-github-actions-pins"]',
         )
-        assert load_plan(tmp_path, 'quick').checks == ('check-github-actions-pins',)
-        assert load_plan(tmp_path, 'quick').reason == 'profile: quick'
+        plan = load_plan(tmp_path, 'quick')
+        assert plan.checks == ('check-github-actions-pins',)
+        assert plan.reason == 'profile: quick'
+        assert plan.source == source
         assert load_plan(tmp_path).checks == ('check-docs',)
 
 

@@ -12,10 +12,42 @@ from pathlib import Path
 import pytest
 
 from popo.config import ConfigurationError
+from popo.config._common import parse_iso_date
 from popo.config.safety import load_safety_config
 from tests.support.files import FileWriter
 
 # SECTION: TESTS
+
+
+class TestCanonicalDates:
+    """Keep shared date syntax strict without imposing expiry policy."""
+
+    @pytest.mark.parametrize(
+        'text,expected',
+        (
+            ('2024-02-29', date(2024, 2, 29)),
+            ('2000-02-29', date(2000, 2, 29)),
+            ('2026-10-28', date(2026, 10, 28)),
+            ('1900-02-29', None),
+            ('2026-02-29', None),
+            ('20240229', None),
+            ('2024-W09-4', None),
+            (' 2024-02-29', None),
+            ('2024-2-29', None),
+            ('2024-02-29T00:00:00', None),
+        ),
+    )
+    def test_calendar_and_canonical_format(
+        self,
+        text: str,
+        expected: date | None,
+    ) -> None:
+        """Accept valid leap dates and reject alternate or impossible dates."""
+        if expected is None:
+            with pytest.raises(ValueError):
+                parse_iso_date(text)
+        else:
+            assert parse_iso_date(text) == expected
 
 
 class TestSafetyConfiguration:
