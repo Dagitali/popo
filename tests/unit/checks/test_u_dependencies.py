@@ -12,7 +12,7 @@ import pytest
 
 from popo.checks.dependencies import validate
 from popo.config import DependencyConfig, DependencyMode
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -326,14 +326,27 @@ class TestDependencyPolicy:
             assert failures[1].startswith(f'{requirements}:1: installer directives')
             assert failures[2].startswith(f'{requirements}: invalid requirement')
 
+    @pytest.mark.parametrize(
+        'missing',
+        [
+            ('pyproject.toml',),
+            ('requirements.txt',),
+            ('pyproject.toml', 'requirements.txt'),
+        ],
+        ids=('metadata', 'requirements', 'both'),
+    )
     def test_missing_files(
         self,
         tmp_path: Path,
         mode: DependencyMode,
+        missing: tuple[str, ...],
     ) -> None:
         """
         Verify absent dependency metadata and constraints each produce a
         diagnostic.
+
+        An undecodable existing partner must not be read before missing-input
+        checks finish. Validation preserves all existing input bytes.
 
         Parameters
         ----------
@@ -341,11 +354,20 @@ class TestDependencyPolicy:
             Temporary directory for isolated test inputs.
         mode : DependencyMode
             Dependency comparison policy selected for the scenario.
+        missing : tuple[str, ...]
+            Metadata, requirements or both filenames deliberately left absent.
         """
         paths = (tmp_path / 'pyproject.toml', tmp_path / 'requirements.txt')
+        for path in paths:
+            if path.name not in missing:
+                path.write_bytes(b'\xffPRIVATE input')
+        before = snapshot_files(tmp_path)
         assert validate(DependencyConfig(*paths, mode)) == [
-            f'dependency-policy file does not exist: {path}' for path in paths
+            f'dependency-policy file does not exist: {path}'
+            for path in paths
+            if path.name in missing
         ]
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'suffix',
