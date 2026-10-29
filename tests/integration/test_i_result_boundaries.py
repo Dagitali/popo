@@ -72,7 +72,12 @@ class TestValidationCommands:
         report = artifacts / 'summary.json'
         report.write_text(
             json.dumps(
-                dict(totalTestCount=1, passedTests=1, failedTests=0, skippedTests=0),
+                {
+                    'totalTestCount': 1,
+                    'passedTests': 1,
+                    'failedTests': 0,
+                    'skippedTests': 0,
+                },
             ),
         )
         (artifacts / 'unselected.json').write_text('PRIVATE invalid content')
