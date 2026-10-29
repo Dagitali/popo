@@ -6,10 +6,12 @@ Validate explicit invocation identifiers and confined contract inputs.
 
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
-from popo.config import ConfigurationError
+from popo.config import ConfigurationError, guardrails, selection
+from popo.config._common import read_popo
 from popo.config.guardrails import GuardrailsConfig, load_guardrails_config
 from tests.support.files import FileWriter
 
@@ -19,13 +21,25 @@ from tests.support.files import FileWriter
 class TestGuardrailConfiguration:
     """Reject ambiguous or unsafe entry-point settings before inspection."""
 
+    @pytest.mark.parametrize(
+        'attribute,relative',
+        [
+            ('makefile', 'Makefile'),
+            ('hooks', '.pre-commit-config.yaml'),
+            ('workflow', '.github/workflows/ci.yml'),
+        ],
+    )
     def test_defaults(
         self,
         guardrail_consumer: GuardrailsConfig,
+        attribute: str,
+        relative: str,
     ) -> None:
         """Resolve each default path under the consumer root."""
         assert guardrail_consumer.target == 'guardrails'
-        assert guardrail_consumer.makefile == guardrail_consumer.root / 'Makefile'
+        assert (
+            getattr(guardrail_consumer, attribute) == guardrail_consumer.root / relative
+        )
 
     @pytest.mark.parametrize(
         'settings,message',
@@ -68,13 +82,15 @@ class TestGuardrailConfiguration:
         )
         assert load_guardrails_config(tmp_path).profile == 'guardrails'
 
+    @pytest.mark.parametrize('attribute', ('makefile', 'hooks', 'workflow'))
     def test_symlink_escape(
         self,
         guardrail_consumer: GuardrailsConfig,
         symlink: Callable[[Path, Path], None],
+        attribute: str,
     ) -> None:
         """Resolved contract paths must remain within the consumer root."""
-        path = guardrail_consumer.makefile
+        path = getattr(guardrail_consumer, attribute)
         path.unlink()
         symlink(path, guardrail_consumer.root.parent / 'outside')
         with pytest.raises(ConfigurationError, match='inside the repository'):
@@ -92,11 +108,6 @@ class TestGuardrailConfigurationSnapshot:
         filename: str,
     ) -> None:
         """Do not combine entry points with a subsequently changed profile."""
-        from unittest.mock import Mock
-
-        from popo.config import guardrails, selection
-        from popo.config._common import read_popo
-
         prefix = '' if filename == 'popo.toml' else 'tool.popo.'
         (tmp_path / filename).write_text(
             f'[{prefix}guardrails]\n'
