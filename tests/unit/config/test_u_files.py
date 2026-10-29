@@ -104,25 +104,31 @@ class TestFilePolicyConfig:
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'extra',
+        'overrides,message',
         [
-            'unknown = true',
-            'project = false',
-            'ignored-directories = ["../outside"]',
-            'ignored-directories = ["*"]',
-            'exceptions = "skip"',
-            'rules = []',
+            ({'unknown': 'true'}, 'unknown tool.popo.headers setting'),
+            ({'project': 'false'}, 'project must be a non-empty string'),
+            (
+                {'ignored-directories': '["../outside"]'},
+                'ignored-directories must contain literal directory names',
+            ),
+            (
+                {'ignored-directories': '["*"]'},
+                'ignored-directories must contain literal directory names',
+            ),
+            ({'exceptions': '"skip"'}, 'headers.exceptions must be an array'),
+            ({'rules': '[]'}, 'headers.rules must be a nonempty array'),
         ],
     )
     def test_invalid_header_tables(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        extra: str,
+        overrides: dict[str, str],
+        message: str,
     ) -> None:
         """
-        Fail malformed top-level settings instead of silently weakening
-        scope.
+        Fail malformed top-level settings instead of silently weakening scope.
 
         Parameters
         ----------
@@ -130,22 +136,22 @@ class TestFilePolicyConfig:
             Isolated temporary consumer root.
         write_file : FileWriter
             UTF-8 writer creating synthetic policy inputs.
-        extra : str
-            Malformed header configuration overriding valid fixture fields.
+        overrides : dict[str, str]
+            Raw TOML field values replacing otherwise valid header settings.
+        message : str
+            Diagnostic identifying the intended top-level contract violation.
         """
-        identity = '' if extra.startswith('project =') else 'project = "Sample"\n'
-        rules = (
-            ''
-            if extra.startswith('rules =')
-            else (
-                '\n[[tool.popo.headers.rules]]\npatterns=["*"]\nformat="raw"\nprefix="X"'
-            )
-        )
+        fields = {
+            'project': '"Sample"',
+            'notice': '"Copyright"',
+            'rules': '[{patterns=["*"],format="raw",prefix="X"}]',
+        } | overrides
         write_file(
             'pyproject.toml',
-            '[tool.popo.headers]\n' + identity + 'notice="Copyright"\n' + extra + rules,
+            '[tool.popo.headers]\n'
+            + '\n'.join(f'{key} = {value}' for key, value in fields.items()),
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
