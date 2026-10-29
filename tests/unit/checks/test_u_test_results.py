@@ -5,6 +5,7 @@ Exercise strict report schema, configurable acceptance and private diagnostics.
 """
 
 import json
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Self
@@ -15,6 +16,7 @@ import pytest
 from popo.checks.test_results import validate, xcode_summary
 from popo.config.test_results import THRESHOLDS, load_test_results_config
 from popo.config.test_results import TestResultsConfig as ResultConfig
+from tests.support.files import snapshot_files
 
 # SECTION: FIXTURES
 
@@ -235,6 +237,7 @@ class TestResultInputs:
         self: Self,
         tmp_path: Path,
         result_config: ResultConfig,
+        symlink: Callable[[Path, Path], None],
         case: str,
     ) -> None:
         """
@@ -247,6 +250,8 @@ class TestResultInputs:
             inputs.
         result_config : ResultConfig
             Fresh loaded policy selecting JSON reports in this consumer root.
+        symlink : collections.abc.Callable[[pathlib.Path, pathlib.Path], None]
+            Capability-aware link creator that preserves unexpected errors.
         case : str
             Independent missing, malformed, unreadable or escaping input
             scenario.
@@ -257,10 +262,23 @@ class TestResultInputs:
         elif case == 'invalid-utf8':
             path.write_bytes(b'\xff')
         elif case == 'escaped':
-            path.symlink_to(tmp_path.parent / 'outside.json')
+            outside = tmp_path.parent / 'outside.json'
+            outside.write_bytes(b'\xffPRIVATE report')
+            symlink(path, outside)
+        before = snapshot_files(tmp_path)
         findings = validate(result_config)
-        assert findings
+        expected = {
+            'missing': ['no inputs match: *.json'],
+            'invalid-json': ['summary.json: invalid test-result JSON'],
+            'invalid-utf8': ['summary.json: cannot read UTF-8 input'],
+            'escaped': [
+                'summary.json: input escapes selected root',
+                'no inputs match: *.json',
+            ],
+        }
+        assert findings == expected[case]
         assert 'PRIVATE' not in str(findings)
+        assert snapshot_files(tmp_path) == before
 
     def test_single_summary_is_literal_and_does_not_read_siblings(
         self: Self,

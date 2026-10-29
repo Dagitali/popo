@@ -4,6 +4,7 @@
 Exercise consumer layouts, lexical masking and directional boundary policy.
 """
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Self
 from unittest.mock import Mock
@@ -13,6 +14,7 @@ import pytest
 from popo.checks import swift_boundaries
 from popo.checks.swift_boundaries import validate
 from popo.config.swift_boundaries import load_swift_boundaries_config
+from tests.support.files import snapshot_files
 
 # SECTION: FIXTURES
 
@@ -198,6 +200,7 @@ class TestSwiftBoundaries:
     def test_missing_or_unreadable_layers_cannot_pass(
         self: Self,
         boundary_project: tuple[Path, tuple[str, str, str]],
+        symlink: Callable[[Path, Path], None],
         case: str,
     ) -> None:
         """
@@ -208,6 +211,8 @@ class TestSwiftBoundaries:
         boundary_project : tuple[Path, tuple[str, str, str]]
             Disposable repository and its core/storage/presentation directory
             names.
+        symlink : collections.abc.Callable[[pathlib.Path, pathlib.Path], None]
+            Platform-aware link creator; unavailable link operations skip.
         case : str
             Independent missing, malformed, unreadable or escaping input
             scenario.
@@ -219,8 +224,20 @@ class TestSwiftBoundaries:
         else:
             path.unlink()
             if case == 'escaped':
-                path.symlink_to(root.parent / 'outside.swift')
-        assert validate(load_swift_boundaries_config(root))
+                outside = root.parent / 'outside.swift'
+                outside.write_bytes(b'\xffPRIVATE outside source')
+                symlink(path, outside)
+        before = snapshot_files(root)
+        expected = {
+            'deleted': [f'data: no inputs match: {data}/**/*.swift'],
+            'undecodable': [f'{data}/Source.swift: cannot read UTF-8 input'],
+            'escaped': [
+                f'data: {data}/Source.swift: input escapes selected root',
+                f'data: no inputs match: {data}/**/*.swift',
+            ],
+        }
+        assert validate(load_swift_boundaries_config(root)) == expected[case]
+        assert snapshot_files(root) == before
 
     @pytest.mark.parametrize('allowed', (None, (), ('Foundation',)))
     def test_optional_import_policy_keeps_symbol_checks(

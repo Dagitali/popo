@@ -5,6 +5,7 @@ Exercise Python source policy and language-specific findings.
 """
 
 import ast
+from collections.abc import Callable
 from pathlib import Path
 from textwrap import dedent
 from typing import Self
@@ -14,7 +15,7 @@ import pytest
 from popo.checks import _python_declarations, python_source
 from popo.config import ConfigurationError
 from popo.config.source_checks import load_source_check
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -198,18 +199,37 @@ class TestPythonSource:
     def test_inputs_fail_closed(
         self: Self,
         tmp_path: Path,
+        symlink: Callable[[Path, Path], None],
         kind: str,
     ) -> None:
         (tmp_path / 'popo.toml').write_text(
             '[python-source]\ninclude = ["*.py"]\nexclude = ["ignored.py"]',
         )
         if kind == 'escaped':
-            (tmp_path / 'sample.py').symlink_to(tmp_path.parent / 'outside.py')
+            outside = tmp_path.parent / 'outside.py'
+            outside.write_bytes(b'\xffPRIVATE source')
+            symlink(tmp_path / 'sample.py', outside)
         elif kind == 'excluded':
             (tmp_path / 'ignored.py').write_text('x = 1')
         elif kind == 'undecodable':
             (tmp_path / 'sample.py').write_bytes(b'\xff')
-        assert python_source.validate(load_source_check(tmp_path, 'python-source'))
+        expected = {
+            'missing': ['no inputs match: *.py'],
+            'excluded': ['no inputs match: *.py'],
+            'undecodable': ['sample.py: cannot read UTF-8 input'],
+            'escaped': [
+                'sample.py: input escapes selected root',
+                'no inputs match: *.py',
+            ],
+        }
+        before = snapshot_files(tmp_path)
+        assert (
+            python_source.validate(
+                load_source_check(tmp_path, 'python-source'),
+            )
+            == expected[kind]
+        )
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'names,ordered',
