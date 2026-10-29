@@ -19,6 +19,33 @@ from tests.support.files import snapshot_files
 class TestValidationCommands:
     """Verify profiles, redaction and aggregate failure continuation."""
 
+    @pytest.mark.parametrize('command', ('check-python-boundaries', 'check-all'))
+    def test_python_boundary_selection_and_reporting(
+        self,
+        python_boundary_case: tuple[Path, str | None],
+        capsys: pytest.CaptureFixture[str],
+        command: str,
+    ) -> None:
+        """Report the native boundary outcome through direct/aggregate JSON."""
+        root, expected = python_boundary_case
+        before = snapshot_files(root)
+        assert main([command, '--root', str(root), '--format', 'json']) == int(
+            expected is not None,
+        )
+        report = json.loads(capsys.readouterr().out)
+        assert report['command'] == command
+        assert report['passed'] is (expected is None)
+        assert len(report['checks']) == 1
+        check = report['checks'][0]
+        assert check['check'] == 'check-python-boundaries'
+        assert check['passed'] is (expected is None)
+        if expected is None:
+            assert check['diagnostics'] == []
+        else:
+            assert any(expected in item['message'] for item in check['diagnostics'])
+            assert all(item['severity'] == 'error' for item in check['diagnostics'])
+        assert snapshot_files(root) == before
+
     def test_results_use_explicit_artifacts_and_json_reporting(
         self: Self,
         tmp_path: Path,
