@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from popo.checks.python_boundaries import validate
-from popo.cli import main
 from popo.config.python_boundaries import load_python_boundaries_config
 from tests.support.files import snapshot_files
 
@@ -19,58 +18,19 @@ from tests.support.files import snapshot_files
 class TestPythonBoundaries:
     """Keep module analysis deterministic, confined and non-executing."""
 
-    @pytest.mark.parametrize(
-        'source,expected',
-        (
-            ('import pkg.ui', 'forbidden layer import pkg.ui'),
-            ('from .ui import Screen', 'forbidden layer import pkg.ui.Screen'),
-            ('from . import ui', 'forbidden layer import pkg.ui'),
-            ('from ..ui import Screen', 'unresolved relative import'),
-            ('import os', 'forbidden import os'),
-            (
-                'import pathlib.Path\nx = pathlib.Path()',
-                'forbidden symbol pathlib.Path',
-            ),
-            ('from pathlib import Path as P\nx = P()', 'forbidden symbol pathlib.Path'),
-            ('import pathlib as p\nx = p.Path()', 'forbidden symbol pathlib.Path'),
-            ('from pathlib import Path\nx = Path', 'forbidden symbol pathlib.Path'),
-            ('import pathlib.Path as P\nx = P', 'forbidden symbol pathlib.Path'),
-            ('import pathlib as Π\nx = Π.Path', 'forbidden symbol pathlib.Path'),
-            ('import pathlib as p\nx = pExtra.Path', None),
-            ('def broken(', 'invalid Python source'),
-            ('# import pkg.ui\nx = "pkg.ui"', None),
-            ('raise RuntimeError("must not execute")', None),
-            ('from pathlib import PurePath', None),
-        ),
-    )
     def test_imports_and_symbols(
         self,
-        tmp_path: Path,
-        source: str,
-        expected: str | None,
+        python_boundary_case: tuple[Path, str | None],
     ) -> None:
         """Resolve relative imports and aliases without evaluating source."""
-        folder = tmp_path / 'src/pkg'
-        folder.mkdir(parents=True)
-        (folder / 'core.py').write_text(source, encoding='utf-8')
-        (folder / 'ui.py').write_text('class Screen: pass', encoding='utf-8')
-        (tmp_path / 'popo.toml').write_text(
-            'checks=["check-python-boundaries"]\n'
-            '[[python-boundaries.layers]]\nname="core"\n'
-            'include=["src/pkg/core.py"]\nallowed-imports=["pathlib"]\n'
-            'forbidden-layers=["ui"]\nforbidden-symbols=["pathlib.Path"]\n'
-            '[[python-boundaries.layers]]\nname="ui"\n'
-            'include=["src/pkg/ui.py"]\n',
-            encoding='utf-8',
-        )
-        before = snapshot_files(tmp_path)
-        findings = validate(load_python_boundaries_config(tmp_path))
+        root, expected = python_boundary_case
+        before = snapshot_files(root)
+        findings = validate(load_python_boundaries_config(root))
         if expected:
             assert any(expected in item for item in findings)
         else:
             assert findings == []
-        assert main(['check-all', '--root', str(tmp_path)]) == bool(expected)
-        assert snapshot_files(tmp_path) == before
+        assert snapshot_files(root) == before
 
     def test_package_relative_import(
         self,

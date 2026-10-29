@@ -151,24 +151,31 @@ class TestSwiftPolicy:
         assert snapshot_files(swift_policy_consumer) == before
 
     @pytest.mark.parametrize(
-        'path',
-        ['.swift-version', 'Package.swift', '.github/workflows/ci.yml'],
+        'path,message',
+        [
+            ('.swift-version', 'Swift policy input escapes repository root'),
+            ('Package.swift', 'Swift policy input escapes repository root'),
+            ('.github/workflows/ci.yml', 'workflow escapes repository root'),
+        ],
     )
     def test_escaping_links(
         self,
         swift_policy_consumer: Path,
         symlink: Callable[[Path, Path], None],
         path: str,
+        message: str,
     ) -> None:
+        """Reject escapes before decoding and preserve inside/outside bytes."""
         root = swift_policy_consumer
         outside = root.parent / 'outside-toolchain-input'
-        outside.write_text('PRIVATE', encoding='utf-8')
+        outside.write_bytes(b'\xffPRIVATE')
         target = root / path
         target.unlink()
         symlink(target, outside)
-        assert any(
-            'escapes repository' in f for f in validate(load_swift_policy_config(root))
-        )
+        before = snapshot_files(root)
+        assert validate(load_swift_policy_config(root)) == [f'{path}: {message}']
+        assert snapshot_files(root) == before
+        assert outside.read_bytes() == b'\xffPRIVATE'
 
     @pytest.mark.parametrize(
         'path',
