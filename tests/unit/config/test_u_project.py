@@ -19,7 +19,7 @@ from popo.config import (
     load_automation_config,
     load_config,
 )
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -36,11 +36,41 @@ class TestConfiguration:
     """
 
     @pytest.mark.parametrize(
-        ('metadata', 'requirements', 'mode'),
+        ('metadata', 'requirements', 'mode', 'shadowed'),
         [
-            ('infra/pyproject.toml', 'infra/requirements.txt', 'exact'),
-            ('pyproject.toml', 'requirements.txt', 'exact'),
-            ('pyproject.toml', 'requirements/lowest.txt', 'minimum-constraints'),
+            ('infra/pyproject.toml', 'infra/requirements.txt', 'exact', ()),
+            ('pyproject.toml', 'requirements.txt', 'exact', ()),
+            ('pyproject.toml', 'requirements/lowest.txt', 'minimum-constraints', ()),
+            (
+                'pyproject.toml',
+                'requirements.txt',
+                'exact',
+                ('infra/pyproject.toml', 'infra/requirements.txt'),
+            ),
+            (
+                'pyproject.toml',
+                'requirements/lowest.txt',
+                'minimum-constraints',
+                ('requirements.txt',),
+            ),
+            (
+                'pyproject.toml',
+                'requirements/lowest.txt',
+                'minimum-constraints',
+                ('infra/pyproject.toml', 'infra/requirements.txt'),
+            ),
+            (
+                'pyproject.toml',
+                'requirements/lowest.txt',
+                'minimum-constraints',
+                ('requirements.txt', 'infra/pyproject.toml', 'infra/requirements.txt'),
+            ),
+            (
+                'infra/pyproject.toml',
+                'infra/requirements.txt',
+                'exact',
+                ('pyproject.toml',),
+            ),
         ],
     )
     def test_detects_layout(
@@ -50,9 +80,10 @@ class TestConfiguration:
         metadata: str,
         requirements: str,
         mode: str,
+        shadowed: tuple[str, ...],
     ) -> None:
         """
-        Verify discovered dependency files and their comparison mode.
+        Verify discovered dependency files, precedence and comparison mode.
 
         Parameters
         ----------
@@ -68,13 +99,25 @@ class TestConfiguration:
             layout.
         mode : str
             Dependency comparison policy selected for the scenario.
+        shadowed : tuple[str, ...]
+            Lower-priority or incomplete candidate files that must not win.
         """
         write_file(metadata, '[project]\nrequires-python = ">=3.13"\ndependencies = []')
         write_file(requirements, '')
+        for name in shadowed:
+            write_file(
+                name,
+                '[project]\nrequires-python=">=3.14"\ndependencies=[]'
+                if name.endswith('.toml')
+                else '',
+            )
+        before = snapshot_files(tmp_path)
         config = load_config(tmp_path)
         assert config.dependencies.metadata == tmp_path / metadata
         assert config.dependencies.requirements == tmp_path / requirements
         assert config.dependencies.mode == mode
+        assert config.python_policy.requires_python == '>=3.13'
+        assert snapshot_files(tmp_path) == before
 
     def test_empty_repository_defaults(
         self,
