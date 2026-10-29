@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_support` module.
 
-Cover missing automation directories and uninstalled-package version fallback.
+Cover automation discovery and uninstalled-package version fallback.
 """
 
 import runpy
@@ -12,6 +12,7 @@ from unittest.mock import Mock
 import pytest
 
 from popo.support import automation_paths, normalize_release
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -23,24 +24,58 @@ class TestSupport:
 
     Notes
     -----
-    Exercise absent automation directories and missing installed-distribution
-    metadata. Version lookup is patched for source execution and restored after
-    the scenario; no package installation is required.
+    Exercise automation discovery, absent directories and missing installed-
+    distribution metadata. Version lookup is patched for source execution and
+    restored after the scenario; no package installation is required.
     """
 
-    def test_missing_automation_directory(
+    def test_automation_discovery_preserves_sorted_glob_matches(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
     ) -> None:
         """
-        Verify shared discovery returns no paths for an absent directory.
+        Sort both YAML suffixes recursively without filtering directories.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            Callable for writing test files.
         """
-        assert automation_paths(tmp_path / 'absent') == []
+        for filename in ('z.yml', 'a.yaml', 'nested/c.yml', 'ignored.txt'):
+            write_file(filename, 'fixture')
+        (tmp_path / 'folder.yaml').mkdir()
+        before = snapshot_files(tmp_path)
+        assert automation_paths(tmp_path) == [
+            tmp_path / name
+            for name in ('a.yaml', 'folder.yaml', 'nested/c.yml', 'z.yml')
+        ]
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize('kind', ('absent', 'file', 'empty-directory'))
+    def test_empty_automation_discovery(
+        self,
+        tmp_path: Path,
+        kind: str,
+    ) -> None:
+        """
+        Verify shared discovery returns no paths without a populated directory.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        kind : str
+            Absent path, ordinary file or existing empty directory.
+        """
+        path = tmp_path / 'automation'
+        if kind == 'file':
+            path.write_text('fixture', encoding='utf-8')
+        elif kind == 'empty-directory':
+            path.mkdir()
+        assert automation_paths(path) == []
 
     @pytest.mark.parametrize('version', ['0.0.0', '1.2.3', '10.20.30'])
     @pytest.mark.parametrize('prefix', ['', 'v'])

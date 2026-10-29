@@ -144,9 +144,11 @@ class TestSourceInventory:
         error : Exception
             Synthetic launch or timeout error with private diagnostic text.
         """
-        with patch.object(inventory.subprocess, 'run', side_effect=error):
-            with pytest.raises(ValueError, match='could not run local Git rev-parse'):
-                inventory.collect(tmp_path, 'HEAD')
+        with (
+            patch.object(inventory.subprocess, 'run', side_effect=error),
+            pytest.raises(ValueError, match='could not run local Git rev-parse'),
+        ):
+            inventory.collect(tmp_path, 'HEAD')
 
     def test_gitlinks_are_rejected(
         self,
@@ -252,18 +254,20 @@ class TestSourceInventory:
         blob : bytes
             Malformed batch response for independent integrity scenarios.
         """
-        with patch.object(
-            inventory,
-            '_git',
-            side_effect=[
-                str(tmp_path).encode(),
-                b'commit',
-                b'100644 blob id\tfile\0',
-                blob,
-            ],
+        with (
+            patch.object(
+                inventory,
+                '_git',
+                side_effect=[
+                    str(tmp_path).encode(),
+                    b'commit',
+                    b'100644 blob id\tfile\0',
+                    blob,
+                ],
+            ),
+            pytest.raises(ValueError) as raised,
         ):
-            with pytest.raises(ValueError) as raised:
-                inventory.collect(tmp_path, 'HEAD')
+            inventory.collect(tmp_path, 'HEAD')
         assert 'PRIVATE' not in str(raised.value)
 
     def test_replacements_are_ignored(
