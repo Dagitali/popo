@@ -22,9 +22,9 @@ from tests.support.inventory import git, repository
 # SECTION: CONSTANTS
 
 
-GIT_FAILURES = [
-    OSError('private diagnostic'),
-    subprocess.TimeoutExpired('git', 120),
+GIT_FAILURE_FACTORIES = [
+    pytest.param(lambda: OSError('private diagnostic'), id='launch'),
+    pytest.param(lambda: subprocess.TimeoutExpired('git', 120), id='timeout'),
 ]
 
 
@@ -129,11 +129,11 @@ class TestSourceInventory:
         with pytest.raises(ValueError, match='no source files'):
             inventory.collect(tmp_path, 'HEAD')
 
-    @pytest.mark.parametrize('error', GIT_FAILURES)
+    @pytest.mark.parametrize('error_factory', GIT_FAILURE_FACTORIES)
     def test_git_errors(
         self,
         tmp_path: Path,
-        error: Exception,
+        error_factory: Callable[[], Exception],
     ) -> None:
         """
         Hide private diagnostics while retaining command identity.
@@ -142,11 +142,12 @@ class TestSourceInventory:
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
-        error : Exception
-            Synthetic launch or timeout error with private diagnostic text.
+        error_factory : collections.abc.Callable[[], Exception]
+            Fresh launch or timeout error with private diagnostic text;
+            exception traceback state is not shared between invocations.
         """
         with (
-            patch.object(inventory.subprocess, 'run', side_effect=error),
+            patch.object(inventory.subprocess, 'run', side_effect=error_factory()),
             pytest.raises(ValueError, match='could not run local Git rev-parse'),
         ):
             inventory.collect(tmp_path, 'HEAD')

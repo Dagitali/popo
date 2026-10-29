@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_support` module.
 
-Cover automation discovery and uninstalled-package version fallback.
+Cover automation discovery, release versions and source-import fallback.
 """
 
 import runpy
@@ -15,6 +15,60 @@ from popo.support import automation_paths, normalize_release
 from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
+
+
+@pytest.mark.parametrize('prefix', ('', 'v'), ids=('plain', 'v-prefixed'))
+class TestReleaseNormalization:
+    """Require canonical ASCII releases with only an optional lowercase v."""
+
+    @pytest.mark.parametrize('version', ['0.0.0', '1.2.3', '10.20.30'])
+    def test_normalize_release_ascii_components(
+        self,
+        version: str,
+        prefix: str,
+    ) -> None:
+        """Preserve ASCII version components and remove only the v prefix."""
+        assert normalize_release(prefix + version) == version
+
+    @pytest.mark.parametrize('digit', ['١', '１'])
+    @pytest.mark.parametrize('component', [0, 1, 2])
+    def test_normalize_release_rejects_non_ascii_digits(
+        self,
+        digit: str,
+        component: int,
+        prefix: str,
+    ) -> None:
+        """Reject Unicode digits even after a valid ASCII leading digit."""
+        parts = ['1', '2', '3']
+        parts[component] += digit
+        with pytest.raises(ValueError, match='release version must use'):
+            normalize_release(prefix + '.'.join(parts))
+
+    @pytest.mark.parametrize(
+        'version',
+        (
+            '',
+            '1',
+            '1.2',
+            '1.2.3.4',
+            '01.2.3',
+            '1.02.3',
+            '1.2.03',
+            '1.2.3-rc.1',
+            '1.2.3+build',
+            ' 1.2.3',
+            '1.2.3 ',
+            'V1.2.3',
+        ),
+    )
+    def test_normalize_release_rejects_noncanonical_versions(
+        self,
+        prefix: str,
+        version: str,
+    ) -> None:
+        """Reject partial versions, zero padding, suffixes and extra syntax."""
+        with pytest.raises(ValueError, match='^release version must use '):
+            normalize_release(prefix + version)
 
 
 class TestSupport:
@@ -76,31 +130,6 @@ class TestSupport:
         elif kind == 'empty-directory':
             path.mkdir()
         assert automation_paths(path) == []
-
-    @pytest.mark.parametrize('version', ['0.0.0', '1.2.3', '10.20.30'])
-    @pytest.mark.parametrize('prefix', ['', 'v'])
-    def test_normalize_release_ascii_components(
-        self,
-        version: str,
-        prefix: str,
-    ) -> None:
-        """Preserve ASCII version components and remove only the v prefix."""
-        assert normalize_release(prefix + version) == version
-
-    @pytest.mark.parametrize('digit', ['١', '１'])
-    @pytest.mark.parametrize('component', [0, 1, 2])
-    @pytest.mark.parametrize('prefix', ['', 'v'])
-    def test_normalize_release_rejects_non_ascii_digits(
-        self,
-        digit: str,
-        component: int,
-        prefix: str,
-    ) -> None:
-        """Reject Unicode digits even after a valid ASCII leading digit."""
-        parts = ['1', '2', '3']
-        parts[component] += digit
-        with pytest.raises(ValueError, match='release version must use'):
-            normalize_release(prefix + '.'.join(parts))
 
     def test_uninstalled_version(
         self,
