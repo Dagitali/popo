@@ -152,20 +152,41 @@ class TestGuardrailParity:
                 'guardrails: prerequisite\n\tpopo check-all --profile guardrails',
                 'target',
             ),
+            (
+                'guardrails:\n\t@popo check-all --profile guardrails\n',
+                None,
+            ),
+            (
+                'guardrails:\n# Consumer comment\n'
+                '\tpopo check-all --profile guardrails\n',
+                None,
+            ),
+            (
+                'guardrails:\n\n\tpopo check-all --profile guardrails\n'
+                '\nother:\n\tfalse',
+                None,
+            ),
         ],
     )
-    def test_make_drift(
+    def test_make_recipe_contract(
         self,
         guardrail_consumer: GuardrailsConfig,
         guardrail_diagnostics: dict[str, str],
         recipe: str,
-        failure: str,
+        failure: str | None,
     ) -> None:
         """
         Reject missing, duplicate, indirect or changed invocation recipes.
+
+        Permit Make's silent prefix and whitespace between literal targets.
+        Preserve consumer comments and leave all fixture inputs unchanged.
         """
         guardrail_consumer.makefile.write_text(recipe, encoding='utf-8')
-        assert validate(guardrail_consumer) == [guardrail_diagnostics[failure]]
+        before = snapshot_files(guardrail_consumer.root)
+        assert validate(guardrail_consumer) == (
+            [guardrail_diagnostics[failure]] if failure is not None else []
+        )
+        assert snapshot_files(guardrail_consumer.root) == before
 
     @pytest.mark.parametrize(
         ('content', 'parse_error'),
@@ -215,25 +236,6 @@ class TestGuardrailParity:
         }
         assert validate(guardrail_consumer) == []
         assert snapshot_files(root) == original
-
-    @pytest.mark.parametrize(
-        'recipe',
-        [
-            'guardrails:\n\t@popo check-all --profile guardrails\n',
-            'guardrails:\n# Consumer comment\n\tpopo check-all --profile guardrails\n',
-            'guardrails:\n\n\tpopo check-all --profile guardrails\n\nother:\n\tfalse',
-        ],
-    )
-    def test_supported_make_spelling(
-        self,
-        guardrail_consumer: GuardrailsConfig,
-        recipe: str,
-    ) -> None:
-        """
-        Permit Make's silent prefix and whitespace between literal targets.
-        """
-        guardrail_consumer.makefile.write_text(recipe, encoding='utf-8')
-        assert validate(guardrail_consumer) == []
 
 
 # !SECTION
