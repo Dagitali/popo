@@ -146,6 +146,13 @@ def _invoke(
     CheckResult
         Identified native result, including caught configuration-error
         diagnostics.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If a native adapter propagates an input read or decode failure. Only
+        ConfigurationError is converted into an identified result; other
+        adapter exceptions also propagate.
     """
     command = cast(Command, args.handler)
     try:
@@ -180,6 +187,15 @@ def _selected_results(
     list[CheckResult]
         Native results in configured selection order, including domain
         failures.
+
+    Raises
+    ------
+    ConfigurationError
+        If selecting the check plan fails. Configuration errors from an
+        individual selected adapter instead become identified results.
+    OSError, UnicodeError
+        If loading the plan or executing an adapter propagates a read or decode
+        failure. Other uncaught adapter exceptions also propagate.
     """
     plan = load_plan(args.root, args.profile)
     return [

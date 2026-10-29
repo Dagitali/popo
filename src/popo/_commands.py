@@ -296,7 +296,8 @@ def _logs(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed command arguments, including the consumer root and overrides.
+        Consumer root and optional log_root override. Aggregate dispatch may
+        omit log_root; validation then uses the configured repository root.
 
     Returns
     -------
@@ -307,6 +308,9 @@ def _logs(
     ------
     ConfigurationError
         If loading the consumer log policy fails.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded. Log input errors
+        caught by validation remain redacted diagnostics.
     """
     config = load_source_check(args.root, 'logs')
     return logs.validate(

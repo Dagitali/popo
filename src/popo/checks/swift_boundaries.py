@@ -51,7 +51,7 @@ class _SwiftBoundaryAnalyzer:
         source : ParsedSwiftSource
             Parsed Swift syntax view used for native boundary observations.
         path : Path
-            Input path inspected by the operation.
+            Source path inside root, used to label boundary diagnostics.
         root : Path
             Consumer repository root used to resolve and label input paths.
         layer : BoundaryLayer
@@ -105,7 +105,8 @@ class _SwiftBoundaryAnalyzer:
 
         Raises
         ------
-        UnicodeError
+        UnicodeEncodeError
+
             If the supplied text cannot be encoded for the native parser.
 
         Notes
@@ -127,16 +128,19 @@ class _SwiftBoundaryAnalyzer:
         Parameters
         ----------
         path : Path
-            Input path inspected by the operation.
+            Source path accepted for analyzer parity; not used for Swift
+            ownership.
         root : Path
-            Consumer repository root used to resolve and label input paths.
+            Repository root accepted for analyzer parity; not used for Swift
+            ownership.
         source : ParsedSwiftSource | None
             Parsed Swift syntax view, or None when no source is available.
 
         Returns
         -------
         set[str]
-            Native ownership targets available from the supplied input.
+            Declared nominal/type-alias ownership names; empty without parsed
+            source. Extensions do not establish ownership.
 
         Notes
         -----

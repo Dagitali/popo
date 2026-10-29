@@ -51,7 +51,7 @@ class _PythonBoundaryAnalyzer:
         source : ast.Module
             Parsed Python module whose imports and symbols are inspected.
         path : Path
-            Input path inspected by the operation.
+            Source path inside root, used for module identity and diagnostics.
         root : Path
             Consumer repository root used to resolve and label input paths.
         layer : BoundaryLayer
@@ -59,7 +59,8 @@ class _PythonBoundaryAnalyzer:
         forbidden_targets : set[str]
             Ownership targets belonging to forbidden layers.
         owned_targets : set[str]
-            Ownership targets belonging to the current layer.
+            Current-layer ownership targets, accepted for the shared analyzer
+            contract but unused by Python import restrictions.
 
         Returns
         -------
@@ -104,7 +105,8 @@ class _PythonBoundaryAnalyzer:
 
         Raises
         ------
-        UnicodeError
+        UnicodeEncodeError
+
             If the supplied text cannot be encoded for the native parser.
 
         Notes
@@ -138,7 +140,7 @@ class _PythonBoundaryAnalyzer:
         Returns
         -------
         set[str]
-            Native ownership targets available from the supplied input.
+            Path-derived Python module names, even when source is None.
 
         Notes
         -----

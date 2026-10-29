@@ -144,6 +144,12 @@ def _workflow(
     -------
     dict[str, object]
         Parsed workflow mapping.
+
+    Raises
+    ------
+    OSError, UnicodeError, ValueError, yaml.YAMLError
+        If reading, decoding, YAML parsing or mapping validation fails. The
+        caller converts these failures into workflow diagnostics.
     """
     return read_mapping(path, label='workflow')
 

@@ -31,6 +31,12 @@ def _hooks(
     list[str]
         Hook parity diagnostics; empty when the local hook matches the
         contract.
+
+    Raises
+    ------
+    OSError, UnicodeError, yaml.YAMLError
+        If the hook file cannot be read, decoded or parsed. Parity mismatches
+        are returned as diagnostics.
     """
     document = _read_yaml(config.hooks)
     matches = [
@@ -100,6 +106,12 @@ def _make(
     -------
     list[str]
         Make recipe parity diagnostics; empty for the canonical invocation.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If the Makefile cannot be read or decoded. Missing or noncanonical
+        recipes are returned as diagnostics.
     """
     lines = config.makefile.read_text(encoding='utf-8').splitlines()
     targets = [i for i, line in enumerate(lines) if line == f'{config.target}:']
@@ -178,6 +190,12 @@ def _workflow(
     -------
     list[str]
         CI-step parity diagnostics; empty for the canonical Make invocation.
+
+    Raises
+    ------
+    OSError, UnicodeError, yaml.YAMLError
+        If the workflow cannot be read, decoded or parsed. Invocation
+        mismatches are returned as diagnostics.
     """
     document = _read_yaml(config.workflow)
     job = _mapping(_mapping(document.get('jobs')).get(config.job))
