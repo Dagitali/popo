@@ -20,111 +20,164 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [\[0.12.0\] - 2026-10-27](#0120---2026-10-27)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
-- [\[0.11.0\] - 2026-10-26](#0110---2026-10-26)
+- [0.12.0 - 2026-10-27](#0120---2026-10-27)
   - [Added](#added-1)
   - [Changed](#changed-1)
   - [Fixed](#fixed-1)
-- [0.10.0 - 2026-10-25](#0100---2026-10-25)
+- [0.11.0 - 2026-10-26](#0110---2026-10-26)
   - [Added](#added-2)
-- [0.9.1 - 2026-10-24](#091---2026-10-24)
-  - [Added](#added-3)
   - [Changed](#changed-2)
   - [Fixed](#fixed-2)
-- [0.9.0 - 2026-10-24](#090---2026-10-24)
+- [0.10.0 - 2026-10-25](#0100---2026-10-25)
+  - [Added](#added-3)
+- [0.9.1 - 2026-10-24](#091---2026-10-24)
   - [Added](#added-4)
   - [Changed](#changed-3)
   - [Fixed](#fixed-3)
-- [0.8.2 - 2026-10-23](#082---2026-10-23)
-  - [Fixed](#fixed-4)
-- [0.8.1 - 2026-10-23](#081---2026-10-23)
-  - [Changed](#changed-4)
-  - [Fixed](#fixed-5)
-- [0.8.0 - 2026-10-23](#080---2026-10-23)
+- [0.9.0 - 2026-10-24](#090---2026-10-24)
   - [Added](#added-5)
+  - [Changed](#changed-4)
+  - [Fixed](#fixed-4)
+- [0.8.2 - 2026-10-23](#082---2026-10-23)
+  - [Fixed](#fixed-5)
+- [0.8.1 - 2026-10-23](#081---2026-10-23)
   - [Changed](#changed-5)
-- [0.7.0 - 2026-10-22](#070---2026-10-22)
+  - [Fixed](#fixed-6)
+- [0.8.0 - 2026-10-23](#080---2026-10-23)
   - [Added](#added-6)
   - [Changed](#changed-6)
-- [0.6.6 - 2026-10-08](#066---2026-10-08)
+- [0.7.0 - 2026-10-22](#070---2026-10-22)
+  - [Added](#added-7)
   - [Changed](#changed-7)
+- [0.6.6 - 2026-10-08](#066---2026-10-08)
+  - [Changed](#changed-8)
 - [0.6.5 - 2026-10-08](#065---2026-10-08)
   - [Removed](#removed)
 - [0.6.4 - 2026-10-07](#064---2026-10-07)
   - [Removed](#removed-1)
 - [0.6.3 - 2026-10-07](#063---2026-10-07)
-  - [Fixed](#fixed-6)
-- [0.6.2 - 2026-10-07](#062---2026-10-07)
   - [Fixed](#fixed-7)
-- [0.6.1 - 2026-10-07](#061---2026-10-07)
-  - [Changed](#changed-8)
-- [0.6.0 - 2026-10-07](#060---2026-10-07)
-  - [Added](#added-7)
-- [0.5.2 - 2026-10-06](#052---2026-10-06)
-  - [Changed](#changed-9)
+- [0.6.2 - 2026-10-07](#062---2026-10-07)
   - [Fixed](#fixed-8)
-- [0.5.1 - 2026-10-06](#051---2026-10-06)
-  - [Changed](#changed-10)
-- [0.5.0 - 2026-10-06](#050---2026-10-06)
+- [0.6.1 - 2026-10-07](#061---2026-10-07)
+  - [Changed](#changed-9)
+- [0.6.0 - 2026-10-07](#060---2026-10-07)
   - [Added](#added-8)
-- [0.4.1 - 2026-10-04](#041---2026-10-04)
+- [0.5.2 - 2026-10-06](#052---2026-10-06)
+  - [Changed](#changed-10)
   - [Fixed](#fixed-9)
-- [0.4.0 - 2026-10-04](#040---2026-10-04)
-  - [Added](#added-9)
-- [0.3.7 - 2026-10-01](#037---2026-10-01)
+- [0.5.1 - 2026-10-06](#051---2026-10-06)
   - [Changed](#changed-11)
-- [0.3.6 - 2026-10-01](#036---2026-10-01)
-  - [Added](#added-10)
-- [0.3.5 - 2026-10-01](#035---2026-10-01)
-  - [Changed](#changed-12)
-- [0.3.4 - 2026-10-01](#034---2026-10-01)
-  - [Changed](#changed-13)
-- [0.3.3 - 2026-09-30](#033---2026-09-30)
-  - [Changed](#changed-14)
-- [0.3.2 - 2026-09-30](#032---2026-09-30)
+- [0.5.0 - 2026-10-06](#050---2026-10-06)
+  - [Added](#added-9)
+- [0.4.1 - 2026-10-04](#041---2026-10-04)
   - [Fixed](#fixed-10)
-- [0.3.1 - 2026-09-30](#031---2026-09-30)
-  - [Changed](#changed-15)
-- [0.3.0 - 2026-09-30](#030---2026-09-30)
+- [0.4.0 - 2026-10-04](#040---2026-10-04)
+  - [Added](#added-10)
+- [0.3.7 - 2026-10-01](#037---2026-10-01)
+  - [Changed](#changed-12)
+- [0.3.6 - 2026-10-01](#036---2026-10-01)
   - [Added](#added-11)
-  - [Changed](#changed-16)
+- [0.3.5 - 2026-10-01](#035---2026-10-01)
+  - [Changed](#changed-13)
+- [0.3.4 - 2026-10-01](#034---2026-10-01)
+  - [Changed](#changed-14)
+- [0.3.3 - 2026-09-30](#033---2026-09-30)
+  - [Changed](#changed-15)
+- [0.3.2 - 2026-09-30](#032---2026-09-30)
   - [Fixed](#fixed-11)
-- [0.2.4 - 2026-09-27](#024---2026-09-27)
-  - [Changed](#changed-17)
-- [0.2.3 - 2026-09-27](#023---2026-09-27)
-  - [Changed](#changed-18)
-- [0.2.2 - 2026-09-26](#022---2026-09-26)
-  - [Changed](#changed-19)
-- [0.2.1 - 2026-09-26](#021---2026-09-26)
-  - [Fixed](#fixed-12)
-- [0.2.0 - 2026-09-26](#020---2026-09-26)
+- [0.3.1 - 2026-09-30](#031---2026-09-30)
+  - [Changed](#changed-16)
+- [0.3.0 - 2026-09-30](#030---2026-09-30)
   - [Added](#added-12)
+  - [Changed](#changed-17)
+  - [Fixed](#fixed-12)
+- [0.2.4 - 2026-09-27](#024---2026-09-27)
+  - [Changed](#changed-18)
+- [0.2.3 - 2026-09-27](#023---2026-09-27)
+  - [Changed](#changed-19)
+- [0.2.2 - 2026-09-26](#022---2026-09-26)
   - [Changed](#changed-20)
+- [0.2.1 - 2026-09-26](#021---2026-09-26)
   - [Fixed](#fixed-13)
-- [0.1.5 - 2026-09-24](#015---2026-09-24)
+- [0.2.0 - 2026-09-26](#020---2026-09-26)
   - [Added](#added-13)
+  - [Changed](#changed-21)
+  - [Fixed](#fixed-14)
+- [0.1.5 - 2026-09-24](#015---2026-09-24)
+  - [Added](#added-14)
   - [Removed](#removed-2)
 - [0.1.4 - 2026-09-24](#014---2026-09-24)
-  - [Added](#added-14)
-  - [Fixed](#fixed-14)
-- [0.1.3 - 2026-09-24](#013---2026-09-24)
-  - [Changed](#changed-21)
-- [0.1.2 - 2026-09-24](#012---2026-09-24)
-  - [Changed](#changed-22)
-  - [Removed](#removed-3)
-  - [Fixed](#fixed-15)
-- [0.1.1 - 2026-09-24](#011---2026-09-24)
   - [Added](#added-15)
+  - [Fixed](#fixed-15)
+- [0.1.3 - 2026-09-24](#013---2026-09-24)
+  - [Changed](#changed-22)
+- [0.1.2 - 2026-09-24](#012---2026-09-24)
   - [Changed](#changed-23)
-- [0.1.0 - 2026-09-24](#010---2026-09-24)
+  - [Removed](#removed-3)
+  - [Fixed](#fixed-16)
+- [0.1.1 - 2026-09-24](#011---2026-09-24)
   - [Added](#added-16)
   - [Changed](#changed-24)
-  - [Fixed](#fixed-16)
+- [0.1.0 - 2026-09-24](#010---2026-09-24)
+  - [Added](#added-17)
+  - [Changed](#changed-25)
+  - [Fixed](#fixed-17)
 
 ## Unreleased
+
+### Added
+
+- Integrate `tree-sitter>=0.26.0,<0.27` and `tree-sitter-swift>=0.7.4,<0.8`, with synchronized
+  minimum constraints and a shared Swift concrete-syntax view for source and boundary checks.
+  Recognize same-line declarations/imports, mask regex literals, preserve UTF-8 character locations
+  and attach documentation to its declaration. Retain bounded callable analysis and lexical recovery
+  for grammar errors without running the Swift compiler or consumer code.
+
+### Changed
+
+- Standardize Python/Swift declaration, signature, documentation and boundary adapters through
+  structural protocols, immutable observations and shared fact factories. Align helper names and
+  parameter/result/exception docstrings while retaining Python AST traversal, NumPy Returns/Yields/
+  Raises, DocC Returns/Throws, Swift spacing and unsupported-signature rules, native ownership and
+  import matching, and language-specific parsing/recovery behavior.
+- Share Python syntax parsing, docstring spans and redacted syntax findings through
+  `_python_syntax.py`; name the Swift view `ParsedSwiftSource`. Centralize parameter-layout,
+  documentation presence/contract, import-boundary and symbol evaluation while retaining receiver,
+  annotation, generator, explicit-raise, throws/rethrows and alias/token semantics.
+- Stream source discovery, Markdown references, documentation matches and native syntax scans; reuse
+  immutable evidence and source offsets, and skip disabled-rule analysis. Preserve diagnostic order,
+  partial traversal results, Unicode/CRLF locations, duplicate handling and read-only checks.
+- Reuse automation YAML reads, actionlint reference resolutions and boundary ownership observations
+  within each validation run, with fresh reads on later runs. Resolve scoped workflow environment
+  references through read-only views while retaining precedence and validation of every scope.
+- Share UTF-8 input/error orchestration across source, log and test-result checks, canonical
+  calendar dates across approval loaders, and cycle-safe workflow safety traversal. Simplify slotted
+  hosted records, JSON decoding, configuration key checks and malformed dependency-metadata
+  fallbacks; retain expiry policy, sanitized evidence, finding order and propagated read/decode
+  errors.
+- Hash committed inventory blobs through read-only buffer views, preserving checksums, batch
+  validation, path ordering and memory limits; avoid whole-file copies during Swift lexical scans.
+- Consolidate deterministic class-based tests with parameterized policy/language/input matrices,
+  isolated fixtures, fresh exception instances and precise platform-capability skips. Strengthen
+  exact ordered/redacted diagnostics, configuration precedence, threshold and version boundaries,
+  parser non-execution, symlink containment, input snapshots, aggregate continuation, actionlint
+  cleanup and installed-artifact reporting coverage.
+
+### Fixed
+
+- Treat falsy malformed hosted required-check objects as inaccessible evidence rather than confirmed
+  absence, preserving null/omitted compatibility; reject invalid approval URL ports while retaining
+  valid explicit hostname/IPv6 ports and sanitized parser-depth failures.
+- Require integer npm lockfile versions 2 or 3 instead of accepting floats, and check resolved npm
+  pins with build metadata while preserving prerelease and dependency-group comparisons.
+- Allocate collision-free Markdown heading suffixes, preserve explicit HTML anchors, and validate
+  angle-wrapped local link/image destinations with quoted titles. Report malformed decoded paths,
+  including NULs, without aborting later checks; retain containment and filesystem-error contracts.
+- Keep selective Swift imports from being classified as declarations requiring documentation.
 
 ## [0.12.0] - 2026-10-27
 
@@ -140,12 +193,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Changed
 
 - Share boundary policy models, confined input reads and analyzer orchestration through a typed
-  protocol while preserving Python AST and Swift lexical dependency semantics.
-- Share source/log pattern validation with setting-specific diagnostics for unsafe selections.
-- Unify documentation iteration, callable-contract dispatch and post-parse source evaluation; retain
-  native declaration types, NumPy/DocC syntax and language-specific parsing failures.
-- Clarify Python runtime versus Swift compiler observations, simplify result-adapter dispatch,
-  remove redundant boundary aliases and align internal names and docstrings.
+  protocol while preserving Python AST and Swift lexical dependency semantics. Share source/log
+  pattern validation with setting-specific diagnostics for unsafe selections. Unify documentation
+  iteration, callable-contract dispatch and post-parse source evaluation; retain native declaration
+  types, NumPy/DocC syntax and language-specific parsing failures. Clarify Python runtime versus
+  Swift compiler observations, simplify result-adapter dispatch, remove redundant boundary aliases
+  and align internal names and docstrings.
 - Modernize test suites with isolated policy fixtures, typed language cases, exact diagnostic
   assertions and stronger read-once contracts. Keep unit checks in class suites and shared policy
   tests in the configuration layer; preserve comments, docstring details and complete coverage.
@@ -166,111 +219,65 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   an optional shared scoped workflow parser for Python while retaining its legacy default.
 - Opt-in `check-python-source`, `check-swift-source` and `check-logs` commands with consumer-owned
   policies, existing text/JSON reporting, confined input discovery, and redacted log findings. See
-  [source and log checks](docs/source-and-log-checks.md)
-- Standardize the Swift command and policy as `check-swift-source` / `swift-source`. Share
-  source-size, documentation-width and source-guide checks; add optional Python NumPy and Swift DocC
-  callable documentation checks with explicit language-specific syntax limits. Retain shared
-  configuration loading and read-only, redacted input handling.
-- Separate Python and Swift declaration collection from NumPy/DocC interpretation using shared
-  immutable facts. Standardize policy keys as `documentation-width` and `max-file-lines` and use
-  consistent limit diagnostics; replace the earlier option names without aliases.
+  [source and log checks](docs/source-and-log-checks.md). Standardize the Swift command and policy
+  as `check-swift-source` / `swift-source`. Share source-size, documentation-width and source-guide
+  checks; add optional Python NumPy and Swift DocC callable documentation checks with explicit
+  language-specific syntax limits. Retain shared configuration loading and read-only, redacted input
+  handling. Separate Python and Swift declaration collection from NumPy/DocC interpretation using
+  shared immutable facts. Standardize policy keys as `documentation-width` and `max-file-lines` and
+  use consistent limit diagnostics; replace the earlier option names without aliases.
 
 ### Changed
 
-- Index missing hosted findings by repository/check when applying approvals and use immutable record
-  replacement, preserving evidence, exception scope and expiry-finding order.
-- Separate hosted branch-context parsing from API orchestration and reporting while preserving
-  required-check unions and the distinction between missing and inaccessible evidence.
-- Assemble actionlint compatibility replacements from original source spans in one pass, avoiding
-  repeated whole-file copies while preserving anchors, script text and source locations.
-- Separate CLI inventory generation and hosted-audit reporting from main dispatch and share format
-  option setup, preserving command syntax, output streams and exit behavior.
-- Prepare log patterns once per validation and compute relative filenames once per file, retaining
-  redacted file/line/rule ordering and one finding per matching rule per line.
-- Separate Markdown target validation from source/reference traversal, preserving anchor caching,
-  target containment, directory handling and diagnostic order.
-- Separate Git header-source inventory from filesystem fallback and reuse ignored-directory sets.
-- Rename `tests/unit/configs/` to `tests/unit/config/` to mirror the source package and update
-  test module names, contributor commands and current documentation.
-- Split hosted repository and exception parsing from loader orchestration, caching expected checks
-  once per repository while retaining exact exception scopes and validation order.
-- Represent privileged-trigger exceptions with named immutable fields and isolate approval parsing
-  from safety configuration loading, preserving tuple semantics and lifecycle diagnostics.
-- Separate dependency metadata parsing from comparison orchestration and avoid allocating unused
-  upper-bound lists, preserving partial results, failure ordering and both comparison modes.
-- Separate committed inventory tree decoding and blob validation/hashing from Git orchestration,
-  retaining sorted output, checksums and read-only operation.
-- Align Python/Swift command-adapter names and source-dispatch docstring contracts without changing
-  command names, policy defaults or language-specific checks.
-- Share Python/Swift source-validation orchestration and align per-file `_source_findings`
-  contracts, preserving diagnostic order, Python syntax errors and Swift lexical boundaries.
-  Document both validators' analysis boundaries and consumer-controlled conventions.
-- Separate Swift policy parsing from configuration loading, matching the Python policy boundary;
-  clarify immutable settings and propagated exception contracts without changing version rules.
-  Separate Python local/workflow findings and clarify Swift observation/read stages, preserving
-  diagnostic order, shared metadata reads and language-specific error handling. Clarify each Swift
-  setting separately and align loader/path contracts with Python policy documentation. Standardize
-  local/workflow helper contracts and correct Swift text-input documentation.
-- Align per-declaration documentation checking under `_declaration_findings` and share the
-  file-overview diagnostic. Keep Python declaration presence and Swift nominal/member/spacing
-  policies separate, preserving diagnostic order and existing callable-contract behavior.
-- Align Python and Swift documentation interpreters around `_documentation`, `_parameters` and
-  `_section`, using immutable `CallableDocumentation` evidence in shared contract checking. Preserve
-  NumPy/DocC syntax, result/exception mappings and language-specific presence/spacing rules.
-- Align return/exception analysis under `_requirements` in both declaration collectors using one
-  immutable `CallableRequirements` model. Preserve Python annotation/body analysis, generator
-  priority and locally caught raises, plus Swift signature-only return and throws/rethrows rules.
-- Name parameter-syntax observations consistently in both declaration collectors. Retain native
-  Python `ast.arg` nodes and replace Swift positional span tuples with immutable `_ParameterSyntax`
-  records, preserving offsets, parameter ordering and nested type/default parsing.
-- Align file-overview detection under `_file_overview` in both declaration collectors and group
-  language-policy constants consistently. Preserve Python module-docstring and Swift leading-
-  comment conventions, including their different treatment of declaration documentation.
-- Align callable-signature extraction in both declaration collectors using `_signature` and named,
-  immutable `_Signature` records. Keep Python annotation observations separate from body-derived
-  requirements and retain Swift lexical boundaries and explicit unsupported-signature markers.
-- Give both declaration collectors a single-declaration conversion boundary. Python now converts
-  classes and callables through `_declaration`, matching Swift's counterpart; aggregation retains
-  discovery order, and docstrings distinguish native AST analysis from lexical signature facts.
-- Align Python and Swift declaration collectors around explicit syntax-discovery and declaration-
-  construction stages, shared helper-role names, and matching documentation contracts. Preserve
-  native AST analysis, bounded Swift lexing and all language-specific source-policy observations.
-- Collect actionlint compatibility sources separately from tool execution. Read each automation file
-  once and share its text between validation and normalization; reuse the restricted YAML mapping
-  parser for both text snapshots and file inputs.
-- Separate safety discovery and npm comparison from orchestration. Yield npm findings so drift found
-  before malformed data remains visible; avoid repeated guardrail step-shape conversion.
-- Separate header-rule and preservation-exception parsing from configuration orchestration,
-  retaining first-match order, validation diagnostics and consumer-owned defaults.
-- Share Python/Swift source-policy defaults while preserving language-specific opt-ins. Separate
-  Swift local and workflow observation collection from comparisons and avoid repeated linear
-  searches through CI observations. Compute documentation-width settings once per source file.
+- Separate hosted configuration, branch-context parsing, API orchestration and reporting; index
+  approval findings and cache expected checks per repository. Preserve required-check unions,
+  missing/inaccessible evidence, exception scope, expiry order and immutable replacement semantics.
+- Separate CLI inventory/audit adapters from dispatch, share format-option setup, and align native
+  Python/Swift command contracts without changing command syntax, streams, exits or policy defaults.
+- Align Python/Swift source orchestration, syntax discovery, declaration construction, signatures,
+  parameter observations, file overviews, documentation evidence and callable requirements through
+  shared immutable models and matching helper names. Retain AST versus lexical analysis, native
+  NumPy/DocC markup, generator/raise versus throws/rethrows rules, receiver handling, Swift spacing
+  and unsupported signatures, and existing diagnostic order.
+- Separate Swift policy parsing and local/workflow observations from loading and comparisons; share
+  source-policy defaults and compute per-file documentation settings once. Preserve
+  language-specific opt-ins, version rules, shared metadata reads and propagated exception
+  contracts.
+- Separate automation source collection, YAML parsing and actionlint execution; read each source
+  once and assemble compatibility replacements from original spans, preserving anchors and
+  locations. Separate safety discovery/npm comparison and retain findings preceding malformed data.
+- Separate dependency metadata parsing, committed-tree/blob processing, Markdown target validation,
+  Git header discovery and header/exception parsing from orchestration. Reuse log patterns, relative
+  paths and ignored-directory sets while preserving partial results, ordering, checksums,
+  first-match rules, containment and read-only operation.
+- Rename `tests/unit/configs/` to `tests/unit/config/` to mirror the source package, updating module
+  names, contributor commands and documentation; align adapter names and source/policy docstrings.
 
 ### Fixed
 
 - Read template JSON metadata explicitly as UTF-8 so Unicode names and descriptions validate
-  consistently regardless of the machine's default text encoding.
-- Reject all whitespace in template placeholder refs, including tabs, carriage returns and Unicode
-  whitespace, while preserving valid literal tokens and repeated automation discovery patterns.
+  consistently regardless of the machine's default text encoding. Reject all whitespace in template
+  placeholder refs, including tabs, carriage returns and Unicode whitespace, while preserving valid
+  literal tokens and repeated automation discovery patterns.
 - Restrict release-version components to ASCII digits, rejecting mixed Unicode digits before
   changelog file inspection while preserving optional `v` prefixes and valid numeric cores.
 - Reject log literals containing line separators that cannot match the line-based scanner, including
-  trailing separators, instead of silently accepting ineffective diagnostic rules.
+  trailing separators, instead of silently accepting ineffective diagnostic rules. Return a redacted
+  diagnostic when a selected log root cannot resolve.
 - Report malformed Markdown URLs without aborting later links, including inline destinations and
   reference definitions; keep remote checks offline.
 - Report orphan template-metadata discovery and companion-inspection errors as redacted findings
-  without aborting later files/directories; pins-only mode still skips metadata inspection.
-- Report automation-pattern discovery and file-inspection failures without exposing exception text
-  or aborting independent patterns, in both full-contract and pins-only modes.
+  without aborting later files/directories; pins-only mode still skips metadata inspection. Report
+  automation-pattern discovery and file-inspection failures without exposing exception text or
+  aborting independent patterns, in both full-contract and pins-only modes. Report safety workflow
+  discovery errors without aborting independent workflow and npm checks.
 - Preserve carriage returns and line feeds in Git-discovered header filenames by capturing binary
   NUL-delimited paths, preventing files from being silently omitted during text-mode decoding.
-- Redact malformed source-inventory blob headers, including invalid sizes, from failure messages.
-- Report safety workflow discovery errors without aborting independent workflow and npm checks.
+  Redact malformed source-inventory blob headers, including invalid sizes, from failure messages.
 - Canonicalize package names in exact dependency comparisons so equivalent case and separator
-  spellings do not cause false mismatches; retain version, extras, marker and URL comparisons.
-- Treat quoted Python `None`, `NoReturn` and `Never` return annotations like their unquoted forms
-  when checking documentation, while still requiring documentation for explicit value returns.
-- Return a redacted diagnostic when a selected log root cannot resolve.
+  spellings do not cause false mismatches; retain version, extras, marker and URL comparisons. Treat
+  quoted Python `None`, `NoReturn` and `Never` return annotations like their unquoted forms when
+  checking documentation, while still requiring documentation for explicit value returns.
 
 ## [0.10.0] - 2026-10-25
 
@@ -296,13 +303,13 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   credential-free, read-only guardrail execution.
 - Parameterize actual Make, installed Git-hook and workflow-command acceptance tests across all
   three examples using wheels and sdists. Detect policy failures, entry-point drift and unchanged
-  source bytes; retain deterministic CLI coverage and Python/CDK declaration-drift tests.
-- Share installed-artifact helpers and include all e2e suites in `make test-installation`; keep
-  POSIX example execution separate from Windows native-CLI coverage.
+  source bytes; retain deterministic CLI coverage and Python/CDK declaration-drift tests. Share
+  installed-artifact helpers and include all e2e suites in `make test-installation`; keep POSIX
+  example execution separate from Windows native-CLI coverage.
 - Consolidate guardrail drift cases and hook metadata setup; reuse UTF-8 fixture writers and
-  strengthen configuration-error and input-preservation assertions.
-- Extend dependency-policy cases across both comparison modes and automation configuration cases
-  across standalone and Python metadata sources. Isolate header-policy tests from installed Git.
+  strengthen configuration-error and input-preservation assertions. Extend dependency-policy cases
+  across both comparison modes and automation configuration cases across standalone and Python
+  metadata sources. Isolate header-policy tests from installed Git.
 
 ### Fixed
 
@@ -354,14 +361,14 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Changed
 
 - Stream XML preamble and line-comment header scanning while preserving accepted syntax and consumer
-  directives.
-- Read shared Python-policy package/Ruff metadata once and report each shared input failure once.
-- Share safe YAML loading and iterative mapping traversal across automation, actionlint and safety
-  checks. Preserve nested traversal order and avoid recursion-limit failures in parsed structures.
-- Consolidate CLI parser setup and configuration string-array validation, modernize type aliases,
-  and complete class-based unit suites while preserving consumer-specific policy differences.
+  directives. Read shared Python-policy package/Ruff metadata once and report each shared input
+  failure once. Share safe YAML loading and iterative mapping traversal across automation,
+  actionlint and safety checks. Preserve nested traversal order and avoid recursion-limit failures
+  in parsed structures. Consolidate CLI parser setup and configuration string-array validation,
+  modernize type aliases, and complete class-based unit suites while preserving consumer-specific
+  policy differences.
 - Split hosted configuration, adapter and CLI tests by scope and share hosted-evidence fixtures.
-- Exercise both installed CLI entry points for passing and failing Markdown/file policies, verify
+  Exercise both installed CLI entry points for passing and failing Markdown/file policies, verify
   consumer files remain unchanged, and match reported versions to artifact filenames.
 
 ### Fixed
@@ -407,11 +414,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 - Replace sixteen local engineering guides, policy files, indexes, and blank templates with Dagitali
   Engineering equivalents; shared Markdown links follow the organization's `main` branch.
-- Consolidate Popo-specific setup, recovery, branch routing, release validation, and publication
+  Consolidate Popo-specific setup, recovery, branch routing, release validation, and publication
   safeguards in `CONTRIBUTING.md`; retain community-health files, agent instructions, product
-  contracts, test layout, and release history.
-- Update documentation navigation and policy references, and record shared-source ownership and
-  maintenance boundaries in `docs/engineering.md`.
+  contracts, test layout, and release history. Update documentation navigation and policy
+  references, and record shared-source ownership and maintenance boundaries in
+  `docs/engineering.md`.
 
 ## [0.6.5] - 2026-10-08
 
@@ -485,11 +492,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Added
 
 - Add opt-in `audit-github-settings` with explicit `[tool.popo.hosted]` consumer expectations for
-  security settings, labels, CODEOWNERS, branch protection, and required check contexts.
-- Report verified settings, confirmed drift, inaccessible evidence, and approved expiring exceptions
-  through sanitized text or JSON output with UTC timestamps and evidence URLs.
-- Add `make hosted-audit`, deterministic regression tests, and configuration and adoption guidance.
-  The command requires authenticated `gh` access to github.com, uses only GET requests, and remains
+  security settings, labels, CODEOWNERS, branch protection, and required check contexts. Report
+  verified settings, confirmed drift, inaccessible evidence, and approved expiring exceptions
+  through sanitized text or JSON output with UTC timestamps and evidence URLs. Add `make
+  hosted-audit`, deterministic regression tests, and configuration and adoption guidance. The
+  command requires authenticated `gh` access to github.com, uses only GET requests, and remains
   separate from offline `check-all` and `make check`; no hosted settings are changed.
 
 ## [0.4.1] - 2026-10-04
@@ -528,37 +535,36 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Add a read-only PR and merge-queue gate for dated changelog sections and matching release
   documents, with explicit candidate-version validation on release/hotfix branches. Document the
   required-check transition for `main` and `develop`; hosted enforcement requires activation after
-  successful hosted validation.
-- Add 12 release-record regression scenarios and synchronize contributor, workflow, and branch
-  protection guidance. Backfill the 0.3.5 release document and dated changelog section without
-  changing its existing tag or claiming historical artifact validation.
-- No CLI, consumer-configuration, runtime dependency, or publication behavior changes.
+  successful hosted validation. Add 12 release-record regression scenarios and synchronize
+  contributor, workflow, and branch protection guidance. Backfill the 0.3.5 release document and
+  dated changelog section without changing its existing tag or claiming historical artifact
+  validation. No CLI, consumer-configuration, runtime dependency, or publication behavior changes.
 
 ## [0.3.5] - 2026-10-01
 
 ### Changed
 
 - Standardize source and test docstrings with NumPy-style contracts, Sphinx references, inline
-  parameter literals, and the 79-character line convention; preserve executable behavior.
-- Document fixture isolation, subprocess timeouts, propagated errors, scenario inputs, and
-  automation-loader validation boundaries.
+  parameter literals, and the 79-character line convention; preserve executable behavior. Document
+  fixture isolation, subprocess timeouts, propagated errors, scenario inputs, and automation-loader
+  validation boundaries.
 
 ## [0.3.4] - 2026-10-01
 
 ### Changed
 
 - Update the Commitizen pre-commit hook from `v4.18.1` to `v4.19.0` and Ruff hooks from `v0.16.8` to
-  `v0.16.9` through [PR #3], preserving existing hook stages, arguments, and local checks.
-- No runtime dependency, CLI, consumer-configuration, or publication behavior changes.
+  `v0.16.9` through [PR #3], preserving existing hook stages, arguments, and local checks. No
+  runtime dependency, CLI, consumer-configuration, or publication behavior changes.
 
 ## [0.3.3] - 2026-09-30
 
 ### Changed
 
 - Group unit tests under `checks/` and `configs/` to align with `popo.checks` and `popo.config`,
-  preserving test coverage, shared fixtures, and default discovery.
-- Separate automation configuration validation from checker tests, correct its shared-helper import,
-  and update test-selection guidance and source-to-test references.
+  preserving test coverage, shared fixtures, and default discovery. Separate automation
+  configuration validation from checker tests, correct its shared-helper import, and update
+  test-selection guidance and source-to-test references.
 
 ## [0.3.2] - 2026-09-30
 
@@ -566,8 +572,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 - Backfill the dated 0.3.1 changelog entry and release document, add the 0.3.2 candidate record, and
   index both versions in the release archive. Preserve the existing 0.3.1 tag and distinguish its
-  missing release entry from validation of this correction.
-- No runtime, configuration, dependency, workflow, or publication behavior changes.
+  missing release entry from validation of this correction. No runtime, configuration, dependency,
+  workflow, or publication behavior changes.
 
 ## [0.3.1] - 2026-09-30
 
@@ -575,18 +581,17 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 - Link onboarding and consumer-adoption guidance directly from the README, expand upstream format
   and automation references, and clarify design, roadmap, and installation-validation guidance
-  without changing runtime behavior or project policies.
-- Clarify consumer integration and repository automation boundaries, configuration-change review,
-  and support-topic navigation. Repair Code of Conduct attribution links and the pytest reference
-  while retaining existing compatibility and publication policies.
+  without changing runtime behavior or project policies. Clarify consumer integration and repository
+  automation boundaries, configuration-change review, and support-topic navigation. Repair Code of
+  Conduct attribution links and the pytest reference while retaining existing compatibility and
+  publication policies.
 - Extend reusable root guidance with distinct workflow roles, agent Git/release responsibilities,
   release-classification criteria, upstream tooling references, and action-pin/version
   troubleshooting. Preserve existing anchors, configurable routing, publication safeguards, and
-  support boundaries.
-- Align root documentation coverage with reusable project guidance: add architecture, design,
-  workflow, security, support, conduct, learnings, references, and roadmap guides. Expand agent
-  orientation and documentation ownership while preserving read-only checking, configurable routing,
-  existing validation gates, and opt-in publication.
+  support boundaries. Align root documentation coverage with reusable project guidance: add
+  architecture, design, workflow, security, support, conduct, learnings, references, and roadmap
+  guides. Expand agent orientation and documentation ownership while preserving read-only
+  checking, configurable routing, existing validation gates, and opt-in publication.
 
 ## [0.3.0] - 2026-09-30
 
@@ -617,22 +622,22 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Changed
 
 - Standardize historical release records with consistent scope descriptions, tagged dates, and
-  verified tag status while preserving their preparation-time validation evidence.
-- Link versioned notes to dated changelog entries and the release archive without changing runtime,
-  CLI, dependency, workflow, or publication behavior.
+  verified tag status while preserving their preparation-time validation evidence. Link versioned
+  notes to dated changelog entries and the release archive without changing runtime, CLI,
+  dependency, workflow, or publication behavior.
 
 ## [0.2.3] - 2026-09-27
 
 ### Changed
 
 - Align agent guidance with existing versioning, public API, docstring, deterministic-test, and
-  action-pinning conventions, and map change types to focused validation commands.
-- Distinguish default source checks from artifact creation and clean-installation gates, including
-  the need to exercise build-on-demand fixtures rather than only prebuilt artifacts.
+  action-pinning conventions, and map change types to focused validation commands. Distinguish
+  default source checks from artifact creation and clean-installation gates, including the need to
+  exercise build-on-demand fixtures rather than only prebuilt artifacts.
 - Link the release-note template to the release archive and distinguish candidate evidence from
-  tagging and publication.
-- Standardize release-archive entries with evidence-backed dates and consistent separators; label
-  planned preparation dates explicitly and document the convention for future entries.
+  tagging and publication. Standardize release-archive entries with evidence-backed dates and
+  consistent separators; label planned preparation dates explicitly and document the convention for
+  future entries.
 - Expand shared pytest fixture and hook docstrings with inputs, results, exceptions, side effects,
   and isolation boundaries without changing test or runtime behavior.
 
@@ -642,9 +647,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 - Expand Python docstrings for configuration models and loading, CLI dispatch and exit statuses,
   dependency parsing, Markdown anchors and fences, Python-policy resolution, action pinning,
-  changelog validation, automation discovery, and package version lookup.
-- Clarify defaults, path resolution, return values, propagated exceptions, and parser limitations
-  without changing executable behavior, consumer configuration, or dependency requirements.
+  changelog validation, automation discovery, and package version lookup. Clarify defaults, path
+  resolution, return values, propagated exceptions, and parser limitations without changing
+  executable behavior, consumer configuration, or dependency requirements.
 
 ## [0.2.1] - 2026-09-26
 
@@ -658,12 +663,12 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Added
 
 - Resolve block-list Python-version matrices in workflow policy checks alongside inline lists,
-  validating each resolved version against the consumer's configured support range.
-- Accept whitespace-delimited inline comments in dependency requirements and constraint files while
+  validating each resolved version against the consumer's configured support range. Accept
+  whitespace-delimited inline comments in dependency requirements and constraint files while
   preserving URL fragments and rejecting installer directives.
 - Validate Markdown reference-link destinations and explicit HTML anchors, including unused
   definitions; broken reference destinations now fail repository checks instead of being ignored.
-- Accept plain links to existing directories without requiring a README; retain README anchor
+  Accept plain links to existing directories without requiring a README; retain README anchor
   resolution for directory links with fragments.
 - Run the existing local quality gate at the installed pre-push hook stage, using Make's interpreter
   selection rather than requiring a bare `python` executable.
@@ -674,27 +679,26 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Changed
 
 - Describe the package without restricting consumer projects to Python and expose the maintained
-  documentation URL in distribution metadata.
-- Document the minimum-dependency fixture and shared formatting rules; ignore common
-  operating-system metadata and additional coverage outputs without importing cloud-specific
-  configuration.
+  documentation URL in distribution metadata. Document the minimum-dependency fixture and shared
+  formatting rules; ignore common operating-system metadata and additional coverage outputs without
+  importing cloud-specific configuration.
 - Raise development-tool minimum versions and align managed Ruff hooks with `ruff>=0.16.9,<0.17`;
-  retain Python `>=3.13,<3.15` and the runtime dependency `packaging>=26.3,<27`.
-- Expand checker regression coverage and public docstrings, and clarify the MIT terms in `NOTICE`
-  without changing the license.
+  retain Python `>=3.13,<3.15` and the runtime dependency `packaging>=26.3,<27`. Expand checker
+  regression coverage and public docstrings, and clarify the MIT terms in `NOTICE` without changing
+  the license.
 
 ### Fixed
 
 - Exclude vendored `node_modules` Markdown from source discovery and match build exclusions by path
-  component so maintained paths such as `docs/building.md` are no longer silently skipped.
-- Reject local Markdown destinations that resolve outside the selected repository, including encoded
-  parent paths and symlinked targets, while retaining valid in-repository parent links.
-- Validate link fragments only for Markdown targets, avoiding decoding failures on binary files;
-  reuse Markdown anchors within each check without retaining stale results between runs.
+  component so maintained paths such as `docs/building.md` are no longer silently skipped. Reject
+  local Markdown destinations that resolve outside the selected repository, including encoded parent
+  paths and symlinked targets, while retaining valid in-repository parent links. Validate link
+  fragments only for Markdown targets, avoiding decoding failures on binary files; reuse Markdown
+  anchors within each check without retaining stale results between runs. Ignore links and headings
+  inside fenced Markdown code examples, including mixed or shorter embedded fence markers, while
+  preserving source line numbers in real-link diagnostics.
 - Reject remote action references with a missing action name even when their revision is a full
   commit SHA; preserve local-action and container-reference exemptions.
-- Ignore links and headings inside fenced Markdown code examples, including mixed or shorter
-  embedded fence markers, while preserving source line numbers in real-link diagnostics.
 
 ## [0.1.5] - 2026-09-24
 
@@ -723,9 +727,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Changed
 
 - Update the Commitizen pre-commit hook from v4.18.0 to v4.18.1 and Ruff hooks from v0.16.7 to
-  v0.16.8.
-- This entry was added retrospectively in 0.1.4. The original 0.1.3 tagged tree lacked a dated
-  changelog section, causing CD validation to fail; this correction does not change that tag.
+  v0.16.8. This entry was added retrospectively in 0.1.4. The original 0.1.3 tagged tree lacked a
+  dated changelog section, causing CD validation to fail; this correction does not change that
+  tag.
 
 ## [0.1.2] - 2026-09-24
 
@@ -761,49 +765,45 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 ### Added
 
 - Explicit virtual-environment creation, runtime/development installation, setup alias, and
-  environment inspection targets that refuse to replace existing environments.
-- Discoverable Make help, focused policy checks, common formatting/build/test aliases, and
-  overridable tool, packaging, and distribution-test commands while preserving the existing local
-  quality gate.
+  environment inspection targets that refuse to replace existing environments. Discoverable Make
+  help, focused policy checks, common formatting/build/test aliases, and overridable tool,
+  packaging, and distribution-test commands while preserving the existing local quality gate.
+  Repository self-check and distribution validation Make targets, with artifact tests in CI.
 - Configurable PR routing, tagged release validation with opt-in GitHub publication, and manual
-  cross-platform disposable installation workflows.
-- Lowest/newest dependency CI, cross-platform distribution tests, and branch-coverage reporting.
-- Standalone CycloneDX SBOM generation and manual runtime-dependency vulnerability auditing, with
-  isolated tools, bounded permissions, and short-lived report artifacts.
-- Repository self-check and distribution validation Make targets, with artifact tests in CI.
-- Initial `popo` command-line interface.
-- Checks for Markdown links, GitHub Actions pins, dependency boundaries, Python-version policy, and
-  release changelog entries.
-- Declarative configuration through `[tool.popo]` in `pyproject.toml`.
+  cross-platform disposable installation workflows. Lowest/newest dependency CI, cross-platform
+  distribution tests, and branch-coverage reporting. Standalone CycloneDX SBOM generation and manual
+  runtime-dependency vulnerability auditing, with isolated tools, bounded permissions, and
+  short-lived report artifacts.
+- Initial `popo` command-line interface. Checks for Markdown links, GitHub Actions pins, dependency
+  boundaries, Python-version policy, and release changelog entries. Declarative configuration
+  through `[tool.popo]` in `pyproject.toml`.
 
 ### Changed
 
 - Class-based pytest suites with reusable fixtures, independent installed-CLI scenarios, and
-  expanded negative-path coverage for configuration, policy, and command dispatch.
-- Scope-based test layers, shared artifact fixtures, automatic layer markers, and focused
-  unit/integration Make targets; distribution validation remains opt-in.
-- Explicit package discovery boundaries and shared pytest, Ruff, and coverage configuration
-  conventions, including importlib-based test imports, retaining CLI-specific dependencies and test
-  scope.
-- Explicit workflow schema comments and updated workflow responsibilities and boundaries.
+  expanded negative-path coverage for configuration, policy, and command dispatch. Scope-based test
+  layers, shared artifact fixtures, automatic layer markers, and focused unit/integration Make
+  targets; distribution validation remains opt-in. Explicit package discovery boundaries and shared
+  pytest, Ruff, and coverage configuration conventions, including importlib-based test imports,
+  retaining CLI-specific dependencies and test scope. Checker regression cases and
+  wheel/source-distribution contract and clean-install tests.
+- Explicit workflow schema comments and updated workflow responsibilities and boundaries. Shared
+  Python setup action, bounded CI jobs, merge-group/manual validation, and full-history checkouts
+  for Git-derived package versions.
 - Generalized GitHub issue and pull request templates, file headers, dependency-update
-  configuration, release-note templates, and portable contributor guidance.
-- Shared Python setup action, bounded CI jobs, merge-group/manual validation, and full-history
-  checkouts for Git-derived package versions.
-- Editor and Git text conventions, issue and pull request templates, and opt-in pre-commit hooks
-  adapted from `aws-cdk-static-site`.
-- Checker regression cases and wheel/source-distribution contract and clean-install tests.
+  configuration, release-note templates, and portable contributor guidance. Editor and Git text
+  conventions, issue and pull request templates, and opt-in pre-commit hooks adapted from
+  `aws-cdk-static-site`.
 - Complete the Python module rename to `popo` in packaging, development tooling, documentation, and
   clean-distribution tests.
 
 ### Fixed
 
 - Pre-commit no longer requires a bare `python` on PATH: Popo checks use Make and filename-scoped
-  Ruff hooks use a managed Python environment.
-- Make selects the managed Python environment when no virtual environment is active, so local tests
-  find the editable package without a `PYTHONPATH` workaround.
-- Source tests and Make checks resolve the local `src` tree explicitly, including on macOS when
-  hidden `.pth` files prevent editable-install path discovery.
+  Ruff hooks use a managed Python environment. Make selects the managed Python environment when no
+  virtual environment is active, so local tests find the editable package without a `PYTHONPATH`
+  workaround. Source tests and Make checks resolve the local `src` tree explicitly, including on
+  macOS when hidden `.pth` files prevent editable-install path discovery.
 
 
 [release notes archive]: docs/releases/README.md
@@ -846,6 +846,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 [0.9.0]: docs/releases/v0.9.0.md
 [0.9.1]: docs/releases/v0.9.1.md
 [0.10.0]: docs/releases/v0.10.0.md
+[0.11.0]: docs/releases/v0.11.0.md
+[0.12.0]: docs/releases/v0.12.0.md
 [PR #3]: https://github.com/Dagitali/popo/pull/3
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
