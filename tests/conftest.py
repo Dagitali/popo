@@ -16,6 +16,7 @@ from tests.support.files import FileWriter
 TESTS_ROOT = Path(__file__).parent
 TEST_LAYERS = frozenset({'unit', 'integration', 'meta', 'e2e'})
 pytest_plugins = (
+    'tests.support.python_boundaries',
     'tests.support.toolchains',
     'tests.support.artifacts',
     'tests.support.hosted',
