@@ -10,11 +10,18 @@ import pytest
 
 from popo.config import ConfigurationError, load_config
 from popo.config.python_policy import load_python_policy_config
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
 
+@pytest.mark.parametrize(
+    'filename,header',
+    [
+        pytest.param('popo.toml', '[python-policy]\n', id='standalone'),
+        pytest.param('pyproject.toml', '[tool.popo.python-policy]\n', id='embedded'),
+    ],
+)
 class TestPythonPolicyConfiguration:
     """Preserve aggregate defaults while validating the new optional parser."""
 
@@ -23,21 +30,30 @@ class TestPythonPolicyConfiguration:
         self,
         write_file: FileWriter,
         tmp_path: Path,
+        filename: str,
+        header: str,
         mode: str | None,
     ) -> None:
+        """Keep both loaders aligned across policy sources without mutation."""
         setting = '' if mode is None else f'workflow-parser="{mode}"'
+        metadata = '[project]\nrequires-python=">=3.13,<3.15"\n'
         write_file(
             'pyproject.toml',
-            '[project]\nrequires-python=">=3.13,<3.15"\n'
-            f'[tool.popo.python-policy]\n{setting}',
+            metadata + (header + setting if filename == 'pyproject.toml' else ''),
         )
+        if filename == 'popo.toml':
+            write_file(filename, header + setting)
+        before = snapshot_files(tmp_path)
         if mode in {None, 'text', 'scoped'}:
             config = load_python_policy_config(tmp_path)
             assert config.workflow_parser == (mode or 'text')
+            assert config.requires_python == '>=3.13,<3.15'
             assert config == load_config(tmp_path).python_policy
         else:
-            with pytest.raises(ConfigurationError, match='workflow-parser'):
-                load_python_policy_config(tmp_path)
+            for load in (load_python_policy_config, load_config):
+                with pytest.raises(ConfigurationError, match='workflow-parser'):
+                    load(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION
