@@ -9,6 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from popo.checks import hosted
 from popo.checks.hosted import _github_get
 
 # SECTION: TESTS
@@ -18,19 +19,33 @@ class TestGitHubReadAdapter:
     """Verify sanitized GitHub CLI GET responses without network access."""
 
     @pytest.mark.parametrize(
-        ('stdout', 'returncode', 'stderr', 'paginate', 'expected'),
+        ('stdout', 'returncode', 'stderr', 'paginate', 'expected', 'failed', 'status'),
         [
-            ('{}', 0, '', False, {}),
+            ('{}', 0, '', False, {}, False, None),
             (
                 '[[{"name":"first"}],[{"name":"last"}]]',
                 0,
                 '',
                 True,
                 [{'name': 'first'}, {'name': 'last'}],
+                False,
+                None,
             ),
-            ('{}', 0, '', True, None),
-            ('not json', 0, '', False, None),
-            ('', 1, 'sensitive-value (HTTP 403)', False, None),
+            ('{}', 0, '', True, None, True, None),
+            ('[[1],{}]', 0, '', True, None, True, None),
+            ('null', 0, '', False, None, False, None),
+            ('not json', 0, '', False, None, True, None),
+            ('', 1, 'sensitive-value (HTTP 403)', False, None, True, 403),
+            ('', 1, 'sensitive-value', False, None, True, None),
+            (
+                '{"message":"Branch not protected"}',
+                1,
+                'sensitive-value (HTTP 404)',
+                False,
+                'Branch not protected',
+                True,
+                404,
+            ),
         ],
     )
     def test_adapter(
@@ -41,6 +56,8 @@ class TestGitHubReadAdapter:
         stderr: str,
         paginate: bool,
         expected: object,
+        failed: bool,
+        status: int | None,
     ) -> None:
         """Preserve GET boundaries and sanitize parsed or failed responses."""
         runner = Mock(
@@ -49,8 +66,8 @@ class TestGitHubReadAdapter:
         monkeypatch.setattr(subprocess, 'run', runner)
         result = _github_get('repos/example/library', paginate)
         assert result.data == expected
-        assert bool(result.error) == (expected is None)
-        assert result.status == (403 if returncode else None)
+        assert bool(result.error) is failed
+        assert result.status == status
         runner.assert_called_once()
         assert runner.call_args.kwargs['timeout'] == 60
         assert 'sensitive-value' not in result.error
@@ -62,7 +79,11 @@ class TestGitHubReadAdapter:
 
     @pytest.mark.parametrize(
         'error',
-        [FileNotFoundError(), subprocess.TimeoutExpired('gh', 60)],
+        [
+            FileNotFoundError(),
+            subprocess.TimeoutExpired('gh', 60),
+            UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid'),
+        ],
     )
     def test_adapter_launch_error(
         self,
@@ -72,6 +93,38 @@ class TestGitHubReadAdapter:
         """Return unavailable evidence when the CLI cannot launch or finish."""
         monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error))
         assert _github_get('repos/example/library').error
+
+    @pytest.mark.parametrize('returncode', (0, 1))
+    def test_parser_depth_failure_remains_sanitized(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        returncode: int,
+    ) -> None:
+        """Handle parser-depth failures on successful and failed HTTP paths."""
+        monkeypatch.setattr(
+            subprocess,
+            'run',
+            Mock(
+                return_value=subprocess.CompletedProcess(
+                    [],
+                    returncode,
+                    'sensitive-value',
+                    'sensitive-value (HTTP 503)',
+                ),
+            ),
+        )
+        monkeypatch.setattr(
+            hosted.json,
+            'loads',
+            Mock(side_effect=RecursionError('sensitive-value')),
+        )
+        result = _github_get('repos/example/library')
+        assert result.data is None
+        assert result.error == (
+            'GitHub GET failed (HTTP 503)' if returncode else 'invalid JSON response'
+        )
+        assert result.status == (503 if returncode else None)
+        assert 'sensitive-value' not in result.error
 
 
 # !SECTION

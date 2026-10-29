@@ -118,6 +118,32 @@ class TestNpmPairs:
         )
 
     @pytest.mark.parametrize(
+        'version,valid',
+        [(2, True), (3, True), (2.0, False), (3.0, False), ('2', False), (True, False)],
+    )
+    def test_lock_version_requires_supported_integer(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        version: object,
+        valid: bool,
+    ) -> None:
+        """Reject numeric lookalikes without rejecting either supported format."""
+        write_file('package.json', '{}')
+        write_file(
+            'package-lock.json',
+            json.dumps({'lockfileVersion': version, 'packages': {'': {}}}),
+        )
+        before = snapshot_files(tmp_path)
+        findings = validate(
+            SafetyConfig(tmp_path, npm_pairs=(('package.json', 'package-lock.json'),)),
+        )
+        assert bool(findings) is not valid
+        if not valid:
+            assert 'only npm lockfile versions 2 and 3 are supported' in findings[0]
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize(
         'group',
         ('dependencies', 'devDependencies', 'optionalDependencies'),
     )

@@ -53,7 +53,27 @@ def passing_fixture() -> dict[str, object]:
     dict[str, object]
         Independent native counts with no failures, skips or warnings.
     """
-    return dict(totalTestCount=1, passedTests=1, failedTests=0, skippedTests=0)
+    return {'totalTestCount': 1, 'passedTests': 1, 'failedTests': 0, 'skippedTests': 0}
+
+
+@pytest.fixture(name='relaxed_thresholds')
+def relaxed_thresholds_fixture() -> dict[str, int]:
+    """
+    Supply fresh relaxed acceptance limits without weakening schema rules.
+
+    Returns
+    -------
+    dict[str, int]
+        Zero minimum counts and maximum counts of one for failures, skips and
+        warnings. Arithmetic and input-shape requirements remain mandatory.
+    """
+    return THRESHOLDS | {
+        'minimum-tests': 0,
+        'minimum-passed': 0,
+        'maximum-failed': 1,
+        'maximum-skipped': 1,
+        'maximum-warnings': 1,
+    }
 
 
 # !SECTION
@@ -109,9 +129,12 @@ class TestResultAdapter:
         """
         assert xcode_summary(root, THRESHOLDS) == ['malformed native test counts']
 
+    @pytest.mark.parametrize('total', (0, 2))
     def test_inconsistent_totals_are_not_threshold_overrides(
         self: Self,
         passing: dict[str, object],
+        relaxed_thresholds: dict[str, int],
+        total: int,
     ) -> None:
         """
         Always require internally consistent counts even with relaxed limits.
@@ -120,9 +143,13 @@ class TestResultAdapter:
         ----------
         passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
+        relaxed_thresholds : dict[str, int]
+            Explicit relaxed policy that cannot bypass count arithmetic.
+        total : int
+            Total below or above the sum of the component counts.
         """
-        passing['totalTestCount'] = 2
-        assert xcode_summary(passing, THRESHOLDS) == [
+        passing['totalTestCount'] = total
+        assert xcode_summary(passing, relaxed_thresholds) == [
             'native test counts disagree with total',
         ]
 
@@ -139,6 +166,7 @@ class TestResultAdapter:
     def test_acceptance_is_consumer_configurable(
         self: Self,
         passing: dict[str, object],
+        relaxed_thresholds: dict[str, int],
         changes: dict[str, object],
         threshold: str,
     ) -> None:
@@ -149,6 +177,8 @@ class TestResultAdapter:
         ----------
         passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
+        relaxed_thresholds : dict[str, int]
+            Fresh acceptance limits allowing each selected violation.
         changes : dict[str, object]
             Count or warning replacements introducing one acceptance violation.
         threshold : str
@@ -158,14 +188,7 @@ class TestResultAdapter:
         findings = xcode_summary(report, THRESHOLDS)
         assert any(threshold in finding for finding in findings)
         assert 'PRIVATE BALANCE' not in str(findings)
-        relaxed = THRESHOLDS | {
-            'minimum-tests': 0,
-            'minimum-passed': 0,
-            'maximum-failed': 1,
-            'maximum-skipped': 1,
-            'maximum-warnings': 1,
-        }
-        assert xcode_summary(report, relaxed) == []
+        assert xcode_summary(report, relaxed_thresholds) == []
 
     @pytest.mark.parametrize('warnings', (False, 0, {}, '', None))
     def test_warning_collections_must_be_lists(

@@ -5,7 +5,7 @@ Verify shared source-policy contracts and language-specific documentation.
 """
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Self
 from unittest.mock import Mock, call, patch
@@ -364,6 +364,52 @@ class TestSourceConventions:
         assert facts.parameter_names == (() if kind == 'nominal' else ('value',))
         assert facts.result_section == ('' if kind == 'nominal' else 'Returns')
         assert not facts.exception_required
+
+
+class TestSourceInputDiscovery:
+    """Retain matches across overlapping patterns and partial traversals."""
+
+    @pytest.mark.parametrize('interrupted', (False, True))
+    def test_overlapping_patterns_retain_partial_matches(
+        self,
+        source_case: SourceCase,
+        write_file: FileWriter,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        interrupted: bool,
+    ) -> None:
+        """Deduplicate paths without treating repeated matches as missing."""
+        domain, filename, _ = source_case
+        path = write_file(filename, 'PRIVATE source')
+        before = snapshot_files(tmp_path)
+        config = SourceCheckConfig(
+            tmp_path,
+            domain,
+            ('first', 'second', 'missing'),
+            (),
+            {},
+        )
+
+        def glob(
+            directory: Path,
+            pattern: str,
+        ) -> Iterator[Path]:
+            """Yield a repeated match before an optional traversal failure."""
+            assert directory == tmp_path
+            if pattern != 'missing':
+                yield path
+            if interrupted and pattern == 'first':
+                raise OSError('PRIVATE traversal error')
+
+        with monkeypatch.context() as scoped:
+            scoped.setattr(Path, 'glob', glob)
+            paths, failures = _source_inputs.discover(config)
+        assert paths == [path]
+        assert failures == [
+            *(['cannot discover configured source inputs'] if interrupted else []),
+            'no inputs match: missing',
+        ]
+        assert snapshot_files(tmp_path) == before
 
 
 class TestSourceInputFailures:
@@ -746,9 +792,12 @@ class TestSourceInspection:
         path.write_text('text', encoding='utf-8')
         error = RuntimeError('inspection failed')
         inspect = Mock(side_effect=error)
-        with pytest.raises(RuntimeError, match='inspection failed') as raised:
+        with pytest.raises(
+            RuntimeError,
+            match='inspection failed',
+            check=lambda raised: raised is error,
+        ):
             _source_inputs.inspect_sources((path,), tmp_path, inspect)
-        assert raised.value is error
 
 
 # !SECTION

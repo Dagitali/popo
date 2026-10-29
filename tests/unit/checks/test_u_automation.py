@@ -9,9 +9,11 @@ import json
 from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
+from popo.checks import automation
 from popo.checks.automation import validate
 from popo.config.automation import AutomationConfig, load_automation_config
 from tests.support.files import FileWriter, snapshot_files
@@ -746,3 +748,63 @@ class TestWorkflowContracts:
         assert bool(failures) == bool(message)
         if message:
             assert message in failures[0]
+
+
+class TestSharedTargetSnapshots:
+    """Reuse parsed contracts without merging independent caller findings."""
+
+    @pytest.mark.parametrize('workflow', (False, True), ids=('action', 'workflow'))
+    @pytest.mark.parametrize('invalid_input', (False, True))
+    def test_shared_targets_read_once_and_refresh_between_runs(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        workflow: bool,
+        invalid_input: bool,
+    ) -> None:
+        """Read each successful document once and retain per-caller checks."""
+        target_name = 'shared.yml' if workflow else 'action.yml'
+        inputs = 'inputs: {flag: {type: string}}'
+        target_text = (
+            f'on: {{workflow_call: {{{inputs}}}}}'
+            if workflow
+            else f'name: Local\ndescription: Test\nruns: {{using: node24}}\n{inputs}'
+        )
+        target = write_file(target_name, target_text)
+        supplied = 'unknown' if invalid_input else 'flag'
+        use = f'uses: ./{target_name}\n'
+        source = (
+            f'jobs:\n  call:\n    {use}    with: {{{supplied}: value}}'
+            if workflow
+            else f'jobs:\n  call:\n    steps:\n      - {use}'
+            f'        with: {{{supplied}: value}}'
+        )
+        callers = [write_file(name, source) for name in ('one.yml', 'two.yml')]
+        paths = ('one.yml', 'two.yml') + ((target_name,) if workflow else ())
+        config = AutomationConfig(
+            tmp_path,
+            workflow_globs=paths,
+            action_globs=() if workflow else (target_name,),
+        )
+        read = Mock(wraps=automation.read_mapping)
+        monkeypatch.setattr(automation, 'read_mapping', read)
+        before = snapshot_files(tmp_path)
+        assert validate(config) == (
+            [f"{path}: unknown inputs: ['unknown']" for path in callers]
+            if invalid_input
+            else []
+        )
+        assert read.call_count == 3
+        assert {call.args[0] for call in read.call_args_list} == {*callers, target}
+        assert snapshot_files(tmp_path) == before
+        target.write_text(target_text.replace(inputs, 'inputs: []'), encoding='utf-8')
+        before = snapshot_files(tmp_path)
+        assert validate(config) == [
+            f'{path}: inputs must be a mapping' for path in callers
+        ]
+        assert read.call_count == 6
+        assert snapshot_files(tmp_path) == before
+
+
+# !SECTION

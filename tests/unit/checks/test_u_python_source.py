@@ -136,16 +136,23 @@ class TestPythonDocumentation:
             ['sample.py:1: return documentation missing'] if body == 'return 1' else []
         )
 
+    @pytest.mark.parametrize('prefix', ('', 'async '))
     @pytest.mark.parametrize(
         'body,result_section,raises',
         [
             ('return 1', 'Returns', False),
             ('yield 1', 'Yields', False),
             ('raise ValueError()', '', True),
+            ('return 1; yield 1; raise ValueError()', 'Yields', True),
+            ('raise ValueError(); yield 1; return 1', 'Yields', True),
+            ('yield 1; return None', 'Yields', False),
+            ('return None; raise ValueError()', '', True),
+            ('def nested(): yield 1; raise ValueError()', '', False),
         ],
     )
     def test_signature_facts_exclude_body_requirements(
         self: Self,
+        prefix: str,
         body: str,
         result_section: str,
         raises: bool,
@@ -153,9 +160,9 @@ class TestPythonDocumentation:
         """
         Keep native signature annotations separate from explicit body facts.
         """
-        source = f'def f(value: int) -> None:\n    {body}\n'
+        source = f'{prefix}def f(value: int) -> None:\n    {body}\n'
         syntax = ast.parse(source).body[0]
-        assert isinstance(syntax, ast.FunctionDef)
+        assert isinstance(syntax, (ast.FunctionDef, ast.AsyncFunctionDef))
         signature = _python_declarations._signature(syntax)
         assert signature.parameter_names == ('value',)
         assert signature.annotated
@@ -205,6 +212,42 @@ class TestPythonSource:
         assert python_source.validate(load_source_check(tmp_path, 'python-source'))
 
     @pytest.mark.parametrize(
+        'names,ordered',
+        [
+            ((), True),
+            (('a',), True),
+            (('a', 'b'), True),
+            (('b', 'a'), False),
+            (('a', 'a'), True),
+            (('B', 'a'), True),
+            (('a', 'B'), False),
+            (('_private', 'public'), True),
+            (('public', '_private'), False),
+            (('é', 'z'), False),
+        ],
+    )
+    def test_instance_method_order_uses_native_name_order(
+        self,
+        write_file: FileWriter,
+        tmp_path: Path,
+        names: tuple[str, ...],
+        ordered: bool,
+    ) -> None:
+        """Retain duplicate, case, underscore and Unicode ordering semantics."""
+        write_file(
+            'popo.toml',
+            '[python-source]\ninclude=["sample.py"]\nalphabetical-methods=true\n',
+        )
+        write_file(
+            'sample.py',
+            'class C:\n    pass\n'
+            + ''.join(f'    def {name}(self): pass\n' for name in names),
+        )
+        assert python_source.validate(load_source_check(tmp_path, 'python-source')) == (
+            [] if ordered else ['sample.py:1: instance methods not alphabetical']
+        )
+
+    @pytest.mark.parametrize(
         'settings',
         (
             'include = []',
@@ -252,6 +295,29 @@ class TestPythonSource:
         assert parameters[0] is syntax.args.posonlyargs[0]
         assert all(isinstance(parameter, ast.arg) for parameter in parameters)
         assert all(parameter.lineno == 1 for parameter in parameters)
+
+    @pytest.mark.parametrize(
+        'parameters,names,instance',
+        [
+            ('self, value', ('value',), True),
+            ('self, /, value', ('value',), True),
+            ('cls, /, value', ('value',), False),
+            ('value, /, self', ('value', 'self'), False),
+            ('*, self', ('self',), False),
+            ('', (), False),
+        ],
+    )
+    def test_receiver_placement(
+        self,
+        parameters: str,
+        names: tuple[str, ...],
+        instance: bool,
+    ) -> None:
+        """Only the first positional name establishes a receiver contract."""
+        source = f'class C:\n    def method({parameters}): pass\n'
+        nominal, method = _python_declarations.parse(source).declarations
+        assert nominal.instance_methods == (('method',) if instance else ())
+        assert method.facts.parameter_names == names
 
     @pytest.mark.parametrize(
         'source,option,diagnostic',

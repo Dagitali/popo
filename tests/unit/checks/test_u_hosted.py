@@ -84,6 +84,38 @@ class TestHostedCheckEvidence:
         ('rules', 'legacy', 'expected'),
         [
             (None, {}, 'inaccessible'),
+            ([], None, 'missing'),
+            ([], {}, 'missing'),
+            ([], False, 'inaccessible'),
+            ([], [], 'inaccessible'),
+            ([], 0, 'inaccessible'),
+            ([], '', 'inaccessible'),
+            ([], True, 'inaccessible'),
+            ([], ['PRIVATE'], 'inaccessible'),
+            (
+                [
+                    {
+                        'type': 'required_status_checks',
+                        'parameters': {
+                            'required_status_checks': [{'context': 'quality'}],
+                        },
+                    },
+                ],
+                False,
+                'inaccessible',
+            ),
+            (
+                [
+                    {
+                        'type': 'required_status_checks',
+                        'parameters': {
+                            'required_status_checks': [{'context': 'quality'}],
+                        },
+                    },
+                ],
+                None,
+                'verified',
+            ),
             ([], {'contexts': [1]}, 'inaccessible'),
             (
                 [{'type': 'pull_request'}],
@@ -97,7 +129,7 @@ class TestHostedCheckEvidence:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
         rules: object,
-        legacy: dict[str, object],
+        legacy: object,
         expected: str,
     ) -> None:
         """
@@ -121,6 +153,39 @@ class TestHostedEvidenceBoundaries:
     """
     Exercise malformed evidence and optional inventory without credentials.
     """
+
+    @pytest.mark.parametrize(
+        'path',
+        ('.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'),
+    )
+    @pytest.mark.parametrize(
+        'kind,malformed,status',
+        [
+            ('blob', False, 'verified'),
+            ('tree', False, 'missing'),
+            ('blob', True, 'inaccessible'),
+        ],
+    )
+    def test_codeowners_search_validates_the_complete_tree(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        path: str,
+        kind: str,
+        malformed: bool,
+        status: str,
+    ) -> None:
+        """Require a supported blob and reject malformed evidence after it."""
+        entries: list[dict[str, object]] = [
+            {'path': 'unrelated.txt', 'type': 'blob'},
+            {'path': path, 'type': kind},
+        ]
+        if malformed:
+            entries.append({})
+        github_responses['repos/example/library/git/trees/main?recursive=1'] = Response(
+            {'truncated': False, 'tree': entries},
+        )
+        assert audit_statuses(hosted_policy, github_responses)['codeowners'] == status
 
     @pytest.mark.parametrize(
         'data',

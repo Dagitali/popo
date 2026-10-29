@@ -21,6 +21,7 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
+from popo.checks import actionlint
 from popo.checks.actionlint import _normalize, run
 from popo.config.automation import AutomationConfig
 from tests.support.files import FileWriter, snapshot_files
@@ -206,9 +207,12 @@ class TestActionlintSourceView:
         error = OSError('fixture launch failure')
         runner = Mock(side_effect=error)
         monkeypatch.setattr(subprocess, 'run', runner)
-        with pytest.raises(OSError, match='fixture launch failure') as raised:
+        with pytest.raises(
+            OSError,
+            match='fixture launch failure',
+            check=lambda raised: raised is error,
+        ):
             run(tmp_path, ['ci.yml'], 'actionlint')
-        assert raised.value is error
         runner.assert_called_once()
         assert not Path(runner.call_args.kwargs['cwd']).exists()
         assert snapshot_files(tmp_path) == before
@@ -260,6 +264,38 @@ class TestActionlintSourceView:
             assert run(tmp_path, ['ci.yml', 'ci.yml']) == 0
         assert reads == {workflow: 1, action: 1}
         assert snapshot_files(tmp_path) == before
+
+
+class TestReferenceResolutionReuse:
+    """Reuse reference resolution only inside one source collection."""
+
+    @pytest.mark.parametrize(
+        'reference',
+        ('$/action.yml', './action.yml', 'example/repo/action.yml@revision'),
+    )
+    def test_repeated_targets_resolve_once_and_later_runs_revalidate(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        reference: str,
+    ) -> None:
+        """Share resolutions across normalization and workflow dependencies."""
+        target = write_file('action.yml', 'name: Local\nruns: {using: composite}')
+        text = f'jobs: {{check: {{steps: [{{uses: "{reference}"}}]}}}}'
+        selected = [write_file(name, text) for name in ('one.yml', 'two.yml')]
+        config = AutomationConfig(tmp_path, local_repositories=('example/repo',))
+        resolve = Mock(wraps=actionlint._target)
+        monkeypatch.setattr(actionlint, '_target', resolve)
+        before = snapshot_files(tmp_path)
+        sources = actionlint._collect_sources(config, selected)
+        assert set(sources) == {*selected, target}
+        resolve.assert_called_once_with(config, reference)
+        assert snapshot_files(tmp_path) == before
+        target.unlink()
+        with pytest.raises(ValueError, match='missing local automation target'):
+            actionlint._collect_sources(config, selected)
+        assert resolve.call_count == 2
 
 
 # !SECTION

@@ -21,6 +21,7 @@ from popo.checks._source_documentation import (
     DocumentationDialect,
     DocumentationInterpreter,
     DocumentationPresence,
+    callable_findings,
     contract_findings,
 )
 from popo.config.source_checks import DOMAINS, SourceCheckConfig
@@ -140,6 +141,47 @@ class TestCallableDocumentation:
         }[style]
         assert interpret(doc, '').parameter_names == frozenset({'Value'})
 
+    @pytest.mark.parametrize(
+        'required,complete',
+        [
+            ((), True),
+            (('value',), True),
+            (('value', 'value'), True),
+            (('Value',), False),
+            (('value', 'missing'), False),
+        ],
+    )
+    def test_parameter_name_coverage(
+        self,
+        documentation_case: DocumentationCase,
+        tmp_path: Path,
+        required: tuple[str, ...],
+        complete: bool,
+    ) -> None:
+        """Ignore repeated/extra names while requiring exact-case coverage."""
+        style, interpret = documentation_case
+        doc = {
+            'numpy': 'Parameters\n----------\nvalue, value, extra : int\n    Inputs.\n',
+            'docc': '- Parameter value: Input.\n- Parameters:\n'
+            '  - value: Repeated input.\n  - extra: Extra input.\n',
+        }[style]
+        evidence = interpret(doc, '')
+        assert evidence.parameter_names == frozenset({'value', 'extra'})
+        domain = 'python-source' if style == 'numpy' else 'swift-source'
+        config = SourceCheckConfig(
+            tmp_path,
+            domain,
+            (),
+            (),
+            dict(DOMAINS[domain]) | {'parameter-docs': True},
+        )
+        assert contract_findings(
+            DeclarationFacts(7, 'function', doc, required),
+            config,
+            'sample',
+            evidence,
+        ) == ([] if complete else ['sample:7: parameter documentation incomplete'])
+
     def test_section_label_case_remains_language_specific(
         self,
         documentation_case: DocumentationCase,
@@ -219,6 +261,27 @@ class TestDeclarationDocumentation:
 
 class TestNumPyDocumentation:
     """Retain the distinction between value returns and generator yields."""
+
+    @pytest.mark.parametrize(
+        'doc,expected',
+        [
+            ('Returns\n-------\nint\n    Result.', 'int\n    Result.'),
+            (
+                'Overview.\n\nReturns\n-------\n\nint\n    Result.\n\n'
+                'Notes\n-----\nPrivate notes.',
+                'int\n    Result.',
+            ),
+            ('Returns\n-------\n\nNotes\n-----\nPrivate notes.', ''),
+            ('Returns\n-------\nFirst.\nReturns\n-------\nSecond.', 'First.'),
+        ],
+    )
+    def test_section_boundaries_use_original_offsets(
+        self,
+        doc: str,
+        expected: str,
+    ) -> None:
+        """Stop at any underlined heading and preserve first-section content."""
+        assert _python_documentation._section(doc, 'Returns') == expected
 
     @pytest.mark.parametrize('section', ['Returns', 'Yields'])
     @pytest.mark.parametrize('required', ['Returns', 'Yields'])
@@ -312,6 +375,49 @@ class TestDisabledCallableContracts:
             )
             == []
         )
+
+    @pytest.mark.parametrize(
+        'kind,names,enabled',
+        [('class', (), True), ('function', None, True), ('function', (), False)],
+    )
+    def test_inapplicable_contracts_skip_markup(
+        self,
+        tmp_path: Path,
+        kind: str,
+        names: tuple[str, ...] | None,
+        enabled: bool,
+    ) -> None:
+        """Avoid evidence readers when no callable contract can be checked."""
+        interpret = Mock(side_effect=AssertionError('unexpected markup read'))
+        config = SourceCheckConfig(
+            tmp_path,
+            'python-source',
+            (),
+            (),
+            dict(DOMAINS['python-source'])
+            | dict.fromkeys(('parameter-docs', 'return-docs', 'raises-docs'), enabled),
+        )
+        assert (
+            callable_findings(
+                DeclarationFacts(1, kind, 'Unparsed documentation.', names),
+                config,
+                'sample',
+                ('function',),
+                interpret,
+            )
+            == []
+        )
+        interpret.assert_not_called()
+        if names is None:
+            assert (
+                contract_findings(
+                    DeclarationFacts(1, kind, '', None),
+                    config,
+                    'sample',
+                    CallableDocumentation(),
+                )
+                == []
+            )
 
 
 class TestDeclarationDocumentationOrder:

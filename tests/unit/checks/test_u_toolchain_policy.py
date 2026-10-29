@@ -17,6 +17,52 @@ class TestWorkflowVersions:
     Resolve only explicit literals, scoped env values and simple matrices.
     """
 
+    @pytest.mark.parametrize('key', ('python-version', 'swift-version'))
+    @pytest.mark.parametrize(
+        'workflow_env,job_env,step_env,expected',
+        [
+            ('{TOOL: "3.13"}', '{}', '{}', ('3.13',)),
+            ('{TOOL: "3.13"}', '{TOOL: "3.14"}', '{}', ('3.14',)),
+            ('{TOOL: "3.13"}', '{TOOL: "3.14"}', '{TOOL: "3.15"}', ('3.15',)),
+            ('{TOOL: "3.13"}', '{}', '{TOOL: null}', ()),
+            ('{TOOL: "3.13"}', '{}', '{TOOL: ""}', ()),
+            ('{TOOL: "3.13"}', '{}', '{TOOL: false}', ()),
+            ('[]', '{}', '{TOOL: "3.15"}', ()),
+            ('{}', '[]', '{TOOL: "3.15"}', ()),
+        ],
+    )
+    def test_environment_precedence(
+        self,
+        write_file: FileWriter,
+        key: str,
+        workflow_env: str,
+        job_env: str,
+        step_env: str,
+        expected: tuple[str, ...],
+    ) -> None:
+        """Validate every scope and preserve invalid higher-scope overrides."""
+        source = f"""env: {workflow_env}
+jobs:
+  build:
+    env: {job_env}
+    steps:
+      - env: {step_env}
+        with:
+          {key}: ${{{{ env.TOOL }}}}
+"""
+        path = write_file('ci.yml', source)
+        observations, errors = workflow_observations(path, key)
+        assert tuple(item.value for item in observations) == expected
+        assert errors == (
+            []
+            if expected
+            else [
+                f'jobs.build.steps[0].with.{key}: '
+                'unresolved or unsupported version declaration',
+            ]
+        )
+        assert path.read_text(encoding='utf-8') == source
+
     def test_job_scopes_do_not_leak(
         self,
         write_file: FileWriter,

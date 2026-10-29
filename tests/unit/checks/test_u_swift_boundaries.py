@@ -6,9 +6,11 @@ Exercise consumer layouts, lexical masking and directional boundary policy.
 
 from pathlib import Path
 from typing import Self
+from unittest.mock import Mock
 
 import pytest
 
+from popo.checks import swift_boundaries
 from popo.checks.swift_boundaries import validate
 from popo.config.swift_boundaries import load_swift_boundaries_config
 
@@ -107,6 +109,26 @@ class TestSwiftBoundaries:
         assert len(findings) == 1
         assert rule in findings[0]
 
+    def test_class_methods_do_not_declare_a_type_named_func(
+        self: Self,
+        boundary_project: tuple[Path, tuple[str, str, str]],
+    ) -> None:
+        """
+        Do not confuse class func with a nominal type declaration.
+
+        Parameters
+        ----------
+        boundary_project : tuple[Path, tuple[str, str, str]]
+            Disposable repository and its core/storage/presentation directory
+            names.
+        """
+        root, (core, data, _) = boundary_project
+        (root / data / 'Source.swift').write_text(
+            'class Host {\n class func helper() {}\n}',
+        )
+        (root / core / 'Source.swift').write_text('func allowed() {}')
+        assert validate(load_swift_boundaries_config(root)) == []
+
     @pytest.mark.parametrize(
         'text',
         (
@@ -172,26 +194,6 @@ class TestSwiftBoundaries:
             for item in validate(load_swift_boundaries_config(root))
         )
 
-    def test_class_methods_do_not_declare_a_type_named_func(
-        self: Self,
-        boundary_project: tuple[Path, tuple[str, str, str]],
-    ) -> None:
-        """
-        Do not confuse class func with a nominal type declaration.
-
-        Parameters
-        ----------
-        boundary_project : tuple[Path, tuple[str, str, str]]
-            Disposable repository and its core/storage/presentation directory
-            names.
-        """
-        root, (core, data, _) = boundary_project
-        (root / data / 'Source.swift').write_text(
-            'class Host {\n class func helper() {}\n}',
-        )
-        (root / core / 'Source.swift').write_text('func allowed() {}')
-        assert validate(load_swift_boundaries_config(root)) == []
-
     @pytest.mark.parametrize('case', ('deleted', 'undecodable', 'escaped'))
     def test_missing_or_unreadable_layers_cannot_pass(
         self: Self,
@@ -219,6 +221,34 @@ class TestSwiftBoundaries:
             if case == 'escaped':
                 path.symlink_to(root.parent / 'outside.swift')
         assert validate(load_swift_boundaries_config(root))
+
+    @pytest.mark.parametrize('allowed', (None, (), ('Foundation',)))
+    def test_optional_import_policy_keeps_symbol_checks(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        allowed: tuple[str, ...] | None,
+    ) -> None:
+        """Skip absent import policy without suppressing import-token symbols."""
+        policy = (
+            '[[swift-boundaries.layers]]\nname="core"\ninclude=["source.swift"]\n'
+            'forbidden-symbols=["Foundation"]\n'
+        )
+        if allowed is not None:
+            policy += f'allowed-imports={list(allowed)!r}\n'
+        (tmp_path / 'popo.toml').write_text(policy, encoding='utf-8')
+        (tmp_path / 'source.swift').write_text('import Foundation\n', encoding='utf-8')
+        imports = Mock(wraps=swift_boundaries._imports)
+        monkeypatch.setattr(swift_boundaries, '_imports', imports)
+        assert validate(load_swift_boundaries_config(tmp_path)) == [
+            *(
+                ['source.swift:1: core: forbidden import Foundation']
+                if allowed == ()
+                else []
+            ),
+            'source.swift:1: core: forbidden symbol Foundation',
+        ]
+        assert imports.call_count == int(allowed is not None)
 
 
 # !SECTION

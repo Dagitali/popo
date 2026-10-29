@@ -20,6 +20,44 @@ class TestSwiftSyntax:
     Keep native syntax inspection offline and preserve original locations.
     """
 
+    def test_comment_locations_and_unicode_offsets(
+        self,
+    ) -> None:
+        """Map UTF-8 node columns to character spans after non-ASCII text."""
+        source = (
+            '/// Overview\r\n/* outer /* inner */ comment */\nlet é = "😀"; struct Ω {}'
+        )
+        syntax = _swift_syntax.parse(source)
+        assert not syntax.root.has_error
+        nominal = next(
+            n for n in _swift_syntax.nodes(syntax.root) if n.type == 'class_declaration'
+        )
+        assert syntax.offset(nominal) == source.index('struct')
+        assert syntax.documentation == frozenset({1})
+        assert 'outer' not in syntax.code
+        assert '😀' not in syntax.code
+        assert len(source) == len(syntax.code)
+
+    @pytest.mark.parametrize(
+        'source,expected',
+        [
+            ('', (0, 1)),
+            ('abc', (0, 4)),
+            ('\n', (0, 1, 2)),
+            ('\n\n', (0, 1, 2, 3)),
+            ('é😀\r\nabc', (0, 4, 8)),
+            ('é😀\r\n', (0, 4, 5)),
+            ('a\rb\u2028c', (0, 6)),
+        ],
+    )
+    def test_line_offsets_preserve_original_character_positions(
+        self,
+        source: str,
+        expected: tuple[int, ...],
+    ) -> None:
+        """Count LF boundaries without changing Unicode or the end sentinel."""
+        assert _swift_syntax.parse(source).line_offsets == expected
+
     @pytest.mark.parametrize(
         'literal',
         (
@@ -53,23 +91,30 @@ class TestSwiftSyntax:
             'struct',
         ]
 
-    def test_comment_locations_and_unicode_offsets(
+    @pytest.mark.parametrize('indent', ('  ', '\t', '\u00a0'))
+    @pytest.mark.parametrize(
+        'suffix,continues',
+        [
+            ('async', True),
+            ('throws', True),
+            ('rethrows', True),
+            ('-> Int', True),
+            ('where T: P', True),
+            ('struct Next', False),
+        ],
+    )
+    def test_multiline_signature_continuation_boundaries(
         self,
+        indent: str,
+        suffix: str,
+        continues: bool,
     ) -> None:
-        """Map UTF-8 node columns to character spans after non-ASCII text."""
-        source = (
-            '/// Overview\r\n/* outer /* inner */ comment */\nlet é = "😀"; struct Ω {}'
-        )
-        syntax = _swift_syntax.parse(source)
-        assert not syntax.root.has_error
-        nominal = next(
-            n for n in _swift_syntax.nodes(syntax.root) if n.type == 'class_declaration'
-        )
-        assert syntax.offset(nominal) == source.index('struct')
-        assert syntax.documentation == frozenset({1})
-        assert 'outer' not in syntax.code
-        assert '😀' not in syntax.code
-        assert len(source) == len(syntax.code)
+        """Retain whitespace and keyword boundaries without copying suffixes."""
+        code = f' f()\n{indent}{suffix} {{}}'
+        signature = _swift_declarations._signature(code, 0)
+        assert signature.parameter_names == ()
+        assert signature.end == (code.index('{') if continues else code.index('\n'))
+        assert signature.tail == (f'\n{indent}{suffix} ' if continues else '')
 
     @pytest.mark.parametrize('opening', ('/* unfinished', '/* outer /* inner */'))
     def test_unterminated_comments_cannot_supply_facts(

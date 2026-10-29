@@ -177,6 +177,38 @@ class TestMarkdownLinks:
             f'{source}:1: local target does not exist: missing.md',
         ]
 
+    @pytest.mark.parametrize(
+        'target',
+        [
+            'http://[broken',
+            '//[broken',
+            'https://example.com／path',
+            'bad%00.md',
+            'bad%00.md#intro',
+        ],
+    )
+    @pytest.mark.parametrize('kind', ('link', 'image', 'reference'))
+    def test_invalid_destination_keeps_later_findings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        target: str,
+        kind: str,
+    ) -> None:
+        """Report invalid URLs/paths and continue checking later links."""
+        line = (
+            f'[bad]: {target}'
+            if kind == 'reference'
+            else f'{'!' if kind == 'image' else ''}[bad]({target})'
+        )
+        source = write_file('README.md', line + '\n[missing](missing.md)\n')
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == [
+            f'{source}:1: invalid link target: {target}',
+            f'{source}:2: local target does not exist: missing.md',
+        ]
+        assert snapshot_files(tmp_path) == before
+
     def test_linked_targets_in_excluded_directories(
         self,
         tmp_path: Path,
@@ -245,38 +277,6 @@ class TestMarkdownLinks:
         write_file(target, content)
         assert validate(tmp_path) == []
 
-    @pytest.mark.parametrize(
-        'target',
-        [
-            'http://[broken',
-            '//[broken',
-            'https://example.com／path',
-            'bad%00.md',
-            'bad%00.md#intro',
-        ],
-    )
-    @pytest.mark.parametrize('kind', ('link', 'image', 'reference'))
-    def test_invalid_destination_keeps_later_findings(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        target: str,
-        kind: str,
-    ) -> None:
-        """Report invalid URLs/paths and continue checking later links."""
-        line = (
-            f'[bad]: {target}'
-            if kind == 'reference'
-            else f'{'!' if kind == 'image' else ''}[bad]({target})'
-        )
-        source = write_file('README.md', line + '\n[missing](missing.md)\n')
-        before = snapshot_files(tmp_path)
-        assert validate(tmp_path) == [
-            f'{source}:1: invalid link target: {target}',
-            f'{source}:2: local target does not exist: missing.md',
-        ]
-        assert snapshot_files(tmp_path) == before
-
     def test_missing_root(
         self,
         tmp_path: Path,
@@ -291,6 +291,29 @@ class TestMarkdownLinks:
         """
         root = tmp_path / 'missing'
         assert validate(root) == [f'repository root does not exist: {root}']
+
+    def test_mixed_reference_and_inline_findings_preserve_order(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """Keep reference-use findings before ordered link/image destinations."""
+        source = write_file(
+            'README.md',
+            '[Missing][unknown] [Collapsed][] [Known][defined] '
+            '[A](missing-a.txt) ![Image](missing-image.png) [B](missing-b.txt)\n'
+            '[defined]: missing-definition.txt\n',
+        )
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == [
+            f'{source}:1: undefined reference: unknown',
+            f'{source}:1: undefined reference: Collapsed',
+            f'{source}:1: local target does not exist: missing-a.txt',
+            f'{source}:1: local target does not exist: missing-image.png',
+            f'{source}:1: local target does not exist: missing-b.txt',
+            f'{source}:2: local target does not exist: missing-definition.txt',
+        ]
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'filename',
@@ -494,6 +517,19 @@ class TestTitledDestinations:
 class TestHeadingSlugCollisions:
     """Allocate unique heading suffixes without affecting explicit anchors."""
 
+    def test_explicit_anchors_do_not_reserve_heading_suffixes(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """Keep HTML anchors separate from heading suffix allocation."""
+        path = write_file(
+            'README.md',
+            '<a id="echo-1"></a>\n# Echo\n# Echo\n',
+        )
+        assert docs._anchors(path) == {'echo', 'echo-1'}
+        assert validate(tmp_path) == []
+
     @pytest.mark.parametrize(
         'headings,expected',
         (
@@ -534,19 +570,6 @@ class TestHeadingSlugCollisions:
         assert docs._anchors(path) == set(expected)
         assert validate(tmp_path) == []
         assert snapshot_files(tmp_path) == before
-
-    def test_explicit_anchors_do_not_reserve_heading_suffixes(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """Keep HTML anchors separate from heading suffix allocation."""
-        path = write_file(
-            'README.md',
-            '<a id="echo-1"></a>\n# Echo\n# Echo\n',
-        )
-        assert docs._anchors(path) == {'echo', 'echo-1'}
-        assert validate(tmp_path) == []
 
 
 # !SECTION

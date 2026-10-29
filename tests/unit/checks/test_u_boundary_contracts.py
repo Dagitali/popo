@@ -12,7 +12,12 @@ from unittest.mock import Mock
 import pytest
 
 from popo.checks import _source_boundaries, python_boundaries, swift_boundaries
-from popo.config.source_boundaries import BoundaryConfig, load_boundaries_config
+from popo.config.source_boundaries import (
+    BoundaryConfig,
+    BoundaryLayer,
+    load_boundaries_config,
+)
+from popo.config.source_checks import SourceCheckConfig
 from tests.support.files import snapshot_files
 
 # SECTION: NAMED TUPLES
@@ -138,6 +143,49 @@ class TestBoundaryContracts:
         assert snapshot_files(tmp_path) == before
 
 
+class TestImportMatching:
+    """Preserve exact names, dot boundaries and native descendant policies."""
+
+    @pytest.mark.parametrize('descendants', (False, True))
+    @pytest.mark.parametrize(
+        'target,exact,descendant',
+        [
+            ('Allowed', '', ''),
+            ('Allowed.child', 'forbidden import', ''),
+            ('AllowedExtra', 'forbidden import', 'forbidden import'),
+            ('allowed', 'forbidden import', 'forbidden import'),
+            ('Blocked', 'forbidden layer import', 'forbidden layer import'),
+            ('Blocked.child', 'forbidden import', 'forbidden layer import'),
+        ],
+    )
+    def test_exact_and_descendant_matching(
+        self,
+        tmp_path: Path,
+        descendants: bool,
+        target: str,
+        exact: str,
+        descendant: str,
+    ) -> None:
+        """Keep forbidden ownership ahead of an overlapping allowlist."""
+        layer = BoundaryLayer(
+            'core',
+            SourceCheckConfig(tmp_path, 'python-source', (), (), {}),
+            ('Allowed', 'Blocked'),
+            (),
+            (),
+        )
+        expected = descendant if descendants else exact
+        references = iter((_source_boundaries.ImportReference(3, target),))
+        assert _source_boundaries.import_findings(
+            references,
+            layer,
+            'source',
+            forbidden_targets={'Blocked'},
+            allow_descendants=descendants,
+        ) == ([f'source:3: core: {expected} {target}'] if expected else [])
+        assert list(references) == []
+
+
 class TestOverlappingBoundaryLayers:
     """Retain layer-specific evaluation while preparing each input once."""
 
@@ -235,19 +283,18 @@ class TestSymbolReporting:
         forbidden: tuple[str, ...],
     ) -> None:
         """
-        Consume an unordered iterator without repeating matching findings.
+        Skip unused candidates or consume once with unique ordered findings.
         """
         reference = _source_boundaries.SymbolReference
-        candidates = iter(
-            (
-                reference(3, 'Other'),
-                reference(2, 'Other'),
-                reference(2, 'Blocked'),
-                reference(2, 'Blocked'),
-                reference(1, 'blocked'),
-                reference(1, 'Allowed'),
-            ),
+        observations = (
+            reference(3, 'Other'),
+            reference(2, 'Other'),
+            reference(2, 'Blocked'),
+            reference(2, 'Blocked'),
+            reference(1, 'blocked'),
+            reference(1, 'Allowed'),
         )
+        candidates = iter(observations)
         assert _source_boundaries.symbol_findings(
             candidates,
             forbidden,
@@ -262,7 +309,7 @@ class TestSymbolReporting:
             if forbidden
             else []
         )
-        assert list(candidates) == []
+        assert list(candidates) == ([] if forbidden else list(observations))
 
 
 # !SECTION
