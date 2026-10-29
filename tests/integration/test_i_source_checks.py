@@ -21,24 +21,6 @@ from tests.support.files import snapshot_files
 class TestSourceCommands:
     """Verify selection, JSON reporting and private-artifact boundaries."""
 
-    def test_aggregate_continues_after_invalid_domain_configuration(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            'checks = ["check-python-source", "check-logs"]\n'
-            '[python-source]\ninclude = []\n'
-            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
-        )
-        assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert [item['check'] for item in report['checks']] == [
-            'check-python-source',
-            'check-logs',
-        ]
-        assert all(not item['passed'] for item in report['checks'])
-
     def test_explicit_external_log_root_redacts_financial_contents(
         self: Self,
         tmp_path: Path,

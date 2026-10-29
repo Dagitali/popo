@@ -7,6 +7,7 @@ Exercise result and architecture commands through public CLI selection.
 import json
 from pathlib import Path
 from typing import Self
+from unittest.mock import Mock
 
 import pytest
 
@@ -192,39 +193,114 @@ class TestValidationCommands:
         assert 'configuration:' in diagnostic['message']
         assert snapshot_files(tmp_path) == before
 
+    @pytest.mark.parametrize(
+        'policy,expected',
+        [
+            pytest.param(
+                'checks=["check-test-results","check-swift-boundaries"]\n'
+                '[test-results]\nadapter="unknown"\ninclude=["*.json"]',
+                (
+                    (
+                        'check-test-results',
+                        'configuration: test-results.adapter must be xcode-summary',
+                    ),
+                    (
+                        'check-swift-boundaries',
+                        'configuration: swift-boundaries must be a TOML table',
+                    ),
+                ),
+                id='result-and-boundary',
+            ),
+            pytest.param(
+                'checks=["check-python-source","check-logs"]\n'
+                '[python-source]\ninclude=[]\n'
+                '[logs]\ninclude=["*.log"]\npatterns={warning="WARNING"}',
+                (
+                    (
+                        'check-python-source',
+                        'configuration: python-source.include must not be empty',
+                    ),
+                    ('check-logs', 'no inputs match: *.log'),
+                ),
+                id='source-and-logs',
+            ),
+        ],
+    )
     def test_aggregate_continues_after_domain_configuration_failure(
         self: Self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        policy: str,
+        expected: tuple[tuple[str, str], ...],
     ) -> None:
         """
         One malformed domain cannot hide other selected diagnostics.
 
         Parameters
         ----------
-        tmp_path : Path
+        tmp_path : pathlib.Path
             Pytest-managed directory containing only disposable consumer
             inputs.
         capsys : pytest.CaptureFixture[str]
             Pytest fixture capturing public CLI text or JSON output.
+        policy : str
+            Explicit aggregate selection with an invalid first domain.
+        expected : tuple[tuple[str, str], ...]
+            Selected commands and their complete failure messages, in order.
         """
-        (tmp_path / 'popo.toml').write_text(
-            'checks=["check-test-results","check-swift-boundaries"]\n'
-            '[test-results]\nadapter="unknown"\ninclude=["*.json"]',
-        )
+        (tmp_path / 'popo.toml').write_text(policy, encoding='utf-8')
+        before = snapshot_files(tmp_path)
         assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
-        checks = json.loads(capsys.readouterr().out)['checks']
-        assert [item['check'] for item in checks] == [
-            'check-test-results',
-            'check-swift-boundaries',
-        ]
-        assert all(not item['passed'] for item in checks)
+        output = capsys.readouterr()
+        assert output.err == ''
+        assert json.loads(output.out) == {
+            'schema_version': 1,
+            'command': 'check-all',
+            'passed': False,
+            'checks': [
+                {
+                    'check': command,
+                    'passed': False,
+                    'diagnostics': [{'severity': 'error', 'message': message}],
+                    'summary': '',
+                }
+                for command, message in expected
+            ],
+        }
+        assert snapshot_files(tmp_path) == before
 
-    def test_artifact_overrides_are_mutually_exclusive(self: Self) -> None:
+    @pytest.mark.parametrize(
+        'options',
+        [
+            pytest.param(
+                ('--summary', 'one.json', '--results-root', '.'),
+                id='summary-first',
+            ),
+            pytest.param(
+                ('--results-root', '.', '--summary', 'one.json'),
+                id='root-first',
+            ),
+        ],
+    )
+    def test_artifact_overrides_are_mutually_exclusive(
+        self: Self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        options: tuple[str, ...],
+    ) -> None:
         """Reject ambiguous input requests before reading policy or artifacts."""
-        with pytest.raises(SystemExit) as error:
-            main(['check-test-results', '--summary', 'one.json', '--results-root', '.'])
-        assert error.value.code == 2
+        reader = Mock(side_effect=AssertionError('unexpected input read'))
+        monkeypatch.setattr(Path, 'read_text', reader)
+        monkeypatch.setattr(Path, 'read_bytes', reader)
+        with pytest.raises(SystemExit, check=lambda error: error.code == 2):
+            main(['check-test-results', '--root', str(tmp_path), *options])
+        reader.assert_not_called()
+        output = capsys.readouterr()
+        assert output.out == ''
+        assert 'not allowed with argument' in output.err
+        assert '--summary' in output.err
+        assert '--results-root' in output.err
 
 
 # !SECTION
