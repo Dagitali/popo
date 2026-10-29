@@ -11,7 +11,7 @@ from unittest.mock import Mock
 import pytest
 
 from popo.checks import hosted
-from popo.checks.hosted import _github_get
+from popo.checks.hosted import Response, _github_get
 
 # SECTION: TESTS
 
@@ -81,10 +81,18 @@ class TestGitHubReadAdapter:
     @pytest.mark.parametrize(
         'error_factory',
         [
-            pytest.param(FileNotFoundError, id='missing-gh'),
-            pytest.param(lambda: subprocess.TimeoutExpired('gh', 60), id='timeout'),
+            pytest.param(lambda: FileNotFoundError('sensitive-value'), id='missing-gh'),
             pytest.param(
-                lambda: UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid'),
+                lambda: subprocess.TimeoutExpired(
+                    'sensitive-value',
+                    60,
+                    output='sensitive-value',
+                    stderr='sensitive-value',
+                ),
+                id='timeout',
+            ),
+            pytest.param(
+                lambda: UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'sensitive-value'),
                 id='decode',
             ),
         ],
@@ -94,9 +102,11 @@ class TestGitHubReadAdapter:
         monkeypatch: pytest.MonkeyPatch,
         error_factory: Callable[[], Exception],
     ) -> None:
-        """Return unavailable evidence when the CLI cannot launch or finish."""
+        """Return sanitized unavailable evidence without exception contents."""
         monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error_factory()))
-        assert _github_get('repos/example/library').error
+        assert _github_get('repos/example/library') == Response(
+            error='GitHub CLI unavailable, timed out, or undecodable',
+        )
 
     @pytest.mark.parametrize('returncode', (0, 1))
     def test_parser_depth_failure_remains_sanitized(

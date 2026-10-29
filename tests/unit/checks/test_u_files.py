@@ -4,6 +4,7 @@
 Exercise configured file existence, header syntax and containment boundaries.
 """
 
+import errno
 import subprocess
 import sys
 from collections.abc import Callable
@@ -146,11 +147,22 @@ class TestGitSourceFilenames:
         tmp_path: Path,
         filename: str,
     ) -> None:
-        """Inspect every selected path without newline translation."""
+        """
+        Inspect every selected path without newline translation.
+
+        Skip unsupported filename forms without hiding unexpected I/O errors.
+        """
         try:
             (tmp_path / filename).write_text('wrong header', encoding='utf-8')
-        except OSError:
-            pytest.skip('Filename unavailable on this platform')
+        except OSError as error:
+            if error.errno not in {
+                errno.EINVAL,
+                errno.ENAMETOOLONG,
+                errno.EILSEQ,
+                errno.ENOTSUP,
+            }:
+                raise
+            pytest.skip(f'Filename unavailable on this platform: {error}')
         config = HeadersConfig(
             tmp_path,
             'Sample',
