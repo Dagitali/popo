@@ -12,12 +12,12 @@ from tests.support.files import FileWriter
 # SECTION: TESTS
 
 
+@pytest.mark.parametrize('key', ('python-version', 'swift-version'))
 class TestWorkflowVersions:
     """
     Resolve only explicit literals, scoped env values and simple matrices.
     """
 
-    @pytest.mark.parametrize('key', ('python-version', 'swift-version'))
     @pytest.mark.parametrize(
         'workflow_env,job_env,step_env,expected',
         [
@@ -66,24 +66,24 @@ jobs:
     def test_job_scopes_do_not_leak(
         self,
         write_file: FileWriter,
+        key: str,
     ) -> None:
         path = write_file(
             'ci.yml',
-            """jobs:
+            f"""jobs:
   first:
-    env: { TOOL: "6.1.2" }
-    with: { swift-version: "6.1.2" }
+    env: {{ TOOL: "6.1.2" }}
+    with: {{ {key}: "6.1.2" }}
   second:
-    with: { swift-version: "${{ env.TOOL }}" }
+    with: {{ {key}: "${{{{ env.TOOL }}}}" }}
 """,
         )
-        values, errors = workflow_observations(path, 'swift-version')
+        values, errors = workflow_observations(path, key)
         assert [(item.location, item.value) for item in values] == [
-            ('jobs.first.with.swift-version', '6.1.2'),
+            (f'jobs.first.with.{key}', '6.1.2'),
         ]
         assert errors == [
-            'jobs.second.with.swift-version: '
-            'unresolved or unsupported version declaration',
+            f'jobs.second.with.{key}: unresolved or unsupported version declaration',
         ]
 
     @pytest.mark.parametrize(
@@ -102,16 +102,16 @@ jobs:
     def test_malformed_documents(
         self,
         write_file: FileWriter,
+        key: str,
         source: str,
     ) -> None:
         values, errors = workflow_observations(
             write_file('ci.yml', source),
-            'swift-version',
+            key,
         )
         assert values == ()
         assert errors == ['cannot read a valid workflow version declaration']
 
-    @pytest.mark.parametrize('key', ['python-version', 'swift-version'])
     @pytest.mark.parametrize(
         'expression,expected',
         [
@@ -163,6 +163,7 @@ jobs:
     def test_unsupported_matrix_forms(
         self,
         write_file: FileWriter,
+        key: str,
         matrix: str,
     ) -> None:
         path = write_file(
@@ -173,14 +174,13 @@ jobs:
       matrix:
         {matrix}
     with:
-      swift-version: ${{{{ matrix.tool }}}}
+      {key}: ${{{{ matrix.tool }}}}
 """,
         )
-        observations, errors = workflow_observations(path, 'swift-version')
+        observations, errors = workflow_observations(path, key)
         assert observations == ()
         assert errors == [
-            'jobs.build.with.swift-version: '
-            'unresolved or unsupported version declaration',
+            f'jobs.build.with.{key}: unresolved or unsupported version declaration',
         ]
 
     @pytest.mark.parametrize(
@@ -196,17 +196,17 @@ jobs:
     def test_unsupported_or_unresolved_values(
         self,
         write_file: FileWriter,
+        key: str,
         value: str,
     ) -> None:
         path = write_file(
             'ci.yml',
-            f'jobs: {{ build: {{ with: {{ swift-version: {value} }} }} }}',
+            f'jobs: {{ build: {{ with: {{ {key}: {value} }} }} }}',
         )
-        observations, errors = workflow_observations(path, 'swift-version')
+        observations, errors = workflow_observations(path, key)
         assert observations == ()
         assert errors == [
-            'jobs.build.with.swift-version: '
-            'unresolved or unsupported version declaration',
+            f'jobs.build.with.{key}: unresolved or unsupported version declaration',
         ]
 
 
