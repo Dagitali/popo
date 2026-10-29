@@ -73,44 +73,6 @@ def boundary_project_fixture(
 class TestSwiftBoundaries:
     """Report only configured metadata, not arbitrary source contents."""
 
-    @pytest.mark.parametrize(
-        'source,rule',
-        (
-            ('import SwiftUI\nstruct Rule {}', 'forbidden import SwiftUI'),
-            (
-                '@preconcurrency import struct SwiftUI.View\nstruct Rule {}',
-                'forbidden import SwiftUI',
-            ),
-            ('let value: Store', 'forbidden symbol Store'),
-            ('let value: Screen', 'forbidden symbol Screen'),
-            ('let value: UserDefaults', 'forbidden symbol UserDefaults'),
-        ),
-    )
-    def test_forbidden_dependencies(
-        self: Self,
-        boundary_project: tuple[Path, tuple[str, str, str]],
-        source: str,
-        rule: str,
-    ) -> None:
-        """
-        Keep architecture choices independent of branded directory names.
-
-        Parameters
-        ----------
-        boundary_project : tuple[Path, tuple[str, str, str]]
-            Disposable repository and its core/storage/presentation directory
-            names.
-        source : str
-            Synthetic Swift source introducing the configured dependency.
-        rule : str
-            Expected fixed import or symbol diagnostic fragment.
-        """
-        root, (core, _, _) = boundary_project
-        (root / core / 'Source.swift').write_text(source)
-        findings = validate(load_swift_boundaries_config(root))
-        assert len(findings) == 1
-        assert rule in findings[0]
-
     def test_class_methods_do_not_declare_a_type_named_func(
         self: Self,
         boundary_project: tuple[Path, tuple[str, str, str]],
@@ -162,39 +124,42 @@ class TestSwiftBoundaries:
         assert validate(load_swift_boundaries_config(root)) == []
 
     @pytest.mark.parametrize(
-        'declaration',
+        'source,rule',
         (
-            'struct Store {}',
-            'class Store {}',
-            'enum Store {}',
-            'actor Store {}',
-            'protocol Store {}',
-            'typealias Store = Int',
+            ('import SwiftUI\nstruct Rule {}', 'forbidden import SwiftUI'),
+            (
+                '@preconcurrency import struct SwiftUI.View\nstruct Rule {}',
+                'forbidden import SwiftUI',
+            ),
+            ('let value: Store', 'forbidden symbol Store'),
+            ('let value: Screen', 'forbidden symbol Screen'),
+            ('let value: UserDefaults', 'forbidden symbol UserDefaults'),
         ),
     )
-    def test_nominal_and_alias_names_are_collected(
+    def test_forbidden_dependencies(
         self: Self,
         boundary_project: tuple[Path, tuple[str, str, str]],
-        declaration: str,
+        source: str,
+        rule: str,
     ) -> None:
         """
-        Include the declaration categories supported by the boundary guard.
+        Keep architecture choices independent of branded directory names.
 
         Parameters
         ----------
         boundary_project : tuple[Path, tuple[str, str, str]]
             Disposable repository and its core/storage/presentation directory
             names.
-        declaration : str
-            Nominal or typealias syntax supplying a forbidden type name.
+        source : str
+            Synthetic Swift source introducing the configured dependency.
+        rule : str
+            Expected fixed import or symbol diagnostic fragment.
         """
-        root, (core, data, _) = boundary_project
-        (root / data / 'Source.swift').write_text(declaration)
-        (root / core / 'Source.swift').write_text('let dependency: Store')
-        assert any(
-            'forbidden symbol Store' in item
-            for item in validate(load_swift_boundaries_config(root))
-        )
+        root, (core, _, _) = boundary_project
+        (root / core / 'Source.swift').write_text(source)
+        findings = validate(load_swift_boundaries_config(root))
+        assert len(findings) == 1
+        assert rule in findings[0]
 
     @pytest.mark.parametrize('case', ('deleted', 'undecodable', 'escaped'))
     def test_missing_or_unreadable_layers_cannot_pass(
@@ -238,6 +203,41 @@ class TestSwiftBoundaries:
         }
         assert validate(load_swift_boundaries_config(root)) == expected[case]
         assert snapshot_files(root) == before
+
+    @pytest.mark.parametrize(
+        'declaration',
+        (
+            'struct Store {}',
+            'class Store {}',
+            'enum Store {}',
+            'actor Store {}',
+            'protocol Store {}',
+            'typealias Store = Int',
+        ),
+    )
+    def test_nominal_and_alias_names_are_collected(
+        self: Self,
+        boundary_project: tuple[Path, tuple[str, str, str]],
+        declaration: str,
+    ) -> None:
+        """
+        Include the declaration categories supported by the boundary guard.
+
+        Parameters
+        ----------
+        boundary_project : tuple[Path, tuple[str, str, str]]
+            Disposable repository and its core/storage/presentation directory
+            names.
+        declaration : str
+            Nominal or typealias syntax supplying a forbidden type name.
+        """
+        root, (core, data, _) = boundary_project
+        (root / data / 'Source.swift').write_text(declaration)
+        (root / core / 'Source.swift').write_text('let dependency: Store')
+        assert any(
+            'forbidden symbol Store' in item
+            for item in validate(load_swift_boundaries_config(root))
+        )
 
     @pytest.mark.parametrize('allowed', (None, (), ('Foundation',)))
     def test_optional_import_policy_keeps_symbol_checks(

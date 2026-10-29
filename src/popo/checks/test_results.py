@@ -51,54 +51,6 @@ def _report_findings(
 # SECTION: FUNCTIONS
 
 
-def xcode_summary(
-    report: object,
-    thresholds: dict[str, int],
-) -> list[str]:
-    """
-    Validate the Xcode adapter's schema, arithmetic and acceptance thresholds.
-
-    Parameters
-    ----------
-    report : object
-        Parsed JSON root; no source or warning message is emitted.
-    thresholds : dict[str, int]
-        Loader-validated minimum and maximum counts.
-
-    Returns
-    -------
-    list[str]
-        Fixed diagnostics without report values or private warning contents.
-        An absent warning field is treated as an empty list; malformed warning
-        types fail.
-    """
-    if not isinstance(report, dict) or any(
-        type(report.get(key)) is not int or report[key] < 0 for key in COUNTS
-    ):
-        return ['malformed native test counts']
-    if report['totalTestCount'] != sum(report[key] for key in COUNTS[1:]):
-        return ['native test counts disagree with total']
-    warnings = report.get('runtimeWarnings', [])
-    if not isinstance(warnings, list):
-        return ['malformed native runtime warnings']
-    observed = (
-        ('minimum-tests', report['totalTestCount']),
-        ('minimum-passed', report['passedTests']),
-        ('maximum-failed', report['failedTests']),
-        ('maximum-skipped', report['skippedTests']),
-        ('maximum-warnings', len(warnings)),
-    )
-    return [
-        f'{key} acceptance threshold not satisfied'
-        for key, value in observed
-        if (
-            value < thresholds[key]
-            if key.startswith('minimum-')
-            else value > thresholds[key]
-        )
-    ]
-
-
 def validate(
     config: TestResultsConfig,
     root: Path | None = None,
@@ -153,6 +105,54 @@ def validate(
         ]
 
     return [*failures, *inspect_sources(paths, boundary, inspect)]
+
+
+def xcode_summary(
+    report: object,
+    thresholds: dict[str, int],
+) -> list[str]:
+    """
+    Validate the Xcode adapter's schema, arithmetic and acceptance thresholds.
+
+    Parameters
+    ----------
+    report : object
+        Parsed JSON root; no source or warning message is emitted.
+    thresholds : dict[str, int]
+        Loader-validated minimum and maximum counts.
+
+    Returns
+    -------
+    list[str]
+        Fixed diagnostics without report values or private warning contents.
+        An absent warning field is treated as an empty list; malformed warning
+        types fail.
+    """
+    if not isinstance(report, dict) or any(
+        type(report.get(key)) is not int or report[key] < 0 for key in COUNTS
+    ):
+        return ['malformed native test counts']
+    if report['totalTestCount'] != sum(report[key] for key in COUNTS[1:]):
+        return ['native test counts disagree with total']
+    warnings = report.get('runtimeWarnings', [])
+    if not isinstance(warnings, list):
+        return ['malformed native runtime warnings']
+    observed = (
+        ('minimum-tests', report['totalTestCount']),
+        ('minimum-passed', report['passedTests']),
+        ('maximum-failed', report['failedTests']),
+        ('maximum-skipped', report['skippedTests']),
+        ('maximum-warnings', len(warnings)),
+    )
+    return [
+        f'{key} acceptance threshold not satisfied'
+        for key, value in observed
+        if (
+            value < thresholds[key]
+            if key.startswith('minimum-')
+            else value > thresholds[key]
+        )
+    ]
 
 
 # !SECTION

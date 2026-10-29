@@ -623,27 +623,6 @@ class TestNativeSyntaxContracts:
     Preserve comparable locations and purposeful parser-failure semantics.
     """
 
-    def test_unicode_declaration_locations(
-        self,
-        source_case: SourceCase,
-    ) -> None:
-        """
-        Use physical declaration lines regardless of UTF-8 identifier width.
-        """
-        domain, _, _ = source_case
-        parsed = (
-            _python_declarations.parse('"""Overview 😀."""\nclass Ω:\n    pass')
-            if domain == 'python-source'
-            else _swift_declarations.parse('/// Overview 😀.\nstruct Ω {}')
-        )
-        assert parsed.has_overview
-        assert parsed.documentation_lines == (1,)
-        assert len(parsed.declarations) == 1
-        assert parsed.declarations[0].facts.line == 2
-        assert parsed.declarations[0].facts.kind == (
-            'class' if domain == 'python-source' else 'struct'
-        )
-
     def test_native_failure_and_recovery_remain_distinct(
         self,
         source_case: SourceCase,
@@ -674,6 +653,27 @@ class TestNativeSyntaxContracts:
         """
         with pytest.raises(UnicodeEncodeError):
             parser('\ud800')
+
+    def test_unicode_declaration_locations(
+        self,
+        source_case: SourceCase,
+    ) -> None:
+        """
+        Use physical declaration lines regardless of UTF-8 identifier width.
+        """
+        domain, _, _ = source_case
+        parsed = (
+            _python_declarations.parse('"""Overview 😀."""\nclass Ω:\n    pass')
+            if domain == 'python-source'
+            else _swift_declarations.parse('/// Overview 😀.\nstruct Ω {}')
+        )
+        assert parsed.has_overview
+        assert parsed.documentation_lines == (1,)
+        assert len(parsed.declarations) == 1
+        assert parsed.declarations[0].facts.line == 2
+        assert parsed.declarations[0].facts.kind == (
+            'class' if domain == 'python-source' else 'struct'
+        )
 
 
 class TestCallableRequirementNormalization:
@@ -747,6 +747,24 @@ class TestParameterLayout:
 class TestSourceInspection:
     """Keep shared reads ordered, redacted and independent of domain policy."""
 
+    def test_inspector_failures_propagate(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Propagate inspector failures instead of reporting partial success.
+        """
+        path = tmp_path / 'input'
+        path.write_text('text', encoding='utf-8')
+        error = RuntimeError('inspection failed')
+        inspect = Mock(side_effect=error)
+        with pytest.raises(
+            RuntimeError,
+            match='inspection failed',
+            check=lambda raised: raised is error,
+        ):
+            _source_inputs.inspect_sources((path,), tmp_path, inspect)
+
     @pytest.mark.parametrize('failure', ('decode', 'missing'))
     def test_reads_once_and_continues_after_input_errors(
         self,
@@ -780,24 +798,6 @@ class TestSourceInspection:
         assert read.call_args_list == [call(path, tmp_path) for path in paths]
         assert inspect.call_args_list == [call(first, 'one'), call(last, 'two')]
         assert snapshot_files(tmp_path) == before
-
-    def test_inspector_failures_propagate(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Propagate inspector failures instead of reporting partial success.
-        """
-        path = tmp_path / 'input'
-        path.write_text('text', encoding='utf-8')
-        error = RuntimeError('inspection failed')
-        inspect = Mock(side_effect=error)
-        with pytest.raises(
-            RuntimeError,
-            match='inspection failed',
-            check=lambda raised: raised is error,
-        ):
-            _source_inputs.inspect_sources((path,), tmp_path, inspect)
 
 
 # !SECTION

@@ -28,6 +28,60 @@ pytest_plugins = (
 # !SECTION
 
 
+# SECTION: HOOKS
+
+
+def pytest_addoption(
+    parser: pytest.Parser,
+) -> None:
+    """
+    Register options shared by artifact-oriented test layers.
+
+    Parameters
+    ----------
+    parser : pytest.Parser
+        Parser receiving --artifact-dir for an existing wheel/sdist directory.
+        Artifact fixtures interpret the option; registering it does not build
+        or inspect distributions.
+    """
+    parser.addoption(
+        '--artifact-dir',
+        help='Directory containing a wheel and sdist',
+    )
+
+
+def pytest_collection_modifyitems(
+    items: list[pytest.Item],
+) -> None:
+    """
+    Apply each test directory's architectural-layer marker during collection.
+
+    Parameters
+    ----------
+    items : list[pytest.Item]
+        Collected items, marked in place using the first tests-relative path
+        component. This hook classifies items; it does not select test paths.
+
+    Raises
+    ------
+    pytest.UsageError
+        If an item lies outside the tests directory or a recognized test layer.
+    """
+    for item in items:
+        try:
+            layer = item.path.relative_to(TESTS_ROOT).parts[0]
+        except ValueError as error:
+            raise pytest.UsageError(
+                f'{item.path} is outside the tests directory',
+            ) from error
+        if layer not in TEST_LAYERS:
+            raise pytest.UsageError(f'{item.path} is outside a test layer')
+        item.add_marker(getattr(pytest.mark, layer))
+
+
+# !SECTION
+
+
 # SECTION: FIXTURES
 
 
@@ -106,60 +160,6 @@ def write_file_fixture(
         return path
 
     return write
-
-
-# !SECTION
-
-
-# SECTION: HOOKS
-
-
-def pytest_addoption(
-    parser: pytest.Parser,
-) -> None:
-    """
-    Register options shared by artifact-oriented test layers.
-
-    Parameters
-    ----------
-    parser : pytest.Parser
-        Parser receiving --artifact-dir for an existing wheel/sdist directory.
-        Artifact fixtures interpret the option; registering it does not build
-        or inspect distributions.
-    """
-    parser.addoption(
-        '--artifact-dir',
-        help='Directory containing a wheel and sdist',
-    )
-
-
-def pytest_collection_modifyitems(
-    items: list[pytest.Item],
-) -> None:
-    """
-    Apply each test directory's architectural-layer marker during collection.
-
-    Parameters
-    ----------
-    items : list[pytest.Item]
-        Collected items, marked in place using the first tests-relative path
-        component. This hook classifies items; it does not select test paths.
-
-    Raises
-    ------
-    pytest.UsageError
-        If an item lies outside the tests directory or a recognized test layer.
-    """
-    for item in items:
-        try:
-            layer = item.path.relative_to(TESTS_ROOT).parts[0]
-        except ValueError as error:
-            raise pytest.UsageError(
-                f'{item.path} is outside the tests directory',
-            ) from error
-        if layer not in TEST_LAYERS:
-            raise pytest.UsageError(f'{item.path} is outside a test layer')
-        item.add_marker(getattr(pytest.mark, layer))
 
 
 # !SECTION

@@ -30,6 +30,70 @@ pytestmark = pytest.mark.skipif(os.name == 'nt', reason='POSIX consumer examples
 # !SECTION
 
 
+# SECTION: PROTECTED FUNCTIONS
+
+
+def _consumer_sources(
+    root: Path,
+) -> dict[Path, bytes]:
+    """
+    Compare consumer source bytes separately from disposable Git metadata.
+    """
+    return {
+        path: value
+        for path, value in snapshot_files(root).items()
+        if '.git' not in path.parts
+    }
+
+
+def _run_consumer(
+    tools: Installation,
+    root: Path,
+    entry_point: str,
+) -> subprocess.CompletedProcess[str]:
+    """Run the example's Make command, installed hook, or declared CI step.
+
+    Git writes only disposable metadata. CI execution runs the checked-in
+    step's literal command locally; it does not simulate GitHub's scheduler,
+    token permissions, setup actions, or hosted branch protections.
+    """
+    if entry_point == 'make':
+        return tools.execute('make', 'guardrails', directory=root)
+    if entry_point == 'ci':
+        workflow = yaml.safe_load(
+            (root / '.github/workflows/ci.yml').read_text(encoding='utf-8'),
+        )
+        steps = workflow['jobs']['guardrails']['steps']
+        step = next(step for step in steps if step.get('id') == 'popo')
+        return tools.execute(*shlex.split(step['run']), directory=root)
+    for arguments in (
+        ('git', '-c', 'init.templateDir=', 'init', '--quiet'),
+        ('git', 'config', 'core.autocrlf', 'false'),
+        (str(tools.python), '-m', 'pre_commit', 'install'),
+        ('git', 'add', '--all'),
+    ):
+        result = tools.execute(*arguments, directory=root, timeout=60)
+        assert result.returncode == 0, result.stdout + result.stderr
+    assert (root / '.git/hooks/pre-commit').is_file()
+    return tools.execute(
+        'git',
+        '-c',
+        'user.name=Popo Test',
+        '-c',
+        'user.email=popo@example.invalid',
+        '-c',
+        'commit.gpgsign=false',
+        'commit',
+        '-m',
+        'test: exercise guardrails',
+        directory=root,
+        timeout=60,
+    )
+
+
+# !SECTION
+
+
 # SECTION: FIXTURES
 
 
@@ -143,70 +207,6 @@ def guardrail_tools_fixture(
 
 
 # !SECTIONS
-
-
-# SECTION: PROTECTED FUNCTIONS
-
-
-def _consumer_sources(
-    root: Path,
-) -> dict[Path, bytes]:
-    """
-    Compare consumer source bytes separately from disposable Git metadata.
-    """
-    return {
-        path: value
-        for path, value in snapshot_files(root).items()
-        if '.git' not in path.parts
-    }
-
-
-def _run_consumer(
-    tools: Installation,
-    root: Path,
-    entry_point: str,
-) -> subprocess.CompletedProcess[str]:
-    """Run the example's Make command, installed hook, or declared CI step.
-
-    Git writes only disposable metadata. CI execution runs the checked-in
-    step's literal command locally; it does not simulate GitHub's scheduler,
-    token permissions, setup actions, or hosted branch protections.
-    """
-    if entry_point == 'make':
-        return tools.execute('make', 'guardrails', directory=root)
-    if entry_point == 'ci':
-        workflow = yaml.safe_load(
-            (root / '.github/workflows/ci.yml').read_text(encoding='utf-8'),
-        )
-        steps = workflow['jobs']['guardrails']['steps']
-        step = next(step for step in steps if step.get('id') == 'popo')
-        return tools.execute(*shlex.split(step['run']), directory=root)
-    for arguments in (
-        ('git', '-c', 'init.templateDir=', 'init', '--quiet'),
-        ('git', 'config', 'core.autocrlf', 'false'),
-        (str(tools.python), '-m', 'pre_commit', 'install'),
-        ('git', 'add', '--all'),
-    ):
-        result = tools.execute(*arguments, directory=root, timeout=60)
-        assert result.returncode == 0, result.stdout + result.stderr
-    assert (root / '.git/hooks/pre-commit').is_file()
-    return tools.execute(
-        'git',
-        '-c',
-        'user.name=Popo Test',
-        '-c',
-        'user.email=popo@example.invalid',
-        '-c',
-        'commit.gpgsign=false',
-        'commit',
-        '-m',
-        'test: exercise guardrails',
-        directory=root,
-        timeout=60,
-    )
-
-
-# !SECTION
 
 
 # SECTION: TESTS

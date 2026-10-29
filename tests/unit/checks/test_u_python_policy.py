@@ -144,6 +144,45 @@ class TestPythonPolicy:
         )
 
     @pytest.mark.parametrize(
+        'version,supported',
+        [
+            ('3.12', False),
+            ('3.13', True),
+            ('3.14', True),
+            ('3.15', False),
+            ('4.0', False),
+        ],
+    )
+    def test_checker_runtime_policy(
+        self,
+        policy: PythonPolicyConfig,
+        version: str,
+        supported: bool,
+    ) -> None:
+        """
+        Accept supported runtimes and report exact out-of-policy diagnostics.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent policy inputs, isolated from the real checkout.
+        version : str
+            Explicit runtime at, within or outside the configured bounds.
+        supported : bool
+            Whether this runtime belongs to the declared supported range.
+        """
+        before = snapshot_files(policy.metadata.parent)
+        assert validate(policy, running_version=version) == (
+            []
+            if supported
+            else [
+                f'checker runtime: Python {policy.requires_python} is required; '
+                f'received {version}',
+            ]
+        )
+        assert snapshot_files(policy.metadata.parent) == before
+
+    @pytest.mark.parametrize(
         ('path', 'content', 'message'),
         [
             ('pyproject.toml', '[', 'invalid TOML'),
@@ -341,45 +380,6 @@ class TestPythonPolicy:
             f'uses: actions/setup-python@{'a' * 40}\n{declaration}\n',
         )
         assert validate(policy, running_version='3.13') == []
-
-    @pytest.mark.parametrize(
-        'version,supported',
-        [
-            ('3.12', False),
-            ('3.13', True),
-            ('3.14', True),
-            ('3.15', False),
-            ('4.0', False),
-        ],
-    )
-    def test_checker_runtime_policy(
-        self,
-        policy: PythonPolicyConfig,
-        version: str,
-        supported: bool,
-    ) -> None:
-        """
-        Accept supported runtimes and report exact out-of-policy diagnostics.
-
-        Parameters
-        ----------
-        policy : PythonPolicyConfig
-            Consistent policy inputs, isolated from the real checkout.
-        version : str
-            Explicit runtime at, within or outside the configured bounds.
-        supported : bool
-            Whether this runtime belongs to the declared supported range.
-        """
-        before = snapshot_files(policy.metadata.parent)
-        assert validate(policy, running_version=version) == (
-            []
-            if supported
-            else [
-                f'checker runtime: Python {policy.requires_python} is required; '
-                f'received {version}',
-            ]
-        )
-        assert snapshot_files(policy.metadata.parent) == before
 
     @pytest.mark.parametrize('version', ['3.12', 'banana'])
     def test_unsupported_workflow_version(

@@ -25,6 +25,33 @@ class TestActions:
     executing referenced actions.
     """
 
+    def test_checks_nested_composite_actions_and_ignores_local_steps(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Verify recursive action discovery reports only the unpinned remote
+        step.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Temporary directory for isolated test inputs.
+        write_file : FileWriter
+            UTF-8 writer creating parent directories in ``tmp_path``.
+        """
+        action = write_file(
+            'actions/setup/action.yaml',
+            'steps:\n  - uses: ./local\n  - uses: docker://alpine:3\n'
+            f'  - uses: "owner/action@{'A' * 40}" # pinned\n'
+            '  - uses: owner/action@v1\n',
+        )
+        assert validate(tmp_path) == [
+            f'{action}:5: remote action must use a full '
+            '40-character commit SHA: owner/action@v1',
+        ]
+
     @pytest.mark.parametrize(
         'reference,accepted',
         [
@@ -89,33 +116,6 @@ class TestActions:
             ]
         )
         assert snapshot_files(tmp_path) == before
-
-    def test_checks_nested_composite_actions_and_ignores_local_steps(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify recursive action discovery reports only the unpinned remote
-        step.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        action = write_file(
-            'actions/setup/action.yaml',
-            'steps:\n  - uses: ./local\n  - uses: docker://alpine:3\n'
-            f'  - uses: "owner/action@{'A' * 40}" # pinned\n'
-            '  - uses: owner/action@v1\n',
-        )
-        assert validate(tmp_path) == [
-            f'{action}:5: remote action must use a full '
-            '40-character commit SHA: owner/action@v1',
-        ]
 
     def test_rejects_mutable_remote_action(
         self,

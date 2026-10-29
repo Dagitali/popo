@@ -116,25 +116,21 @@ class TestSwiftSyntax:
         assert signature.end == (code.index('{') if continues else code.index('\n'))
         assert signature.tail == (f'\n{indent}{suffix} ' if continues else '')
 
-    @pytest.mark.parametrize('opening', ('/* unfinished', '/* outer /* inner */'))
-    def test_unterminated_comments_cannot_supply_facts(
+    def test_recovery_retains_unsupported_callable_diagnostics(
         self,
-        opening: str,
     ) -> None:
-        """Do not let grammar recovery turn an open block comment into code."""
+        """
+        Preserve bounded contracts when the grammar recovers malformed code.
+        """
         source = (
-            f'let prefix = 1\n{opening}\n/// Fake\nimport Blocked\nstruct Ghost {{}}'
+            '/// Overview\n@MainActor\nstruct C {\n let value: Int\n'
+            ' func +(x: Int) -> Int { x }\n}\n???'
         )
-        syntax = _swift_syntax.parse(source)
-        assert syntax.documentation == frozenset()
-        assert 'Ghost' not in syntax.code
-        assert swift_boundaries._imports(syntax) == []
-        assert [
-            d.facts.kind for d in _swift_declarations.parse(source).declarations
-        ] == [
-            'let',
-        ]
-        assert len(source) == len(syntax.code)
+        assert _swift_syntax.parse(source).root.has_error
+        declarations = _swift_declarations.parse(source).declarations
+        assert [d.facts.kind for d in declarations] == ['struct', 'let', 'func']
+        assert declarations[0].facts.documentation == ' Overview'
+        assert declarations[-1].facts.parameter_names is None
 
     def test_same_line_members_do_not_borrow_parent_documentation(
         self,
@@ -157,25 +153,53 @@ class TestSwiftSyntax:
         ]
         assert facts.declarations[1].facts.parameter_names == ('x',)
 
-    def test_recovery_retains_unsupported_callable_diagnostics(
+    @pytest.mark.parametrize('opening', ('/* unfinished', '/* outer /* inner */'))
+    def test_unterminated_comments_cannot_supply_facts(
         self,
+        opening: str,
     ) -> None:
-        """
-        Preserve bounded contracts when the grammar recovers malformed code.
-        """
+        """Do not let grammar recovery turn an open block comment into code."""
         source = (
-            '/// Overview\n@MainActor\nstruct C {\n let value: Int\n'
-            ' func +(x: Int) -> Int { x }\n}\n???'
+            f'let prefix = 1\n{opening}\n/// Fake\nimport Blocked\nstruct Ghost {{}}'
         )
-        assert _swift_syntax.parse(source).root.has_error
-        declarations = _swift_declarations.parse(source).declarations
-        assert [d.facts.kind for d in declarations] == ['struct', 'let', 'func']
-        assert declarations[0].facts.documentation == ' Overview'
-        assert declarations[-1].facts.parameter_names is None
+        syntax = _swift_syntax.parse(source)
+        assert syntax.documentation == frozenset()
+        assert 'Ghost' not in syntax.code
+        assert swift_boundaries._imports(syntax) == []
+        assert [
+            d.facts.kind for d in _swift_declarations.parse(source).declarations
+        ] == [
+            'let',
+        ]
+        assert len(source) == len(syntax.code)
 
 
 class TestSwiftBoundarySyntax:
     """Collect structural imports and types without executing Swift tools."""
+
+    def test_native_imports_and_regex_masking(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Inspect same-line attributed imports but ignore literal fake code.
+        """
+        (tmp_path / 'source.swift').write_text(
+            'import Foundation; @preconcurrency import struct SwiftUI.View\n'
+            'let regex = /Target/\nlet text = #"import Blocked"#',
+            encoding='utf-8',
+        )
+        (tmp_path / 'popo.toml').write_text(
+            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
+            'allowed-imports=["Foundation"]\nforbidden-symbols=["Target"]',
+            encoding='utf-8',
+        )
+        assert swift_boundaries.validate(
+            load_boundaries_config(
+                tmp_path,
+                'swift-boundaries',
+            ),
+        ) == ['source.swift:1: core: forbidden import SwiftUI']
 
     @pytest.mark.parametrize(
         'owner',
@@ -212,30 +236,6 @@ class TestSwiftBoundarySyntax:
             ),
         ) == ['core.swift:1: core: forbidden symbol Target']
         assert snapshot_files(tmp_path) == before
-
-    def test_native_imports_and_regex_masking(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Inspect same-line attributed imports but ignore literal fake code.
-        """
-        (tmp_path / 'source.swift').write_text(
-            'import Foundation; @preconcurrency import struct SwiftUI.View\n'
-            'let regex = /Target/\nlet text = #"import Blocked"#',
-            encoding='utf-8',
-        )
-        (tmp_path / 'popo.toml').write_text(
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
-            'allowed-imports=["Foundation"]\nforbidden-symbols=["Target"]',
-            encoding='utf-8',
-        )
-        assert swift_boundaries.validate(
-            load_boundaries_config(
-                tmp_path,
-                'swift-boundaries',
-            ),
-        ) == ['source.swift:1: core: forbidden import SwiftUI']
 
 
 class TestSwiftDeclarationClassification:

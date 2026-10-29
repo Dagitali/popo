@@ -451,6 +451,33 @@ def _safety(
     return safety.validate(config), 'configured repository safety checks passed'
 
 
+def _swift_boundaries(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch consumer-owned Swift architecture restrictions.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Explicit consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Syntax-based boundary findings and success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        Boundary policy is absent or malformed.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded.
+    """
+    config = load_swift_boundaries_config(args.root)
+    return swift_boundaries.validate(config), 'configured Swift boundaries passed'
+
+
 def _swift_policy(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
@@ -514,33 +541,6 @@ def _swift_source(
     """
     config = load_source_check(args.root, 'swift-source')
     return swift_source.validate(config), 'configured Swift source checks passed'
-
-
-def _swift_boundaries(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Dispatch consumer-owned Swift architecture restrictions.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Explicit consumer repository root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Syntax-based boundary findings and success-only summary.
-
-    Raises
-    ------
-    ConfigurationError
-        Boundary policy is absent or malformed.
-    OSError, UnicodeError
-        Consumer configuration cannot be read or decoded.
-    """
-    config = load_swift_boundaries_config(args.root)
-    return swift_boundaries.validate(config), 'configured Swift boundaries passed'
 
 
 def _test_results(

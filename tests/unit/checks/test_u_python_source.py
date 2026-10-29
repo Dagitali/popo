@@ -317,29 +317,6 @@ class TestPythonSource:
         assert all(parameter.lineno == 1 for parameter in parameters)
 
     @pytest.mark.parametrize(
-        'parameters,names,instance',
-        [
-            ('self, value', ('value',), True),
-            ('self, /, value', ('value',), True),
-            ('cls, /, value', ('value',), False),
-            ('value, /, self', ('value', 'self'), False),
-            ('*, self', ('self',), False),
-            ('', (), False),
-        ],
-    )
-    def test_receiver_placement(
-        self,
-        parameters: str,
-        names: tuple[str, ...],
-        instance: bool,
-    ) -> None:
-        """Only the first positional name establishes a receiver contract."""
-        source = f'class C:\n    def method({parameters}): pass\n'
-        nominal, method = _python_declarations.parse(source).declarations
-        assert nominal.instance_methods == (('method',) if instance else ())
-        assert method.facts.parameter_names == names
-
-    @pytest.mark.parametrize(
         'source,option,diagnostic',
         (
             ('def f(x): pass', 'annotations = true', 'missing signature'),
@@ -378,6 +355,29 @@ class TestPythonSource:
         findings = python_source.validate(load_source_check(tmp_path, 'python-source'))
         assert any(diagnostic in finding for finding in findings)
         assert all(source not in finding for finding in findings)
+
+    @pytest.mark.parametrize(
+        'parameters,names,instance',
+        [
+            ('self, value', ('value',), True),
+            ('self, /, value', ('value',), True),
+            ('cls, /, value', ('value',), False),
+            ('value, /, self', ('value', 'self'), False),
+            ('*, self', ('self',), False),
+            ('', (), False),
+        ],
+    )
+    def test_receiver_placement(
+        self,
+        parameters: str,
+        names: tuple[str, ...],
+        instance: bool,
+    ) -> None:
+        """Only the first positional name establishes a receiver contract."""
+        source = f'class C:\n    def method({parameters}): pass\n'
+        nominal, method = _python_declarations.parse(source).declarations
+        assert nominal.instance_methods == (('method',) if instance else ())
+        assert method.facts.parameter_names == names
 
 
 # !SECTION

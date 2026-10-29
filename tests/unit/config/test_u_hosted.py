@@ -61,80 +61,6 @@ class TestHostedConfiguration:
             load_hosted_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'repository',
-        ['owner/first', 'owner/second', 'OWNER/first'],
-    )
-    @pytest.mark.parametrize('check', ['label:bug', 'label:docs'])
-    def test_exception_scope_uses_own_repository(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        repository: str,
-        check: str,
-    ) -> None:
-        """Keep exception checks scoped to the exact configured repository."""
-        write_file(
-            'popo.toml',
-            '[[hosted.repositories]]\nname="owner/first"\nlabels=["bug"]\n'
-            '[[hosted.repositories]]\nname="owner/second"\nlabels=["docs"]\n'
-            '[[hosted.exceptions]]\n'
-            f'repository="{repository}"\ncheck="{check}"\n'
-            'owner="team"\nreason="reviewed"\napproved-by="reviewer"\n'
-            'approval="https://example.com/review"\nexpires="2026-10-31"',
-        )
-        expected = {'owner/first': 'label:bug', 'owner/second': 'label:docs'}
-        if expected.get(repository) == check:
-            config = load_hosted_config(tmp_path)
-            assert len(config.repositories) == 2
-            assert config.exceptions[0].repository == repository
-            assert config.exceptions[0].check == check
-        else:
-            with pytest.raises(ConfigurationError, match='configured repository/check'):
-                load_hosted_config(tmp_path)
-
-    @pytest.mark.parametrize(
-        ('config', 'message'),
-        [
-            ('', 'must be a TOML table'),
-            (REPOSITORY_TOML, 'at least one expectation'),
-            ('[tool.popo.hosted]\nrepositories=[]', 'nonempty array'),
-            ('[tool.popo.hosted]\nunknown=true', 'unknown hosted configuration key'),
-            (REPOSITORY_TOML + 'unknown=true', 'unknown hosted repository key'),
-            (REPOSITORY_TOML + 'branches={""=[]}', 'branch names cannot be empty'),
-            (
-                '[tool.popo.hosted]\nexceptions="bad"\n'
-                'repositories=[{name="owner/repo", labels=["bug"]}]',
-                'hosted.exceptions must be an array',
-            ),
-            (REPOSITORY_TOML + 'labels=[1]', 'array of nonempty strings'),
-            ('[[tool.popo.hosted.repositories]]\nname="bad"', 'owner/repository'),
-            (REPOSITORY_TOML + 'labels=["bug","bug"]', 'labels contains duplicates'),
-            (REPOSITORY_TOML + 'codeowners="yes"', 'codeowners must be boolean'),
-            (
-                REPOSITORY_TOML + 'settings={unknown=true}',
-                'supported boolean expectations',
-            ),
-            (
-                REPOSITORY_TOML + 'settings={secret-scanning=1}',
-                'supported boolean expectations',
-            ),
-        ],
-    )
-    def test_invalid_config(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        config: str,
-        message: str,
-    ) -> None:
-        """
-        Reject absent, malformed, or unsupported hosted expectations.
-        """
-        write_file('pyproject.toml', config)
-        with pytest.raises(ConfigurationError, match=message):
-            load_hosted_config(tmp_path)
-
-    @pytest.mark.parametrize(
         ('original', 'replacement', 'message'),
         [
             ('owner = "owner"', 'owner = ""', 'documented string fields'),
@@ -230,6 +156,80 @@ class TestHostedConfiguration:
             assert config.exceptions[0].approval == replacement
             assert config.exceptions[0].expires == date(2026, 10, 31)
             assert config.repositories[0].labels == ('bug',)
+
+    @pytest.mark.parametrize(
+        'repository',
+        ['owner/first', 'owner/second', 'OWNER/first'],
+    )
+    @pytest.mark.parametrize('check', ['label:bug', 'label:docs'])
+    def test_exception_scope_uses_own_repository(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        repository: str,
+        check: str,
+    ) -> None:
+        """Keep exception checks scoped to the exact configured repository."""
+        write_file(
+            'popo.toml',
+            '[[hosted.repositories]]\nname="owner/first"\nlabels=["bug"]\n'
+            '[[hosted.repositories]]\nname="owner/second"\nlabels=["docs"]\n'
+            '[[hosted.exceptions]]\n'
+            f'repository="{repository}"\ncheck="{check}"\n'
+            'owner="team"\nreason="reviewed"\napproved-by="reviewer"\n'
+            'approval="https://example.com/review"\nexpires="2026-10-31"',
+        )
+        expected = {'owner/first': 'label:bug', 'owner/second': 'label:docs'}
+        if expected.get(repository) == check:
+            config = load_hosted_config(tmp_path)
+            assert len(config.repositories) == 2
+            assert config.exceptions[0].repository == repository
+            assert config.exceptions[0].check == check
+        else:
+            with pytest.raises(ConfigurationError, match='configured repository/check'):
+                load_hosted_config(tmp_path)
+
+    @pytest.mark.parametrize(
+        ('config', 'message'),
+        [
+            ('', 'must be a TOML table'),
+            (REPOSITORY_TOML, 'at least one expectation'),
+            ('[tool.popo.hosted]\nrepositories=[]', 'nonempty array'),
+            ('[tool.popo.hosted]\nunknown=true', 'unknown hosted configuration key'),
+            (REPOSITORY_TOML + 'unknown=true', 'unknown hosted repository key'),
+            (REPOSITORY_TOML + 'branches={""=[]}', 'branch names cannot be empty'),
+            (
+                '[tool.popo.hosted]\nexceptions="bad"\n'
+                'repositories=[{name="owner/repo", labels=["bug"]}]',
+                'hosted.exceptions must be an array',
+            ),
+            (REPOSITORY_TOML + 'labels=[1]', 'array of nonempty strings'),
+            ('[[tool.popo.hosted.repositories]]\nname="bad"', 'owner/repository'),
+            (REPOSITORY_TOML + 'labels=["bug","bug"]', 'labels contains duplicates'),
+            (REPOSITORY_TOML + 'codeowners="yes"', 'codeowners must be boolean'),
+            (
+                REPOSITORY_TOML + 'settings={unknown=true}',
+                'supported boolean expectations',
+            ),
+            (
+                REPOSITORY_TOML + 'settings={secret-scanning=1}',
+                'supported boolean expectations',
+            ),
+        ],
+    )
+    def test_invalid_config(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        config: str,
+        message: str,
+    ) -> None:
+        """
+        Reject absent, malformed, or unsupported hosted expectations.
+        """
+        write_file('pyproject.toml', config)
+        with pytest.raises(ConfigurationError, match=message):
+            load_hosted_config(tmp_path)
 
 
 # !SECTION

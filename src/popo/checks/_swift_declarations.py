@@ -238,77 +238,6 @@ def _declaration(
     return Declaration(facts, start, separated)
 
 
-def _lexical_declaration_syntax(
-    code: str,
-) -> Iterator[_DeclarationSyntax]:
-    """
-    Yield lexical declaration records from one masked-source traversal.
-
-    Parameters
-    ----------
-    code : str
-        Position-preserving masked view from :func:`lexical_view`.
-
-    Yields
-    ------
-    _DeclarationSyntax
-        Nominal, member and named callable locations and contracts, retaining
-        documentation attachment positions and unsupported-signature markers.
-
-    Notes
-    -----
-    Recognize line-leading declarations and attribute-only preceding lines.
-    Balanced parentheses handle multiline signatures; this does not model
-    macro expansion, conditional-compilation semantics or full Swift grammar.
-    Both conditional branches are inspected. Unsupported callable signatures
-    have parameter_names=None so opted-in contract checks can fail explicitly.
-    """
-    lines = code.splitlines(keepends=True)
-    offset = 0
-    scopes: list[str] = []
-    owners: dict[int, str] = {}
-    for index, line in enumerate(lines):
-        match = DECLARATION_PATTERN.match(line)
-        if match is not None and (not scopes or scopes[-1] == 'nominal'):
-            start = index
-            while start and lines[start - 1].lstrip().startswith('@'):
-                start -= 1
-            kind = match['kind']
-            parameters: tuple[str, ...] | None = ()
-            tail, separate = '', True
-            body = code.find('{', offset + match.end())
-            if kind in CALLABLE_KINDS:
-                signature = _signature(code, offset + match.end())
-                parameters = signature.parameter_names
-                tail = signature.tail
-                separate = signature.parameter_lines
-                body = signature.end
-                while body < len(code) and code[body].isspace():
-                    body += 1
-                if body == len(code) or code[body] != '{':
-                    body = -1
-                if kind == 'func' and not FUNCTION_NAME_PATTERN.match(
-                    line[match.end() :],
-                ):
-                    parameters = None
-            if body >= 0 and (kind in NOMINAL_KINDS or kind in CALLABLE_KINDS):
-                owners[body] = 'nominal' if kind in NOMINAL_KINDS else 'callable'
-            yield _DeclarationSyntax(
-                index + 1,
-                start,
-                kind,
-                parameters,
-                _requirements(kind, tail),
-                separate,
-            )
-        for column, char in enumerate(line):
-            if char == '{':
-                scopes.append(owners.get(offset + column, 'block'))
-            elif char == '}' and scopes:
-                scopes.pop()
-        offset += len(line)
-
-
 def _declaration_syntax(
     code: str,
     syntax: ParsedSwiftSource | None = None,
@@ -495,6 +424,77 @@ def _file_overview(
         number <= first_code and lines[number - 1].startswith('/// ')
         for number in documentation
     )
+
+
+def _lexical_declaration_syntax(
+    code: str,
+) -> Iterator[_DeclarationSyntax]:
+    """
+    Yield lexical declaration records from one masked-source traversal.
+
+    Parameters
+    ----------
+    code : str
+        Position-preserving masked view from :func:`lexical_view`.
+
+    Yields
+    ------
+    _DeclarationSyntax
+        Nominal, member and named callable locations and contracts, retaining
+        documentation attachment positions and unsupported-signature markers.
+
+    Notes
+    -----
+    Recognize line-leading declarations and attribute-only preceding lines.
+    Balanced parentheses handle multiline signatures; this does not model
+    macro expansion, conditional-compilation semantics or full Swift grammar.
+    Both conditional branches are inspected. Unsupported callable signatures
+    have parameter_names=None so opted-in contract checks can fail explicitly.
+    """
+    lines = code.splitlines(keepends=True)
+    offset = 0
+    scopes: list[str] = []
+    owners: dict[int, str] = {}
+    for index, line in enumerate(lines):
+        match = DECLARATION_PATTERN.match(line)
+        if match is not None and (not scopes or scopes[-1] == 'nominal'):
+            start = index
+            while start and lines[start - 1].lstrip().startswith('@'):
+                start -= 1
+            kind = match['kind']
+            parameters: tuple[str, ...] | None = ()
+            tail, separate = '', True
+            body = code.find('{', offset + match.end())
+            if kind in CALLABLE_KINDS:
+                signature = _signature(code, offset + match.end())
+                parameters = signature.parameter_names
+                tail = signature.tail
+                separate = signature.parameter_lines
+                body = signature.end
+                while body < len(code) and code[body].isspace():
+                    body += 1
+                if body == len(code) or code[body] != '{':
+                    body = -1
+                if kind == 'func' and not FUNCTION_NAME_PATTERN.match(
+                    line[match.end() :],
+                ):
+                    parameters = None
+            if body >= 0 and (kind in NOMINAL_KINDS or kind in CALLABLE_KINDS):
+                owners[body] = 'nominal' if kind in NOMINAL_KINDS else 'callable'
+            yield _DeclarationSyntax(
+                index + 1,
+                start,
+                kind,
+                parameters,
+                _requirements(kind, tail),
+                separate,
+            )
+        for column, char in enumerate(line):
+            if char == '{':
+                scopes.append(owners.get(offset + column, 'block'))
+            elif char == '}' and scopes:
+                scopes.pop()
+        offset += len(line)
 
 
 def _parameter_lines(

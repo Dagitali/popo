@@ -101,19 +101,6 @@ class TestBoundaryPolicy:
     Apply common policy contracts independently of language syntax.
     """
 
-    def test_swift_imports_reject_dotted_modules(
-        self: Self,
-        tmp_path: Path,
-    ) -> None:
-        """Reject dotted Swift modules through the native configuration loader."""
-        (tmp_path / 'popo.toml').write_text(
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
-            'allowed-imports=["bad.module"]',
-            encoding='utf-8',
-        )
-        with pytest.raises(ConfigurationError, match='must be identifiers'):
-            load_swift_boundaries_config(tmp_path)
-
     @pytest.mark.parametrize('language', ('python', 'swift'))
     @pytest.mark.parametrize(
         'settings,message',
@@ -177,6 +164,19 @@ class TestBoundaryPolicy:
         )
         with pytest.raises(ConfigurationError, match=message):
             load_boundaries_config(tmp_path, domain)
+
+    def test_swift_imports_reject_dotted_modules(
+        self: Self,
+        tmp_path: Path,
+    ) -> None:
+        """Reject dotted Swift modules through the native configuration loader."""
+        (tmp_path / 'popo.toml').write_text(
+            '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
+            'allowed-imports=["bad.module"]',
+            encoding='utf-8',
+        )
+        with pytest.raises(ConfigurationError, match='must be identifiers'):
+            load_swift_boundaries_config(tmp_path)
 
     @pytest.mark.parametrize('language', ('python', 'swift'))
     def test_unknown_layer_settings_are_rejected(

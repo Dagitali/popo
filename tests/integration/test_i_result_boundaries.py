@@ -20,132 +20,6 @@ from tests.support.files import snapshot_files
 class TestValidationCommands:
     """Verify profiles, redaction and aggregate failure continuation."""
 
-    @pytest.mark.parametrize('command', ('check-python-boundaries', 'check-all'))
-    def test_python_boundary_selection_and_reporting(
-        self,
-        python_boundary_case: tuple[Path, str | None],
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-    ) -> None:
-        """Report the native boundary outcome through direct/aggregate JSON."""
-        root, expected = python_boundary_case
-        before = snapshot_files(root)
-        assert main([command, '--root', str(root), '--format', 'json']) == int(
-            expected is not None,
-        )
-        report = json.loads(capsys.readouterr().out)
-        assert report['command'] == command
-        assert report['passed'] is (expected is None)
-        assert len(report['checks']) == 1
-        check = report['checks'][0]
-        assert check['check'] == 'check-python-boundaries'
-        assert check['passed'] is (expected is None)
-        if expected is None:
-            assert check['diagnostics'] == []
-        else:
-            assert any(expected in item['message'] for item in check['diagnostics'])
-            assert all(item['severity'] == 'error' for item in check['diagnostics'])
-        assert snapshot_files(root) == before
-
-    def test_results_use_explicit_artifacts_and_json_reporting(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """
-        One selected report overrides sibling discovery and stays read-only.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Pytest-managed directory containing only disposable consumer
-            inputs.
-        capsys : pytest.CaptureFixture[str]
-            Pytest fixture capturing public CLI text or JSON output.
-        """
-        consumer = tmp_path / 'consumer'
-        artifacts = tmp_path / 'artifacts'
-        consumer.mkdir()
-        artifacts.mkdir()
-        (consumer / 'popo.toml').write_text(
-            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
-        )
-        report = artifacts / 'summary.json'
-        report.write_text(
-            json.dumps(
-                {
-                    'totalTestCount': 1,
-                    'passedTests': 1,
-                    'failedTests': 0,
-                    'skippedTests': 0,
-                },
-            ),
-        )
-        (artifacts / 'unselected.json').write_text('PRIVATE invalid content')
-        before = snapshot_files(tmp_path)
-        arguments = [
-            'check-test-results',
-            '--root',
-            str(consumer),
-            '--summary',
-            str(report),
-            '--format',
-            'json',
-        ]
-        assert main(arguments) == 0
-        assert json.loads(capsys.readouterr().out)['passed']
-        assert snapshot_files(tmp_path) == before
-        report.write_text('{PRIVATE invalid JSON')
-        assert main(arguments) == 1
-        output = capsys.readouterr().out
-        assert 'PRIVATE' not in output
-        assert not json.loads(output)['passed']
-
-    def test_boundary_profile_and_negative_reference(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """
-        Public profile selection runs the configured graph without writes.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Pytest-managed directory containing only disposable consumer
-            inputs.
-        capsys : pytest.CaptureFixture[str]
-            Pytest fixture capturing public CLI text or JSON output.
-        """
-        (tmp_path / 'popo.toml').write_text(
-            '[profiles.layers]\nchecks=["check-swift-boundaries"]\n'
-            '[swift-boundaries]\n'
-            '[[swift-boundaries.layers]]\nname="core"\ninclude=["Core.swift"]\n'
-            'forbidden-layers=["ui"]\n'
-            '[[swift-boundaries.layers]]\nname="ui"\ninclude=["UI.swift"]',
-        )
-        (tmp_path / 'Core.swift').write_text('struct Rule {}')
-        (tmp_path / 'UI.swift').write_text('struct Screen {}')
-        before = snapshot_files(tmp_path)
-        args = [
-            'check-all',
-            '--profile',
-            'layers',
-            '--root',
-            str(tmp_path),
-            '--format',
-            'json',
-        ]
-        assert main(args) == 0
-        assert (
-            json.loads(capsys.readouterr().out)['checks'][0]['check']
-            == 'check-swift-boundaries'
-        )
-        assert snapshot_files(tmp_path) == before
-        (tmp_path / 'Core.swift').write_text('let dependency: Screen')
-        assert main(args) == 1
-        assert 'forbidden symbol Screen' in capsys.readouterr().out
-
     @pytest.mark.parametrize(
         'command',
         (
@@ -301,6 +175,132 @@ class TestValidationCommands:
         assert 'not allowed with argument' in output.err
         assert '--summary' in output.err
         assert '--results-root' in output.err
+
+    def test_boundary_profile_and_negative_reference(
+        self: Self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        Public profile selection runs the configured graph without writes.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Pytest-managed directory containing only disposable consumer
+            inputs.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing public CLI text or JSON output.
+        """
+        (tmp_path / 'popo.toml').write_text(
+            '[profiles.layers]\nchecks=["check-swift-boundaries"]\n'
+            '[swift-boundaries]\n'
+            '[[swift-boundaries.layers]]\nname="core"\ninclude=["Core.swift"]\n'
+            'forbidden-layers=["ui"]\n'
+            '[[swift-boundaries.layers]]\nname="ui"\ninclude=["UI.swift"]',
+        )
+        (tmp_path / 'Core.swift').write_text('struct Rule {}')
+        (tmp_path / 'UI.swift').write_text('struct Screen {}')
+        before = snapshot_files(tmp_path)
+        args = [
+            'check-all',
+            '--profile',
+            'layers',
+            '--root',
+            str(tmp_path),
+            '--format',
+            'json',
+        ]
+        assert main(args) == 0
+        assert (
+            json.loads(capsys.readouterr().out)['checks'][0]['check']
+            == 'check-swift-boundaries'
+        )
+        assert snapshot_files(tmp_path) == before
+        (tmp_path / 'Core.swift').write_text('let dependency: Screen')
+        assert main(args) == 1
+        assert 'forbidden symbol Screen' in capsys.readouterr().out
+
+    @pytest.mark.parametrize('command', ('check-python-boundaries', 'check-all'))
+    def test_python_boundary_selection_and_reporting(
+        self,
+        python_boundary_case: tuple[Path, str | None],
+        capsys: pytest.CaptureFixture[str],
+        command: str,
+    ) -> None:
+        """Report the native boundary outcome through direct/aggregate JSON."""
+        root, expected = python_boundary_case
+        before = snapshot_files(root)
+        assert main([command, '--root', str(root), '--format', 'json']) == int(
+            expected is not None,
+        )
+        report = json.loads(capsys.readouterr().out)
+        assert report['command'] == command
+        assert report['passed'] is (expected is None)
+        assert len(report['checks']) == 1
+        check = report['checks'][0]
+        assert check['check'] == 'check-python-boundaries'
+        assert check['passed'] is (expected is None)
+        if expected is None:
+            assert check['diagnostics'] == []
+        else:
+            assert any(expected in item['message'] for item in check['diagnostics'])
+            assert all(item['severity'] == 'error' for item in check['diagnostics'])
+        assert snapshot_files(root) == before
+
+    def test_results_use_explicit_artifacts_and_json_reporting(
+        self: Self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        One selected report overrides sibling discovery and stays read-only.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Pytest-managed directory containing only disposable consumer
+            inputs.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing public CLI text or JSON output.
+        """
+        consumer = tmp_path / 'consumer'
+        artifacts = tmp_path / 'artifacts'
+        consumer.mkdir()
+        artifacts.mkdir()
+        (consumer / 'popo.toml').write_text(
+            '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]',
+        )
+        report = artifacts / 'summary.json'
+        report.write_text(
+            json.dumps(
+                {
+                    'totalTestCount': 1,
+                    'passedTests': 1,
+                    'failedTests': 0,
+                    'skippedTests': 0,
+                },
+            ),
+        )
+        (artifacts / 'unselected.json').write_text('PRIVATE invalid content')
+        before = snapshot_files(tmp_path)
+        arguments = [
+            'check-test-results',
+            '--root',
+            str(consumer),
+            '--summary',
+            str(report),
+            '--format',
+            'json',
+        ]
+        assert main(arguments) == 0
+        assert json.loads(capsys.readouterr().out)['passed']
+        assert snapshot_files(tmp_path) == before
+        report.write_text('{PRIVATE invalid JSON')
+        assert main(arguments) == 1
+        output = capsys.readouterr().out
+        assert 'PRIVATE' not in output
+        assert not json.loads(output)['passed']
 
 
 # !SECTION

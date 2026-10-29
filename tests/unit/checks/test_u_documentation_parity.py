@@ -262,6 +262,18 @@ class TestDeclarationDocumentation:
 class TestNumPyDocumentation:
     """Retain the distinction between value returns and generator yields."""
 
+    @pytest.mark.parametrize('section', ['Returns', 'Yields'])
+    @pytest.mark.parametrize('required', ['Returns', 'Yields'])
+    def test_result_section_selection(
+        self,
+        section: str,
+        required: ResultSection,
+    ) -> None:
+        """Require the section selected by the declaration's own facts."""
+        doc = f'{section}\n-------\nint\n    Result.\n'
+        evidence = _python_documentation._documentation(doc, required)
+        assert evidence.result_documented is (section == required)
+
     @pytest.mark.parametrize(
         'doc,expected',
         [
@@ -282,18 +294,6 @@ class TestNumPyDocumentation:
     ) -> None:
         """Stop at any underlined heading and preserve first-section content."""
         assert _python_documentation._section(doc, 'Returns') == expected
-
-    @pytest.mark.parametrize('section', ['Returns', 'Yields'])
-    @pytest.mark.parametrize('required', ['Returns', 'Yields'])
-    def test_result_section_selection(
-        self,
-        section: str,
-        required: ResultSection,
-    ) -> None:
-        """Require the section selected by the declaration's own facts."""
-        doc = f'{section}\n-------\nint\n    Result.\n'
-        evidence = _python_documentation._documentation(doc, required)
-        assert evidence.result_documented is (section == required)
 
 
 class TestDocumentationRunner:
