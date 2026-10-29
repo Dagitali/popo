@@ -14,7 +14,7 @@ import pytest
 from popo.config import ConfigurationError
 from popo.config._common import parse_iso_date
 from popo.config.safety import load_safety_config
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -78,47 +78,48 @@ class TestSafetyConfiguration:
             load_safety_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'expiry',
-        ['"2026-13-01"', '2026-10-08', '"20261008"', '"2026-W41-4"'],
-    )
-    def test_exception_date(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        expiry: str,
-    ) -> None:
-        """Require a quoted, valid date for reviewed exceptions."""
-        write_file(
-            'pyproject.toml',
-            '[tool.popo.safety]\n[[tool.popo.safety.exceptions]]\n'
-            'workflow="ci.yml"\ntrigger="workflow_run"\nowner="team"\n'
-            f'reason="reviewed"\napproved-by="reviewer"\nexpires={expiry}',
-        )
-        with pytest.raises(ConfigurationError):
-            load_safety_config(tmp_path)
-
-    @pytest.mark.parametrize(
-        ('workflow', 'trigger'),
-        [('*.yml', 'workflow_run'), ('ci.yml', 'push')],
-    )
-    def test_exception_scope(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        workflow: str,
-        trigger: str,
-    ) -> None:
-        """Require an exact workflow path and a privileged trigger."""
-        write_file(
-            'pyproject.toml',
-            (
-                '[[tool.popo.safety.exceptions]]\n'
-                f'workflow="{workflow}"\ntrigger="{trigger}"\n'
-                'owner="team"\nreason="review"\napproved-by="owner"\nexpires="2026-10-08"'
+        'field,value,message',
+        [
+            *(
+                ('expires', expiry, 'exception expires must be a quoted ISO date')
+                for expiry in ('"2026-13-01"', '"20261008"', '"2026-W41-4"')
             ),
+            ('expires', '2026-10-08', 'exception details must be nonempty strings'),
+            ('workflow', '"*.yml"', 'exception workflow must be an exact path'),
+            ('trigger', '"push"', 'exception trigger must be privileged'),
+        ],
+    )
+    def test_invalid_exception_fields(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        field: str,
+        value: str,
+        message: str,
+    ) -> None:
+        """
+        Require a quoted valid date, exact workflow and privileged trigger.
+
+        Reviewed exceptions retain explicit scope and approval details; an
+        invalid field must fail for its intended reason without file changes.
+        """
+        fields = {
+            'workflow': '"ci.yml"',
+            'trigger': '"workflow_run"',
+            'owner': '"team"',
+            'reason': '"reviewed"',
+            'approved-by': '"reviewer"',
+            'expires': '"2026-10-08"',
+        } | {field: value}
+        write_file(
+            'pyproject.toml',
+            '[[tool.popo.safety.exceptions]]\n'
+            + '\n'.join(f'{key}={entry}' for key, entry in fields.items()),
         )
-        with pytest.raises(ConfigurationError):
+        before = snapshot_files(tmp_path)
+        with pytest.raises(ConfigurationError, match=f'^{message}$'):
             load_safety_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'content,message',

@@ -15,10 +15,10 @@ from tests.support.files import snapshot_files
 # SECTION: TESTS
 
 
+@pytest.mark.parametrize('domain', ('python-source', 'swift-source', 'logs'))
 class TestSourceSelectionPolicy:
     """Apply common pattern contracts without coupling consumer languages."""
 
-    @pytest.mark.parametrize('domain', ('python-source', 'swift-source', 'logs'))
     @pytest.mark.parametrize('setting', ('include', 'exclude'))
     @pytest.mark.parametrize(
         'pattern',
@@ -46,21 +46,33 @@ class TestSourceSelectionPolicy:
             load_source_check(tmp_path, domain)
         assert snapshot_files(tmp_path) == before
 
-    @pytest.mark.parametrize('domain', ('python-source', 'swift-source', 'logs'))
-    def test_empty_optional_exclusions_remain_valid(
+    @pytest.mark.parametrize(
+        'exclusions',
+        [
+            pytest.param(None, id='omitted'),
+            pytest.param((), id='explicit-empty'),
+            pytest.param(('second/*', 'first/*'), id='ordered-patterns'),
+        ],
+    )
+    def test_optional_exclusions_preserve_order(
         self,
         tmp_path: Path,
         domain: str,
+        exclusions: tuple[str, ...] | None,
     ) -> None:
-        """Preserve pattern order and allow consumers to omit exclusions."""
+        """Preserve pattern order with omitted, empty or explicit exclusions."""
+        selection = '' if exclusions is None else f'exclude={list(exclusions)!r}\n'
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude=["second/*", "first/*"]\n'
+            + selection
             + ('patterns={diagnostic="warning"}' if domain == 'logs' else ''),
             encoding='utf-8',
         )
+        before = snapshot_files(tmp_path)
         config = load_source_check(tmp_path, domain)
         assert config.include == ('second/*', 'first/*')
-        assert config.exclude == ()
+        assert config.exclude == (exclusions or ())
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION
