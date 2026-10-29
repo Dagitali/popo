@@ -155,13 +155,22 @@ class TestFilePolicyConfig:
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'entry',
+        'entry,message',
         [
-            'patterns = ["*.bin"]',
-            'patterns = []\nreason = "Binary"',
-            'patterns = ["../outside"]\nreason = "Binary"',
-            'patterns = ["*.bin"]\nreason = "   "',
-            'patterns = ["*.bin"]\nreason = "Binary"\nunknown = true',
+            ('patterns = ["*.bin"]', 'requires patterns and reason'),
+            (
+                'patterns = []\nreason = "Binary"',
+                'exception patterns must not be empty',
+            ),
+            (
+                'patterns = ["../outside"]\nreason = "Binary"',
+                'exception patterns must stay inside the repository',
+            ),
+            ('patterns = ["*.bin"]\nreason = "   "', 'reason must not be blank'),
+            (
+                'patterns = ["*.bin"]\nreason = "Binary"\nunknown = true',
+                'requires patterns and reason',
+            ),
         ],
     )
     def test_invalid_preservation_exceptions(
@@ -169,6 +178,7 @@ class TestFilePolicyConfig:
         tmp_path: Path,
         write_file: FileWriter,
         entry: str,
+        message: str,
     ) -> None:
         """
         Require safe exception patterns and a meaningful explicit reason.
@@ -181,6 +191,8 @@ class TestFilePolicyConfig:
             Writer for the malformed policy fixture.
         entry : str
             Invalid exception fields supplied by the scenario.
+        message : str
+            Specific preservation-contract diagnostic expected for the input.
         """
         write_file(
             'pyproject.toml',
@@ -195,21 +207,32 @@ prefix = "HEADER"
 """
             + entry,
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'setting',
+        'setting,message',
         [
-            'required = []',
-            'required = "README.md"',
-            'other = []',
-            'required = ["../outside"]',
-            'required = ["/absolute"]',
-            'required = ["*.md"]',
-            'required = ["C:/outside"]',
-            'required = ["same", "same"]',
-            'required = [1]',
+            ('required = []', 'files.required must not be empty'),
+            ('required = "README.md"', 'files.required must be an array'),
+            ('other = []', 'requires only required'),
+            *(
+                (
+                    f'required = {json.dumps([path])}',
+                    'files.required must stay inside the repository',
+                )
+                for path in (
+                    '../outside',
+                    '/absolute',
+                    '*.md',
+                    'C:/outside',
+                    r'nested\outside',
+                    'file?.md',
+                    '[abc].md',
+                )
+            ),
+            ('required = ["same", "same"]', 'files.required contains duplicates'),
+            ('required = [1]', 'files.required must be an array'),
         ],
     )
     def test_invalid_required_policy(
@@ -217,6 +240,7 @@ prefix = "HEADER"
         tmp_path: Path,
         write_file: FileWriter,
         setting: str,
+        message: str,
     ) -> None:
         """
         Reject empty, unsafe, ambiguous and misspelled required-file
@@ -230,9 +254,11 @@ prefix = "HEADER"
             UTF-8 writer creating synthetic policy inputs.
         setting : str
             Invalid required-file configuration supplied by the scenario.
+        message : str
+            Specific path, field-shape or duplicate diagnostic expected.
         """
         write_file('pyproject.toml', '[tool.popo.files]\n' + setting)
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_required_files_config(tmp_path)
 
     def test_valid_header_policy(
