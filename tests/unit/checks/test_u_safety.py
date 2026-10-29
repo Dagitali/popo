@@ -374,32 +374,34 @@ class TestWorkflowSafety:
             'ci.yml: privileged checkout of pull-request head',
         ]
 
+    @pytest.mark.parametrize('trigger', ('pull_request_target', 'workflow_run'))
     @pytest.mark.parametrize(
-        'event,expiry,message',
+        'present,expiry,states',
         [
-            ('pull_request_target', date(2026, 10, 7), ''),
-            ('pull_request_target', date(2026, 10, 6), 'expired'),
-            ('push', date(2026, 10, 8), 'unused'),
-            ('push', date(2026, 10, 6), 'unused'),
+            (True, date(2026, 10, 7), ()),
+            (True, date(2026, 10, 6), ('expired',)),
+            (False, date(2026, 10, 8), ('unused',)),
+            (False, date(2026, 10, 6), ('unused', 'expired')),
         ],
     )
     def test_exception_lifecycle(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        event: str,
+        trigger: str,
+        present: bool,
         expiry: date,
-        message: str,
+        states: tuple[str, ...],
     ) -> None:
         """Retire stale exceptions and reject expired reviews."""
-        write_file('ci.yml', f'on: {event}')
+        write_file('ci.yml', f'on: {trigger if present else 'push'}')
         config = SafetyConfig(
             tmp_path,
             workflows=('ci.yml',),
             exceptions=(
                 SafetyException(
                     'ci.yml',
-                    'pull_request_target',
+                    trigger,
                     'team',
                     'review',
                     'owner',
@@ -407,10 +409,11 @@ class TestWorkflowSafety:
                 ),
             ),
         )
-        failures = validate(config, today=date(2026, 10, 7))
-        assert bool(failures) == bool(message)
-        if message:
-            assert message in failures[0]
+        before = snapshot_files(tmp_path)
+        assert validate(config, today=date(2026, 10, 7)) == [
+            f'ci.yml: {state} {trigger} exception' for state in states
+        ]
+        assert snapshot_files(tmp_path) == before
 
     def test_missing_pattern(
         self,

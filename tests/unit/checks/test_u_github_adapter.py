@@ -5,6 +5,7 @@ Verify sanitized GitHub CLI GET responses without network access.
 """
 
 import subprocess
+from collections.abc import Callable
 from unittest.mock import Mock
 
 import pytest
@@ -78,20 +79,23 @@ class TestGitHubReadAdapter:
         assert ('--slurp' in command) == paginate
 
     @pytest.mark.parametrize(
-        'error',
+        'error_factory',
         [
-            FileNotFoundError(),
-            subprocess.TimeoutExpired('gh', 60),
-            UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid'),
+            pytest.param(FileNotFoundError, id='missing-gh'),
+            pytest.param(lambda: subprocess.TimeoutExpired('gh', 60), id='timeout'),
+            pytest.param(
+                lambda: UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid'),
+                id='decode',
+            ),
         ],
     )
     def test_adapter_launch_error(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        error: Exception,
+        error_factory: Callable[[], Exception],
     ) -> None:
         """Return unavailable evidence when the CLI cannot launch or finish."""
-        monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error))
+        monkeypatch.setattr(subprocess, 'run', Mock(side_effect=error_factory()))
         assert _github_get('repos/example/library').error
 
     @pytest.mark.parametrize('returncode', (0, 1))

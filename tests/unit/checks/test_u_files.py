@@ -92,23 +92,28 @@ class TestFileDiscoveryFailures:
         assert link.is_symlink()
 
     @pytest.mark.parametrize(
-        'error',
+        'error_type,message',
         [
-            PermissionError('access denied'),
-            ValueError('bad path'),
-            UnicodeError('bad encoding'),
+            (PermissionError, 'access denied'),
+            (ValueError, 'bad path'),
+            (UnicodeError, 'bad encoding'),
         ],
     )
     @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
     def test_required_path_failure_does_not_stop_remaining_checks(
         self,
         tmp_path: Path,
-        error: Exception,
+        error_type: type[Exception],
+        message: str,
         operation: str,
     ) -> None:
         """
         Report unreadable paths and subsequent missing required files together.
+
+        Each inspection operation receives a fresh exception so traceback
+        state cannot leak between parameterized scenarios.
         """
+        error = error_type(message)
         inspect_path = getattr(Path, operation)
 
         def inspect(
