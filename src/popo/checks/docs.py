@@ -60,8 +60,10 @@ def _anchors(
     -------
     set[str]
         Lowercase heading slugs and lowercased HTML anchor names or IDs.
-        Repeated heading slugs receive ``-1``, ``-2``, and later suffixes;
-        explicit anchors do not increment heading-duplicate counters.
+        Repeated heading slugs receive ``-1``, ``-2``, and later suffixes,
+        skipping names already allocated to any heading. Naturally suffixed
+        headings participate in collision checks; explicit HTML anchors do
+        not increment or reserve heading-duplicate counters.
 
     Raises
     ------
@@ -78,14 +80,19 @@ def _anchors(
     anchors: set[str] = set()
     counts: dict[str, int] = {}
     for _, line in _content_lines(path):
-        anchors.update(value.lower() for value in EXPLICIT_ANCHOR_PATTERN.findall(line))
+        anchors.update(
+            match[1].lower() for match in EXPLICIT_ANCHOR_PATTERN.finditer(line)
+        )
         match = HEADING_PATTERN.match(line)
         if match is None:
             continue
         base = _slugify(match.group('heading'))
-        count = counts.get(base, 0)
-        counts[base] = count + 1
-        anchors.add(base if count == 0 else f'{base}-{count}')
+        slug = base
+        while slug in counts:
+            counts[base] += 1
+            slug = f'{base}-{counts[base]}'
+        counts[slug] = 0
+        anchors.add(slug)
     return anchors
 
 
@@ -262,25 +269,27 @@ def _target_findings(
 
     Notes
     -----
-    Keep malformed URLs local to this diagnostic so later links are checked.
+    Malformed URLs and invalid local paths become diagnostics so later links
+    are checked; filesystem I/O and decoding errors still propagate.
     Existing directory links need no README unless they include a fragment.
     """
-    raw_target = target.strip().strip('<>')
-    if ' "' in raw_target:
-        raw_target = raw_target.split(' "', maxsplit=1)[0]
+    raw_target = target.strip().split(' "', maxsplit=1)[0].strip('<>')
     try:
         parsed = urlsplit(raw_target)
+        if parsed.scheme or parsed.netloc:
+            return []
+        target_path = (
+            source if not parsed.path else source.parent / unquote(parsed.path)
+        )
+        directory = target_path.is_dir()
+        if directory and parsed.fragment:
+            target_path = target_path / 'README.md'
+        resolved_target = target_path.resolve()
     except ValueError:
         return [f'{source}:{line_number}: invalid link target: {raw_target}']
-    if parsed.scheme or parsed.netloc:
-        return []
-    target_path = source if not parsed.path else source.parent / unquote(parsed.path)
-    if target_path.is_dir() and parsed.fragment:
-        target_path = target_path / 'README.md'
-    resolved_target = target_path.resolve()
     if not resolved_target.is_relative_to(resolved_root):
         return [f'{source}:{line_number}: link escapes repository: {raw_target}']
-    if target_path.is_dir() and not parsed.fragment and not image:
+    if directory and not parsed.fragment and not image:
         return []
     if not target_path.is_file():
         return [f'{source}:{line_number}: local target does not exist: {raw_target}']
@@ -315,7 +324,7 @@ def validate(
     -------
     list[str]
         Missing-root, missing-target, missing-anchor, repository-escape,
-        invalid-reference and malformed-URL findings. Link/reference findings
+        invalid-reference and malformed-URL/local-path findings. Diagnostics
         retain the source path and original line number.
 
     Raises
@@ -333,7 +342,8 @@ def validate(
     reference labels with whitespace folding and case folding; reject
     conflicting destinations and undefined full or collapsed reference uses.
     Shortcut reference syntax and nested/escaped link syntax are not fully
-    supported. Malformed URLs become findings without stopping later links.
+    supported. Malformed URLs and invalid decoded local paths become findings
+    without stopping later links.
     External URLs are skipped without network requests. Fragments are validated
     only for Markdown targets; other local targets are checked for existence.
     Files are never modified.
@@ -344,7 +354,6 @@ def validate(
     a link-target policy, not a filesystem sandbox for source discovery.
     Cache Markdown anchors only within this invocation, keyed by resolved path.
     """
-
     if not root.is_dir():
         return [f'repository root does not exist: {root}']
     resolved_root = root.resolve()
@@ -367,20 +376,22 @@ def validate(
             references.setdefault(label, target)
         for line_number, line in lines:
             reference = REFERENCE_PATTERN.match(line)
+            targets: Iterator[tuple[str, bool]]
             if reference is not None:
-                targets = [(reference.group('target'), False)]
+                targets = iter(((reference.group('target'), False),))
             else:
                 line = INLINE_CODE_PATTERN.sub('', line)
-                for text, label in REFERENCE_USE_PATTERN.findall(line):
+                for match in REFERENCE_USE_PATTERN.finditer(line):
+                    text, label = match.groups()
                     label = label or text
                     if ' '.join(label.split()).casefold() not in references:
                         failures.append(
                             f'{source}:{line_number}: undefined reference: {label}',
                         )
-                targets = [
+                targets = (
                     (match.group('target'), bool(match.group('image')))
                     for match in LINK_PATTERN.finditer(line)
-                ]
+                )
             for target, image in targets:
                 failures.extend(
                     _target_findings(

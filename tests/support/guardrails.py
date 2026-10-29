@@ -48,7 +48,21 @@ def guardrail_consumer_fixture(
     write_file: FileWriter,
     tmp_path: Path,
 ) -> GuardrailsConfig:
-    """Provide matching Make, local-hook and workflow entry points."""
+    """
+    Provide matching Make, local-hook and workflow entry points.
+
+    Parameters
+    ----------
+    write_file : FileWriter
+        Fixture writing UTF-8 files beneath the temporary consumer root.
+    tmp_path : Path
+        Per-test temporary directory supplied by pytest.
+
+    Returns
+    -------
+    GuardrailsConfig
+        Consumer configuration pointing to isolated Make, hook and CI inputs.
+    """
     write_file(
         'popo.toml',
         """checks=["check-guardrail-parity"]

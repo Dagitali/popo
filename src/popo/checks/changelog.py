@@ -49,7 +49,6 @@ def validate(
     chronology, or establish publication status. Future dates are accepted.
     Matching is textual, so a heading inside a code fence can also match.
     """
-
     try:
         version = normalize_release(release)
     except ValueError as error:

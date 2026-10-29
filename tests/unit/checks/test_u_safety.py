@@ -10,12 +10,14 @@ import json
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
+from popo.checks import safety
 from popo.checks.safety import validate
 from popo.config.safety import SafetyConfig, SafetyException
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -29,7 +31,20 @@ from tests.support.files import FileWriter
 def cyclic_workflow(
     request: pytest.FixtureRequest,
 ) -> str:
-    """Supply recursive YAML aliases independent of workflow policy values."""
+    """
+    Supply recursive YAML aliases independent of workflow policy values.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    str
+        Workflow YAML containing a recursive alias for traversal regression
+        tests.
+    """
     return str(request.param)
 
 
@@ -41,6 +56,8 @@ def cyclic_workflow(
 
 class TestNpmDependencyShapes:
     """
+    Cover npm dependency shapes.
+
     Validate dependency objects without resolving floating version ranges.
     """
 
@@ -55,7 +72,20 @@ class TestNpmDependencyShapes:
         dependencies: object,
         message: str,
     ) -> None:
-        """Reject non-objects and permit matching non-exact specifications."""
+        """
+        Reject non-objects and permit matching non-exact specifications.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        dependencies : object
+            Dependency declaration shape supplied to the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
+        """
         write_file('package.json', json.dumps({'dependencies': dependencies}))
         write_file(
             'package-lock.json',
@@ -82,7 +112,16 @@ class TestNpmPairs:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        """Reject malformed specifications even when root metadata matches."""
+        """
+        Reject malformed specifications even when root metadata matches.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
         write_file('package.json', '{"dependencies":{"lib":123}}')
         write_file(
             'package-lock.json',
@@ -108,7 +147,18 @@ class TestNpmPairs:
         write_file: FileWriter,
         content: str,
     ) -> None:
-        """Report malformed or unsupported lockfiles without running npm."""
+        """
+        Report malformed or unsupported lockfiles without running npm.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        content : str
+            Text written to the scenario input.
+        """
         write_file('package.json', '{}')
         write_file('package-lock.json', content)
         assert validate(
@@ -116,25 +166,89 @@ class TestNpmPairs:
         )
 
     @pytest.mark.parametrize(
-        'root_version,resolved,message',
-        [
-            ('2.0.0', '2.0.0', ''),
-            ('1.0.0', '2.0.0', 'root dependencies'),
-            ('2.0.0', '1.0.0', 'resolved lib'),
-        ],
+        'version,valid',
+        [(2, True), (3, True), (2.0, False), (3.0, False), ('2', False), (True, False)],
+    )
+    def test_lock_version_requires_supported_integer(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        version: object,
+        valid: bool,
+    ) -> None:
+        """
+        Reject numeric lookalikes without rejecting either supported format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        version : object
+            Version value supplied to the parser or policy comparison.
+        valid : bool
+            Whether the scenario input satisfies the selected contract.
+        """
+        write_file('package.json', '{}')
+        write_file(
+            'package-lock.json',
+            json.dumps({'lockfileVersion': version, 'packages': {'': {}}}),
+        )
+        before = snapshot_files(tmp_path)
+        findings = validate(
+            SafetyConfig(tmp_path, npm_pairs=(('package.json', 'package-lock.json'),)),
+        )
+        assert bool(findings) is not valid
+        if not valid:
+            assert 'only npm lockfile versions 2 and 3 are supported' in findings[0]
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize(
+        'group',
+        ('dependencies', 'devDependencies', 'optionalDependencies'),
+    )
+    @pytest.mark.parametrize(
+        'spec',
+        ('2.0.0', '2.0.0-rc.1', '2.0.0+build.7', '2.0.0-rc.1+build.7'),
+    )
+    @pytest.mark.parametrize(
+        'root_matches,resolved_matches,problem',
+        ((True, True, ''), (False, True, 'root'), (True, False, 'resolved')),
     )
     def test_metadata_drift(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        root_version: str,
-        resolved: str,
-        message: str,
+        group: str,
+        spec: str,
+        root_matches: bool,
+        resolved_matches: bool,
+        problem: str,
     ) -> None:
-        """Detect both dependency specifications and exact resolved drift."""
+        """
+        Detect root and resolved drift across groups and literal pin forms.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        group : str
+            Dependency group selected for comparison.
+        spec : str
+            Dependency version specification supplied to the scenario.
+        root_matches : bool
+            Whether manifest and lockfile root metadata agree.
+        resolved_matches : bool
+            Whether the resolved npm package matches its exact pin.
+        problem : str
+            Malformed input or expected problem selected by the scenario.
+        """
         write_file(
             'source/package.json',
-            json.dumps({'dependencies': {'lib': '2.0.0'}}),
+            json.dumps({group: {'lib': spec}}),
         )
         write_file(
             'locked/package-lock.json',
@@ -142,21 +256,26 @@ class TestNpmPairs:
                 {
                     'lockfileVersion': 3,
                     'packages': {
-                        '': {'dependencies': {'lib': root_version}},
-                        'node_modules/lib': {'version': resolved},
+                        '': {group: {'lib': spec if root_matches else '1.0.0'}},
+                        'node_modules/lib': {
+                            'version': spec if resolved_matches else '1.0.0',
+                        },
                     },
                 },
             ),
         )
+        before = snapshot_files(tmp_path)
         failures = validate(
             SafetyConfig(
                 tmp_path,
                 npm_pairs=(('source/package.json', 'locked/package-lock.json'),),
             ),
         )
-        assert bool(failures) == bool(message)
-        if message:
-            assert any(message in item for item in failures)
+        detail = f'root {group}' if problem == 'root' else 'resolved lib'
+        assert bool(failures) == bool(problem)
+        if problem:
+            assert any(detail in item for item in failures)
+        assert snapshot_files(tmp_path) == before
 
 
 class TestSafetyFailureIsolation:
@@ -170,7 +289,20 @@ class TestSafetyFailureIsolation:
         monkeypatch: pytest.MonkeyPatch,
         error: type[Exception],
     ) -> None:
-        """Retain later findings after errors during glob iteration."""
+        """
+        Retain later findings after errors during glob iteration.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        error : type[Exception]
+            Error value or exception class injected by the scenario.
+        """
         write_file('ci.yml', 'on: pull_request_target')
         write_file('package.json', '{"name":"consumer"}')
         write_file(
@@ -183,6 +315,28 @@ class TestSafetyFailureIsolation:
             path: Path,
             pattern: str,
         ) -> Iterator[Path]:
+            """
+            Yield real matches and inject the selected discovery failure.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+            pattern : str
+                Glob or literal selection passed to the operation.
+
+            Yields
+            ------
+            Path
+                Real matching paths yielded before any injected discovery
+                error.
+
+            Raises
+            ------
+            OSError, ValueError
+                If the configured discovery operation fails; earlier matches
+                may already have been yielded.
+            """
             if pattern == 'broken*.yml':
                 raise error('PRIVATE DISCOVERY DETAILS')
             yield from original(path, pattern)
@@ -215,7 +369,20 @@ class TestSafetyFailureIsolation:
         dependencies: object,
         message: str,
     ) -> None:
-        """Keep partial drift findings and inspect the next npm pair."""
+        """
+        Keep partial drift findings and inspect the next npm pair.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        dependencies : object
+            Dependency declaration shape supplied to the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
+        """
         write_file('package.json', json.dumps({'dependencies': dependencies}))
         write_file('package-lock.json', '{"lockfileVersion":3,"packages":{"":{}}}')
         write_file('later.json', '{"name":"consumer"}')
@@ -256,8 +423,23 @@ class TestWorkflowAliases:
         unsafe: bool,
     ) -> None:
         """
+        Verify recursive aliases.
+
         Terminate on aliases and still inspect subsequent scripts and
         checkouts.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        cyclic_workflow : str
+            Workflow YAML containing a recursive alias.
+        event : str
+            Workflow event used in the safety scenario.
+        unsafe : bool
+            Whether the selected path or workflow contains a violation.
         """
         script = 'echo ${{ github.event.issue.title }}' if unsafe else 'echo ok'
         source = cyclic_workflow.replace('EVENT', event) + (
@@ -277,27 +459,36 @@ class TestWorkflowAliases:
             )
         if unsafe:
             expected.append('ci.yml: event data interpolated directly into run')
-        assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == expected
+        with patch.object(safety, 'mapping_nodes', wraps=safety.mapping_nodes) as walk:
+            assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == expected
+        walk.assert_called_once()
         assert path.read_text(encoding='utf-8') == source
 
+    @pytest.mark.parametrize('shared', (False, True))
     def test_repeated_alias_is_inspected_once(
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        shared: bool,
     ) -> None:
         """
-        Avoid duplicate diagnostics for one run mapping reused through aliases.
+        Deduplicate shared mappings while retaining separate identical scripts.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        shared : bool
+            Whether multiple scopes refer to the same YAML object.
         """
-        write_file(
-            'ci.yml',
-            (
-                'on: push\njobs: {check: {steps: ['
-                '&step {run: "echo ${{ github.event.issue.title }}"}, *step]}}'
-            ),
-        )
+        step = '{run: "echo ${{ github.event.issue.title }}"}'
+        steps = f'&step {step}, *step' if shared else f'{step}, {step}'
+        write_file('ci.yml', f'on: push\njobs: {{check: {{steps: [{steps}]}}}}')
         assert validate(SafetyConfig(tmp_path, workflows=('ci.yml',))) == [
             'ci.yml: event data interpolated directly into run',
-        ]
+        ] * (1 if shared else 2)
 
 
 class TestWorkflowSafety:
@@ -308,7 +499,16 @@ class TestWorkflowSafety:
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
-        """Reject direct untrusted checkout despite a trigger exception."""
+        """
+        Reject direct untrusted checkout despite a trigger exception.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
         write_file(
             'ci.yml',
             'on: pull_request_target\njobs: {ci: {steps: '
@@ -333,32 +533,51 @@ class TestWorkflowSafety:
             'ci.yml: privileged checkout of pull-request head',
         ]
 
+    @pytest.mark.parametrize('trigger', ('pull_request_target', 'workflow_run'))
     @pytest.mark.parametrize(
-        'event,expiry,message',
+        'present,expiry,states',
         [
-            ('pull_request_target', date(2026, 10, 7), ''),
-            ('pull_request_target', date(2026, 10, 6), 'expired'),
-            ('push', date(2026, 10, 8), 'unused'),
-            ('push', date(2026, 10, 6), 'unused'),
+            (True, date(2026, 10, 7), ()),
+            (True, date(2026, 10, 6), ('expired',)),
+            (False, date(2026, 10, 8), ('unused',)),
+            (False, date(2026, 10, 6), ('unused', 'expired')),
         ],
     )
     def test_exception_lifecycle(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        event: str,
+        trigger: str,
+        present: bool,
         expiry: date,
-        message: str,
+        states: tuple[str, ...],
     ) -> None:
-        """Retire stale exceptions and reject expired reviews."""
-        write_file('ci.yml', f'on: {event}')
+        """
+        Retire stale exceptions and reject expired reviews.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        trigger : str
+            Workflow trigger selected for the safety scenario.
+        present : bool
+            Whether the selected input or evidence field exists.
+        expiry : date
+            Calendar date used as the approval expiry boundary.
+        states : tuple[str, ...]
+            Expected ordered audit states.
+        """
+        write_file('ci.yml', f'on: {trigger if present else 'push'}')
         config = SafetyConfig(
             tmp_path,
             workflows=('ci.yml',),
             exceptions=(
                 SafetyException(
                     'ci.yml',
-                    'pull_request_target',
+                    trigger,
                     'team',
                     'review',
                     'owner',
@@ -366,16 +585,24 @@ class TestWorkflowSafety:
                 ),
             ),
         )
-        failures = validate(config, today=date(2026, 10, 7))
-        assert bool(failures) == bool(message)
-        if message:
-            assert message in failures[0]
+        before = snapshot_files(tmp_path)
+        assert validate(config, today=date(2026, 10, 7)) == [
+            f'ci.yml: {state} {trigger} exception' for state in states
+        ]
+        assert snapshot_files(tmp_path) == before
 
     def test_missing_pattern(
         self,
         tmp_path: Path,
     ) -> None:
-        """Fail closed when configured workflow discovery matches nothing."""
+        """
+        Fail closed when configured workflow discovery matches nothing.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         assert validate(SafetyConfig(tmp_path, workflows=('*.yml',))) == [
             'no safety workflows match: *.yml',
         ]
@@ -386,7 +613,19 @@ class TestWorkflowSafety:
         write_file: FileWriter,
         symlink: Callable[[Path, Path], None],
     ) -> None:
-        """Reject workflow symlinks that resolve outside the consumer root."""
+        """
+        Reject workflow symlinks that resolve outside the consumer root.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
+        """
         outside = write_file('outside.yml', 'on: push')
         root = tmp_path / 'consumer'
         root.mkdir()
@@ -432,7 +671,20 @@ class TestWorkflowSafety:
         source: str,
         message: str,
     ) -> None:
-        """Inspect parsed workflows without executing their commands."""
+        """
+        Inspect parsed workflows without executing their commands.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        source : str
+            Decoded input text to inspect without executing it.
+        message : str
+            Expected error message or scenario diagnostic.
+        """
         path = write_file('ci.yml', source)
         original = path.read_bytes()
         failures = validate(SafetyConfig(tmp_path, workflows=('ci.yml',)))

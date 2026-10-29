@@ -11,7 +11,7 @@ from pathlib import Path
 from popo.config.source_checks import SourceCheckConfig
 from popo.config.test_results import TestResultsConfig
 
-from ._source_inputs import discover, read_source
+from ._source_inputs import discover, inspect_sources
 
 # SECTION: CONSTANTS
 
@@ -35,6 +35,19 @@ def _report_findings(
     JSON errors take precedence over an unsupported directly constructed
     adapter. Input discovery and relative diagnostic locations belong to the
     caller; no files are read or modified here.
+
+    Parameters
+    ----------
+    source : str
+        Decoded input text to inspect without executing it.
+    config : TestResultsConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    list[str]
+        Redacted JSON, adapter or threshold diagnostics; empty for a passing
+        report.
     """
     try:
         report = json.loads(source)
@@ -49,6 +62,76 @@ def _report_findings(
 
 
 # SECTION: FUNCTIONS
+
+
+def validate(
+    config: TestResultsConfig,
+    root: Path | None = None,
+    summary: Path | None = None,
+) -> list[str]:
+    """
+    Inspect every selected report using the configured named adapter.
+
+    Parameters
+    ----------
+    config : TestResultsConfig
+        Input selection, explicit adapter and acceptance thresholds.
+    root : pathlib.Path or None
+        Explicit artifact directory, otherwise the consumer repository root.
+    summary : pathlib.Path or None
+        Explicit single report, overriding include/exclude selection. Cannot
+        be combined with an artifact root. Symlink escapes remain rejected.
+
+    Returns
+    -------
+    list[str]
+        Redacted schema, arithmetic, acceptance, discovery and read findings.
+        Files and thresholds are checked independently; empty inputs fail.
+    """
+    if root is not None and summary is not None:
+        return ['choose either a result root or a single summary']
+    inputs = config.inputs
+    try:
+        if summary is not None:
+            boundary = summary.absolute().parent.resolve()
+            inputs = SourceCheckConfig(
+                boundary,
+                'test-results',
+                (escape(summary.name),),
+                (),
+                {},
+            )
+        else:
+            boundary = (root or config.inputs.root).resolve()
+    except (OSError, ValueError):
+        return ['cannot resolve selected result root']
+    paths, failures = discover(inputs, boundary)
+
+    def inspect(
+        path: Path,
+        source: str,
+    ) -> list[str]:
+        """
+        Label adapter findings without disclosing report contents.
+
+        Parameters
+        ----------
+        path : Path
+            Input path inspected by the operation.
+        source : str
+            Decoded input text to inspect without executing it.
+
+        Returns
+        -------
+        list[str]
+            Location-prefixed redacted findings for the decoded input.
+        """
+        relative = path.relative_to(boundary).as_posix()
+        return [
+            f'{relative}: {finding}' for finding in _report_findings(source, config)
+        ]
+
+    return [*failures, *inspect_sources(paths, boundary, inspect)]
 
 
 def xcode_summary(
@@ -97,60 +180,6 @@ def xcode_summary(
             else value > thresholds[key]
         )
     ]
-
-
-def validate(
-    config: TestResultsConfig,
-    root: Path | None = None,
-    summary: Path | None = None,
-) -> list[str]:
-    """
-    Inspect every selected report using the configured named adapter.
-
-    Parameters
-    ----------
-    config : TestResultsConfig
-        Input selection, explicit adapter and acceptance thresholds.
-    root : pathlib.Path or None
-        Explicit artifact directory, otherwise the consumer repository root.
-    summary : pathlib.Path or None
-        Explicit single report, overriding include/exclude selection. Cannot
-        be combined with an artifact root. Symlink escapes remain rejected.
-
-    Returns
-    -------
-    list[str]
-        Redacted schema, arithmetic, acceptance, discovery and read findings.
-        Files and thresholds are checked independently; empty inputs fail.
-    """
-    if root is not None and summary is not None:
-        return ['choose either a result root or a single summary']
-    inputs = config.inputs
-    try:
-        if summary is not None:
-            boundary = summary.absolute().parent.resolve()
-            inputs = SourceCheckConfig(
-                boundary,
-                'test-results',
-                (escape(summary.name),),
-                (),
-                {},
-            )
-        else:
-            boundary = (root or config.inputs.root).resolve()
-    except (OSError, ValueError):
-        return ['cannot resolve selected result root']
-    paths, failures = discover(inputs, boundary)
-    for path in paths:
-        source, errors = read_source(path, boundary)
-        failures.extend(errors)
-        if source is None:
-            continue
-        relative = path.relative_to(boundary).as_posix()
-        failures.extend(
-            f'{relative}: {finding}' for finding in _report_findings(source, config)
-        )
-    return failures
 
 
 # !SECTION

@@ -5,6 +5,7 @@ Python-policy settings and defaults derived from dependency metadata.
 """
 
 import tomllib
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
@@ -148,12 +149,10 @@ def parse_python_policy(
     """
     metadata_document: dict[str, object] = {}
     if dependencies.metadata.is_file():
-        try:
+        with suppress(tomllib.TOMLDecodeError):
             metadata_document = tomllib.loads(
                 dependencies.metadata.read_text(encoding='utf-8'),
             )
-        except tomllib.TOMLDecodeError:
-            pass
     project = require_table(metadata_document.get('project', {}), name='project')
     default_requires = project.get('requires-python', '>=3.13')
     if not isinstance(default_requires, str):

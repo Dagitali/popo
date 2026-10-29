@@ -30,6 +30,96 @@ pytestmark = pytest.mark.skipif(os.name == 'nt', reason='POSIX consumer examples
 # !SECTION
 
 
+# SECTION: PROTECTED FUNCTIONS
+
+
+def _consumer_sources(
+    root: Path,
+) -> dict[Path, bytes]:
+    """
+    Compare consumer source bytes separately from disposable Git metadata.
+
+    Parameters
+    ----------
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+
+    Returns
+    -------
+    dict[Path, bytes]
+        Source paths and bytes excluding disposable Git metadata.
+    """
+    return {
+        path: value
+        for path, value in snapshot_files(root).items()
+        if '.git' not in path.parts
+    }
+
+
+def _run_consumer(
+    tools: Installation,
+    root: Path,
+    entry_point: str,
+) -> subprocess.CompletedProcess[str]:
+    """
+    Run the example's Make command, installed hook, or declared CI step.
+
+    Git writes only disposable metadata. CI execution runs the checked-in
+    step's literal command locally; it does not simulate GitHub's scheduler,
+    token permissions, setup actions, or hosted branch protections.
+
+    Parameters
+    ----------
+    tools : Installation
+        Installed commands and isolated execution environment.
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+    entry_point : str
+        Make, pre-commit or CI invocation selected for the example.
+
+    Returns
+    -------
+    subprocess.CompletedProcess[str]
+        Completed local example invocation with captured output and exit
+        status.
+    """
+    if entry_point == 'make':
+        return tools.execute('make', 'guardrails', directory=root)
+    if entry_point == 'ci':
+        workflow = yaml.safe_load(
+            (root / '.github/workflows/ci.yml').read_text(encoding='utf-8'),
+        )
+        steps = workflow['jobs']['guardrails']['steps']
+        step = next(step for step in steps if step.get('id') == 'popo')
+        return tools.execute(*shlex.split(step['run']), directory=root)
+    for arguments in (
+        ('git', '-c', 'init.templateDir=', 'init', '--quiet'),
+        ('git', 'config', 'core.autocrlf', 'false'),
+        (str(tools.python), '-m', 'pre_commit', 'install'),
+        ('git', 'add', '--all'),
+    ):
+        result = tools.execute(*arguments, directory=root, timeout=60)
+        assert result.returncode == 0, result.stdout + result.stderr
+    assert (root / '.git/hooks/pre-commit').is_file()
+    return tools.execute(
+        'git',
+        '-c',
+        'user.name=Popo Test',
+        '-c',
+        'user.email=popo@example.invalid',
+        '-c',
+        'commit.gpgsign=false',
+        'commit',
+        '-m',
+        'test: exercise guardrails',
+        directory=root,
+        timeout=60,
+    )
+
+
+# !SECTION
+
+
 # SECTION: FIXTURES
 
 
@@ -145,75 +235,13 @@ def guardrail_tools_fixture(
 # !SECTIONS
 
 
-# SECTION: PROTECTED FUNCTIONS
-
-
-def _consumer_sources(
-    root: Path,
-) -> dict[Path, bytes]:
-    """
-    Compare consumer source bytes separately from disposable Git metadata.
-    """
-    return {
-        path: value
-        for path, value in snapshot_files(root).items()
-        if '.git' not in path.parts
-    }
-
-
-def _run_consumer(
-    tools: Installation,
-    root: Path,
-    entry_point: str,
-) -> subprocess.CompletedProcess[str]:
-    """Run the example's Make command, installed hook, or declared CI step.
-
-    Git writes only disposable metadata. CI execution runs the checked-in
-    step's literal command locally; it does not simulate GitHub's scheduler,
-    token permissions, setup actions, or hosted branch protections.
-    """
-    if entry_point == 'make':
-        return tools.execute('make', 'guardrails', directory=root)
-    if entry_point == 'ci':
-        workflow = yaml.safe_load(
-            (root / '.github/workflows/ci.yml').read_text(encoding='utf-8'),
-        )
-        steps = workflow['jobs']['guardrails']['steps']
-        step = next(step for step in steps if step.get('id') == 'popo')
-        return tools.execute(*shlex.split(step['run']), directory=root)
-    for arguments in (
-        ('git', '-c', 'init.templateDir=', 'init', '--quiet'),
-        ('git', 'config', 'core.autocrlf', 'false'),
-        (str(tools.python), '-m', 'pre_commit', 'install'),
-        ('git', 'add', '--all'),
-    ):
-        result = tools.execute(*arguments, directory=root, timeout=60)
-        assert result.returncode == 0, result.stdout + result.stderr
-    assert (root / '.git/hooks/pre-commit').is_file()
-    return tools.execute(
-        'git',
-        '-c',
-        'user.name=Popo Test',
-        '-c',
-        'user.email=popo@example.invalid',
-        '-c',
-        'commit.gpgsign=false',
-        'commit',
-        '-m',
-        'test: exercise guardrails',
-        directory=root,
-        timeout=60,
-    )
-
-
-# !SECTION
-
-
 # SECTION: TESTS
 
 
 class TestExampleAdoption:
     """
+    Cover example adoption.
+
     Prove shared policy executes and reports drift without rewriting files.
     """
 
@@ -227,6 +255,17 @@ class TestExampleAdoption:
     ) -> None:
         """
         Inspect one entry-point mismatch through independent real callers.
+
+        Parameters
+        ----------
+        guardrail_tools : Installation
+            Installed artifact and pinned hook runner for the example.
+        example_consumer : Path
+            Disposable copy of the selected example repository.
+        entry_point : str
+            Make, pre-commit or CI invocation selected for the example.
+        example_drift : str
+            Example entry-point mutation introducing policy drift.
         """
         original = snapshot_files(example_consumer)
         result = _run_consumer(guardrail_tools, example_consumer, entry_point)
@@ -242,6 +281,15 @@ class TestExampleAdoption:
     ) -> None:
         """
         Run the same profile from Make, an installed hook and the CI step.
+
+        Parameters
+        ----------
+        guardrail_tools : Installation
+            Installed artifact and pinned hook runner for the example.
+        example_consumer : Path
+            Disposable copy of the selected example repository.
+        entry_point : str
+            Make, pre-commit or CI invocation selected for the example.
         """
         original = snapshot_files(example_consumer)
         result = _run_consumer(guardrail_tools, example_consumer, entry_point)
@@ -256,7 +304,18 @@ class TestExampleAdoption:
         example_consumer: Path,
         entry_point: str,
     ) -> None:
-        """A real documentation failure must fail every caller's execution."""
+        """
+        A real documentation failure must fail every caller's execution.
+
+        Parameters
+        ----------
+        guardrail_tools : Installation
+            Installed artifact and pinned hook runner for the example.
+        example_consumer : Path
+            Disposable copy of the selected example repository.
+        entry_point : str
+            Make, pre-commit or CI invocation selected for the example.
+        """
         readme = example_consumer / 'README.md'
         readme.write_text(
             readme.read_text(encoding='utf-8') + '\n[Missing](absent.md)\n',

@@ -17,6 +17,18 @@ import yaml
 from ..config.safety import SafetyConfig
 from ._yaml import mapping_nodes, read_mapping
 
+# SECTION: CONSTANTS
+
+
+NPM_EXACT_VERSION_PATTERN = re.compile(
+    r'\d+\.\d+\.\d+(?:-[\w.-]+)?'
+    r'(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?',
+)
+
+
+# !SECTION
+
+
 # SECTION: PROTECTED FUNCTIONS
 
 
@@ -24,31 +36,30 @@ def _file(
     root: Path,
     relative: str,
 ) -> Path:
-    """Resolve a configured path and reject symlink escapes."""
+    """
+    Resolve a configured path and reject symlink escapes.
+
+    Parameters
+    ----------
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+    relative : str
+        Repository-relative path used in diagnostics or input selection.
+
+    Returns
+    -------
+    Path
+        Resolved input path confined to the repository root.
+
+    Raises
+    ------
+    OSError, ValueError
+        If resolution fails or the resolved path escapes the repository.
+    """
     path = (root / relative).resolve()
     if not path.is_relative_to(root):
         raise ValueError(f'path escapes repository: {relative}')
     return path
-
-
-def _head_checkout(
-    value: object,
-) -> bool:
-    """Find direct pull-request head refs passed to the checkout action."""
-    for node in mapping_nodes(value):
-        action = node.get('uses')
-        settings = node.get('with')
-        if (
-            isinstance(action, str)
-            and action.startswith('actions/checkout@')
-            and isinstance(settings, dict)
-            and any(
-                isinstance(item, str) and 'github.event.pull_request.head' in item
-                for item in settings.values()
-            )
-        ):
-            return True
-    return False
 
 
 def _npm_findings(
@@ -56,13 +67,36 @@ def _npm_findings(
     manifest: str,
     lockfile: str,
 ) -> Iterator[str]:
-    """Yield npm drift before later read, parse or shape errors propagate."""
+    """
+    Yield npm drift before later read, parse or shape errors propagate.
+
+    Parameters
+    ----------
+    root : Path
+        Consumer repository root used to resolve and label input paths.
+    manifest : str
+        Repository-relative npm package manifest path.
+    lockfile : str
+        Repository-relative npm lockfile path.
+
+    Yields
+    ------
+    str
+        Manifest/lockfile root or exact-pin drift found before any later error.
+
+    Raises
+    ------
+    OSError, UnicodeError, ValueError
+        If input reading, JSON decoding, containment or document validation
+        fails. Earlier yielded drift remains available.
+    """
     label = f'{manifest} -> {lockfile}'
     package: object = json.loads(_file(root, manifest).read_text('utf-8'))
     lock: object = json.loads(_file(root, lockfile).read_text('utf-8'))
     if not isinstance(package, dict) or not isinstance(lock, dict):
         raise ValueError('npm documents must be objects')
-    if lock.get('lockfileVersion') not in (2, 3):
+    version = lock.get('lockfileVersion')
+    if type(version) is not int or version not in (2, 3):
         raise ValueError('only npm lockfile versions 2 and 3 are supported')
     packages = lock.get('packages')
     if not isinstance(packages, dict) or not isinstance(packages.get(''), dict):
@@ -86,7 +120,7 @@ def _npm_findings(
             for name, spec in expected.items():
                 if not isinstance(spec, str) or not spec.strip():
                     raise ValueError(f'{key} specifications must be strings')
-                if re.fullmatch(r'\d+\.\d+\.\d+(?:-[\w.-]+)?', spec):
+                if NPM_EXACT_VERSION_PATTERN.fullmatch(spec):
                     installed = packages.get(f'node_modules/{name}')
                     if (
                         not isinstance(installed, dict)
@@ -95,28 +129,91 @@ def _npm_findings(
                         yield f'{label}: resolved {name} differs from {spec}'
 
 
-def _scripts(
-    value: object,
-) -> list[str]:
-    """Collect nested run commands once without interpreting their language."""
-    return [
-        script
-        for node in mapping_nodes(value)
-        if isinstance(script := node.get('run'), str)
-    ]
-
-
 def _workflow(
     path: Path,
 ) -> dict[str, object]:
-    """Parse a mapping with duplicate-key rejection and string event keys."""
+    """
+    Parse a mapping with duplicate-key rejection and string event keys.
+
+    Parameters
+    ----------
+    path : Path
+        Input path inspected by the operation.
+
+    Returns
+    -------
+    dict[str, object]
+        Parsed workflow mapping.
+
+    Raises
+    ------
+    OSError, UnicodeError, ValueError, yaml.YAMLError
+        If reading, decoding, YAML parsing or mapping validation fails. The
+        caller converts these failures into workflow diagnostics.
+    """
     return read_mapping(path, label='workflow')
+
+
+def _workflow_content(
+    value: object,
+) -> tuple[bool, tuple[str, ...]]:
+    """
+    Collect checkout and script observations in one cycle-safe traversal.
+
+    Parameters
+    ----------
+    value : object
+        Parsed workflow graph; only mappings and lists are traversed.
+
+    Returns
+    -------
+    tuple[bool, tuple[str, ...]]
+        Whether a checkout directly references pull-request head data, and run
+        strings in native mapping traversal order. Recursive/shared containers
+        are visited once; identical scripts on distinct mappings are retained.
+
+    Notes
+    -----
+    Checkout observations apply only when the caller identifies a privileged
+    trigger. Scripts are collected for every workflow. Findings remain the
+    caller's responsibility; no command language or expression is evaluated.
+    """
+    head_checkout = False
+    scripts: list[str] = []
+    for node in mapping_nodes(value):
+        if isinstance(script := node.get('run'), str):
+            scripts.append(script)
+        action = node.get('uses')
+        settings = node.get('with')
+        head_checkout = head_checkout or (
+            isinstance(action, str)
+            and action.startswith('actions/checkout@')
+            and isinstance(settings, dict)
+            and any(
+                isinstance(item, str) and 'github.event.pull_request.head' in item
+                for item in settings.values()
+            )
+        )
+    return head_checkout, tuple(scripts)
 
 
 def _workflow_paths(
     config: SafetyConfig,
 ) -> tuple[list[Path], list[str]]:
-    """Discover unique workflows, retaining findings for failed patterns."""
+    """
+    Discover unique workflows, retaining findings for failed patterns.
+
+    Parameters
+    ----------
+    config : SafetyConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    tuple[list[Path], list[str]]
+        Sorted unique workflow paths and discovery diagnostics in pattern
+        order.
+    """
     paths: set[Path] = set()
     failures: list[str] = []
     for pattern in config.workflows:
@@ -198,9 +295,10 @@ def validate(
                     )
                 elif exception.expires < day:
                     failures.append(f'{relative}: expired {trigger} exception')
-            if privileged and _head_checkout(document):
+            head_checkout, scripts = _workflow_content(document)
+            if privileged and head_checkout:
                 failures.append(f'{relative}: privileged checkout of pull-request head')
-            for script in _scripts(document):
+            for script in scripts:
                 if re.search(
                     r'\$\{\{[^}]*github\.event\.(pull_request|issue|comment|discussion)\b',
                     script,

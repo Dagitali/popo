@@ -4,8 +4,8 @@
 Compare callable documentation evidence without merging markup conventions.
 """
 
-from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -15,14 +15,21 @@ from popo.checks import (
     _swift_declarations,
     _swift_documentation,
 )
-from popo.checks._source_declarations import DeclarationFacts
-from popo.checks._source_documentation import CallableDocumentation, contract_findings
+from popo.checks._source_declarations import DeclarationFacts, ResultSection
+from popo.checks._source_documentation import (
+    CallableDocumentation,
+    DocumentationDialect,
+    DocumentationInterpreter,
+    DocumentationPresence,
+    callable_findings,
+    contract_findings,
+)
 from popo.config.source_checks import DOMAINS, SourceCheckConfig
 
 # SECTION: TYPE ALIASES
 
 
-type DocumentationCase = tuple[str, Callable[[str, str], CallableDocumentation]]
+type DocumentationCase = tuple[str, DocumentationInterpreter]
 
 
 # !SECTION
@@ -35,7 +42,20 @@ type DocumentationCase = tuple[str, Callable[[str, str], CallableDocumentation]]
 def documentation_case_fixture(
     request: pytest.FixtureRequest,
 ) -> DocumentationCase:
-    """Select an independent markup interpreter with a common evidence type."""
+    """
+    Select an independent markup interpreter with a common evidence type.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    DocumentationCase
+        Native documentation reader and markup helpers for the selected
+        language.
+    """
     style = str(request.param)
     interpret = (
         _python_documentation._documentation
@@ -61,7 +81,18 @@ class TestCallableDocumentation:
         tmp_path: Path,
         present: bool,
     ) -> None:
-        """Compare parsed evidence with the same explicit callable contract."""
+        """
+        Compare parsed evidence with the same explicit callable contract.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        present : bool
+            Whether the selected input or evidence field exists.
+        """
         style, interpret = documentation_case
         doc = {
             'numpy': 'Parameters\n----------\nvalue : int\n    Input.\n\n'
@@ -98,7 +129,14 @@ class TestCallableDocumentation:
         self,
         documentation_case: DocumentationCase,
     ) -> None:
-        """Require field content independently of heading or label presence."""
+        """
+        Require field content independently of heading or label presence.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        """
         style, interpret = documentation_case
         doc = {
             'numpy': 'Parameters\n----------\n\nReturns\n-------\n\nRaises\n------\n',
@@ -112,6 +150,11 @@ class TestCallableDocumentation:
     ) -> None:
         """
         Normalize grouped NumPy names and nested DocC entries equivalently.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
         """
         style, interpret = documentation_case
         doc = {
@@ -126,7 +169,14 @@ class TestCallableDocumentation:
         self,
         documentation_case: DocumentationCase,
     ) -> None:
-        """Keep parameter spelling separate from markup-label case rules."""
+        """
+        Keep parameter spelling separate from markup-label case rules.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        """
         style, interpret = documentation_case
         doc = {
             'numpy': 'Parameters\n----------\nValue : int\n    Input.\n',
@@ -134,23 +184,91 @@ class TestCallableDocumentation:
         }[style]
         assert interpret(doc, '').parameter_names == frozenset({'Value'})
 
+    @pytest.mark.parametrize(
+        'required,complete',
+        [
+            ((), True),
+            (('value',), True),
+            (('value', 'value'), True),
+            (('Value',), False),
+            (('value', 'missing'), False),
+        ],
+    )
+    def test_parameter_name_coverage(
+        self,
+        documentation_case: DocumentationCase,
+        tmp_path: Path,
+        required: tuple[str, ...],
+        complete: bool,
+    ) -> None:
+        """
+        Ignore repeated/extra names while requiring exact-case coverage.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        required : tuple[str, ...]
+            Required evidence or policy setting selected by the scenario.
+        complete : bool
+            Whether the scenario supplies complete evidence.
+        """
+        style, interpret = documentation_case
+        doc = {
+            'numpy': 'Parameters\n----------\nvalue, value, extra : int\n    Inputs.\n',
+            'docc': '- Parameter value: Input.\n- Parameters:\n'
+            '  - value: Repeated input.\n  - extra: Extra input.\n',
+        }[style]
+        evidence = interpret(doc, '')
+        assert evidence.parameter_names == frozenset({'value', 'extra'})
+        domain = 'python-source' if style == 'numpy' else 'swift-source'
+        config = SourceCheckConfig(
+            tmp_path,
+            domain,
+            (),
+            (),
+            dict(DOMAINS[domain]) | {'parameter-docs': True},
+        )
+        assert contract_findings(
+            DeclarationFacts(7, 'function', doc, required),
+            config,
+            'sample',
+            evidence,
+        ) == ([] if complete else ['sample:7: parameter documentation incomplete'])
+
     def test_section_label_case_remains_language_specific(
         self,
         documentation_case: DocumentationCase,
     ) -> None:
-        """Preserve case-sensitive NumPy headings and case-insensitive DocC."""
+        """
+        Preserve case-sensitive NumPy headings and case-insensitive DocC.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        """
         style, interpret = documentation_case
         doc = {
             'numpy': 'returns\n-------\nint\n    Result.\n',
             'docc': '- rEtUrNs: Result.\n',
         }[style]
-        assert interpret(doc, 'Returns').return_documented is (style == 'docc')
+        assert interpret(doc, 'Returns').result_documented is (style == 'docc')
 
     def test_variadic_and_singular_parameter_notation(
         self,
         documentation_case: DocumentationCase,
     ) -> None:
-        """Preserve NumPy stars and DocC singular/backticked name support."""
+        """
+        Preserve NumPy stars and DocC singular/backticked name support.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        """
         style, interpret = documentation_case
         doc = {
             'numpy': 'Parameters\n----------\n*args : int\n    Inputs.\n'
@@ -164,6 +282,8 @@ class TestCallableDocumentation:
 
 class TestDeclarationDocumentation:
     """
+    Cover declaration documentation.
+
     Preserve language-specific presence switches at the declaration boundary.
     """
 
@@ -178,7 +298,22 @@ class TestDeclarationDocumentation:
         required: bool,
         documented: bool,
     ) -> None:
-        """Keep nominal/member policies independent with exact diagnostics."""
+        """
+        Keep nominal/member policies independent with exact diagnostics.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        nominal : bool
+            Whether the declaration represents a nominal type.
+        required : bool
+            Required evidence or policy setting selected by the scenario.
+        documented : bool
+            Whether the scenario supplies declaration documentation.
+        """
         style, _ = documentation_case
         domain = 'python-source' if style == 'numpy' else 'swift-source'
         settings = {
@@ -190,14 +325,20 @@ class TestDeclarationDocumentation:
             settings['declaration-docs'] = required
             facts = DeclarationFacts(5, 'class' if nominal else 'function', doc, ())
             declaration = _python_declarations.Declaration(facts)
+            presence = _python_documentation._presence
             check = _python_documentation._declaration_findings
         else:
             settings['declaration-docs'] = required if nominal else not required
             settings['member-docs'] = not required if nominal else required
             facts = DeclarationFacts(5, 'struct' if nominal else 'func', doc, ())
             declaration = _swift_declarations.Declaration(facts, 1, True)
+            presence = _swift_documentation._presence
             check = _swift_documentation._declaration_findings
         config = SourceCheckConfig(tmp_path, domain, (), (), settings)
+        assert presence(declaration, config) == DocumentationPresence(
+            required=required,
+            present=documented,
+        )
         assert check(declaration, config, 'sample') == (
             ['sample:5: missing declaration documentation']
             if required and not documented
@@ -213,12 +354,51 @@ class TestNumPyDocumentation:
     def test_result_section_selection(
         self,
         section: str,
-        required: str,
+        required: ResultSection,
     ) -> None:
-        """Require the section selected by the declaration's own facts."""
+        """
+        Require the section selected by the declaration's own facts.
+
+        Parameters
+        ----------
+        section : str
+            Documentation section or required result kind under test.
+        required : ResultSection
+            Required evidence or policy setting selected by the scenario.
+        """
         doc = f'{section}\n-------\nint\n    Result.\n'
         evidence = _python_documentation._documentation(doc, required)
-        assert evidence.return_documented is (section == required)
+        assert evidence.result_documented is (section == required)
+
+    @pytest.mark.parametrize(
+        'doc,expected',
+        [
+            ('Returns\n-------\nint\n    Result.', 'int\n    Result.'),
+            (
+                'Overview.\n\nReturns\n-------\n\nint\n    Result.\n\n'
+                'Notes\n-----\nPrivate notes.',
+                'int\n    Result.',
+            ),
+            ('Returns\n-------\n\nNotes\n-----\nPrivate notes.', ''),
+            ('Returns\n-------\nFirst.\nReturns\n-------\nSecond.', 'First.'),
+        ],
+    )
+    def test_section_boundaries_use_original_offsets(
+        self,
+        doc: str,
+        expected: str,
+    ) -> None:
+        """
+        Stop at any underlined heading and preserve first-section content.
+
+        Parameters
+        ----------
+        doc : str
+            Documentation text supplied to the native interpreter.
+        expected : str
+            Expected result for the selected parameterized scenario.
+        """
+        assert _python_documentation._section(doc, 'Returns') == expected
 
 
 class TestDocumentationRunner:
@@ -230,7 +410,16 @@ class TestDocumentationRunner:
         tmp_path: Path,
         language: str,
     ) -> None:
-        """Preserve source order and redact names and bodies in diagnostics."""
+        """
+        Preserve source order and redact names and bodies in diagnostics.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        language : str
+            Native source language selected by the scenario.
+        """
         domain = f'{language}-source'
         config = SourceCheckConfig(
             tmp_path,
@@ -274,7 +463,16 @@ class TestDisabledCallableContracts:
         tmp_path: Path,
         language: str,
     ) -> None:
-        """Leave absent callable markup valid when all relevant rules are off."""
+        """
+        Leave absent callable markup valid when all relevant rules are off.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        language : str
+            Native source language selected by the scenario.
+        """
         domain = f'{language}-source'
         settings = dict(DOMAINS[domain]) | {
             'file-overviews': False,
@@ -298,6 +496,169 @@ class TestDisabledCallableContracts:
             )
             == []
         )
+
+    @pytest.mark.parametrize(
+        'kind,names,enabled',
+        [('class', (), True), ('function', None, True), ('function', (), False)],
+    )
+    def test_inapplicable_contracts_skip_markup(
+        self,
+        tmp_path: Path,
+        kind: str,
+        names: tuple[str, ...] | None,
+        enabled: bool,
+    ) -> None:
+        """
+        Avoid evidence readers when no callable contract can be checked.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        kind : str
+            Native syntax kind or policy variant under test.
+        names : tuple[str, ...] | None
+            Names checked against the selected matching rule.
+        enabled : bool
+            Whether the optional rule is enabled.
+        """
+        interpret = Mock(side_effect=AssertionError('unexpected markup read'))
+        config = SourceCheckConfig(
+            tmp_path,
+            'python-source',
+            (),
+            (),
+            dict(DOMAINS['python-source'])
+            | dict.fromkeys(('parameter-docs', 'return-docs', 'raises-docs'), enabled),
+        )
+        assert (
+            callable_findings(
+                DeclarationFacts(1, kind, 'Unparsed documentation.', names),
+                config,
+                'sample',
+                ('function',),
+                interpret,
+            )
+            == []
+        )
+        interpret.assert_not_called()
+        if names is None:
+            assert (
+                contract_findings(
+                    DeclarationFacts(1, kind, '', None),
+                    config,
+                    'sample',
+                    CallableDocumentation(),
+                )
+                == []
+            )
+
+
+class TestDeclarationDocumentationOrder:
+    """Share reporting order while preserving native whitespace and spacing."""
+
+    @pytest.mark.parametrize('doc', ('', '   ', 'PRIVATE overview.'))
+    def test_presence_spacing_and_contract_precedence(
+        self,
+        documentation_case: DocumentationCase,
+        tmp_path: Path,
+        doc: str,
+    ) -> None:
+        """
+        Retain missing/spacing precedence and still check callable contracts.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        doc : str
+            Documentation text supplied to the native interpreter.
+        """
+        style, _ = documentation_case
+        domain = 'python-source' if style == 'numpy' else 'swift-source'
+        settings = dict(DOMAINS[domain]) | {
+            'declaration-docs': True,
+            'return-docs': True,
+        }
+        kind = 'function' if style == 'numpy' else 'func'
+        facts = DeclarationFacts(7, kind, doc, (), 'Returns')
+        if style == 'numpy':
+            declaration = _python_declarations.Declaration(facts)
+            findings = _python_documentation._declaration_findings(
+                declaration,
+                SourceCheckConfig(tmp_path, domain, (), (), settings),
+                'source',
+            )
+            expected = [] if doc else ['source:7: missing declaration documentation']
+        else:
+            settings |= {'member-docs': True, 'declaration-spacing': True}
+            declaration = _swift_declarations.Declaration(facts, 6, False)
+            findings = _swift_documentation._declaration_findings(
+                declaration,
+                SourceCheckConfig(tmp_path, domain, (), (), settings),
+                'source',
+            )
+            expected = [
+                'source:7: missing declaration documentation'
+                if not doc.strip()
+                else 'source:6: missing blank line before documentation',
+            ]
+        assert findings == [*expected, 'source:7: return documentation missing']
+        assert 'PRIVATE' not in '\n'.join(findings)
+
+
+class TestDocumentationDialectMapping:
+    """Map shared result requirements through each native markup dialect."""
+
+    @pytest.mark.parametrize('required', ('', 'Returns', 'Yields'))
+    def test_result_section_mapping_preserves_native_semantics(
+        self,
+        documentation_case: DocumentationCase,
+        required: ResultSection,
+    ) -> None:
+        """
+        Keep NumPy result selection and DocC's fixed Returns field distinct.
+
+        Parameters
+        ----------
+        documentation_case : DocumentationCase
+            Native documentation reader and language-specific markup.
+        required : ResultSection
+            Required evidence or policy setting selected by the scenario.
+        """
+        style, interpret = documentation_case
+        doc = (
+            'Yields\n------\nint\n    Values.\n'
+            if style == 'numpy'
+            else '- Returns: A value.'
+        )
+        evidence = interpret(doc, required)
+        assert evidence.parameter_names == frozenset()
+        assert not evidence.exception_documented
+        assert evidence.result_documented == (
+            required == 'Yields' if style == 'numpy' else bool(required)
+        )
+
+
+class TestDocumentationReaderContract:
+    """Accept native name iterables without imposing mutable collections."""
+
+    def test_single_pass_names_retain_case_and_are_frozen(
+        self,
+    ) -> None:
+        """Consume one-shot evidence once and skip unrequested result reads."""
+        names = iter(('value', 'value', 'Value'))
+        read_names = Mock(return_value=names)
+        read_section = Mock(return_value='')
+        dialect = DocumentationDialect(read_names, read_section, 'Throws')
+        assert dialect.interpret('Native text.', '') == CallableDocumentation(
+            frozenset({'value', 'Value'}),
+        )
+        read_names.assert_called_once_with('Native text.')
+        read_section.assert_called_once_with('Native text.', 'Throws')
+        assert list(names) == []
 
 
 # !SECTION

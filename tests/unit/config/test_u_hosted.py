@@ -45,6 +45,19 @@ class TestHostedConfiguration:
     ) -> None:
         """
         Reject duplicate repository inventory and exception scopes.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        hosted_exception_config : str
+            Valid hosted policy and explicit approval TOML.
+        section : str
+            Documentation section or required result kind under test.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         if section == 'repositories':
             extra = (
@@ -61,6 +74,118 @@ class TestHostedConfiguration:
             load_hosted_config(tmp_path)
 
     @pytest.mark.parametrize(
+        ('original', 'replacement', 'message'),
+        [
+            ('owner = "owner"', 'owner = ""', 'documented string fields'),
+            ('reason = "Migration"', '', 'documented string fields'),
+            (
+                'approved-by = "reviewer"',
+                'approved-by = false',
+                'documented string fields',
+            ),
+            (
+                'check = "label:bug"',
+                'check = "label:other"',
+                'configured repository/check',
+            ),
+            (
+                'repository = "example/library"',
+                'repository = "other/repository"',
+                'configured repository/check',
+            ),
+            ('expires = "2026-10-31"', 'expires = "20261031"', 'ISO date'),
+            ('expires = "2026-10-31"', 'expires = "2026-02-31"', 'ISO date'),
+            (
+                'expires = "2026-10-31"',
+                'expires = 2026-10-31',
+                'documented string fields',
+            ),
+            (
+                'https://example.com/review',
+                'http://example.com/review',
+                'HTTPS evidence URL',
+            ),
+            ('https://example.com/review', 'https://', 'HTTPS evidence URL'),
+            (
+                'https://example.com/review',
+                'https://[broken',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://example.com:abc/review',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://example.com:-1/review',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://example.com:65536/review',
+                'invalid exception approval URL',
+            ),
+            (
+                'https://example.com/review',
+                'https://user:secret@example.com/review',
+                'HTTPS evidence URL',
+            ),
+            *(
+                pytest.param('https://example.com/review', approval, None, id=label)
+                for label, approval in (
+                    ('valid-https', 'https://example.com/review'),
+                    ('valid-port', 'https://example.com:443/review'),
+                    ('valid-ipv6', 'https://[::1]:8443/review'),
+                )
+            ),
+        ],
+    )
+    def test_exception_contract(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        hosted_exception_config: str,
+        original: str,
+        replacement: str,
+        message: str | None,
+    ) -> None:
+        """
+        Reject incomplete approvals, unsafe URLs, and invalid expiry dates.
+
+        Accepted records retain the exact approved scope, URL and inclusive
+        expiry date.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        hosted_exception_config : str
+            Valid hosted policy and explicit approval TOML.
+        original : str
+            Original source or policy text retained for comparison.
+        replacement : str
+            Replacement text inserted into the scenario input.
+        message : str | None
+            Expected error message or scenario diagnostic.
+        """
+        assert original in hosted_exception_config, 'Mutation marker missing'
+        write_file(
+            'pyproject.toml',
+            hosted_exception_config.replace(original, replacement),
+        )
+        if message is not None:
+            with pytest.raises(ConfigurationError, match=message):
+                load_hosted_config(tmp_path)
+        else:
+            config = load_hosted_config(tmp_path)
+            assert config.exceptions[0].approval == replacement
+            assert config.exceptions[0].expires == date(2026, 10, 31)
+            assert config.repositories[0].labels == ('bug',)
+
+    @pytest.mark.parametrize(
         'repository',
         ['owner/first', 'owner/second', 'OWNER/first'],
     )
@@ -72,7 +197,20 @@ class TestHostedConfiguration:
         repository: str,
         check: str,
     ) -> None:
-        """Keep exception checks scoped to the exact configured repository."""
+        """
+        Keep exception checks scoped to the exact configured repository.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        repository : str
+            Repository identity used in hosted policy or evidence.
+        check : str
+            Check identity used in policy selection or hosted evidence.
+        """
         write_file(
             'popo.toml',
             '[[hosted.repositories]]\nname="owner/first"\nlabels=["bug"]\n'
@@ -129,89 +267,21 @@ class TestHostedConfiguration:
     ) -> None:
         """
         Reject absent, malformed, or unsupported hosted expectations.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        config : str
+            Consumer configuration text supplied by the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         write_file('pyproject.toml', config)
         with pytest.raises(ConfigurationError, match=message):
             load_hosted_config(tmp_path)
-
-    @pytest.mark.parametrize(
-        ('original', 'replacement', 'message'),
-        [
-            ('owner = "owner"', 'owner = ""', 'documented string fields'),
-            ('reason = "Migration"', '', 'documented string fields'),
-            (
-                'approved-by = "reviewer"',
-                'approved-by = false',
-                'documented string fields',
-            ),
-            (
-                'check = "label:bug"',
-                'check = "label:other"',
-                'configured repository/check',
-            ),
-            (
-                'repository = "example/library"',
-                'repository = "other/repository"',
-                'configured repository/check',
-            ),
-            ('expires = "2026-10-31"', 'expires = "20261031"', 'ISO date'),
-            ('expires = "2026-10-31"', 'expires = "2026-02-31"', 'ISO date'),
-            (
-                'expires = "2026-10-31"',
-                'expires = 2026-10-31',
-                'documented string fields',
-            ),
-            (
-                'https://example.com/review',
-                'http://example.com/review',
-                'HTTPS evidence URL',
-            ),
-            ('https://example.com/review', 'https://', 'HTTPS evidence URL'),
-            (
-                'https://example.com/review',
-                'https://[broken',
-                'invalid exception approval URL',
-            ),
-            (
-                'https://example.com/review',
-                'https://user:secret@example.com/review',
-                'HTTPS evidence URL',
-            ),
-        ],
-    )
-    def test_invalid_exception(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        hosted_exception_config: str,
-        original: str,
-        replacement: str,
-        message: str,
-    ) -> None:
-        """
-        Reject incomplete approvals, unsafe URLs, and invalid expiry dates.
-        """
-        assert original in hosted_exception_config, 'Mutation marker missing'
-        write_file(
-            'pyproject.toml',
-            hosted_exception_config.replace(original, replacement),
-        )
-        with pytest.raises(ConfigurationError, match=message):
-            load_hosted_config(tmp_path)
-
-    def test_valid_exception(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        hosted_exception_config: str,
-    ) -> None:
-        """
-        Load the exact approved scope and its inclusive expiry date.
-        """
-        write_file('pyproject.toml', hosted_exception_config)
-        config = load_hosted_config(tmp_path)
-        assert config.exceptions[0].expires == date(2026, 10, 31)
-        assert config.repositories[0].labels == ('bug',)
 
 
 # !SECTION

@@ -23,7 +23,23 @@ def audit_statuses(
     github_responses: dict[str, Response],
     exceptions: tuple[ExceptionPolicy, ...] = (),
 ) -> dict[str, str]:
-    """Return check statuses from deterministic API fixtures."""
+    """
+    Return check statuses from deterministic API fixtures.
+
+    Parameters
+    ----------
+    hosted_policy : RepositoryPolicy
+        Consumer-owned repository expectations for the audit.
+    github_responses : dict[str, Response]
+        Isolated endpoint-to-response mapping; no network is used.
+    exceptions : tuple[ExceptionPolicy, ...]
+        Exception evidence or policy selected for the scenario.
+
+    Returns
+    -------
+    dict[str, str]
+        Observed finding statuses indexed by check identity.
+    """
     result = audit(
         HostedConfig((hosted_policy,), exceptions),
         lambda endpoint, paginate: github_responses[endpoint],
@@ -52,7 +68,20 @@ class TestHostedCheckEvidence:
         context: str,
         legacy_known: bool,
     ) -> None:
-        """Require complete evidence before confirming a missing context."""
+        """
+        Require complete evidence before confirming a missing context.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        context : str
+            Required check context or source context under test.
+        legacy_known : bool
+            Whether legacy evidence establishes required-check absence.
+        """
         github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
             Response(
                 [
@@ -84,6 +113,38 @@ class TestHostedCheckEvidence:
         ('rules', 'legacy', 'expected'),
         [
             (None, {}, 'inaccessible'),
+            ([], None, 'missing'),
+            ([], {}, 'missing'),
+            ([], False, 'inaccessible'),
+            ([], [], 'inaccessible'),
+            ([], 0, 'inaccessible'),
+            ([], '', 'inaccessible'),
+            ([], True, 'inaccessible'),
+            ([], ['PRIVATE'], 'inaccessible'),
+            (
+                [
+                    {
+                        'type': 'required_status_checks',
+                        'parameters': {
+                            'required_status_checks': [{'context': 'quality'}],
+                        },
+                    },
+                ],
+                False,
+                'inaccessible',
+            ),
+            (
+                [
+                    {
+                        'type': 'required_status_checks',
+                        'parameters': {
+                            'required_status_checks': [{'context': 'quality'}],
+                        },
+                    },
+                ],
+                None,
+                'verified',
+            ),
             ([], {'contexts': [1]}, 'inaccessible'),
             (
                 [{'type': 'pull_request'}],
@@ -97,11 +158,24 @@ class TestHostedCheckEvidence:
         hosted_policy: RepositoryPolicy,
         github_responses: dict[str, Response],
         rules: object,
-        legacy: dict[str, object],
+        legacy: object,
         expected: str,
     ) -> None:
         """
         Accept valid legacy checks while rejecting incomplete typed evidence.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        rules : object
+            Hosted branch-rule response supplied to the audit.
+        legacy : object
+            Legacy branch-protection response supplied to the audit.
+        expected : str
+            Expected result for the selected parameterized scenario.
         """
         github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
             Response(
@@ -119,8 +193,60 @@ class TestHostedCheckEvidence:
 
 class TestHostedEvidenceBoundaries:
     """
+    Cover hosted evidence boundaries.
+
     Exercise malformed evidence and optional inventory without credentials.
     """
+
+    @pytest.mark.parametrize(
+        'path',
+        ('.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'),
+    )
+    @pytest.mark.parametrize(
+        'kind,malformed,status',
+        [
+            ('blob', False, 'verified'),
+            ('tree', False, 'missing'),
+            ('blob', True, 'inaccessible'),
+        ],
+    )
+    def test_codeowners_search_validates_the_complete_tree(
+        self,
+        hosted_policy: RepositoryPolicy,
+        github_responses: dict[str, Response],
+        path: str,
+        kind: str,
+        malformed: bool,
+        status: str,
+    ) -> None:
+        """
+        Require a supported blob and reject malformed evidence after it.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        path : str
+            Input path inspected by the operation.
+        kind : str
+            Native syntax kind or policy variant under test.
+        malformed : bool
+            Whether the scenario supplies malformed evidence.
+        status : str
+            Expected CLI exit status or hosted response state.
+        """
+        entries: list[dict[str, object]] = [
+            {'path': 'unrelated.txt', 'type': 'blob'},
+            {'path': path, 'type': kind},
+        ]
+        if malformed:
+            entries.append({})
+        github_responses['repos/example/library/git/trees/main?recursive=1'] = Response(
+            {'truncated': False, 'tree': entries},
+        )
+        assert audit_statuses(hosted_policy, github_responses)['codeowners'] == status
 
     @pytest.mark.parametrize(
         'data',
@@ -141,6 +267,15 @@ class TestHostedEvidenceBoundaries:
     ) -> None:
         """
         Keep incomplete rule evidence distinct from a confirmed missing check.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        data : object
+            Input payload supplied to the operation.
         """
         github_responses['repos/example/library/rules/branches/main?per_page=100'] = (
             Response(
@@ -175,6 +310,15 @@ class TestHostedEvidenceBoundaries:
     ) -> None:
         """
         Require a boolean observation before classifying branch protection.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        data : object
+            Input payload supplied to the operation.
         """
         github_responses['repos/example/library/branches/main'] = Response(data)
         statuses = audit_statuses(hosted_policy, github_responses)
@@ -192,7 +336,16 @@ class TestHostedExceptionScopes:
         repository: str,
         expired: bool,
     ) -> None:
-        """Keep repository scopes separate and expiry findings last."""
+        """
+        Keep repository scopes separate and expiry findings last.
+
+        Parameters
+        ----------
+        repository : str
+            Repository identity used in hosted policy or evidence.
+        expired : bool
+            Whether the approval has passed its inclusive expiry date.
+        """
         policies = tuple(
             RepositoryPolicy(name, {}, ('bug',), False, {})
             for name in ('owner/one', 'owner/two')
@@ -211,6 +364,25 @@ class TestHostedExceptionScopes:
             endpoint: str,
             paginate: bool,
         ) -> Response:
+            """
+            Return empty API evidence without network access.
+
+            Return empty paginated or mapping evidence without accessing the
+            network.
+
+            Parameters
+            ----------
+            endpoint : str
+                GitHub API endpoint requested by the audit.
+            paginate : bool
+                Whether the fetcher requests paginated array evidence.
+
+            Returns
+            -------
+            Response
+                Empty array evidence for pagination, or empty mapping evidence
+                otherwise.
+            """
             return Response([] if paginate else {})
 
         result = audit(
@@ -249,6 +421,15 @@ class TestHostedObservations:
     ) -> None:
         """
         Keep failed security requests inaccessible regardless of HTTP status.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        http_status : int | None
+            Observed HTTP status, or None when unavailable.
         """
         github_responses['repos/example/library/private-vulnerability-reporting'] = (
             Response(
@@ -282,8 +463,25 @@ class TestHostedObservations:
         expected: str,
     ) -> None:
         """
+        Verify exceptions.
+
         Distinguish approved drift, expired exceptions, and unavailable
         evidence.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        enabled : bool
+            Whether the optional rule is enabled.
+        error : str
+            Error value or exception class injected by the scenario.
+        expires : date
+            Approval expiry date supplied to the policy.
+        expected : str
+            Expected result for the selected parameterized scenario.
         """
         github_responses['repos/example/library/private-vulnerability-reporting'] = (
             Response(
@@ -312,6 +510,13 @@ class TestHostedObservations:
     ) -> None:
         """
         Reject scalar check contexts as inaccessible protection evidence.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
         """
         github_responses['repos/example/library/branches/main/protection'] = Response(
             {
@@ -386,6 +591,21 @@ class TestHostedObservations:
     ) -> None:
         """
         Distinguish missing policy from malformed or incomplete API evidence.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
+        suffix : str
+            Suffix appended to the version or syntax input.
+        data : object
+            Input payload supplied to the operation.
+        check : str
+            Check identity used in policy selection or hosted evidence.
+        status : str
+            Expected CLI exit status or hosted response state.
         """
         github_responses['repos/example/library' + suffix] = Response(data)
         assert audit_statuses(hosted_policy, github_responses)[check] == status
@@ -397,6 +617,13 @@ class TestHostedObservations:
     ) -> None:
         """
         Treat an omitted security field as inaccessible evidence.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
         """
         github_responses['repos/example/library'] = Response({'default_branch': 'main'})
         assert (
@@ -410,6 +637,11 @@ class TestHostedObservations:
     ) -> None:
         """
         Report every configured expectation when repository access fails.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
         """
         result = audit(
             HostedConfig((hosted_policy,), ()),
@@ -425,6 +657,13 @@ class TestHostedObservations:
     ) -> None:
         """
         Accept effective-rule evidence when legacy protection is absent.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
         """
         github_responses['repos/example/library/branches/main/protection'] = Response(
             'Branch not protected',
@@ -457,6 +696,13 @@ class TestHostedObservations:
     ) -> None:
         """
         Keep an ambiguous legacy 404 distinct from confirmed absence.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
         """
         github_responses['repos/example/library/branches/main/protection'] = Response(
             error='404',
@@ -474,6 +720,13 @@ class TestHostedObservations:
     ) -> None:
         """
         Verify every expectation against complete deterministic observations.
+
+        Parameters
+        ----------
+        hosted_policy : RepositoryPolicy
+            Consumer-owned repository expectations for the audit.
+        github_responses : dict[str, Response]
+            Isolated endpoint-to-response mapping; no network is used.
         """
         assert set(audit_statuses(hosted_policy, github_responses).values()) == {
             'verified',

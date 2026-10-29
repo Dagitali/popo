@@ -284,7 +284,6 @@ def validate(
     Missing inputs, invalid TOML, and parsing or bound-extraction failures
     return before the final mapping comparison.
     """
-
     missing = [
         path for path in (config.metadata, config.requirements) if not path.is_file()
     ]

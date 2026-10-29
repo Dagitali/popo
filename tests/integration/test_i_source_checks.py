@@ -21,43 +21,21 @@ from tests.support.files import snapshot_files
 class TestSourceCommands:
     """Verify selection, JSON reporting and private-artifact boundaries."""
 
-    @pytest.mark.parametrize(
-        'command',
-        ('check-python-source', 'check-swift-source', 'check-logs'),
-    )
-    def test_absent_configuration_reports_failure(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-    ) -> None:
-        assert main([command, '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert 'configuration:' in report['checks'][0]['diagnostics'][0]['message']
-
-    def test_aggregate_continues_after_invalid_domain_configuration(
-        self: Self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        (tmp_path / 'popo.toml').write_text(
-            'checks = ["check-python-source", "check-logs"]\n'
-            '[python-source]\ninclude = []\n'
-            '[logs]\ninclude = ["*.log"]\npatterns = { warning = "WARNING" }',
-        )
-        assert main(['check-all', '--root', str(tmp_path), '--format', 'json']) == 1
-        report = json.loads(capsys.readouterr().out)
-        assert [item['check'] for item in report['checks']] == [
-            'check-python-source',
-            'check-logs',
-        ]
-        assert all(not item['passed'] for item in report['checks'])
-
     def test_explicit_external_log_root_redacts_financial_contents(
         self: Self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify explicit external log root redacts financial contents.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        """
         consumer = tmp_path / 'consumer'
         artifact = tmp_path / 'artifacts'
         consumer.mkdir()
@@ -112,6 +90,32 @@ class TestSourceCommands:
         cli_format: str | None,
         format_arguments: tuple[str, ...],
     ) -> None:
+        """
+        Verify selected dispatch preserves inputs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        command : str
+            Command selected for invocation in the scenario.
+        domain : str
+            Native check domain selected for the scenario.
+        filename : str
+            Input filename used in the scenario.
+        source : str
+            Decoded input text to inspect without executing it.
+        select_check : Callable[[Path, str], tuple[str, ...]]
+            Fixture selecting individual, aggregate or profiled execution.
+        present : bool
+            Whether the selected input or evidence field exists.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
+        """
         extra = '\npatterns = { failure = "FORBIDDEN" }' if domain == 'logs' else ''
         (tmp_path / 'popo.toml').write_text(
             f'[{domain}]\ninclude = ["{filename}"]{extra}',

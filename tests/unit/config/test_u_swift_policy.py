@@ -66,6 +66,18 @@ class TestSwiftPolicyConfiguration:
         old: str,
         new: str,
     ) -> None:
+        """
+        Verify invalid configuration.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        old : str
+            Original value replaced by the scenario.
+        new : str
+            Replacement value supplied by the scenario.
+        """
         path = swift_policy_consumer / 'popo.toml'
         text = path.read_text()
         assert old in text
@@ -73,15 +85,21 @@ class TestSwiftPolicyConfiguration:
         with pytest.raises(ConfigurationError):
             load_swift_policy_config(swift_policy_consumer)
 
-    def test_omitted_patch_means_zero(self) -> None:
-        assert parse_version('6.1') == parse_version('6.1.0') == (6, 1, 0)
-
     def test_parse_without_reading_inputs(
         self,
         swift_policy_consumer: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Parse preloaded settings without reading configuration or inputs."""
+        """
+        Parse preloaded settings without reading configuration or inputs.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        """
         root = swift_policy_consumer
         settings = read_popo(root)
         expected = load_swift_policy_config(root)
@@ -96,6 +114,16 @@ class TestSwiftPolicyConfiguration:
         swift_policy_consumer: Path,
         embedded: bool,
     ) -> None:
+        """
+        Verify policy sources.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        embedded : bool
+            Whether policy is embedded in Python project metadata.
+        """
         root = swift_policy_consumer
         if embedded:
             text = (
@@ -113,15 +141,52 @@ class TestSwiftPolicyConfiguration:
         assert 'check-swift-policy' in load_plan(root).checks
 
     @pytest.mark.parametrize(
-        'version',
-        ['6.1-SNAPSHOT', '6', '06.1', '>=6.0', '6.0.0.1', ''],
+        'version,expected',
+        [
+            ('6.1', (6, 1, 0)),
+            ('6.1.0', (6, 1, 0)),
+            (' \t6.1\n', (6, 1, 0)),
+            ('0.0', (0, 0, 0)),
+            ('12.34.56', (12, 34, 56)),
+            *(
+                (version, None)
+                for version in (
+                    '6.1-SNAPSHOT',
+                    '6',
+                    '06.1',
+                    '>=6.0',
+                    '6.0.0.1',
+                    '',
+                    '6.١',
+                    '6.1+build',
+                    '6.1-rc.1',
+                )
+            ),
+        ],
     )
     def test_version_syntax(
         self,
         version: str,
+        expected: tuple[int, int, int] | None,
     ) -> None:
-        with pytest.raises(ValueError):
-            parse_version(version)
+        """
+        Normalize stable ASCII versions and reject unsupported syntax.
+
+        Parameters
+        ----------
+        version : str
+            Version value supplied to the parser or policy comparison.
+        expected : tuple[int, int, int] | None
+            Expected result for the selected parameterized scenario.
+        """
+        if expected is None:
+            with pytest.raises(
+                ValueError,
+                match=r'^expected stable Swift major\.minor\[\.patch\] version$',
+            ):
+                parse_version(version)
+        else:
+            assert parse_version(version) == expected
 
 
 # !SECTION

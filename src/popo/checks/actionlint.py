@@ -20,6 +20,8 @@ import shlex
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 
 import yaml
@@ -39,10 +41,54 @@ def _collect_sources(
     Collect confined source snapshots and normalize their validated text.
 
     Read each workflow/action once, even when referenced repeatedly or through
-    cycles. Validation and normalization share that text snapshot. Retain
+    cycles. Validation and normalization share that text snapshot and a scoped
+    reference resolver. Later collections resolve afresh. Retain
     implicit linter configuration without adding unrelated consumer files.
     Read, decode, YAML and target errors propagate before creating the mirror.
+
+    Parameters
+    ----------
+    config : AutomationConfig
+        Configuration supplying the input paths and validation rules.
+    selected : list[Path]
+        Selected input path or paths to inspect.
+
+    Returns
+    -------
+    dict[Path, str]
+        Confined paths mapped to normalized automation/configuration snapshots.
+
+    Raises
+    ------
+    OSError, UnicodeError, ValueError, yaml.YAMLError
+        If source reading, decoding, YAML parsing or local target validation
+        fails.
     """
+
+    @cache
+    def resolve(
+        reference: str,
+    ) -> Path | None:
+        """
+        Resolve each reference once within this collection snapshot.
+
+        Parameters
+        ----------
+        reference : str
+            Automation reference resolved against the consumer repository.
+
+        Returns
+        -------
+        Path | None
+            Validated local target, or None outside the configured local forms.
+
+        Raises
+        ------
+        OSError, ValueError
+            If path resolution, containment or local target validation fails.
+        """
+        return _target(config, reference)
+
     root = config.root
     sources: dict[Path, str] = {}
     # Retain implicit consumer runner-label and ignore configuration.
@@ -58,11 +104,11 @@ def _collect_sources(
             continue
         source = path.read_text(encoding='utf-8')
         data = parse_mapping(source)
-        sources[path] = _normalize(source, config)
+        sources[path] = _normalize(source, config, resolve=resolve)
         for node in mapping_nodes(data):
             reference = node.get('uses')
             if isinstance(reference, str):
-                target = _target(config, reference)
+                target = resolve(reference)
                 if target is not None:
                     pending.append(target)
     return sources
@@ -71,12 +117,36 @@ def _collect_sources(
 def _normalize(
     source: str,
     config: AutomationConfig,
+    *,
+    resolve: Callable[[str], Path | None] | None = None,
 ) -> str:
     """
     Rewrite self uses values, retaining other source and duplicate keys.
 
     YAML node marks identify real mapping values, not text inside run scripts.
     Targets are resolved through native contract validation; errors propagate.
+    A supplied resolver shares per-collection reference observations with graph
+    discovery. Without one, resolve directly using the supplied configuration.
+
+    Parameters
+    ----------
+    source : str
+        Decoded input text to inspect without executing it.
+    config : AutomationConfig
+        Configuration supplying the input paths and validation rules.
+    resolve : Callable[[str], Path | None] | None
+        Optional resolver sharing validated reference observations.
+
+    Returns
+    -------
+    str
+        Automation text with self references replaced for actionlint
+        compatibility.
+
+    Raises
+    ------
+    OSError, ValueError, yaml.YAMLError
+        If YAML parsing, path resolution or local target validation fails.
     """
     pending = [yaml.compose(source, Loader=yaml.SafeLoader)]
     seen: set[int] = set()
@@ -94,7 +164,11 @@ def _normalize(
                     and isinstance(value, yaml.ScalarNode)
                     and value.value.startswith('$/')
                 ):
-                    target = _target(config, value.value)
+                    target = (
+                        _target(config, value.value)
+                        if resolve is None
+                        else resolve(value.value)
+                    )
                     assert target is not None
                     location = (
                         target.parent

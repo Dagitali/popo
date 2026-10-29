@@ -11,7 +11,12 @@ from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import DeclarationFacts, SourceFacts
+from ._source_declarations import (
+    DeclarationFacts,
+    DeclarationRecord,
+    ResultSection,
+    SourceFacts,
+)
 from ._source_inputs import read_source
 
 # SECTION: DATA CLASSES
@@ -27,10 +32,10 @@ class CallableDocumentation:
     parameter_names : frozenset[str]
         Documented names normalized by the language's markup interpreter;
         spelling remains case-sensitive. This does not validate descriptions.
-    return_documented : bool
+    result_documented : bool
         Whether notation for the required return/yield section has content.
         This observation is interpreted alongside declaration requirements.
-    raises_documented : bool
+    exception_documented : bool
         Whether the language's exception section/field has content.
 
     Notes
@@ -41,8 +46,102 @@ class CallableDocumentation:
     """
 
     parameter_names: frozenset[str] = frozenset()
-    return_documented: bool = False
-    raises_documented: bool = False
+    result_documented: bool = False
+    exception_documented: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentationDialect:
+    """
+    Bind native markup readers and section labels for shared evidence.
+
+    Attributes
+    ----------
+    read_parameter_names : collections.abc.Callable[[str], Iterable[str]]
+        Native reader yielding documented names, retaining case rules. Shared
+        assembly consumes the iterable once and freezes/deduplicates names.
+    read_section : collections.abc.Callable[[str, str], str]
+        Native reader for stripped content of one named markup section.
+    exception_section : str
+        Exception label understood by the native reader: Raises or Throws.
+    result_section : str or None
+        Fixed result label when native markup uses one form. None preserves
+        the requested conceptual section, such as Python Returns or Yields.
+
+    Notes
+    -----
+    Native adapters supply implementation readers; consumer configuration does
+    not supply callbacks. Markup parsing and policy selection stay separate.
+    """
+
+    read_parameter_names: Callable[[str], Iterable[str]]
+    read_section: Callable[[str, str], str]
+    exception_section: str
+    result_section: str | None = None
+
+    def interpret(
+        self,
+        doc: str,
+        result_section: ResultSection,
+    ) -> CallableDocumentation:
+        """
+        Collect callable documentation evidence using the language's markup.
+
+        Parameters
+        ----------
+        doc : str
+            Native documentation text supplied by a declaration collector.
+        result_section : ResultSection
+            Required conceptual result section, or empty when unneeded.
+
+        Returns
+        -------
+        CallableDocumentation
+            Immutable names and content-bearing result/exception evidence.
+            An absent result requirement never requests result evidence.
+
+        Notes
+        -----
+        Reader and iteration exceptions propagate unchanged. Parameter names
+        are consumed once and frozen without changing case. This assembles
+        observations without validating prose, types, syntax or exception
+        escape behavior.
+        """
+        result = (
+            self.result_section if self.result_section is not None else result_section
+        )
+        return CallableDocumentation(
+            frozenset(self.read_parameter_names(doc)),
+            bool(self.read_section(doc, result)) if result_section else False,
+            bool(self.read_section(doc, self.exception_section)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentationPresence:
+    """
+    Store native presence and spacing decisions for one declaration.
+
+    Attributes
+    ----------
+    required : bool
+        Whether this declaration's language-specific policy requires docs.
+    present : bool
+        Whether native documentation satisfies that language's presence rule.
+        Python uses cleaned-string truthiness; Swift ignores whitespace alone.
+    spacing_line : int or None
+        One-based location of a candidate spacing finding, or None when
+        spacing passes or is not enabled. Missing required docs take priority.
+
+    Notes
+    -----
+    This record carries policy observations, not another source syntax model.
+    Language adapters select rules; shared evaluation owns diagnostic order.
+    """
+
+    required: bool
+    present: bool
+    spacing_line: int | None = None
 
 
 # !SECTION
@@ -51,7 +150,7 @@ class CallableDocumentation:
 # SECTION: TYPE ALIASES
 
 
-type DocumentationInterpreter = Callable[[str, str], CallableDocumentation]
+type DocumentationInterpreter = Callable[[str, ResultSection], CallableDocumentation]
 
 
 # !SECTION
@@ -86,20 +185,30 @@ def callable_findings(
     Returns
     -------
     list[str]
-        Contract findings in rule order, or empty for noncallable declarations.
+        Contract findings in rule order, or empty for noncallable declarations,
+        unsupported signatures or disabled callable rules.
 
     Notes
     -----
     Presence and spacing rules remain the caller's responsibility. Interpreter
-    exceptions propagate; no syntax parsing or consumer execution occurs.
+    exceptions propagate when interpretation is needed; disabled rules and
+    unsupported signatures do not request markup evidence. No syntax parsing
+    or consumer execution occurs.
     """
-    if facts.kind not in callable_kinds:
+    if (
+        facts.kind not in callable_kinds
+        or facts.parameter_names is None
+        or not any(
+            config.settings[key]
+            for key in ('parameter-docs', 'return-docs', 'raises-docs')
+        )
+    ):
         return []
     return contract_findings(
         facts,
         config,
         relative,
-        interpret(facts.documentation, facts.return_section),
+        interpret(facts.documentation, facts.result_section),
     )
 
 
@@ -136,17 +245,17 @@ def contract_findings(
     rules = (
         (
             'parameter-docs',
-            not set(facts.parameter_names) <= documentation.parameter_names,
+            not documentation.parameter_names.issuperset(facts.parameter_names),
             'parameter documentation incomplete',
         ),
         (
             'return-docs',
-            bool(facts.return_section) and not documentation.return_documented,
+            bool(facts.result_section) and not documentation.result_documented,
             'return documentation missing',
         ),
         (
             'raises-docs',
-            facts.raises and not documentation.raises_documented,
+            facts.exception_required and not documentation.exception_documented,
             'raises documentation missing',
         ),
     )
@@ -157,7 +266,58 @@ def contract_findings(
     ]
 
 
-def documentation_findings[Declaration](
+def declaration_findings(
+    facts: DeclarationFacts,
+    config: SourceCheckConfig,
+    relative: str,
+    presence: DocumentationPresence,
+    callable_kinds: Collection[str],
+    interpret: DocumentationInterpreter,
+) -> list[str]:
+    """
+    Evaluate native presence/spacing observations before callable contracts.
+
+    Parameters
+    ----------
+    facts : DeclarationFacts
+        Shared declaration location and signature/documentation evidence.
+    config : SourceCheckConfig
+        Consumer-owned callable documentation switches.
+    relative : str
+        Repository-relative diagnostic filename.
+    presence : DocumentationPresence
+        Language-derived presence requirements and optional spacing location.
+    callable_kinds : collections.abc.Collection[str]
+        Language-specific kinds with callable documentation requirements.
+    interpret : DocumentationInterpreter
+        Native markup interpreter; syntax and attachment are already known.
+
+    Returns
+    -------
+    list[str]
+        Missing required documentation or a spacing finding, followed by
+        callable-contract findings. Missing docs do not suppress contracts.
+
+    Notes
+    -----
+    Native adapters retain whitespace, nominal/member and spacing policies.
+    No source is read or parsed; interpreter exceptions propagate unchanged.
+    """
+    failures: list[str] = []
+    if presence.required and not presence.present:
+        failures.append(f'{relative}:{facts.line}: missing declaration documentation')
+    elif presence.spacing_line is not None:
+        failures.append(
+            f'{relative}:{presence.spacing_line}: '
+            'missing blank line before documentation',
+        )
+    failures.extend(
+        callable_findings(facts, config, relative, callable_kinds, interpret),
+    )
+    return failures
+
+
+def documentation_findings[Declaration: DeclarationRecord](
     source: SourceFacts[Declaration],
     config: SourceCheckConfig,
     relative: str,
@@ -169,7 +329,8 @@ def documentation_findings[Declaration](
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Precomputed overview and declarations in source order.
+        Precomputed overview and declarations in native discovery order.
+        Python retains breadth-first AST order; Swift retains source order.
     config : SourceCheckConfig
         Consumer-owned documentation settings passed to each inspector.
     relative : str
@@ -232,7 +393,7 @@ def guide_findings(
     guide, failures = read_source(path, config.root)
     if guide is None:
         return failures
-    entries = set(re.findall(r'`([^`\n]+)`', guide))
+    entries = {match[1] for match in re.finditer(r'`([^`\n]+)`', guide)}
     return [
         f'{path.relative_to(config.root).as_posix()}: missing source-guide entry'
         for path in paths

@@ -5,18 +5,19 @@ Run shared source discovery, guide checks and read-only file inspection.
 """
 
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import SourceFacts
+from ._source_declarations import DeclarationFacts, DeclarationRecord, SourceFacts
 from ._source_documentation import guide_findings, limits
-from ._source_inputs import discover, read_source
+from ._source_inputs import discover, inspect_sources
 
 # SECTION: TYPE ALIASES
 
 
-type ParsedSourceInspector[Declaration] = Callable[
+type ParsedSourceInspector[Declaration: DeclarationRecord] = Callable[
     [SourceFacts[Declaration], SourceCheckConfig, str],
     list[str],
 ]
@@ -29,7 +30,7 @@ type SourceInspector = Callable[[SourceCheckConfig, Path, str], list[str]]
 # SECTION: FUNCTIONS
 
 
-def parsed_source_findings[Declaration](
+def parsed_source_findings[Declaration: DeclarationRecord](
     parsed: SourceFacts[Declaration],
     config: SourceCheckConfig,
     path: Path,
@@ -81,6 +82,55 @@ def parsed_source_findings[Declaration](
     ]
 
 
+def signature_findings(
+    facts: DeclarationFacts,
+    config: SourceCheckConfig,
+    relative: str,
+    *,
+    report_unsupported: bool = False,
+) -> list[str]:
+    """
+    Report native signature support before common parameter-layout findings.
+
+    Parameters
+    ----------
+    facts : DeclarationFacts
+        Precomputed parameter names and native layout decision.
+    config : SourceCheckConfig
+        Consumer-owned parameter-lines switch.
+    relative : str
+        Repository-relative filename for location-only diagnostics.
+    report_unsupported : bool, optional
+        Report None parameter names as unsupported instead of evaluating
+        layout. The caller determines whether support checking is enabled
+        and which native declaration kinds are applicable.
+
+    Returns
+    -------
+    list[str]
+        One unsupported-signature or enabled parameter-layout finding, or an
+        empty list. An unsupported finding takes precedence over layout.
+
+    Raises
+    ------
+    KeyError
+        The parameter-lines setting is absent when layout is evaluated.
+
+    Notes
+    -----
+    Python's native AST collector supplies supported signatures. Swift enables
+    support reporting only when a callable contract/layout switch is active.
+    Annotation, ordering, receiver and signature parsing rules remain native.
+    No source is read, parsed or executed here.
+    """
+    location = f'{relative}:{facts.line}'
+    if report_unsupported and facts.parameter_names is None:
+        return [f'{location}: unsupported callable signature']
+    if config.settings['parameter-lines'] and not facts.parameter_lines:
+        return [f'{location}: parameters require separate lines']
+    return []
+
+
 def validate_sources(
     config: SourceCheckConfig,
     source_findings: SourceInspector,
@@ -110,12 +160,10 @@ def validate_sources(
     """
     paths, failures = discover(config)
     failures.extend(guide_findings(config, paths))
-    for path in paths:
-        source, errors = read_source(path, config.root)
-        failures.extend(errors)
-        if source is not None:
-            failures.extend(source_findings(config, path, source))
-    return failures
+    return [
+        *failures,
+        *inspect_sources(paths, config.root, partial(source_findings, config)),
+    ]
 
 
 # !SECTION

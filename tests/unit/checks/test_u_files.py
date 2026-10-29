@@ -4,6 +4,7 @@
 Exercise configured file existence, header syntax and containment boundaries.
 """
 
+import errno
 import subprocess
 import sys
 from collections.abc import Callable
@@ -67,6 +68,8 @@ def headers_fixture(
 
 class TestFileDiscoveryFailures:
     """
+    Cover file discovery failures.
+
     Keep filesystem failures visible without skipping other policy checks.
     """
 
@@ -79,6 +82,16 @@ class TestFileDiscoveryFailures:
     ) -> None:
         """
         Inspect a dangling symlink before applying preservation exceptions.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Header rules and consumer identity for the scenario.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
+        preserved : bool
+            Whether the selected input has a preservation exception.
         """
         link = headers.root / 'escape.bin'
         symlink(link, headers.root.parent / f'{headers.root.name}-missing-target')
@@ -92,23 +105,39 @@ class TestFileDiscoveryFailures:
         assert link.is_symlink()
 
     @pytest.mark.parametrize(
-        'error',
+        'error_type,message',
         [
-            PermissionError('access denied'),
-            ValueError('bad path'),
-            UnicodeError('bad encoding'),
+            (PermissionError, 'access denied'),
+            (ValueError, 'bad path'),
+            (UnicodeError, 'bad encoding'),
         ],
     )
     @pytest.mark.parametrize('operation', ['resolve', 'is_file'])
     def test_required_path_failure_does_not_stop_remaining_checks(
         self,
         tmp_path: Path,
-        error: Exception,
+        error_type: type[Exception],
+        message: str,
         operation: str,
     ) -> None:
         """
         Report unreadable paths and subsequent missing required files together.
+
+        Each inspection operation receives a fresh exception so traceback
+        state cannot leak between parameterized scenarios.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        error_type : type[Exception]
+            Exception class injected into the inspected operation.
+        message : str
+            Expected error message or scenario diagnostic.
+        operation : str
+            Filesystem or adapter operation selected for failure injection.
         """
+        error = error_type(message)
         inspect_path = getattr(Path, operation)
 
         def inspect(
@@ -116,7 +145,23 @@ class TestFileDiscoveryFailures:
             *args: object,
             **kwargs: object,
         ) -> object:
-            """Fail one fixture path while retaining normal inspection."""
+            """
+            Fail one fixture path while retaining normal inspection.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+            *args : object
+                Arguments for the local Git plumbing subcommand.
+            **kwargs : object
+                Keyword arguments forwarded to the simulated operation.
+
+            Returns
+            -------
+            object
+                No value when the selected inspection failure is injected.
+            """
             if path == tmp_path / 'unreadable':
                 raise error
             return inspect_path(path, *args, **kwargs)
@@ -141,11 +186,29 @@ class TestGitSourceFilenames:
         tmp_path: Path,
         filename: str,
     ) -> None:
-        """Inspect every selected path without newline translation."""
+        """
+        Inspect every selected path without newline translation.
+
+        Skip unsupported filename forms without hiding unexpected I/O errors.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        filename : str
+            Input filename used in the scenario.
+        """
         try:
             (tmp_path / filename).write_text('wrong header', encoding='utf-8')
-        except OSError:
-            pytest.skip('Filename unavailable on this platform')
+        except OSError as error:
+            if error.errno not in {
+                errno.EINVAL,
+                errno.ENAMETOOLONG,
+                errno.EILSEQ,
+                errno.ENOTSUP,
+            }:
+                raise
+            pytest.skip(f'Filename unavailable on this platform: {error}')
         config = HeadersConfig(
             tmp_path,
             'Sample',
@@ -164,6 +227,29 @@ class TestGitSourceFilenames:
             timeout: int,
             text: bool = False,
         ) -> subprocess.CompletedProcess[bytes] | subprocess.CompletedProcess[str]:
+            """
+            Return controlled output from an isolated Python process.
+
+            Return controlled subprocess output through a real isolated Python
+            process.
+
+            Parameters
+            ----------
+            command : list[str]
+                Command selected for invocation in the scenario.
+            capture_output : bool
+                Whether the delegated process captures its output streams.
+            timeout : int
+                Maximum subprocess duration in seconds.
+            text : bool
+                Whether subprocess output is decoded as text instead of bytes.
+
+            Returns
+            -------
+            subprocess.CompletedProcess
+                Completed process carrying the controlled raw filename bytes or
+                decoded text.
+            """
             return run_process(
                 [
                     sys.executable,
@@ -192,8 +278,18 @@ class TestHeaderDirectoryLinks:
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
+        Verify directory link is not a source.
+
         Inspect file links without treating a linked directory as a source
         file.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Header rules and consumer identity for the scenario.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
         """
         target = headers.root / 'directory'
         target.mkdir()
@@ -203,6 +299,8 @@ class TestHeaderDirectoryLinks:
 
 class TestHeaderDiscoveryBoundaries:
     """
+    Cover header discovery boundaries.
+
     Cover directive and filesystem failures without touching real sources.
     """
 
@@ -210,7 +308,14 @@ class TestHeaderDiscoveryBoundaries:
         self,
         headers: HeadersConfig,
     ) -> None:
-        """Report a file containing only its configured first-line prefix."""
+        """
+        Report a file containing only its configured first-line prefix.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Header rules and consumer identity for the scenario.
+        """
         (headers.root / 'sample').write_text('#!', encoding='utf-8')
         rule = replace(headers.rules[0], first_line_prefix='#!')
         assert 'directive' in validate_headers(replace(headers, rules=(rule,)))[0]
@@ -221,6 +326,11 @@ class TestHeaderDiscoveryBoundaries:
     ) -> None:
         """
         Allow a shebang before a hash header without requiring a directive.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Header rules and consumer identity for the scenario.
         """
         (headers.root / 'sample').write_text(
             '#!/bin/sh\n# sample\n# Sample\n#\n# Copyright Sample\n#\n# Purpose.\n',
@@ -232,14 +342,35 @@ class TestHeaderDiscoveryBoundaries:
         self,
         headers: HeadersConfig,
     ) -> None:
-        """Keep recursive fallback permission failures visible to consumers."""
+        """
+        Keep recursive fallback permission failures visible to consumers.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Header rules and consumer identity for the scenario.
+        """
 
         def walk(
             path: Path,
             *,
             on_error: Callable[[OSError], None],
         ) -> object:
-            """Simulate a traversal failure through the supplied callback."""
+            """
+            Simulate a traversal failure through the supplied callback.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+            on_error : Callable[[OSError], None]
+                Directory-walk error callback supplied by the caller.
+
+            Returns
+            -------
+            object
+                No value when the selected directory-walk error is injected.
+            """
             on_error(PermissionError('cannot traverse source'))
             return iter(())
 
@@ -322,8 +453,9 @@ class TestHeaderPolicies:
         content: str,
     ) -> None:
         """
-        Accept each documented header syntax without changing file
-        bytes.
+        Verify comment formats.
+
+        Accept each documented header syntax without changing file bytes.
 
         Parameters
         ----------
@@ -388,8 +520,9 @@ class TestHeaderPolicies:
         headers: HeadersConfig,
     ) -> None:
         """
-        Preserve binary exceptions while rejecting unknown maintained
-        formats.
+        Verify exception unknown format and ignored artifacts.
+
+        Preserve binary exceptions while rejecting unknown maintained formats.
 
         Parameters
         ----------
@@ -423,8 +556,9 @@ class TestHeaderPolicies:
         message: str,
     ) -> None:
         """
-        Fail malformed Python and undecodable source instead of
-        skipping it.
+        Verify invalid python and binary without exception.
+
+        Fail malformed Python and undecodable source instead of skipping it.
 
         Parameters
         ----------
@@ -458,8 +592,9 @@ class TestHeaderPolicies:
         message: str,
     ) -> None:
         """
-        Report missing identity or purpose independently of filename
-        selection.
+        Verify malformed headers.
+
+        Report missing identity or purpose independently of filename selection.
 
         Parameters
         ----------
@@ -529,8 +664,9 @@ class TestHeaderPolicies:
         notes: str,
     ) -> None:
         """
-        Keep schema directives above hash headers and require
-        maintainer text.
+        Verify optional schema preamble and required notes.
+
+        Keep schema directives above hash headers and require maintainer text.
 
         Parameters
         ----------
@@ -599,8 +735,9 @@ class TestHeaderPolicies:
         present: bool,
     ) -> None:
         """
-        Require configured directives and preserve their first-line
-        position.
+        Verify required directives.
+
+        Require configured directives and preserve their first-line position.
 
         Parameters
         ----------
@@ -643,8 +780,9 @@ class TestHeaderPolicies:
         specific_first: bool,
     ) -> None:
         """
-        Apply the first matching rule and permit explicit purpose
-        exceptions.
+        Verify rule order and optional purpose.
+
+        Apply the first matching rule and permit explicit purpose exceptions.
 
         Parameters
         ----------
@@ -700,7 +838,14 @@ class TestNonHashPreambles:
         self,
         headers: HeadersConfig,
     ) -> None:
-        """Skip a matching directive before a slash-comment source header."""
+        """
+        Skip a matching directive before a slash-comment source header.
+
+        Parameters
+        ----------
+        headers : HeadersConfig
+            Header rules and consumer identity for the scenario.
+        """
         (headers.root / 'sample').write_text(
             '// directive\n// sample\n// Sample\n//\n'
             '// Copyright Sample\n//\n// Purpose.\n',
@@ -716,6 +861,8 @@ class TestNonHashPreambles:
 
 class TestRequiredFilePolicies:
     """
+    Cover required file policies.
+
     Verify all checks read synthetic files and preserve consumer contents.
     """
 
@@ -750,8 +897,9 @@ class TestRequiredFilePolicies:
         tmp_path: Path,
     ) -> None:
         """
-        Distinguish regular files from directories and absent
-        resources.
+        Verify required files report all failures.
+
+        Distinguish regular files from directories and absent resources.
 
         Parameters
         ----------

@@ -33,6 +33,8 @@ def make_fixture(
     tmp_path: Path,
 ) -> MakeRunner:
     """
+    Provide an isolated, bounded Make runner.
+
     Provide a bounded Make runner using a temporary copy of the checkout
     Makefile.
 
@@ -197,6 +199,8 @@ class TestMakefile:
         make: MakeRunner,
     ) -> None:
         """
+        Verify default gate preserves existing checks.
+
         Verify default Make checks include source gates without building or
         installing.
 
@@ -255,6 +259,8 @@ class TestMakefile:
         make: MakeRunner,
     ) -> None:
         """
+        Verify help lists public targets without running checks.
+
         Verify Make help lists contributor targets without executing the
         quality gate.
 
@@ -407,6 +413,8 @@ class TestMakefile:
         make: MakeRunner,
     ) -> None:
         """
+        Verify release changelog requires explicit version.
+
         Verify release-changelog fails before invocation when its version is
         absent.
 
@@ -469,6 +477,8 @@ class TestMakefile:
         make: MakeRunner,
     ) -> None:
         """
+        Verify standalone distribution tests keep temporary builds.
+
         Verify standalone artifact targets leave build-on-demand selection to
         fixtures.
 
@@ -490,6 +500,8 @@ class TestMakefile:
         tmp_path: Path,
     ) -> None:
         """
+        Verify unsupported bootstrap is rejected before creation.
+
         Verify unsupported bootstrap Python fails before creating an
         environment.
 
@@ -518,6 +530,8 @@ class TestMakefile:
         tmp_path: Path,
     ) -> None:
         """
+        Verify venv creation and safe reuse.
+
         Verify managed environment creation and compatible reuse preserve its
         metadata.
 
@@ -575,6 +589,8 @@ class TestMakefile:
         tmp_path: Path,
     ) -> None:
         """
+        Verify venv preserves unusable existing directory.
+
         Verify an unusable existing environment directory is preserved on
         failure.
 

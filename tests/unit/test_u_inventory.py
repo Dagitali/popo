@@ -8,6 +8,7 @@ behavior.
 import hashlib
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,9 +22,9 @@ from tests.support.inventory import git, repository
 # SECTION: CONSTANTS
 
 
-GIT_FAILURES = [
-    OSError('private diagnostic'),
-    subprocess.TimeoutExpired('git', 120),
+GIT_FAILURE_FACTORIES = [
+    pytest.param(lambda: OSError('private diagnostic'), id='launch'),
+    pytest.param(lambda: subprocess.TimeoutExpired('git', 120), id='timeout'),
 ]
 
 
@@ -35,6 +36,8 @@ GIT_FAILURES = [
 
 class TestSourceInventory:
     """
+    Cover source inventory.
+
     Exercise inventory semantics using isolated Git objects and CLI output.
     """
 
@@ -128,11 +131,11 @@ class TestSourceInventory:
         with pytest.raises(ValueError, match='no source files'):
             inventory.collect(tmp_path, 'HEAD')
 
-    @pytest.mark.parametrize('error', GIT_FAILURES)
+    @pytest.mark.parametrize('error_factory', GIT_FAILURE_FACTORIES)
     def test_git_errors(
         self,
         tmp_path: Path,
-        error: Exception,
+        error_factory: Callable[[], Exception],
     ) -> None:
         """
         Hide private diagnostics while retaining command identity.
@@ -141,12 +144,15 @@ class TestSourceInventory:
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
-        error : Exception
-            Synthetic launch or timeout error with private diagnostic text.
+        error_factory : collections.abc.Callable[[], Exception]
+            Fresh launch or timeout error with private diagnostic text;
+            exception traceback state is not shared between invocations.
         """
-        with patch.object(inventory.subprocess, 'run', side_effect=error):
-            with pytest.raises(ValueError, match='could not run local Git rev-parse'):
-                inventory.collect(tmp_path, 'HEAD')
+        with (
+            patch.object(inventory.subprocess, 'run', side_effect=error_factory()),
+            pytest.raises(ValueError, match='could not run local Git rev-parse'),
+        ):
+            inventory.collect(tmp_path, 'HEAD')
 
     def test_gitlinks_are_rejected(
         self,
@@ -242,6 +248,8 @@ class TestSourceInventory:
         blob: bytes,
     ) -> None:
         """
+        Verify malformed batch data fails.
+
         Reject mismatched IDs, types, sizes, truncation and trailing object
         data.
 
@@ -252,18 +260,20 @@ class TestSourceInventory:
         blob : bytes
             Malformed batch response for independent integrity scenarios.
         """
-        with patch.object(
-            inventory,
-            '_git',
-            side_effect=[
-                str(tmp_path).encode(),
-                b'commit',
-                b'100644 blob id\tfile\0',
-                blob,
-            ],
+        with (
+            patch.object(
+                inventory,
+                '_git',
+                side_effect=[
+                    str(tmp_path).encode(),
+                    b'commit',
+                    b'100644 blob id\tfile\0',
+                    blob,
+                ],
+            ),
+            pytest.raises(ValueError) as raised,
         ):
-            with pytest.raises(ValueError) as raised:
-                inventory.collect(tmp_path, 'HEAD')
+            inventory.collect(tmp_path, 'HEAD')
         assert 'PRIVATE' not in str(raised.value)
 
     def test_replacements_are_ignored(
@@ -316,6 +326,8 @@ class TestSourceInventory:
         tmp_path: Path,
     ) -> None:
         """
+        Verify spdx generations have distinct namespaces.
+
         Avoid reusing one SPDX namespace across independently created
         documents.
 
@@ -335,6 +347,8 @@ class TestSourceInventory:
         tmp_path: Path,
     ) -> None:
         """
+        Verify subdirectory is not a repository root.
+
         Prevent accidentally inventorying a parent repository's unrelated
         files.
 
@@ -352,6 +366,7 @@ class TestSourceInventory:
     def test_symlinks_are_not_followed(
         self,
         tmp_path: Path,
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
         Hash committed link text and retain executable and special path modes.
@@ -360,12 +375,11 @@ class TestSourceInventory:
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
+        symlink : collections.abc.Callable[[pathlib.Path, pathlib.Path], None]
+            Skip only unsupported or permission-restricted link operations.
         """
         repository(tmp_path)
-        try:
-            (tmp_path / 'external-link').symlink_to('../private-source')
-        except OSError:
-            pytest.skip('Symlinks unavailable on this platform')
+        symlink(tmp_path / 'external-link', Path('../private-source'))
         source = tmp_path / 'space\tline\nü.txt'
         source.write_bytes(b'unusual path')
         source.chmod(0o755)

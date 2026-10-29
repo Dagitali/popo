@@ -8,19 +8,22 @@ import re
 
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_declarations import SourceFacts
+from ._source_declarations import ResultSection, SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
-    callable_findings,
+    DocumentationDialect,
+    DocumentationPresence,
+    declaration_findings,
 )
 from ._source_documentation import (
     documentation_findings as collect_documentation_findings,
 )
 from ._swift_declarations import CALLABLE_KINDS, NOMINAL_KINDS, Declaration
 
-# SECTION: CONSTANTS
+# SECTION: CONSTANTS (1 of 2)
 
 
+PARAMETER_PATTERN = re.compile(r'(?m)^[ \t]*-[ \t]*`?(\w+)`?:')
 SECTION_PATTERNS = {
     name: re.compile(
         rf'(?ims)^[ \t]*-[ \t]*{name}:[ \t]*(.*?)'
@@ -28,7 +31,6 @@ SECTION_PATTERNS = {
     )
     for name in ('Parameters', 'Returns', 'Throws')
 }
-PARAMETER_PATTERN = re.compile(r'(?m)^[ \t]*-[ \t]*`?(\w+)`?:')
 SINGULAR_PARAMETER_PATTERN = re.compile(r'(?im)^[ \t]*-[ \t]*Parameter[ \t]+`?(\w+)`?:')
 
 
@@ -65,34 +67,22 @@ def _declaration_findings(
     Nominals use declaration-docs; other recognized members use member-docs.
     A missing required doc takes precedence over a spacing finding. Callable
     evidence uses DocC fields. Syntax and attachment facts are consumed
-    without reconstructing signatures or compiling Swift.
+    without reconstructing signatures or compiling Swift. Shared evaluation
+    owns finding order after these native policy observations are derived.
     """
-    failures: list[str] = []
-    facts = declaration.facts
-    doc = facts.documentation
-    required = (
-        config.settings['declaration-docs']
-        if facts.kind in NOMINAL_KINDS
-        else config.settings['member-docs']
+    return declaration_findings(
+        declaration.facts,
+        config,
+        relative,
+        _presence(declaration, config),
+        CALLABLE_KINDS,
+        _documentation,
     )
-    if required and not doc.strip():
-        failures.append(
-            f'{relative}:{facts.line}: missing declaration documentation',
-        )
-    elif doc and config.settings['declaration-spacing'] and not declaration.separated:
-        failures.append(
-            f'{relative}:{declaration.documentation_start}: '
-            'missing blank line before documentation',
-        )
-    failures.extend(
-        callable_findings(facts, config, relative, CALLABLE_KINDS, _documentation),
-    )
-    return failures
 
 
 def _documentation(
     doc: str,
-    return_section: str,
+    result_section: ResultSection,
 ) -> CallableDocumentation:
     """
     Collect callable documentation evidence using the language's markup.
@@ -101,7 +91,7 @@ def _documentation(
     ----------
     doc : str
         Attached DocC triple-slash text supplied by the declaration collector.
-    return_section : str
+    result_section : ResultSection
         Returns when a result is required, or empty when unneeded. Swift's
         collector does not request Python's Yields convention.
 
@@ -117,14 +107,10 @@ def _documentation(
     arguments. Returns and Throws fields supply result and exception evidence.
     This is bounded DocC notation, not compiler or full DocC validation.
     """
-    return CallableDocumentation(
-        frozenset(_parameters(doc)),
-        bool(_section(doc, 'Returns')) if return_section else False,
-        bool(_section(doc, 'Throws')),
-    )
+    return DIALECT.interpret(doc, result_section)
 
 
-def _parameters(
+def _parameter_names(
     doc: str,
 ) -> set[str]:
     """
@@ -142,9 +128,60 @@ def _parameters(
         nested Parameters lists, with optional backticks removed. Field names
         are case-insensitive; descriptions and types are not validated.
     """
-    names = set(SINGULAR_PARAMETER_PATTERN.findall(doc))
-    names.update(PARAMETER_PATTERN.findall(_section(doc, 'Parameters')))
-    return names
+    return {
+        match[1]
+        for pattern, text in (
+            (SINGULAR_PARAMETER_PATTERN, doc),
+            (PARAMETER_PATTERN, _section(doc, 'Parameters')),
+        )
+        for match in pattern.finditer(text)
+    }
+
+
+def _presence(
+    declaration: Declaration,
+    config: SourceCheckConfig,
+) -> DocumentationPresence:
+    """
+    Derive native documentation presence and spacing observations.
+
+    Parameters
+    ----------
+    declaration : Declaration
+        Shared declaration facts and language-specific observations.
+    config : SourceCheckConfig
+        Consumer-owned declaration-presence and spacing switches.
+
+    Returns
+    -------
+    DocumentationPresence
+        Presence requirement, native presence decision and optional spacing
+        location. Shared evaluation owns diagnostic order and wording.
+
+    Notes
+    -----
+    Swift applies declaration-docs to nominals and member-docs to other
+    recognized members. Whitespace alone is absent. Spacing is considered only
+    when documentation is optional or present, preserving native precedence.
+    No markup contracts are interpreted and no source is read or parsed.
+    """
+    facts = declaration.facts
+    doc = facts.documentation
+    required = bool(
+        config.settings['declaration-docs']
+        if facts.kind in NOMINAL_KINDS
+        else config.settings['member-docs'],
+    )
+    present = bool(doc.strip())
+    spacing_line = (
+        declaration.documentation_start
+        if (not required or present)
+        and doc
+        and config.settings['declaration-spacing']
+        and not declaration.separated
+        else None
+    )
+    return DocumentationPresence(required, present, spacing_line)
 
 
 def _section(
@@ -179,6 +216,21 @@ def _section(
 # !SECTION
 
 
+# SECTION: CONSTANTS (2 of 2)
+
+
+# Bind after native readers are defined; evidence assembly does not parse code.
+DIALECT = DocumentationDialect(
+    read_parameter_names=_parameter_names,
+    read_section=_section,
+    exception_section='Throws',
+    result_section='Returns',
+)
+
+
+# !SECTION
+
+
 # SECTION: FUNCTIONS
 
 
@@ -193,7 +245,7 @@ def documentation_findings(
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Precomputed lexical facts; signatures are not reinterpreted here.
+        Precomputed native facts; no syntax is parsed or traversed here.
     config : SourceCheckConfig
         Consumer-owned documentation switches.
     relative : str
@@ -202,7 +254,10 @@ def documentation_findings(
     Returns
     -------
     list[str]
-        Missing documentation, spacing and callable contract findings.
+        Missing documentation and incomplete parameter/result/exception
+        contracts, in native declaration order. Enabled spacing findings
+        precede callable contracts for each declaration; result/exception
+        evidence comes from DocC Returns/Throws fields.
 
     Notes
     -----

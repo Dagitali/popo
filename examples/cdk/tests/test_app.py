@@ -14,7 +14,8 @@ class TestExampleStack(TestCase):
 
     def test_private_bucket(self) -> None:
         """
-        Synthesize a retained bucket with explicit public-access blocking.
+        Verify synthesizing a retained S3 bucket with explicit public-access
+        blocking.
         """
         with TemporaryDirectory(prefix='cdk-example-') as output:
             app = App(outdir=output, analytics_reporting=False)

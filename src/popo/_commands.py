@@ -208,7 +208,8 @@ def _docs(
     Returns
     -------
     tuple[list[str], str]
-        Markdown diagnostics and the message to use only on success.
+        Markdown diagnostics and the message to use only on success. Invalid
+        URL destinations become findings so later links are still checked.
 
     Raises
     ------
@@ -217,9 +218,8 @@ def _docs(
     UnicodeError
         If inspected Markdown cannot be decoded as UTF-8.
     ValueError
-        If a Markdown destination is rejected by URL parsing, such as an
-        invalid bracketed host. This error propagates rather than becoming
-        a validation diagnostic.
+        The supplied repository root cannot resolve as a filesystem path.
+        Invalid URL/local destinations instead become validation findings.
     """
     return docs.validate(args.root.resolve()), 'local Markdown links are valid'
 
@@ -290,7 +290,28 @@ def _guardrail_parity(
 def _logs(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
-    """Dispatch explicit artifact inspection without revealing log contents."""
+    """
+    Dispatch explicit artifact inspection without revealing log contents.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Consumer root and optional log_root override. Aggregate dispatch may
+        omit log_root; validation then uses the configured repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Validation diagnostics and the success message for CLI reporting.
+
+    Raises
+    ------
+    ConfigurationError
+        If loading the consumer log policy fails.
+    OSError, UnicodeError
+        If consumer configuration cannot be read or decoded. Log input errors
+        caught by validation remain redacted diagnostics.
+    """
     config = load_source_check(args.root, 'logs')
     return logs.validate(
         config,
@@ -451,6 +472,33 @@ def _safety(
     return safety.validate(config), 'configured repository safety checks passed'
 
 
+def _swift_boundaries(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Dispatch consumer-owned Swift architecture restrictions.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Explicit consumer repository root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Syntax-based boundary findings and success-only summary.
+
+    Raises
+    ------
+    ConfigurationError
+        Boundary policy is absent or malformed.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded.
+    """
+    config = load_swift_boundaries_config(args.root)
+    return swift_boundaries.validate(config), 'configured Swift boundaries passed'
+
+
 def _swift_policy(
     args: argparse.Namespace,
 ) -> tuple[list[str], str]:
@@ -514,33 +562,6 @@ def _swift_source(
     """
     config = load_source_check(args.root, 'swift-source')
     return swift_source.validate(config), 'configured Swift source checks passed'
-
-
-def _swift_boundaries(
-    args: argparse.Namespace,
-) -> tuple[list[str], str]:
-    """
-    Dispatch consumer-owned Swift architecture restrictions.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Explicit consumer repository root.
-
-    Returns
-    -------
-    tuple[list[str], str]
-        Lexical boundary findings and success-only summary.
-
-    Raises
-    ------
-    ConfigurationError
-        Boundary policy is absent or malformed.
-    OSError, UnicodeError
-        Consumer configuration cannot be read or decoded.
-    """
-    config = load_swift_boundaries_config(args.root)
-    return swift_boundaries.validate(config), 'configured Swift boundaries passed'
 
 
 def _test_results(

@@ -18,7 +18,26 @@ from ._yaml import WorkflowLoader
 def _hooks(
     config: GuardrailsConfig,
 ) -> list[str]:
-    """Require a local system hook that checks the entire repository."""
+    """
+    Require a local system hook that checks the entire repository.
+
+    Parameters
+    ----------
+    config : GuardrailsConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    list[str]
+        Hook parity diagnostics; empty when the local hook matches the
+        contract.
+
+    Raises
+    ------
+    OSError, UnicodeError, yaml.YAMLError
+        If the hook file cannot be read, decoded or parsed. Parity mismatches
+        are returned as diagnostics.
+    """
     document = _read_yaml(config.hooks)
     matches = [
         (repo.get('repo'), hook)
@@ -53,7 +72,19 @@ def _hooks(
 def _items(
     value: object,
 ) -> list[object]:
-    """Read list-valued YAML fields without iterating scalars or mappings."""
+    """
+    Read list-valued YAML fields without iterating scalars or mappings.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    list[object]
+        The input list, or an empty list for every other input shape.
+    """
     return cast(list[object], value) if isinstance(value, list) else []
 
 
@@ -65,6 +96,22 @@ def _make(
 
     Non-recipe Make comments and blank lines do not terminate a recipe block.
     Tab-prefixed comments remain recipe entries under this literal contract.
+
+    Parameters
+    ----------
+    config : GuardrailsConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    list[str]
+        Make recipe parity diagnostics; empty for the canonical invocation.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If the Makefile cannot be read or decoded. Missing or noncanonical
+        recipes are returned as diagnostics.
     """
     lines = config.makefile.read_text(encoding='utf-8').splitlines()
     targets = [i for i, line in enumerate(lines) if line == f'{config.target}:']
@@ -88,7 +135,19 @@ def _make(
 def _mapping(
     value: object,
 ) -> dict[str, object]:
-    """Treat unexpected YAML shapes as absent contract fields."""
+    """
+    Treat unexpected YAML shapes as absent contract fields.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    dict[str, object]
+        The input dictionary, or an empty dictionary for other input shapes.
+    """
     return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
 
@@ -97,6 +156,21 @@ def _read_yaml(
 ) -> dict[str, object]:
     """
     Read safe YAML with duplicate-key rejection and literal workflow keys.
+
+    Parameters
+    ----------
+    path : Path
+        Input path inspected by the operation.
+
+    Returns
+    -------
+    dict[str, object]
+        Parsed YAML mapping, or an empty mapping for a non-mapping document.
+
+    Raises
+    ------
+    OSError, UnicodeError, yaml.YAMLError
+        If reading, decoding or parsing the YAML input fails.
     """
     return _mapping(yaml.load(path.read_text(encoding='utf-8'), Loader=WorkflowLoader))
 
@@ -104,7 +178,25 @@ def _read_yaml(
 def _workflow(
     config: GuardrailsConfig,
 ) -> list[str]:
-    """Require the declared job's step to delegate to the same Make target."""
+    """
+    Require the declared job's step to delegate to the same Make target.
+
+    Parameters
+    ----------
+    config : GuardrailsConfig
+        Configuration supplying the input paths and validation rules.
+
+    Returns
+    -------
+    list[str]
+        CI-step parity diagnostics; empty for the canonical Make invocation.
+
+    Raises
+    ------
+    OSError, UnicodeError, yaml.YAMLError
+        If the workflow cannot be read, decoded or parsed. Invocation
+        mismatches are returned as diagnostics.
+    """
     document = _read_yaml(config.workflow)
     job = _mapping(_mapping(document.get('jobs')).get(config.job))
     matches = [

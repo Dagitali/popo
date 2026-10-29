@@ -50,6 +50,18 @@ class TestSwiftDocumentation:
         source: str,
         expected: str,
     ) -> None:
+        """
+        Verify documentation rules.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        source : str
+            Decoded input text to inspect without executing it.
+        expected : str
+            Expected result for the selected parameterized scenario.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[swift-source]\ninclude = ["*.swift"]',
         )
@@ -66,6 +78,14 @@ class TestSwiftDocumentation:
         self: Self,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify guide requires exact relative source entry.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         (tmp_path / 'popo.toml').write_text(
             '[swift-source]\ninclude = ["*.swift"]\nsource-guide = "Guide.md"',
         )
@@ -98,6 +118,14 @@ class TestSwiftLexicalBoundaries:
         self,
         source: str,
     ) -> None:
+        """
+        Verify masked strings and trailing comments.
+
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+        """
         _, documentation = lexical_view(source)
         assert documentation == set()
 
@@ -106,6 +134,16 @@ class TestSwiftLexicalBoundaries:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify members exclude callable and closure bodies.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         write_file(
             'popo.toml',
             '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nraises-docs=true',
@@ -137,6 +175,18 @@ class TestSwiftLexicalBoundaries:
         tmp_path: Path,
         source: str,
     ) -> None:
+        """
+        Verify parameter layout subset.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        source : str
+            Decoded input text to inspect without executing it.
+        """
         write_file(
             'popo.toml',
             '[swift-source]\ninclude=["*.swift"]\nparameter-lines=true',
@@ -172,6 +222,13 @@ class TestSwiftLexicalBoundaries:
     ) -> None:
         """
         Retain untrimmed spans while splitting only outer parameter commas.
+
+        Parameters
+        ----------
+        text : str
+            Text or subprocess text-mode flag supplied to the operation.
+        fragments : tuple[str, ...]
+            Expected diagnostic fragments in observation order.
         """
         parameters = _swift_declarations._parameters(text)
         assert tuple(parameter.text for parameter in parameters) == fragments
@@ -196,6 +253,18 @@ class TestSwiftSource:
         tmp_path: Path,
         parameter_docs: str,
     ) -> None:
+        """
+        Verify complete multiline contract.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        parameter_docs : str
+            Parameter documentation inserted into the callable markup.
+        """
         write_file(
             'popo.toml',
             '[swift-source]\ninclude=["*.swift"]\nmember-docs=true\nparameter-docs=true\nreturn-docs=true\nraises-docs=true\nparameter-lines=true',
@@ -246,6 +315,22 @@ class TestSwiftSource:
         option: str,
         expected: str,
     ) -> None:
+        """
+        Verify missing contracts.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        source : str
+            Decoded input text to inspect without executing it.
+        option : str
+            Configuration option selected for the scenario.
+        expected : str
+            Expected result for the selected parameterized scenario.
+        """
         write_file(
             'popo.toml',
             f'[swift-source]\ninclude=["*.swift"]\nfile-overviews=false\n{option}=true',
@@ -260,6 +345,16 @@ class TestSwiftSource:
         write_file: FileWriter,
         tmp_path: Path,
     ) -> None:
+        """
+        Verify strings cannot supply overviews or declarations.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
         source = (
             'let text = #"""\n/// Fake overview.\n'
             'func fake(x: Int) throws -> Int {}\n"""#\n'
@@ -288,6 +383,18 @@ class TestSwiftSource:
         tmp_path: Path,
         result: str,
     ) -> None:
+        """
+        Verify void results need no return documentation.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        result : str
+            Result syntax or evidence value supplied to the scenario.
+        """
         write_file('popo.toml', '[swift-source]\ninclude=["*.swift"]\nreturn-docs=true')
         write_file('sample.swift', f'/// Overview.\nfunc f() -> {result} {{}}')
         assert swift_source.validate(load_source_check(tmp_path, 'swift-source')) == []

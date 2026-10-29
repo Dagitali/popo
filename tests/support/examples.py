@@ -16,7 +16,19 @@ import pytest
 def example_checks_fixture(
     example_name: str,
 ) -> tuple[str, ...]:
-    """Describe the shared checks and intentional Python-specific additions."""
+    """
+    Describe the shared checks and intentional Python-specific additions.
+
+    Parameters
+    ----------
+    example_name : str
+        Python, Swift or CDK example selected by the fixture.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Expected native check identities for the selected example.
+    """
     python_checks = (
         ('check-dependency-boundaries', 'check-python-policy')
         if example_name != 'swift'
@@ -158,7 +170,19 @@ def example_drift_fixture(
 def example_name_fixture(
     request: pytest.FixtureRequest,
 ) -> str:
-    """Select a self-contained Swift, Python, or Python CDK consumer."""
+    """
+    Select a self-contained Swift, Python, or Python CDK consumer.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    str
+        Example identifier selected by the fixture parameter.
+    """
     return str(request.param)
 
 

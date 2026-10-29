@@ -17,6 +17,8 @@ from tests.support.files import FileWriter
 
 class TestMarkdownReferencesAndImages:
     """
+    Cover markdown references and images.
+
     Cover reference definitions, reference labels and inline images offline.
     """
 
@@ -162,6 +164,8 @@ class TestMarkdownReferencesAndImages:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify reference destination with spaces.
+
         Verify angle-bracket reference destinations preserve spaces and
         fragments.
 

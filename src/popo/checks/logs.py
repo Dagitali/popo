@@ -9,7 +9,7 @@ from pathlib import Path
 from popo.config._common import require_table
 from popo.config.source_checks import SourceCheckConfig
 
-from ._source_inputs import discover, read_source
+from ._source_inputs import discover, inspect_sources
 
 # SECTION: FUNCTIONS
 
@@ -49,19 +49,35 @@ def validate(
             name='logs.patterns',
         ).items()
     )
-    for path in paths:
-        source, errors = read_source(path, boundary)
-        failures.extend(errors)
-        if source is None:
-            continue
+
+    def inspect(
+        path: Path,
+        source: str,
+    ) -> list[str]:
+        """
+        Match decoded lines without disclosing their contents.
+
+        Parameters
+        ----------
+        path : Path
+            Input path inspected by the operation.
+        source : str
+            Decoded input text to inspect without executing it.
+
+        Returns
+        -------
+        list[str]
+            Location-prefixed redacted findings for the decoded input.
+        """
         relative = path.relative_to(boundary)
-        failures.extend(
+        return [
             f'{relative}:{number}: {name}'
             for number, line in enumerate(source.splitlines(), start=1)
             for name, pattern in patterns
             if pattern in line
-        )
-    return failures
+        ]
+
+    return [*failures, *inspect_sources(paths, boundary, inspect)]
 
 
 # !SECTION

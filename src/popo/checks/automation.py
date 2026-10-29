@@ -6,6 +6,7 @@ Validate configured automation contracts without execution or network access.
 
 import json
 import re
+from functools import cache
 from pathlib import Path
 
 import yaml
@@ -100,7 +101,7 @@ def _call(
     """
     declared = require_mapping(target.get('inputs', {}), 'inputs')
     supplied = require_mapping(node.get('with', {}), 'with')
-    if unknown := set(supplied) - set(declared):
+    if unknown := supplied.keys() - declared.keys():
         raise ValueError(f'unknown inputs: {sorted(unknown)}')
     for name, declaration in declared.items():
         spec = require_mapping(declaration, f'input {name}')
@@ -422,11 +423,12 @@ def validate(
     Placeholder refs are exempt only in templates with configured self aliases
     and existing targets.
     """
+    read = cache(read_mapping)
     paths, failures = _automation_paths(config)
     for path, kind in paths.items():
         try:
             _inside(config.root, path)
-            data = read_mapping(path)
+            data = read(path)
             if not pins_only:
                 if kind == 'action':
                     _composite(data)
@@ -455,7 +457,7 @@ def validate(
                         f'remote action must use a full commit SHA: {reference}',
                     )
                 if target is not None and not pins_only:
-                    doc = read_mapping(target)
+                    doc = read(target)
                     workflow = target.name not in ('action.yml', 'action.yaml')
                     if workflow:
                         events = require_mapping(doc.get('on'), 'workflow on')

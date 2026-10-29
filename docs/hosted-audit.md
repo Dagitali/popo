@@ -53,6 +53,14 @@ popo audit-github-settings --root .
 popo audit-github-settings --root . --format json
 ```
 
+Successful and failed CLI responses share JSON decoding; malformed JSON and parser-depth failures
+remain unavailable evidence without exposing raw response text. Confirmed branch-protection absence
+still requires its recognized HTTP status and message.
+
+Malformed legacy required-check objects remain inaccessible evidence even when their values are
+falsy; null or omitted required checks retain the empty-object case. Partial context conclusions are
+discarded when recognized evidence is malformed.
+
 Reports go to stdout without creating files. JSON contains `observed_at` in UTC and narrow findings
 with repository, check, status, detail, and evidence URL. Exit zero means all findings are verified
 or excepted; exit one means missing settings, inaccessible evidence, expired exceptions, or invalid
@@ -104,12 +112,14 @@ expires = "2026-10-31"
 
 Use only actual approval evidence. Check IDs are setting names, `label:NAME`, `codeowners`,
 `branch:BRANCH:protected`, and `branch:BRANCH:check:CONTEXT`. Scope must match a configured
-expectation; duplicates, unknown keys, malformed types, and incomplete approvals fail loading. Dates
-must be quoted ISO dates. Expiry is inclusive through that UTC day; expired approvals always fail,
-including when the original drift was corrected. Remove closed exceptions through review.
-Inaccessible findings can never be excepted. The approval URL and approver are not authenticated by
-this audit; repository review must establish their legitimacy. Do not put confidential approval
-details or vulnerability reports into public configuration.
+expectation; duplicates, unknown keys, malformed types, and incomplete approvals fail loading.
+Approval URLs require HTTPS and valid optional port syntax/range; valid explicit IPv4/hostname and
+bracketed IPv6 ports are accepted without fetching evidence. Dates must be quoted ISO dates. Expiry
+is inclusive through that UTC day; expired approvals always fail, including when the original drift
+was corrected. Remove closed exceptions through review. Inaccessible findings can never be excepted.
+The approval URL and approver are not authenticated by this audit; repository review must establish
+their legitimacy. Do not put confidential approval details or vulnerability reports into public
+configuration.
 
 [configuration reference]: CONFIGURATION.md
 [legacy protection]: https://docs.github.com/en/rest/branches/branch-protection

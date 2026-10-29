@@ -9,9 +9,11 @@ import json
 from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
+from popo.checks import automation
 from popo.checks.automation import validate
 from popo.config.automation import AutomationConfig, load_automation_config
 from tests.support.files import FileWriter, snapshot_files
@@ -90,6 +92,8 @@ class TestActionContracts:
         ok: bool,
     ) -> None:
         """
+        Verify composite structure.
+
         Verify composite step structure and shell requirements for each
         candidate.
 
@@ -209,6 +213,8 @@ class TestAutomationDiscovery:
         message: str,
     ) -> None:
         """
+        Verify bad documents.
+
         Verify invalid YAML, references, and targets produce one file
         diagnostic.
 
@@ -240,7 +246,24 @@ class TestAutomationDiscovery:
         error: type[Exception],
         pins_only: bool,
     ) -> None:
-        """Keep independent findings after a discovery failure."""
+        """
+        Keep independent findings after a discovery failure.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        operation : str
+            Filesystem or adapter operation selected for failure injection.
+        error : type[Exception]
+            Error value or exception class injected by the scenario.
+        pins_only : bool
+            Whether only reference pins are checked.
+        """
         write_file('broken.yml', 'on: push')
         later = write_file('later.yml', 'uses: upstream/action@main')
         config = AutomationConfig(tmp_path, workflow_globs=('broken.yml', 'later.yml'))
@@ -252,6 +275,28 @@ class TestAutomationDiscovery:
             path: Path,
             pattern: str,
         ) -> Iterator[Path]:
+            """
+            Yield real matches and inject the selected discovery failure.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+            pattern : str
+                Glob or literal selection passed to the operation.
+
+            Yields
+            ------
+            Path
+                Real matching paths yielded before any injected discovery
+                error.
+
+            Raises
+            ------
+            OSError, ValueError
+                If the configured discovery operation fails; earlier matches
+                may already have been yielded.
+            """
             yield from original_glob(path, pattern)
             if operation == 'glob' and pattern == 'broken.yml':
                 raise error('PRIVATE DISCOVERY DETAILS')
@@ -259,6 +304,27 @@ class TestAutomationDiscovery:
         def is_file(
             path: Path,
         ) -> bool:
+            """
+            Inspect real file status and inject the selected inspection.
+
+            Inspect real file status and inject the selected inspection
+            failure.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+
+            Returns
+            -------
+            bool
+                Real file status for inputs not selected for failure injection.
+
+            Raises
+            ------
+            OSError, ValueError
+                If the selected inspection operation fails.
+            """
             if operation == 'is_file' and path.name == 'broken.yml':
                 raise error('PRIVATE INSPECTION DETAILS')
             return original_is_file(path)
@@ -279,6 +345,8 @@ class TestAutomationDiscovery:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify optional configuration.
+
         Verify automation opt-in and an explicit empty discovery list are
         honored.
 
@@ -326,6 +394,8 @@ class TestAutomationDiscovery:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify yaml only and recursive alias.
+
         Verify generic YAML skips pin checks and recursive aliases terminate
         traversal.
 
@@ -362,6 +432,8 @@ class TestTemplateContracts:
         metadata: str,
     ) -> None:
         """
+        Verify bad metadata.
+
         Verify invalid template metadata fails full checking but passes
         pins-only mode.
 
@@ -392,7 +464,20 @@ class TestTemplateContracts:
         monkeypatch: pytest.MonkeyPatch,
         name: str,
     ) -> None:
-        """Read Unicode metadata independently of the default text encoding."""
+        """
+        Read Unicode metadata independently of the default text encoding.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        name : str
+            Name selected for the policy or declaration scenario.
+        """
         write_file('templates/ci.yml', 'name: CI')
         write_file(
             'templates/ci.properties.json',
@@ -408,6 +493,22 @@ class TestTemplateContracts:
             encoding: str | None,
             stacklevel: int = 2,
         ) -> str:
+            """
+            Simulate an ASCII default while honoring explicit text encodings.
+
+            Parameters
+            ----------
+            encoding : str | None
+                Explicit text encoding, or None to use the reader default.
+            stacklevel : int
+                Caller stack level accepted for text-encoding compatibility.
+
+            Returns
+            -------
+            str
+                Explicit encoding when provided; otherwise the simulated ASCII
+                default.
+            """
             return 'ascii' if encoding is None else encoding
 
         before = snapshot_files(tmp_path)
@@ -428,7 +529,24 @@ class TestTemplateContracts:
         error: type[Exception],
         pins_only: bool,
     ) -> None:
-        """Keep independent metadata findings and the pins-only bypass."""
+        """
+        Keep independent metadata findings and the pins-only bypass.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        operation : str
+            Filesystem or adapter operation selected for failure injection.
+        error : type[Exception]
+            Error value or exception class injected by the scenario.
+        pins_only : bool
+            Whether only reference pins are checked.
+        """
         for directory in ('first', 'second'):
             write_file(f'{directory}/ci.yml', 'on: push')
             write_file(
@@ -450,6 +568,28 @@ class TestTemplateContracts:
             path: Path,
             pattern: str,
         ) -> Iterator[Path]:
+            """
+            Yield real matches and inject the selected discovery failure.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+            pattern : str
+                Glob or literal selection passed to the operation.
+
+            Yields
+            ------
+            Path
+                Real matching paths yielded before any injected discovery
+                error.
+
+            Raises
+            ------
+            OSError, ValueError
+                If the configured discovery operation fails; earlier matches
+                may already have been yielded.
+            """
             yield from original_glob(path, pattern)
             if operation == 'glob' and path == first and pattern == '*.properties.json':
                 raise error('PRIVATE DISCOVERY DETAILS')
@@ -457,6 +597,27 @@ class TestTemplateContracts:
         def is_file(
             path: Path,
         ) -> bool:
+            """
+            Inspect real file status and inject the selected inspection.
+
+            Inspect real file status and inject the selected inspection
+            failure.
+
+            Parameters
+            ----------
+            path : Path
+                Input path inspected by the operation.
+
+            Returns
+            -------
+            bool
+                Real file status for inputs not selected for failure injection.
+
+            Raises
+            ------
+            OSError, ValueError
+                If the selected inspection operation fails.
+            """
             if operation == 'is_file' and path == first / 'orphan.yml':
                 raise error('PRIVATE INSPECTION DETAILS')
             return original_is_file(path)
@@ -509,6 +670,8 @@ class TestTemplateContracts:
         pins_only: bool,
     ) -> None:
         """
+        Verify placeholder scope.
+
         Verify placeholder exemptions depend on template scope and existing
         self targets.
 
@@ -575,6 +738,8 @@ class TestTemplateContracts:
         message: str,
     ) -> None:
         """
+        Verify template discovery.
+
         Diagnose unmatched templates and missing or orphan companions
         separately.
 
@@ -711,6 +876,8 @@ class TestWorkflowContracts:
         message: str,
     ) -> None:
         """
+        Verify workflow inputs.
+
         Verify reusable workflow input names, required values, and supplied
         types.
 
@@ -746,3 +913,78 @@ class TestWorkflowContracts:
         assert bool(failures) == bool(message)
         if message:
             assert message in failures[0]
+
+
+class TestSharedTargetSnapshots:
+    """Reuse parsed contracts without merging independent caller findings."""
+
+    @pytest.mark.parametrize('workflow', (False, True), ids=('action', 'workflow'))
+    @pytest.mark.parametrize('invalid_input', (False, True))
+    def test_shared_targets_read_once_and_refresh_between_runs(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        monkeypatch: pytest.MonkeyPatch,
+        workflow: bool,
+        invalid_input: bool,
+    ) -> None:
+        """
+        Read each successful document once and retain per-caller checks.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        workflow : bool
+            Workflow document or workflow-specific scenario selection.
+        invalid_input : bool
+            Whether the selected source is malformed.
+        """
+        target_name = 'shared.yml' if workflow else 'action.yml'
+        inputs = 'inputs: {flag: {type: string}}'
+        target_text = (
+            f'on: {{workflow_call: {{{inputs}}}}}'
+            if workflow
+            else f'name: Local\ndescription: Test\nruns: {{using: node24}}\n{inputs}'
+        )
+        target = write_file(target_name, target_text)
+        supplied = 'unknown' if invalid_input else 'flag'
+        use = f'uses: ./{target_name}\n'
+        source = (
+            f'jobs:\n  call:\n    {use}    with: {{{supplied}: value}}'
+            if workflow
+            else f'jobs:\n  call:\n    steps:\n      - {use}'
+            f'        with: {{{supplied}: value}}'
+        )
+        callers = [write_file(name, source) for name in ('one.yml', 'two.yml')]
+        paths = ('one.yml', 'two.yml') + ((target_name,) if workflow else ())
+        config = AutomationConfig(
+            tmp_path,
+            workflow_globs=paths,
+            action_globs=() if workflow else (target_name,),
+        )
+        read = Mock(wraps=automation.read_mapping)
+        monkeypatch.setattr(automation, 'read_mapping', read)
+        before = snapshot_files(tmp_path)
+        assert validate(config) == (
+            [f"{path}: unknown inputs: ['unknown']" for path in callers]
+            if invalid_input
+            else []
+        )
+        assert read.call_count == 3
+        assert {call.args[0] for call in read.call_args_list} == {*callers, target}
+        assert snapshot_files(tmp_path) == before
+        target.write_text(target_text.replace(inputs, 'inputs: []'), encoding='utf-8')
+        before = snapshot_files(tmp_path)
+        assert validate(config) == [
+            f'{path}: inputs must be a mapping' for path in callers
+        ]
+        assert read.call_count == 6
+        assert snapshot_files(tmp_path) == before
+
+
+# !SECTION

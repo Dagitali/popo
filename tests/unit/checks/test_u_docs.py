@@ -76,6 +76,8 @@ class TestMarkdownLinks:
         message: str,
     ) -> None:
         """
+        Verify broken links.
+
         Verify missing local files and anchors retain their source line in
         diagnostics.
 
@@ -99,6 +101,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify checks github but ignores generated files.
+
         Verify discovery includes GitHub Markdown and excludes generated/vendor
         paths.
 
@@ -177,6 +181,51 @@ class TestMarkdownLinks:
             f'{source}:1: local target does not exist: missing.md',
         ]
 
+    @pytest.mark.parametrize(
+        'target',
+        [
+            'http://[broken',
+            '//[broken',
+            'https://example.com／path',
+            'bad%00.md',
+            'bad%00.md#intro',
+        ],
+    )
+    @pytest.mark.parametrize('kind', ('link', 'image', 'reference'))
+    def test_invalid_destination_keeps_later_findings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        target: str,
+        kind: str,
+    ) -> None:
+        """
+        Report invalid URLs/paths and continue checking later links.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        target : str
+            Import target tested against the configured matching rule.
+        kind : str
+            Native syntax kind or policy variant under test.
+        """
+        line = (
+            f'[bad]: {target}'
+            if kind == 'reference'
+            else f'{'!' if kind == 'image' else ''}[bad]({target})'
+        )
+        source = write_file('README.md', line + '\n[missing](missing.md)\n')
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == [
+            f'{source}:1: invalid link target: {target}',
+            f'{source}:2: local target does not exist: missing.md',
+        ]
+        assert snapshot_files(tmp_path) == before
+
     def test_linked_targets_in_excluded_directories(
         self,
         tmp_path: Path,
@@ -245,28 +294,6 @@ class TestMarkdownLinks:
         write_file(target, content)
         assert validate(tmp_path) == []
 
-    @pytest.mark.parametrize(
-        'target',
-        ['http://[broken', '//[broken', 'https://example.com／path'],
-    )
-    @pytest.mark.parametrize('reference', [False, True])
-    def test_malformed_url_keeps_later_findings(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        target: str,
-        reference: bool,
-    ) -> None:
-        """Report malformed URLs and continue checking independent links."""
-        line = f'[bad]: {target}' if reference else f'[bad]({target})'
-        source = write_file('README.md', line + '\n[missing](missing.md)\n')
-        before = snapshot_files(tmp_path)
-        assert validate(tmp_path) == [
-            f'{source}:1: invalid link target: {target}',
-            f'{source}:2: local target does not exist: missing.md',
-        ]
-        assert snapshot_files(tmp_path) == before
-
     def test_missing_root(
         self,
         tmp_path: Path,
@@ -281,6 +308,38 @@ class TestMarkdownLinks:
         """
         root = tmp_path / 'missing'
         assert validate(root) == [f'repository root does not exist: {root}']
+
+    def test_mixed_reference_and_inline_findings_preserve_order(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Keep reference-use findings before ordered link/image destinations.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
+        source = write_file(
+            'README.md',
+            '[Missing][unknown] [Collapsed][] [Known][defined] '
+            '[A](missing-a.txt) ![Image](missing-image.png) [B](missing-b.txt)\n'
+            '[defined]: missing-definition.txt\n',
+        )
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == [
+            f'{source}:1: undefined reference: unknown',
+            f'{source}:1: undefined reference: Collapsed',
+            f'{source}:1: local target does not exist: missing-a.txt',
+            f'{source}:1: local target does not exist: missing-image.png',
+            f'{source}:1: local target does not exist: missing-b.txt',
+            f'{source}:2: local target does not exist: missing-definition.txt',
+        ]
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'filename',
@@ -314,6 +373,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify non markdown fragments still require existing files.
+
         Verify non-Markdown fragment links still require the target file to
         exist.
 
@@ -431,6 +492,8 @@ class TestMarkdownLinks:
         write_file: FileWriter,
     ) -> None:
         """
+        Verify uppercase markdown extension keeps fragment validation.
+
         Verify uppercase Markdown extensions still receive heading-anchor
         checks.
 
@@ -446,6 +509,132 @@ class TestMarkdownLinks:
         assert validate(tmp_path) == [
             f'{readme}:1: anchor does not exist: guide.MD#missing',
         ]
+
+
+class TestTitledDestinations:
+    """Normalize supported titles and wrappers before local path checks."""
+
+    @pytest.mark.parametrize('image', (False, True), ids=('link', 'image'))
+    @pytest.mark.parametrize('present', (False, True), ids=('missing', 'present'))
+    @pytest.mark.parametrize(
+        'destination',
+        ('guide.md', 'guide.md#intro', 'my guide.md#intro'),
+    )
+    def test_titled_angle_destinations(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        image: bool,
+        present: bool,
+        destination: str,
+    ) -> None:
+        """
+        Resolve wrapped paths/fragments and report normalized failures.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        image : bool
+            Whether the Markdown destination belongs to an image.
+        present : bool
+            Whether the selected input or evidence field exists.
+        destination : str
+            Markdown destination supplied to link or image validation.
+        """
+        readme = write_file(
+            'README.md',
+            f'{'!' if image else ''}[Guide](<{destination}> "Guide title")\n',
+        )
+        if present:
+            write_file(destination.partition('#')[0], '# Intro\n')
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == (
+            []
+            if present
+            else [f'{readme}:1: local target does not exist: {destination}']
+        )
+        assert snapshot_files(tmp_path) == before
+
+
+class TestHeadingSlugCollisions:
+    """Allocate unique heading suffixes without affecting explicit anchors."""
+
+    def test_explicit_anchors_do_not_reserve_heading_suffixes(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+    ) -> None:
+        """
+        Keep HTML anchors separate from heading suffix allocation.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        """
+        path = write_file(
+            'README.md',
+            '<a id="echo-1"></a>\n# Echo\n# Echo\n',
+        )
+        assert docs._anchors(path) == {'echo', 'echo-1'}
+        assert validate(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        'headings,expected',
+        (
+            (
+                ('Echo', 'Echo', 'Echo 1', 'Echo-1', 'Echo'),
+                ('echo', 'echo-1', 'echo-1-1', 'echo-1-2', 'echo-2'),
+            ),
+            (
+                ('Foxtrot-1', 'Foxtrot', 'Foxtrot'),
+                ('foxtrot-1', 'foxtrot', 'foxtrot-2'),
+            ),
+            (
+                ('A-1', 'A-2', 'A', 'A', 'A'),
+                ('a-1', 'a-2', 'a', 'a-3', 'a-4'),
+            ),
+        ),
+    )
+    def test_generated_suffixes_reserve_heading_names(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        headings: tuple[str, ...],
+        expected: tuple[str, ...],
+    ) -> None:
+        """
+        Resolve links to headings colliding with generated or natural IDs.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        headings : tuple[str, ...]
+            Heading sequence used to exercise generated anchor collisions.
+        expected : tuple[str, ...]
+            Expected result for the selected parameterized scenario.
+        """
+        path = write_file(
+            'README.md',
+            '\n'.join(
+                [
+                    *(f'# {heading}' for heading in headings),
+                    *(f'[Heading](#{slug})' for slug in expected),
+                ],
+            ),
+        )
+        before = snapshot_files(tmp_path)
+        assert docs._anchors(path) == set(expected)
+        assert validate(tmp_path) == []
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION

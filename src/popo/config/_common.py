@@ -5,6 +5,7 @@ Shared configuration errors, TOML reading, and value validation.
 """
 
 import tomllib
+from datetime import date
 from pathlib import Path
 from typing import cast
 
@@ -54,6 +55,40 @@ def configuration_path(
         if standalone.exists() or standalone.is_symlink()
         else root / 'pyproject.toml'
     )
+
+
+def parse_iso_date(
+    value: str,
+) -> date:
+    """
+    Parse a valid calendar date in canonical YYYY-MM-DD form.
+
+    Parameters
+    ----------
+    value : str
+        Date text without surrounding whitespace or alternative ISO syntax.
+
+    Returns
+    -------
+    datetime.date
+        Parsed calendar date, without applying expiry or timezone policy.
+
+    Raises
+    ------
+    ValueError
+        The date is impossible or its text is not canonical YYYY-MM-DD.
+        Compact dates, week dates and surrounding whitespace are rejected.
+
+    Notes
+    -----
+    Configuration loaders retain responsibility for field types and their
+    domain-specific diagnostics. This helper reads no files and does not
+    decide whether a valid date is past, present or future.
+    """
+    parsed = date.fromisoformat(value)
+    if parsed.isoformat() != value:
+        raise ValueError('expected canonical YYYY-MM-DD date')
+    return parsed
 
 
 def read_patterns(

@@ -17,7 +17,11 @@ from tests.support.installation import Installation
 
 
 class TestInstalledValidation:
-    """Exercise wheel and sdist entry points with private synthetic evidence."""
+    """
+    Cover installed validation.
+
+    Exercise wheel and sdist entry points with private synthetic evidence.
+    """
 
     @pytest.mark.parametrize('module', (False, True), ids=('console', 'module'))
     @pytest.mark.parametrize(
@@ -32,7 +36,7 @@ class TestInstalledValidation:
         command: str,
     ) -> None:
         """
-        Reject negative fixtures and accept corrected inputs after installation.
+        Check installed validators before and after correcting inputs.
 
         Parameters
         ----------
@@ -48,17 +52,15 @@ class TestInstalledValidation:
         if command == 'check-test-results':
             policy = '[test-results]\nadapter="xcode-summary"\ninclude=["*.json"]'
             path = tmp_path / 'summary.json'
-            valid = json.dumps(
-                dict(totalTestCount=1, passedTests=1, failedTests=0, skippedTests=0),
-            )
+            summary = {
+                'totalTestCount': 1,
+                'passedTests': 1,
+                'failedTests': 0,
+                'skippedTests': 0,
+            }
+            valid = json.dumps(summary)
             invalid = json.dumps(
-                dict(
-                    totalTestCount=1,
-                    passedTests=1,
-                    failedTests=0,
-                    skippedTests=0,
-                    runtimeWarnings=[{'message': 'PRIVATE BALANCE'}],
-                ),
+                summary | {'runtimeWarnings': [{'message': 'PRIVATE BALANCE'}]},
             )
             extra = ['--summary', str(path)]
         elif command == 'check-python-boundaries':
@@ -72,7 +74,11 @@ class TestInstalledValidation:
             policy = '[swift-boundaries]\n[[swift-boundaries.layers]]\n'
             policy += 'name="core"\ninclude=["*.swift"]\nallowed-imports=["Foundation"]'
             path = tmp_path / 'Rule.swift'
-            valid = 'import Foundation\nstruct Rule {}'
+            policy += '\nforbidden-symbols=["SwiftUI"]'
+            valid = (
+                'import Foundation\nlet pattern = /SwiftUI/; struct Rule {}'
+                '\n/* unfinished\nimport SwiftUI\n'
+            )
             invalid = 'import SwiftUI\nlet account = "PRIVATE BALANCE"'
             extra = []
         (tmp_path / 'popo.toml').write_text(policy)

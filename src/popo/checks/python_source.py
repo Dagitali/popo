@@ -4,15 +4,21 @@
 Inspect configured Python conventions through ASTs without importing code.
 """
 
+from itertools import pairwise
 from pathlib import Path
 
 from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import NOMINAL_KINDS, Declaration, parse
 from ._python_documentation import documentation_findings
+from ._python_syntax import syntax_findings
 from ._source_declarations import SourceFacts
 from ._source_documentation import limits
-from ._source_validation import parsed_source_findings, validate_sources
+from ._source_validation import (
+    parsed_source_findings,
+    signature_findings,
+    validate_sources,
+)
 
 # SECTION: PROTECTED FUNCTIONS
 
@@ -46,23 +52,22 @@ def _convention_findings(
     parameter, including receivers; annotation types are not validated. Method
     ordering uses the collector's instance-method names rather than all class
     members.
-    Parameter layout uses precomputed signature facts for each declaration.
+    Shared signature_findings evaluates precomputed parameter-layout facts
+    after native annotation/order findings for each declaration.
     """
     failures: list[str] = []
     for declaration in source.declarations:
         facts = declaration.facts
         location = f'{relative}:{facts.line}'
         if facts.kind in NOMINAL_KINDS:
-            if config.settings[
-                'alphabetical-methods'
-            ] and declaration.instance_methods != tuple(
-                sorted(declaration.instance_methods),
+            if config.settings['alphabetical-methods'] and any(
+                first > second
+                for first, second in pairwise(declaration.instance_methods)
             ):
                 failures.append(f'{location}: instance methods not alphabetical')
         elif config.settings['annotations'] and not declaration.annotated:
             failures.append(f'{location}: missing signature annotations')
-        if config.settings['parameter-lines'] and not facts.parameter_lines:
-            failures.append(f'{location}: parameters require separate lines')
+        failures.extend(signature_findings(facts, config, relative))
     return failures
 
 
@@ -107,7 +112,7 @@ def _source_findings(
         parsed = parse(source)
     except SyntaxError as error:
         failures.extend(limits(config, path, lines, ()))
-        failures.append(f'{relative}:{error.lineno}: invalid Python source')
+        failures.extend(syntax_findings(error, relative))
         return failures
     return parsed_source_findings(
         parsed,
