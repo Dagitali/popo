@@ -42,23 +42,53 @@ class TestPythonSyntax:
             reversed(owners * 2) if reverse else owners * 2,
         ) == (1, 2, 3, 5, 7)
 
+    @pytest.mark.parametrize(
+        'source,kind',
+        [
+            pytest.param(
+                'raise RuntimeError("must not execute")',
+                ast.Raise,
+                id='raise',
+            ),
+            pytest.param('import unavailable_fixture_module', ast.Import, id='import'),
+            pytest.param('value = unavailable_fixture_call()', ast.Assign, id='call'),
+            pytest.param(
+                'def f(value=unavailable_fixture_default()): pass',
+                ast.FunctionDef,
+                id='default-expression',
+            ),
+        ],
+    )
     def test_source_is_not_executed_or_imported(
         self,
+        source: str,
+        kind: type[ast.AST],
     ) -> None:
         """Retain executable syntax as nodes without evaluating any of it."""
-        tree = _python_syntax.parse('raise RuntimeError("must not execute")')
+        tree = _python_syntax.parse(source)
         assert isinstance(tree, ast.Module)
-        assert isinstance(tree.body[0], ast.Raise)
+        assert isinstance(tree.body[0], kind)
         assert _python_syntax.documentation_lines((tree,)) == ()
 
+    @pytest.mark.parametrize(
+        'prefix,line',
+        [
+            pytest.param('', 1, id='first-line'),
+            pytest.param('\n\n', 3, id='blank-lines'),
+            pytest.param('value = "é😀"\n', 2, id='unicode'),
+            pytest.param('# PRIVATE comment\r\n\r\n', 3, id='crlf'),
+        ],
+    )
     def test_syntax_diagnostic_excludes_private_source(
         self,
+        prefix: str,
+        line: int,
     ) -> None:
         """Expose only the caller's filename and native syntax-error line."""
         with pytest.raises(SyntaxError) as raised:
-            _python_syntax.parse('PRIVATE(')
+            _python_syntax.parse(prefix + 'PRIVATE(')
         assert _python_syntax.syntax_findings(raised.value, 'source.py') == [
-            'source.py:1: invalid Python source',
+            f'source.py:{line}: invalid Python source',
         ]
 
 

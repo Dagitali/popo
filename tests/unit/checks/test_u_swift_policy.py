@@ -102,17 +102,37 @@ class TestSwiftPolicy:
     @pytest.mark.parametrize(
         'filename,content,message',
         [
-            ('.swift-version', '6.2.0', 'preferred version differs'),
-            ('.swift-version', 'PRIVATE SECRET', 'invalid stable Swift version'),
-            ('Package.swift', '// swift-tools-version: 6.0\n', 'tools version differs'),
-            ('Package.swift', '', 'missing literal first-line'),
+            (
+                '.swift-version',
+                '6.2.0',
+                'local declaration: preferred version differs from policy',
+            ),
+            (
+                '.swift-version',
+                'PRIVATE SECRET',
+                'local declaration: invalid stable Swift version',
+            ),
+            (
+                'Package.swift',
+                '// swift-tools-version: 6.0\n',
+                'local declaration: tools version differs from policy',
+            ),
+            ('Package.swift', '', 'missing literal first-line tools version'),
             (
                 'Package.swift',
                 '// comment\n// swift-tools-version: 5.9',
-                'missing literal first-line',
+                'missing literal first-line tools version',
             ),
-            ('.github/workflows/ci.yml', 'jobs: {}', 'no explicit swift-version'),
-            ('.github/workflows/ci.yml', '[', 'cannot read a valid workflow'),
+            (
+                '.github/workflows/ci.yml',
+                'jobs: {}',
+                'no explicit swift-version declarations',
+            ),
+            (
+                '.github/workflows/ci.yml',
+                '[',
+                'cannot read a valid workflow version declaration',
+            ),
         ],
     )
     def test_drift(
@@ -122,10 +142,13 @@ class TestSwiftPolicy:
         content: str,
         message: str,
     ) -> None:
+        """Report exactly one located drift finding without changing inputs."""
         (swift_policy_consumer / filename).write_text(content, encoding='utf-8')
+        before = snapshot_files(swift_policy_consumer)
         failures = validate(load_swift_policy_config(swift_policy_consumer))
-        assert any(message in item for item in failures)
+        assert failures == [f'{filename}: {message}']
         assert 'PRIVATE SECRET' not in '\n'.join(failures)
+        assert snapshot_files(swift_policy_consumer) == before
 
     @pytest.mark.parametrize(
         'path',
