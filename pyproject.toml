@@ -58,6 +58,8 @@ classifiers = [
 dependencies = [
   "packaging>=26.3,<27",
   "PyYAML>=6.0.3,<7",
+  "tree-sitter>=0.26.0,<0.27",
+  "tree-sitter-swift>=0.7.4,<0.8",
 ]
 
 [project.optional-dependencies]

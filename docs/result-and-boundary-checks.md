@@ -7,7 +7,7 @@ Copyright © 2026 Dagitali LLC. All rights reserved.
 Named result adapters and consumer-owned Python/Swift architecture restrictions.
 
 Maintainer Notes
-- Keep checks read-only and distinguish lexical guards from compiler evidence.
+- Keep checks read-only and distinguish syntax guards from compiler evidence.
 -->
 
 # Result and Boundary Checks
@@ -135,12 +135,38 @@ Unreadable/undecodable files fail the check. Files selected by multiple layers a
 each layer's restrictions. All source discovery and declaration indexing happen before dependency
 checks, so configuration order does not define dependency direction.
 
-This checker shares Swift lexical masking with source-convention validation. Nested comments and
-ordinary, multiline and raw strings are masked. Findings identify locations, layer IDs, import
-modules and configured/declared symbols without printing source lines. It is a conservative token
-guard, not semantic dependency isolation: name collisions, local shadows, string interpolation,
-regex literals, macros, same-line declarations and conditional compilation are not resolved. Both
-conditional branches are inspected. Keep compiler/module boundaries and native tests independently.
+The v0.13.0 backend shares Tree-sitter syntax with source-convention validation. Native import and
+nominal/typealias nodes recognize same-line declarations and attributed/selective imports;
+extensions do not establish new type ownership. Nested comments, ordinary/multiline/raw strings and
+regex literals are masked before symbol matching. Findings retain locations, layer IDs, module names
+and configured/declared symbols without printing source lines.
+
+This remains a conservative token guard, not semantic dependency isolation: collisions, local
+shadows, interpolation, macros and conditional-compilation semantics are not resolved. Both
+conditional branches are inspected. Grammar recovery may produce partial syntax; successful parsing
+is not compiler evidence. Keep compiler/module boundaries and native tests independently. Runtime
+packages ship Python-accessible native parsers; no Swift installation or runtime grammar downloads
+are required.
+
+Both boundary adapters use shared `import_findings` evaluation with explicit native matching
+policies. Python permits dotted descendants and reports unresolved relative or forbidden-layer
+imports before allowlist violations. Swift matches module allowlists exactly and applies
+forbidden-layer types through symbol rules. Import order and duplicate observations are retained.
+
+Ownership is indexed once per selected path within a validation run, including paths whose source
+cannot be read or parsed. Overlapping layers reuse these observations while evaluating their own
+rules independently; later invocations build fresh indexes.
+
+Both boundary adapters expose `_targets` ownership collectors. Python derives module identity from
+paths even when source cannot be read or parsed; Swift derives nominal/typealias names from
+available native syntax, excluding extensions. The adapters retain these different ownership models
+behind the shared `BoundaryAnalyzer.targets` contract.
+
+Both boundary adapters expose `_symbols` collectors returning shared `SymbolReference` observations.
+Shared reporting filters exact case-sensitive restrictions, deduplicates line/name pairs and sorts
+findings by line then name. Python retains dotted-name and import-alias expansion; Swift retains
+masked-text token matching, including import tokens. These observations do not establish runtime
+binding or semantic dependency resolution.
 
 ## Profiles and Adoption
 

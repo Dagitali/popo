@@ -62,11 +62,27 @@ class TestSelectedChecks:
         cli_format: str | None,
         format_arguments: tuple[str, ...],
     ) -> None:
-        """Explain does not execute validators, and profiles control execution.
+        """
+        Explain does not execute validators, and profiles control execution.
 
         Broken Markdown would fail the selected check if explanation invoked
         it; an observer also fails immediately if that validator is called.
         Keep this consumer independent of profile execution scenarios.
+
+        Parameters
+        ----------
+        profile_consumer : Path
+            Isolated consumer with named profile configuration.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        monkeypatch : pytest.MonkeyPatch
+            Pytest fixture restoring patched attributes and environment values.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
         """
         validator = Mock(side_effect=AssertionError('explain must not run checks'))
         monkeypatch.setattr('popo.checks.docs.validate', validator)
@@ -109,6 +125,19 @@ class TestSelectedChecks:
     ) -> None:
         """
         One domain's bad settings do not hide later selected check failures.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
         """
         write_file('popo.toml', 'checks=["check-required-files","check-docs"]\nfiles=1')
         write_file('README.md', '[missing](absent)')
@@ -132,7 +161,18 @@ class TestSelectedChecks:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Individual native commands share the offline result schema."""
+        """
+        Individual native commands share the offline result schema.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        """
         write_file('README.md', '# Consumer')
         assert main(['check-docs', '--root', str(tmp_path), '--format', 'json']) == 0
         result = json.loads(capsys.readouterr().out)
@@ -151,6 +191,21 @@ class TestSelectedChecks:
     ) -> None:
         """
         Bad selection produces one configuration result in the chosen format.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        command : str
+            Command selected for invocation in the scenario.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
         """
         write_file('popo.toml', 'checks=[]')
         assert main([command, '--root', str(tmp_path), *format_arguments]) == 1
@@ -175,6 +230,21 @@ class TestSelectedChecks:
     ) -> None:
         """
         A selected profile replaces the independently failing default checks.
+
+        Parameters
+        ----------
+        profile_consumer : Path
+            Isolated consumer with named profile configuration.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
+        profile : str | None
+            Named check profile, or None for the default selection.
         """
         write_file('README.md', '# Consumer')
         profile_arguments = [] if profile is None else ['--profile', profile]
@@ -210,7 +280,24 @@ class TestSelectedChecks:
         format_arguments: tuple[str, ...],
         valid: bool,
     ) -> None:
-        """A Swift repository can select docs/files without Python metadata."""
+        """
+        A Swift repository can select docs/files without Python metadata.
+
+        Parameters
+        ----------
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
+        valid : bool
+            Whether the scenario input satisfies the selected contract.
+        """
         write_file(
             'popo.toml',
             'checks=["check-docs","check-required-files"]\n[files]\nrequired=["Package.swift"]',

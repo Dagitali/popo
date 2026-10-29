@@ -14,12 +14,18 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from ._common import ConfigurationError, read_popo, read_strings, require_table
+from ._common import (
+    ConfigurationError,
+    parse_iso_date,
+    read_popo,
+    read_strings,
+    require_table,
+)
 
 # SECTION: DATA CLASSES
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExceptionPolicy:
     """
     Hold a scoped approval attestation for an expiring deviation.
@@ -49,7 +55,7 @@ class ExceptionPolicy:
     expires: date
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RepositoryPolicy:
     """
     Hold explicit expectations for one GitHub repository.
@@ -81,7 +87,7 @@ class RepositoryPolicy:
     branches: dict[str, tuple[str, ...]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class HostedConfig:
     """
     Group repository expectations and explicit exception records.
@@ -130,8 +136,9 @@ def _exception_policy(
     Raises
     ------
     ConfigurationError
-        Fields, expiry, scope or evidence URL are invalid. Evidence is parsed
-        locally; its existence and authenticity are not verified.
+        Fields, expiry, scope or evidence URL (including its port) are invalid.
+        Evidence is parsed locally; its existence and authenticity are not
+        verified.
     """
     row = require_table(entry, name='hosted exception')
     keys = {
@@ -143,15 +150,13 @@ def _exception_policy(
         'approval',
         'expires',
     }
-    if set(row) != keys or any(
+    if row.keys() != keys or any(
         not isinstance(value, str) or not value.strip() for value in row.values()
     ):
         raise ConfigurationError('exceptions require all documented string fields')
     values = {key: str(value) for key, value in row.items()}
     try:
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', values['expires']):
-            raise ValueError('noncanonical date')
-        expires = date.fromisoformat(values['expires'])
+        expires = parse_iso_date(values['expires'])
     except ValueError as error:
         raise ConfigurationError('exception expires must be an ISO date') from error
     checks = repository_checks.get(values['repository'], set())
@@ -161,6 +166,8 @@ def _exception_policy(
         )
     try:
         approval = urlsplit(values['approval'])
+        # Parsing the authority alone leaves port validation deferred.
+        _ = approval.port
     except ValueError as error:
         raise ConfigurationError('invalid exception approval URL') from error
     if (
@@ -204,7 +211,7 @@ def _repository_policy(
         Keys, repository name, setting types, labels or branches are invalid.
     """
     row = require_table(entry, name='hosted repository')
-    if set(row) - {'name', 'settings', 'labels', 'codeowners', 'branches'}:
+    if row.keys() - {'name', 'settings', 'labels', 'codeowners', 'branches'}:
         raise ConfigurationError('unknown hosted repository key')
     name = row.get('name')
     if not isinstance(name, str) or not re.fullmatch(
@@ -213,7 +220,7 @@ def _repository_policy(
     ):
         raise ConfigurationError('repository name must be owner/repository')
     settings = require_table(row.get('settings', {}), name='settings')
-    if set(settings) - {
+    if settings.keys() - {
         'private-vulnerability-reporting',
         'secret-scanning',
         'secret-scanning-push-protection',
@@ -298,12 +305,12 @@ def load_hosted_config(
         If configuration cannot be read or decoded.
     """
     table = require_table(read_popo(root).get('hosted'), name='tool.popo.hosted')
-    if set(table) - {'repositories', 'exceptions'}:
+    if table.keys() - {'repositories', 'exceptions'}:
         raise ConfigurationError('unknown hosted configuration key')
     entries = table.get('repositories')
     if not isinstance(entries, list) or not entries:
         raise ConfigurationError('hosted.repositories must be a nonempty array')
-    repositories = [_repository_policy(entry) for entry in entries]
+    repositories = tuple(_repository_policy(entry) for entry in entries)
     if len({repo.name.lower() for repo in repositories}) != len(repositories):
         raise ConfigurationError('duplicate repository policy')
     repository_checks = {repo.name: expected_checks(repo) for repo in repositories}
@@ -312,10 +319,10 @@ def load_hosted_config(
     entries = table.get('exceptions', [])
     if not isinstance(entries, list):
         raise ConfigurationError('hosted.exceptions must be an array')
-    exceptions = [_exception_policy(entry, repository_checks) for entry in entries]
+    exceptions = tuple(_exception_policy(entry, repository_checks) for entry in entries)
     if len({(item.repository, item.check) for item in exceptions}) != len(exceptions):
         raise ConfigurationError('duplicate exception scope')
-    return HostedConfig(tuple(repositories), tuple(exceptions))
+    return HostedConfig(repositories, exceptions)
 
 
 # !SECTION

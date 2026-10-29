@@ -401,6 +401,8 @@ class TestWorkflows:
             *arguments: str,
         ) -> subprocess.CompletedProcess[str]:
             """
+            Run a Git fixture command with isolated identity and disabled.
+
             Run a Git fixture command with isolated identity and disabled
             signing/hooks.
 

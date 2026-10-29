@@ -1,9 +1,11 @@
 """
 :mod:`popo.checks._source_boundaries` module.
 
-Share import facts and read architecture inputs across layer selections.
+Share dependency facts, boundary reporting and architecture input discovery.
 """
 
+from collections.abc import Collection, Iterable
+from itertools import chain
 from pathlib import Path
 from typing import NamedTuple, Protocol
 
@@ -31,6 +33,23 @@ class ImportReference(NamedTuple):
     line: int
     target: str
     alias: str = ''
+
+
+class SymbolReference(NamedTuple):
+    """
+    Store a statically recognized symbol candidate and its location.
+
+    Attributes
+    ----------
+    line : int
+        One-based source line containing the candidate reference.
+    name : str
+        Native spelling or expanded Python alias, compared case-sensitively.
+        Recognition does not prove runtime binding or dependency ownership.
+    """
+
+    line: int
+    name: str
 
 
 # !SECTION
@@ -85,7 +104,9 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
     Define language analysis consumed by the shared boundary runner.
 
     Implementations preserve read-only inspection and redacted findings.
-    ParsedSource retains the language's native AST or masked lexical text.
+    ParsedSource retains the native Python AST or Swift concrete-syntax view.
+    Native adapters own parsing, ownership and reference recognition.
+    The shared runner controls discovery, read reuse and layer/file ordering.
     """
 
     def findings(
@@ -97,7 +118,37 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
         forbidden_targets: set[str],
         owned_targets: set[str],
     ) -> list[str]:
-        """Return imports before symbols; leave target sets unchanged."""
+        """
+        Evaluate native boundary rules without modifying target ownership.
+
+        Parameters
+        ----------
+        source : ParsedSource
+            Parsed native input; implementations must not read it again.
+        path : pathlib.Path
+            Input path lexically inside root, used for identity and reporting.
+        root : pathlib.Path
+            Consumer repository root.
+        layer : BoundaryLayer
+            Current layer's import, dependency and explicit-symbol rules.
+        forbidden_targets : set[str]
+            Ownership targets from the layers prohibited by the current one.
+        owned_targets : set[str]
+            Current layer's targets, used when native ownership rules need it.
+
+        Returns
+        -------
+        list[str]
+            Location-based import findings before symbol findings. Native
+            analysis selects matching rules without changing either target set.
+
+        Notes
+        -----
+        Python targets are modules; Swift targets are declared type names.
+        Swift excludes locally owned types from cross-layer restrictions;
+        explicit forbidden symbols still apply. Python uses module import
+        restrictions and does not subtract current ownership from them.
+        """
         ...
 
     def parse(
@@ -105,7 +156,33 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
         source: str,
         relative: str,
     ) -> tuple[ParsedSource | None, list[str]]:
-        """Return parsed input or redacted parse diagnostics."""
+        """
+        Collect native syntax and redacted parse findings without execution.
+
+        Parameters
+        ----------
+        source : str
+            Decoded source text supplied by the shared read-only runner.
+        relative : str
+            Repository-relative filename for location-only parse diagnostics.
+
+        Returns
+        -------
+        tuple[ParsedSource or None, list[str]]
+            Native parsed input and parse findings. None skips rule evaluation
+            while still allowing ownership indexing when paths are sufficient.
+
+        Raises
+        ------
+        UnicodeEncodeError
+            Direct text cannot be encoded as UTF-8 by the native parser.
+
+        Notes
+        -----
+        Python converts SyntaxError to a diagnostic and returns no AST. Swift
+        retains recoverable syntax; recovery does not prove compiler validity.
+        Implementations do not execute source or invoke consumer toolchains.
+        """
         ...
 
     def targets(
@@ -114,7 +191,30 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
         root: Path,
         source: ParsedSource | None,
     ) -> set[str]:
-        """Index owned targets from parsed input or paths when sufficient."""
+        """
+        Index native ownership from parsed input or sufficient path identity.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            Selected source path lexically inside root.
+        root : pathlib.Path
+            Consumer root used to derive repository-relative identity.
+        source : ParsedSource or None
+            Available native input, or None after a read or parse failure.
+
+        Returns
+        -------
+        set[str]
+            Native ownership targets used for cross-layer restrictions.
+            An empty set means no targets could be established for this input.
+
+        Notes
+        -----
+        Python module paths establish ownership even without readable syntax.
+        Swift requires parsed declarations; extensions do not establish new
+        ownership. Neither implementation resolves runtime dependencies.
+        """
         ...
 
 
@@ -122,6 +222,131 @@ class BoundaryAnalyzer[ParsedSource](Protocol):
 
 
 # SECTION: FUNCTIONS
+
+
+def import_findings(
+    imports: Iterable[ImportReference],
+    layer: BoundaryLayer,
+    relative: str,
+    *,
+    forbidden_targets: Collection[str] = (),
+    allow_descendants: bool = False,
+    report_unresolved: bool = False,
+) -> list[str]:
+    """
+    Compare native imports with explicit matching and reporting policies.
+
+    Parameters
+    ----------
+    imports : collections.abc.Iterable[ImportReference]
+        Recognized imports in native diagnostic order, consumed once.
+    layer : BoundaryLayer
+        Diagnostic name and optional module allowlist. None disables allowlist
+        restrictions; an empty allowlist rejects every recognized import.
+    relative : str
+        Repository-relative diagnostic filename.
+    forbidden_targets : collections.abc.Collection[str], optional
+        Imported targets owned by forbidden layers, independent of allowlists.
+    allow_descendants : bool, optional
+        Match dotted descendants as well as exact names, as Python requires.
+        Swift uses exact module matching instead.
+    report_unresolved : bool, optional
+        Report empty targets as unresolved relative imports, as Python does.
+        Native Swift import recognition does not emit unresolved placeholders.
+
+    Returns
+    -------
+    list[str]
+        At most one finding per import, preserving order and duplicates.
+        Unresolved references precede forbidden-layer checks, which precede
+        allowlist checks. This function does not report symbol findings.
+
+    Notes
+    -----
+    Native adapters own import discovery, alias handling and applicability.
+    Matching is case-sensitive; descendant matching requires a dot boundary.
+    No source is read, parsed or executed and no policy collection is mutated.
+    """
+
+    def matches(
+        target: str,
+        names: Collection[str],
+    ) -> bool:
+        """
+        Apply exact matching with an optional dotted-descendant rule.
+
+        Parameters
+        ----------
+        target : str
+            Import target tested against the configured matching rule.
+        names : Collection[str]
+            Names checked against the selected matching rule.
+
+        Returns
+        -------
+        bool
+            Whether the target matches exactly or an enabled dotted descendant.
+        """
+        return target in names or (
+            allow_descendants and any(target.startswith(name + '.') for name in names)
+        )
+
+    failures: list[str] = []
+    for reference in imports:
+        target = reference.target
+        location = f'{relative}:{reference.line}: {layer.name}'
+        if report_unresolved and not target:
+            failures.append(f'{location}: unresolved relative import')
+        elif matches(target, forbidden_targets):
+            failures.append(f'{location}: forbidden layer import {target}')
+        elif layer.allowed_imports is not None and not matches(
+            target,
+            layer.allowed_imports,
+        ):
+            failures.append(f'{location}: forbidden import {target}')
+    return failures
+
+
+def symbol_findings(
+    references: Iterable[SymbolReference],
+    forbidden_symbols: Collection[str],
+    relative: str,
+    layer_name: str,
+) -> list[str]:
+    """
+    Filter native symbol candidates and report each line/name pair once.
+
+    Parameters
+    ----------
+    references : collections.abc.Iterable[SymbolReference]
+        Native observations, including duplicates or expanded alias spellings.
+        Input order is unrestricted; consume once when restrictions are
+        configured; otherwise, leave the iterable untouched.
+    forbidden_symbols : collections.abc.Collection[str]
+        Exact case-sensitive names prohibited by the current layer.
+    relative : str
+        Repository-relative diagnostic filename.
+    layer_name : str
+        Consumer-owned layer name used to label findings.
+
+    Returns
+    -------
+    list[str]
+        Findings sorted by line then symbol, without source excerpts.
+
+    Notes
+    -----
+    Native collectors own syntax, alias expansion and masking. This function
+    performs no parsing, scope resolution, source reads or consumer execution.
+    """
+    if not forbidden_symbols:
+        return []
+    forbidden = set(forbidden_symbols)
+    matches = {reference for reference in references if reference.name in forbidden}
+    return [
+        f'{relative}:{line}: {layer_name}: forbidden symbol {name}'
+        for line, name in sorted(matches)
+    ]
 
 
 def validate_boundaries[ParsedSource](
@@ -142,7 +367,9 @@ def validate_boundaries[ParsedSource](
     -------
     list[str]
         Read/discovery findings, then parse findings, then layer/file findings.
-        Parse each readable file once; skip failed parses during inspection.
+        Parse each readable file and index each selected path's ownership once
+        per invocation. Skip failed parses during rule inspection; native path
+        ownership can remain available when reading or parsing fails.
 
     Raises
     ------
@@ -163,12 +390,12 @@ def validate_boundaries[ParsedSource](
         failures.extend(errors)
         if source is not None:
             sources[path] = source
+    targets_by_path = {
+        path: analyzer.targets(path, config.root, sources.get(path))
+        for path in dict.fromkeys(chain.from_iterable(paths_by_layer.values()))
+    }
     targets_by_layer = {
-        name: {
-            target
-            for path in paths
-            for target in analyzer.targets(path, config.root, sources.get(path))
-        }
+        name: {target for path in paths for target in targets_by_path[path]}
         for name, paths in paths_by_layer.items()
     }
     for layer in config.layers:

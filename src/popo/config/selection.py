@@ -152,7 +152,7 @@ def parse_plan(
         if profile not in profiles:
             raise ConfigurationError(f'unknown profile: {profile}')
         table = require_table(profiles[profile], name=f'profiles.{profile}')
-        if set(table) != {'checks'}:
+        if table.keys() != {'checks'}:
             raise ConfigurationError(f'profiles.{profile} requires only checks')
         selection = table['checks']
         reason = f'profile: {profile}'

@@ -147,7 +147,28 @@ def _boolean(
     key: str,
     default: bool,
 ) -> bool:
-    """Reject string-valued booleans in consumer policy."""
+    """
+    Reject string-valued booleans in consumer policy.
+
+    Parameters
+    ----------
+    table : dict[str, object]
+        Policy mapping containing the requested setting.
+    key : str
+        Policy key whose value is inspected.
+    default : bool
+        Boolean returned when the setting is absent.
+
+    Returns
+    -------
+    bool
+        Configured boolean or the supplied default when the key is absent.
+
+    Raises
+    ------
+    ConfigurationError
+        If the setting is present with a non-boolean value.
+    """
     value = table.get(key, default)
     if type(value) is not bool:
         raise ConfigurationError(f'{key} must be boolean')
@@ -157,9 +178,26 @@ def _boolean(
 def _header_exception(
     entry: object,
 ) -> HeaderException:
-    """Validate an explicit preservation scope and its nonblank reason."""
+    """
+    Validate an explicit preservation scope and its nonblank reason.
+
+    Parameters
+    ----------
+    entry : object
+        Unvalidated policy entry to convert to a configuration record.
+
+    Returns
+    -------
+    HeaderException
+        Validated patterns and nonblank preservation reason.
+
+    Raises
+    ------
+    ConfigurationError
+        If the scope, patterns or preservation reason are invalid.
+    """
     row = require_table(entry, name='header exception')
-    if set(row) != {'patterns', 'reason'}:
+    if row.keys() != {'patterns', 'reason'}:
         raise ConfigurationError('header exception requires patterns and reason')
     patterns = _paths(row['patterns'], 'exception patterns', patterns=True)
     if not patterns:
@@ -173,9 +211,26 @@ def _header_exception(
 def _header_rule(
     entry: object,
 ) -> HeaderRule:
-    """Validate one ordered header rule without reading consumer source."""
+    """
+    Validate one ordered header rule without reading consumer source.
+
+    Parameters
+    ----------
+    entry : object
+        Unvalidated policy entry to convert to a configuration record.
+
+    Returns
+    -------
+    HeaderRule
+        Validated header rule preserving the configured matching semantics.
+
+    Raises
+    ------
+    ConfigurationError
+        If settings, patterns, comment format or directives are invalid.
+    """
     row = require_table(entry, name='header rule')
-    if set(row) - {
+    if row.keys() - {
         'patterns',
         'format',
         'prefix',
@@ -220,7 +275,28 @@ def _paths(
     *,
     patterns: bool,
 ) -> tuple[str, ...]:
-    """Validate portable root-relative paths without filesystem access."""
+    """
+    Validate portable root-relative paths without filesystem access.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+    label : str
+        Setting name included in configuration diagnostics.
+    patterns : bool
+        Whether glob syntax is permitted in the path values.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Validated portable relative paths or patterns in declaration order.
+
+    Raises
+    ------
+    ConfigurationError
+        If the value is not a string array of permitted relative paths.
+    """
     result = read_strings(value, label)
     for item in result:
         if (
@@ -238,7 +314,24 @@ def _paths(
 def _template(
     value: str,
 ) -> str:
-    """Validate a literal template without allowing attribute/index access."""
+    """
+    Validate a literal template without allowing attribute/index access.
+
+    Parameters
+    ----------
+    value : str
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    str
+        The original template after validating its allowed substitutions.
+
+    Raises
+    ------
+    ConfigurationError
+        If template syntax or a substitution is unsupported.
+    """
     try:
         for _, field, spec, conversion in Formatter().parse(value):
             if field is not None and (
@@ -286,7 +379,13 @@ def load_headers_config(
     if 'headers' not in popo:
         return None
     table = require_table(popo['headers'], name='tool.popo.headers')
-    if set(table) - {'project', 'notice', 'rules', 'exceptions', 'ignored-directories'}:
+    if table.keys() - {
+        'project',
+        'notice',
+        'rules',
+        'exceptions',
+        'ignored-directories',
+    }:
         raise ConfigurationError('unknown tool.popo.headers setting')
     entries = table.get('rules', [])
     if not isinstance(entries, list) or not entries:
@@ -363,7 +462,7 @@ def load_required_files_config(
     if 'files' not in popo:
         return None
     table = require_table(popo['files'], name='tool.popo.files')
-    if set(table) != {'required'}:
+    if table.keys() != {'required'}:
         raise ConfigurationError('tool.popo.files requires only required')
     paths = _paths(table['required'], 'files.required', patterns=False)
     if not paths:

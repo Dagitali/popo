@@ -93,7 +93,7 @@ def load_guardrails_config(
         'step': 'popo',
         'profile': 'guardrails',
     }
-    if set(table) - set(defaults):
+    if table.keys() - defaults.keys():
         raise ConfigurationError('unknown guardrails setting')
     values = {
         key: read_string(table, key, default=value) for key, value in defaults.items()

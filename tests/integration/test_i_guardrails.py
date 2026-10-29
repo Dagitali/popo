@@ -32,11 +32,28 @@ class TestGuardrailCommand:
         cli_format: str | None,
         format_arguments: tuple[str, ...],
     ) -> None:
-        """Report literal entry-point drift through text and JSON check
-        results.
+        """
+        Verify contract.
+
+        Report literal entry-point drift through text and JSON check results.
 
         Self-inspection finishes without executing the declared Make recipe.
         Each command and drift domain receives independent consumer inputs.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_failure : str | None
+            Expected parity failure, or None for matching entry points.
+        guardrail_arguments : tuple[str, ...]
+            Arguments selecting the example guardrail invocation.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
         """
         root = guardrail_consumer.root
         before = snapshot_files(root)

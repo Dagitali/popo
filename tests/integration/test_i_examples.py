@@ -27,6 +27,15 @@ class TestConsumerExamples:
     ) -> None:
         """
         Run each example's shared checks and its language-specific additions.
+
+        Parameters
+        ----------
+        example_consumer : Path
+            Disposable copy of the selected example repository.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        example_checks : tuple[str, ...]
+            Expected checks selected by the example profile.
         """
         original = snapshot_files(example_consumer)
         status = main(
@@ -56,6 +65,15 @@ class TestConsumerExamples:
     ) -> None:
         """
         Give each declared entry-point mismatch a specific JSON diagnostic.
+
+        Parameters
+        ----------
+        example_consumer : Path
+            Disposable copy of the selected example repository.
+        example_drift : str
+            Example entry-point mutation introducing policy drift.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
         """
         original = snapshot_files(example_consumer)
         status = main(
@@ -83,6 +101,8 @@ class TestConsumerExamples:
 
 class TestPythonConsumerPolicies:
     """
+    Cover python consumer policies.
+
     Preserve Python-specific policy differences in Python and CDK examples.
     """
 
@@ -97,6 +117,17 @@ class TestPythonConsumerPolicies:
     ) -> None:
         """
         Fail a changed language policy while the shared wiring still passes.
+
+        Parameters
+        ----------
+        example_consumer : Path
+            Disposable copy of the selected example repository.
+        example_name : str
+            Python, Swift or CDK example selected by the fixture.
+        domain : str
+            Native check domain selected for the scenario.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
         """
         if domain == 'python-policy':
             (example_consumer / '.python-version').write_text(

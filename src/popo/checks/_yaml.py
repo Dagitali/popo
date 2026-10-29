@@ -90,7 +90,7 @@ WorkflowLoader.yaml_implicit_resolvers = {
 }
 WorkflowLoader.add_implicit_resolver(
     'tag:yaml.org,2002:bool',
-    re.compile(r'^(?:true|false)$', re.I),
+    re.compile(r'^(?:true|false)$', re.IGNORECASE),
     list('tTfF'),
 )
 

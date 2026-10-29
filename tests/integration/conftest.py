@@ -74,12 +74,38 @@ def select_check_fixture(
     Aggregate modes prepend an explicit check list or a selected profile and
     return CLI arguments. Individual mode preserves the existing policy.
     Consumers and selections remain function-scoped; no command executes here.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    Callable[[Path, str], tuple[str, ...]]
+        Callable returning CLI arguments for the selected execution mode.
     """
 
     def select(
         root: Path,
         command: str,
     ) -> tuple[str, ...]:
+        """
+        Select individual, aggregate or profiled execution for the consumer.
+
+        Parameters
+        ----------
+        root : Path
+            Consumer repository root used to resolve and label input paths.
+        command : str
+            Command selected for invocation in the scenario.
+
+        Returns
+        -------
+        tuple[str, ...]
+            CLI arguments after writing aggregate/profile selection when
+            needed.
+        """
         if request.param == 'individual':
             return (command,)
         profile = request.param == 'profile'

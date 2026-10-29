@@ -86,7 +86,7 @@ def load_automation_config(
         'local-repositories',
         'template-placeholder-refs',
     )
-    if set(table) - set(keys):
+    if table.keys() - set(keys):
         raise ConfigurationError('unknown tool.popo.automation setting')
     values: dict[str, tuple[str, ...]] = {}
     for key in keys:

@@ -97,7 +97,16 @@ class TestLocalHooks:
         hook_config: dict[str, Any],
         project_metadata: dict[str, Any],
     ) -> None:
-        """Keep autopep8's slice-spacing fix from undoing Ruff formatting."""
+        """
+        Keep autopep8's slice-spacing fix from undoing Ruff formatting.
+
+        Parameters
+        ----------
+        hook_config : dict[str, Any]
+            Mutable pre-commit configuration for the scenario.
+        project_metadata : dict[str, Any]
+            Mutable project metadata supplied by the fixture.
+        """
         hook = next(
             hook
             for repo in hook_config['repos']

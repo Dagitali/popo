@@ -18,6 +18,8 @@ from tests.support.installation import Installation
 
 class TestInstalledSourceChecks:
     """
+    Cover installed source checks.
+
     Exercise wheel/sdist console and module entry points without mutation.
     """
 

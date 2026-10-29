@@ -26,6 +26,8 @@ NO_FILENAMES = 'pass_filenames: false'
 
 class TestGuardrailParity:
     """
+    Cover guardrail parity.
+
     Collect independent drift without invoking any configured consumer tool.
     """
 
@@ -37,6 +39,11 @@ class TestGuardrailParity:
         An empty list preserves the canonical Make invocation.
 
         Permit an explicitly empty argument list without weakening type checks.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
         """
         path = guardrail_consumer.hooks
         path.write_text(
@@ -105,6 +112,19 @@ class TestGuardrailParity:
 
         Reject drift in the declared workflow step, root or job selection.
         Each mutation runs against an independent consumer fixture.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_diagnostics : dict[str, str]
+            Expected parity diagnostics indexed by entry point.
+        old : str
+            Original value replaced by the scenario.
+        new : str
+            Replacement value supplied by the scenario.
+        failure : str
+            Expected failure text, or None for a successful scenario.
         """
         path = (
             guardrail_consumer.hooks
@@ -122,7 +142,14 @@ class TestGuardrailParity:
         self,
         guardrail_consumer: GuardrailsConfig,
     ) -> None:
-        """Report every missing contract file in one invocation."""
+        """
+        Report every missing contract file in one invocation.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        """
         paths = (
             guardrail_consumer.makefile,
             guardrail_consumer.hooks,
@@ -152,20 +179,52 @@ class TestGuardrailParity:
                 'guardrails: prerequisite\n\tpopo check-all --profile guardrails',
                 'target',
             ),
+            (
+                'guardrails:\n\t@popo check-all --profile guardrails\n',
+                None,
+            ),
+            (
+                'guardrails:\n# Consumer comment\n'
+                '\tpopo check-all --profile guardrails\n',
+                None,
+            ),
+            (
+                'guardrails:\n\n\tpopo check-all --profile guardrails\n'
+                '\nother:\n\tfalse',
+                None,
+            ),
         ],
     )
-    def test_make_drift(
+    def test_make_recipe_contract(
         self,
         guardrail_consumer: GuardrailsConfig,
         guardrail_diagnostics: dict[str, str],
         recipe: str,
-        failure: str,
+        failure: str | None,
     ) -> None:
         """
         Reject missing, duplicate, indirect or changed invocation recipes.
+
+        Permit Make's silent prefix and whitespace between literal targets.
+        Preserve consumer comments and leave all fixture inputs unchanged.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_diagnostics : dict[str, str]
+            Expected parity diagnostics indexed by entry point.
+        recipe : str
+            Literal Make recipe used in the parity scenario.
+        failure : str | None
+            Expected failure text, or None for a successful scenario.
         """
         guardrail_consumer.makefile.write_text(recipe, encoding='utf-8')
-        assert validate(guardrail_consumer) == [guardrail_diagnostics[failure]]
+        before = snapshot_files(guardrail_consumer.root)
+        assert validate(guardrail_consumer) == (
+            [guardrail_diagnostics[failure]] if failure is not None else []
+        )
+        assert snapshot_files(guardrail_consumer.root) == before
 
     @pytest.mark.parametrize(
         ('content', 'parse_error'),
@@ -185,6 +244,17 @@ class TestGuardrailParity:
     ) -> None:
         """
         Unexpected YAML structures produce diagnostics rather than crashes.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        guardrail_diagnostics : dict[str, str]
+            Expected parity diagnostics indexed by entry point.
+        content : str
+            Text written to the scenario input.
+        parse_error : str | None
+            Expected parse diagnostic, or None for successful parsing.
         """
         guardrail_consumer.workflow.write_text(content, encoding='utf-8')
         guardrail_consumer.hooks.write_text(content, encoding='utf-8')
@@ -204,7 +274,14 @@ class TestGuardrailParity:
         self,
         guardrail_consumer: GuardrailsConfig,
     ) -> None:
-        """Accept the explicit chain and preserve every consumer input byte."""
+        """
+        Accept the explicit chain and preserve every consumer input byte.
+
+        Parameters
+        ----------
+        guardrail_consumer : GuardrailsConfig
+            Isolated consumer paths and guardrail parity expectations.
+        """
         root = guardrail_consumer.root
         original = snapshot_files(root)
         assert set(original) == {
@@ -215,25 +292,6 @@ class TestGuardrailParity:
         }
         assert validate(guardrail_consumer) == []
         assert snapshot_files(root) == original
-
-    @pytest.mark.parametrize(
-        'recipe',
-        [
-            'guardrails:\n\t@popo check-all --profile guardrails\n',
-            'guardrails:\n# Consumer comment\n\tpopo check-all --profile guardrails\n',
-            'guardrails:\n\n\tpopo check-all --profile guardrails\n\nother:\n\tfalse',
-        ],
-    )
-    def test_supported_make_spelling(
-        self,
-        guardrail_consumer: GuardrailsConfig,
-        recipe: str,
-    ) -> None:
-        """
-        Permit Make's silent prefix and whitespace between literal targets.
-        """
-        guardrail_consumer.makefile.write_text(recipe, encoding='utf-8')
-        assert validate(guardrail_consumer) == []
 
 
 # !SECTION

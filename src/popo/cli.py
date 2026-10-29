@@ -51,7 +51,26 @@ def _add_root(
 def _explain(
     args: argparse.Namespace,
 ) -> int:
-    """Describe selection and provenance without running any validators."""
+    """
+    Describe selection and provenance without running any validators.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command arguments, including the consumer root and overrides.
+
+    Returns
+    -------
+    int
+        Zero after writing the selection explanation to standard output.
+
+    Raises
+    ------
+    ConfigurationError
+        If selection or profile configuration is invalid.
+    OSError
+        If output cannot be written or configuration paths cannot be inspected.
+    """
     plan = load_plan(args.root, args.profile)
     explanation = {
         'schema_version': 1,
@@ -116,6 +135,24 @@ def _invoke(
 ) -> CheckResult:
     """
     Convert a native check's configuration errors into identified results.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command arguments, including the consumer root and overrides.
+
+    Returns
+    -------
+    CheckResult
+        Identified native result, including caught configuration-error
+        diagnostics.
+
+    Raises
+    ------
+    OSError, UnicodeError
+        If a native adapter propagates an input read or decode failure. Only
+        ConfigurationError is converted into an identified result; other
+        adapter exceptions also propagate.
     """
     command = cast(Command, args.handler)
     try:
@@ -139,6 +176,26 @@ def _selected_results(
     as do external-tool and hosted checks. Constructing parsers does not run
     validators. Native adapters supply their own optional argument defaults,
     so aggregate execution does not reconstruct or reparse command lines.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command arguments, including the consumer root and overrides.
+
+    Returns
+    -------
+    list[CheckResult]
+        Native results in configured selection order, including domain
+        failures.
+
+    Raises
+    ------
+    ConfigurationError
+        If selecting the check plan fails. Configuration errors from an
+        individual selected adapter instead become identified results.
+    OSError, UnicodeError
+        If loading the plan or executing an adapter propagates a read or decode
+        failure. Other uncaught adapter exceptions also propagate.
     """
     plan = load_plan(args.root, args.profile)
     return [
@@ -212,7 +269,6 @@ def create_parser() -> argparse.ArgumentParser:
     --automation-directory paths are interpreted relative to the working
     directory when dispatched, independently of --root.
     """
-
     parser = argparse.ArgumentParser(description='Command-line interface for popo.')
     parser.add_argument(
         '--version',
@@ -342,7 +398,6 @@ def main(
     audit-github-settings is an explicit network operation, excluded from
     check-all. It prints sanitized text or JSON findings to standard output.
     """
-
     args = create_parser().parse_args(argv)
     if args.command == 'source-inventory':
         return _source_inventory(args)

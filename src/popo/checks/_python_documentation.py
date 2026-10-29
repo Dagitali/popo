@@ -9,16 +9,18 @@ import re
 from popo.config.source_checks import SourceCheckConfig
 
 from ._python_declarations import CALLABLE_KINDS, Declaration
-from ._source_declarations import SourceFacts
+from ._source_declarations import ResultSection, SourceFacts
 from ._source_documentation import (
     CallableDocumentation,
-    callable_findings,
+    DocumentationDialect,
+    DocumentationPresence,
+    declaration_findings,
 )
 from ._source_documentation import (
     documentation_findings as collect_documentation_findings,
 )
 
-# SECTION: CONSTANTS
+# SECTION: CONSTANTS (1 of 2)
 
 
 PARAMETER_PATTERN = re.compile(r'(?m)^(\*{0,2}\w+(?:,\s*\*{0,2}\w+)*)[ \t]*:')
@@ -60,25 +62,23 @@ def _declaration_findings(
     Notes
     -----
     Declaration presence applies to Python classes and functions alike.
-    Callable evidence uses NumPy sections; syntax requirements were collected
+    Shared evaluation orders presence before callable findings. Callable
+    evidence uses NumPy sections; syntax requirements were collected
     independently, including receiver exclusion and explicit body requirements.
     """
-    failures: list[str] = []
-    facts = declaration.facts
-    doc = facts.documentation
-    if config.settings['declaration-docs'] and not doc:
-        failures.append(
-            f'{relative}:{facts.line}: missing declaration documentation',
-        )
-    failures.extend(
-        callable_findings(facts, config, relative, CALLABLE_KINDS, _documentation),
+    return declaration_findings(
+        declaration.facts,
+        config,
+        relative,
+        _presence(declaration, config),
+        CALLABLE_KINDS,
+        _documentation,
     )
-    return failures
 
 
 def _documentation(
     doc: str,
-    return_section: str,
+    result_section: ResultSection,
 ) -> CallableDocumentation:
     """
     Collect callable documentation evidence using the language's markup.
@@ -87,7 +87,7 @@ def _documentation(
     ----------
     doc : str
         Cleaned NumPy docstring supplied by the declaration collector.
-    return_section : str
+    result_section : ResultSection
         Required conceptual section: Returns, Yields, or empty when unneeded.
 
     Returns
@@ -102,14 +102,10 @@ def _documentation(
     Returns or Yields, and Raises supplies exception evidence. Section content
     is inspected without validating prose, types or exception escape behavior.
     """
-    return CallableDocumentation(
-        frozenset(_parameters(doc)),
-        bool(_section(doc, return_section)) if return_section else False,
-        bool(_section(doc, 'Raises')),
-    )
+    return DIALECT.interpret(doc, result_section)
 
 
-def _parameters(
+def _parameter_names(
     doc: str,
 ) -> set[str]:
     """
@@ -129,9 +125,42 @@ def _parameters(
     """
     return {
         name.strip().lstrip('*')
-        for names in PARAMETER_PATTERN.findall(_section(doc, 'Parameters'))
-        for name in names.split(',')
+        for match in PARAMETER_PATTERN.finditer(_section(doc, 'Parameters'))
+        for name in match[1].split(',')
     }
+
+
+def _presence(
+    declaration: Declaration,
+    config: SourceCheckConfig,
+) -> DocumentationPresence:
+    """
+    Derive native documentation presence and spacing observations.
+
+    Parameters
+    ----------
+    declaration : Declaration
+        Shared declaration facts and language-specific observations.
+    config : SourceCheckConfig
+        Consumer-owned declaration-presence and spacing switches.
+
+    Returns
+    -------
+    DocumentationPresence
+        Presence requirement, native presence decision and optional spacing
+        location. Shared evaluation owns diagnostic order and wording.
+
+    Notes
+    -----
+    Python applies declaration-docs to both classes and functions. Cleaned
+    docstring truthiness determines presence; no spacing rule is imposed.
+    No markup contracts are interpreted and no source is read or parsed.
+    """
+    facts = declaration.facts
+    return DocumentationPresence(
+        required=bool(config.settings['declaration-docs']),
+        present=bool(facts.documentation),
+    )
 
 
 def _section(
@@ -162,9 +191,22 @@ def _section(
     match = SECTION_PATTERNS[name].search(doc)
     if match is None:
         return ''
-    remainder = doc[match.end() :]
-    end = SECTION_END_PATTERN.search(remainder)
-    return remainder[: end.start() if end else len(remainder)].strip()
+    end = SECTION_END_PATTERN.search(doc, match.end())
+    return doc[match.end() : end.start() if end else len(doc)].strip()
+
+
+# !SECTION
+
+
+# SECTION: CONSTANTS (2 of 2)
+
+
+# Bind after native readers are defined; evidence assembly does not parse code.
+DIALECT = DocumentationDialect(
+    read_parameter_names=_parameter_names,
+    read_section=_section,
+    exception_section='Raises',
+)
 
 
 # !SECTION
@@ -184,7 +226,7 @@ def documentation_findings(
     Parameters
     ----------
     source : SourceFacts[Declaration]
-        Precomputed Python facts; this interpreter does not traverse the AST.
+        Precomputed native facts; no syntax is parsed or traversed here.
     config : SourceCheckConfig
         Consumer-owned documentation switches.
     relative : str
@@ -193,7 +235,9 @@ def documentation_findings(
     Returns
     -------
     list[str]
-        Missing documentation and incomplete parameter/return/raise sections.
+        Missing documentation and incomplete parameter/result/exception
+        contracts, in native declaration order. Result coverage includes the
+        Returns or Yields section selected by the declaration facts.
 
     Notes
     -----

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from popo.checks.actions import validate
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -25,44 +25,14 @@ class TestActions:
     executing referenced actions.
     """
 
-    @pytest.mark.parametrize(
-        'reference',
-        [
-            f'owner/action@{'a' * 40}',
-            f'owner/action@{'A' * 40}',
-            './local',
-            'docker://alpine:3',
-        ],
-        ids=['lowercase-sha', 'uppercase-sha', 'local-action', 'container'],
-    )
-    def test_accepts_pinned_or_local_references(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        reference: str,
-    ) -> None:
-        """
-        Verify full-SHA, local, and container references pass pin validation.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        reference : str
-            Automation uses value selected for the pin or target-resolution
-            scenario.
-        """
-        write_file('.github/ci.yaml', f'uses: {reference}\n')
-        assert validate(tmp_path / '.github') == []
-
     def test_checks_nested_composite_actions_and_ignores_local_steps(
         self,
         tmp_path: Path,
         write_file: FileWriter,
     ) -> None:
         """
+        Verify checks nested composite actions and ignores local steps.
+
         Verify recursive action discovery reports only the unpinned remote
         step.
 
@@ -85,25 +55,41 @@ class TestActions:
         ]
 
     @pytest.mark.parametrize(
-        'reference',
+        'reference,accepted',
         [
-            'owner/action',
-            'owner/action@main',
-            'owner/action@abc123',
-            f'@{'a' * 40}',
-            'owner/action@',
-            f'owner/action@{'g' * 40}',
+            pytest.param('owner/action@' + 'a' * 40, True, id='lowercase-sha'),
+            pytest.param('owner/action@' + 'A' * 40, True, id='uppercase-sha'),
+            pytest.param('./local', True, id='local-action'),
+            pytest.param('docker://alpine:3', True, id='container'),
+            pytest.param('owner/action', False, id='no-revision'),
+            pytest.param('owner/action@main', False, id='branch'),
+            pytest.param('owner/action@abc123', False, id='short-sha'),
+            pytest.param('@' + 'a' * 40, False, id='no-action'),
+            pytest.param('owner/action@', False, id='empty-revision'),
+            pytest.param('owner/action@' + 'g' * 40, False, id='nonhex-revision'),
         ],
     )
-    def test_rejects_malformed_remote_reference(
+    @pytest.mark.parametrize(
+        'template',
+        [
+            pytest.param('uses: {reference}', id='plain'),
+            pytest.param('- uses: "{reference}" # pinned?', id='double-quoted'),
+            pytest.param("- uses: '{reference}' # pinned?", id='single-quoted'),
+        ],
+    )
+    def test_reference_pin_policy(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         reference: str,
+        accepted: bool,
+        template: str,
     ) -> None:
         """
-        Verify malformed remote references produce a precise line-numbered
-        failure.
+        Validate immutable, local and container action references.
+
+        Require precise line-numbered failures regardless of YAML quoting or
+        trailing comments, without fetching or executing referenced actions.
 
         Parameters
         ----------
@@ -112,14 +98,26 @@ class TestActions:
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
         reference : str
-            Automation uses value selected for the pin or target-resolution
-            scenario.
+            Automation uses value selected for the pin-policy scenario.
+        accepted : bool
+            Whether the reference is immutable or exempt from remote pinning.
+        template : str
+            Plain or quoted uses line with optional list marker and comment.
         """
-        action = write_file('action.yml', f'uses: {reference}\n')
-        assert validate(tmp_path) == [
-            f'{action}:1: remote action must use a full '
-            f'40-character commit SHA: {reference}',
-        ]
+        action = write_file(
+            '.github/ci.yaml',
+            'name: Fixture\n' + template.format(reference=reference) + '\n',
+        )
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path / '.github') == (
+            []
+            if accepted
+            else [
+                f'{action}:2: remote action must use a full '
+                f'40-character commit SHA: {reference}',
+            ]
+        )
+        assert snapshot_files(tmp_path) == before
 
     def test_rejects_mutable_remote_action(
         self,

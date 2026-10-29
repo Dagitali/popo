@@ -32,6 +32,8 @@ class TestPackageArtifacts:
         artifact: Path,
     ) -> None:
         """
+        Verify distribution contract.
+
         Verify wheel and sdist contents, metadata, typing, and entry-point
         contracts.
 
@@ -97,6 +99,8 @@ class TestPackageArtifacts:
                 '_swift_documentation.py',
                 '_python_documentation.py',
                 '_swift_declarations.py',
+                '_swift_syntax.py',
+                '_python_syntax.py',
                 'python_source.py',
                 'swift_source.py',
                 'swift_policy.py',
@@ -124,7 +128,12 @@ class TestPackageArtifacts:
             for value in parsed.get_all('Requires-Dist', [])
             if 'extra ==' not in value
         }
-        assert {'packaging', 'pyyaml'} <= runtime_dependencies
+        assert {
+            'packaging',
+            'pyyaml',
+            'tree-sitter',
+            'tree-sitter-swift',
+        } <= runtime_dependencies
 
 
 # !SECTION

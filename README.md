@@ -65,6 +65,7 @@ To get started:
 - Compare dependency names consistently across case, dots, underscores and hyphens.
 - Receive diagnostics for malformed dependency project tables; safety approvals require quoted
   `YYYY-MM-DD` expiry dates.
+- Validate optional ports in hosted approval URLs without fetching evidence.
 - Validate repository files without modifying them or requiring cloud credentials.
 
 ## Release Status
@@ -80,19 +81,23 @@ configured; see the [release policy].
 - Native test-summary acceptance in v0.12.0 and configurable Python/Swift layer boundaries; Python
   module ownership supports flat and `src/` layouts, including modules named `src.py`. See [result
   and boundary checks](docs/result-and-boundary-checks.md);
-- Opt-in Python and Swift source conventions, documentation contracts and redacted log checks;
-  quoted Python return annotations follow unquoted rules, log-root errors stay redacted, and log
-  patterns must be nonblank single-line literals. Source/log include and exclude patterns share
-  root-confinement validation with setting-specific diagnostics. See [source and log
-  checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
+- Opt-in Python and Swift source conventions, documentation contracts and redacted log checks; the
+  v0.13.0 Swift backend distinguishes declarations from imports through Tree-sitter concrete syntax
+  without a Swift installation; quoted Python return annotations follow unquoted rules, log-root
+  errors stay redacted, and log patterns must be nonblank single-line literals. Source/log include
+  and exclude patterns share root-confinement validation with setting-specific diagnostics. See
+  [source and log checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
 - Opt-in Swift compiler, package tools-version and scoped CI declaration checks; see [Swift
   toolchain policy](docs/swift-policy.md);
 - Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];
 - Local Markdown inline links/images, reference definitions, and heading or explicit HTML anchors,
-  with undefined full/collapsed labels and conflicting definitions rejected. Malformed URLs are
-  reported without skipping later links. Fenced/inline code and HTML comments are excluded, targets
-  cannot escape the repository, and fragment validation applies only to Markdown; generated and
-  vendored sources such as `node_modules` are excluded;
+  including collision-aware suffixes for repeated headings,
+  with undefined full/collapsed labels and conflicting definitions rejected. Angle-wrapped local
+  destinations accept optional double-quoted titles, including paths with spaces and fragments.
+  Malformed URLs and invalid decoded local paths are reported without skipping later links.
+  Fenced/inline code and HTML comments are excluded, targets cannot escape the repository, and
+  fragment validation applies only to Markdown; generated and vendored sources such as
+  `node_modules` are excluded;
 - Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
   policies];
 - Language-neutral standalone policy, explicit check profiles, JSON results and local/CI guardrail
@@ -101,6 +106,8 @@ configured; see the [release policy].
 - Named remote GitHub Actions references pinned to full commit SHAs;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
+- Opt-in npm root and literal resolved-pin checks for integer lockfile versions 2/3, including
+  prerelease/build metadata;
 - Python-version policy across package metadata, tool configuration, and workflows, including
   inline and block-list version matrices; and
 - Dated changelog entries with ASCII `MAJOR.MINOR.PATCH` release versions.
@@ -194,7 +201,8 @@ Every command accepts `--root`. The equivalent module entry point is
 `python -m popo`.
 
 `source-inventory` reads committed Git blobs and reports malformed blob responses without including
-raw header text or source bytes in diagnostic messages; see [source inventories].
+raw header text or source bytes in diagnostic messages; see [source inventories]. Hashing uses
+read-only buffer views; the complete Git batch remains in memory.
 
 `check-all` defaults to the documentation, action-pin, dependency, and Python-policy checks.
 Explicit `checks` or `--profile NAME` replace that selection; see the [guardrail guide] for Swift,
@@ -314,9 +322,10 @@ hosted-platform limitation.
 `popo audit-github-settings --root . --format json` reads explicit `[tool.popo.hosted]` expectations
 through authenticated GitHub CLI GET requests. It checks private reporting, secret scanning/push
 protection, labels, default-branch CODEOWNERS, and required check contexts from effective rules plus
-legacy protections. See the [hosted audit guide] for configuration, exceptions, evidence limits, and
-exit behavior. This opt-in command is excluded from `check-all` and ordinary `make check`; those
-checks remain offline.
+legacy protections. Malformed or parser-depth-limited CLI JSON remains unavailable evidence;
+malformed required-check objects cannot establish confirmed absence. See the [hosted audit guide]
+for configuration, exceptions, evidence limits, and exit behavior. This opt-in command is excluded
+from `check-all` and ordinary `make check`; those checks remain offline.
 
 ## Design Boundaries
 

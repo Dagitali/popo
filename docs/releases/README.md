@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.13 Series](#013-series)
 - [0.12 Series](#012-series)
 - [0.11 Series](#011-series)
 - [0.10 Series](#010-series)
@@ -36,6 +37,11 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Evidence Boundaries](#evidence-boundaries)
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
+
+## 0.13 Series
+
+- [v0.13.0] — 2026-10-29: Tree-sitter-backed Swift analysis, native Python/Swift abstraction
+  alignment, validation fixes and streamlined tests/docstrings; tagging/publication remain separate.
 
 ## 0.12 Series
 
@@ -193,6 +199,7 @@ prepared.
 [v0.10.0]: v0.10.0.md
 [v0.11.0]: v0.11.0.md
 [v0.12.0]: v0.12.0.md
+[v0.13.0]: v0.13.0.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md

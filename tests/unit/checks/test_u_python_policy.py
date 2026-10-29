@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from popo.checks.python_policy import validate
+from popo.checks.python_policy import _workflow_observations, validate
 from popo.config import PythonPolicyConfig
 from tests.support.files import FileWriter, snapshot_files
 
@@ -74,7 +74,19 @@ def policy(
 def unresolved_reference(
     request: pytest.FixtureRequest,
 ) -> str:
-    """Supply recognized version references with no matching declaration."""
+    """
+    Supply recognized version references with no matching declaration.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+
+    Returns
+    -------
+    str
+        Workflow expression selected for the unresolved-reference scenario.
+    """
     return str(request.param)
 
 
@@ -144,6 +156,45 @@ class TestPythonPolicy:
         )
 
     @pytest.mark.parametrize(
+        'version,supported',
+        [
+            ('3.12', False),
+            ('3.13', True),
+            ('3.14', True),
+            ('3.15', False),
+            ('4.0', False),
+        ],
+    )
+    def test_checker_runtime_policy(
+        self,
+        policy: PythonPolicyConfig,
+        version: str,
+        supported: bool,
+    ) -> None:
+        """
+        Accept supported runtimes and report exact out-of-policy diagnostics.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consistent policy inputs, isolated from the real checkout.
+        version : str
+            Explicit runtime at, within or outside the configured bounds.
+        supported : bool
+            Whether this runtime belongs to the declared supported range.
+        """
+        before = snapshot_files(policy.metadata.parent)
+        assert validate(policy, running_version=version) == (
+            []
+            if supported
+            else [
+                f'checker runtime: Python {policy.requires_python} is required; '
+                f'received {version}',
+            ]
+        )
+        assert snapshot_files(policy.metadata.parent) == before
+
+    @pytest.mark.parametrize(
         ('path', 'content', 'message'),
         [
             ('pyproject.toml', '[', 'invalid TOML'),
@@ -160,6 +211,8 @@ class TestPythonPolicy:
         message: str,
     ) -> None:
         """
+        Verify inconsistent files.
+
         Verify changed policy inputs produce the expected inconsistency
         diagnostic.
 
@@ -188,6 +241,8 @@ class TestPythonPolicy:
         policy: PythonPolicyConfig,
     ) -> None:
         """
+        Verify invalid specifier.
+
         Verify an invalid configured Python requirement becomes a policy
         diagnostic.
 
@@ -240,6 +295,8 @@ class TestPythonPolicy:
         valid: bool,
     ) -> None:
         """
+        Verify separate ruff configuration.
+
         Verify top-level settings in a separate Ruff file match the policy
         target.
 
@@ -342,20 +399,6 @@ class TestPythonPolicy:
         )
         assert validate(policy, running_version='3.13') == []
 
-    def test_unsupported_runtime(
-        self,
-        policy: PythonPolicyConfig,
-    ) -> None:
-        """
-        Verify an out-of-policy checker runtime produces a runtime diagnostic.
-
-        Parameters
-        ----------
-        policy : PythonPolicyConfig
-            Consistent policy inputs, isolated from the real checkout.
-        """
-        assert 'checker runtime' in validate(policy, running_version='3.12')[0]
-
     @pytest.mark.parametrize('version', ['3.12', 'banana'])
     def test_unsupported_workflow_version(
         self,
@@ -364,6 +407,8 @@ class TestPythonPolicy:
         version: str,
     ) -> None:
         """
+        Verify unsupported workflow version.
+
         Verify invalid or unsupported workflow versions produce an exact
         diagnostic.
 
@@ -393,7 +438,18 @@ class TestPythonPolicyInputBoundaries:
         write_file: FileWriter,
         parser: Literal['text', 'scoped'],
     ) -> None:
-        """Preserve runtime, local and per-workflow diagnostic order."""
+        """
+        Preserve runtime, local and per-workflow diagnostic order.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        parser : Literal['text', 'scoped']
+            Parser implementation or workflow reader mode under test.
+        """
         policy.python_version_file.write_text('3.12', encoding='utf-8')
         first = write_file(
             '.github/workflows/a.yml',
@@ -431,7 +487,16 @@ class TestPythonPolicyInputBoundaries:
         policy: PythonPolicyConfig,
         missing: bool,
     ) -> None:
-        """Avoid duplicate diagnostics for one package/Ruff metadata input."""
+        """
+        Avoid duplicate diagnostics for one package/Ruff metadata input.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        missing : bool
+            Whether the selected input or policy field is absent.
+        """
         if missing:
             policy.metadata.unlink()
         else:
@@ -444,7 +509,14 @@ class TestPythonPolicyInputBoundaries:
         self,
         policy: PythonPolicyConfig,
     ) -> None:
-        """Use one observation for package, mypy and embedded Ruff settings."""
+        """
+        Use one observation for package, mypy and embedded Ruff settings.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        """
         with patch.object(
             Path,
             'read_text',
@@ -470,6 +542,17 @@ class TestPythonPolicyInputBoundaries:
     ) -> None:
         """
         Reject unresolved declarations even when another version is supported.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        unresolved_reference : str
+            Unresolved workflow expression supplied by the fixture.
+        unresolved_first : bool
+            Whether an unresolved version precedes a valid declaration.
         """
         declarations = [
             'python-version: "3.13"',
@@ -504,7 +587,20 @@ class TestScopedPythonPolicy:
         scenario: str,
         message: str | None,
     ) -> None:
-        """Validate each scoped observation case with independent inputs."""
+        """
+        Validate each scoped observation case with independent inputs.
+
+        Parameters
+        ----------
+        policy : PythonPolicyConfig
+            Consumer-owned expectations used by the operation.
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        scenario : str
+            Selected parameterized behavior or input variant.
+        message : str | None
+            Expected error message or scenario diagnostic.
+        """
         workflow = policy.workflow_directory / 'ci.yml'
         if scenario == 'missing-workflow':
             workflow.unlink()
@@ -536,3 +632,66 @@ class TestScopedPythonPolicy:
             == expected
         )
         assert snapshot_files(tmp_path) == before
+
+
+class TestWorkflowObservationProvenance:
+    """Keep observation provenance independent of Python policy comparison."""
+
+    @pytest.mark.parametrize('parser', ('text', 'scoped'))
+    def test_reader_modes_retain_runtime_observations(
+        self,
+        tmp_path: Path,
+        parser: Literal['text', 'scoped'],
+    ) -> None:
+        """
+        Retain source and native selector without executing a workflow.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        parser : Literal['text', 'scoped']
+            Parser implementation or workflow reader mode under test.
+        """
+        path = tmp_path / 'ci.yml'
+        path.write_text(
+            'jobs:\n  build:\n    steps:\n      - with:\n'
+            '          python-version: "3.13"\n',
+            encoding='utf-8',
+        )
+        before = snapshot_files(tmp_path)
+        observations, failures = _workflow_observations(path, parser)
+        assert failures == []
+        assert len(observations) == 1
+        observation = observations[0]
+        assert observation.source == path
+        assert observation.value == '3.13'
+        assert observation.kind == 'runtime'
+        assert observation.location == (
+            'python-version'
+            if parser == 'text'
+            else 'jobs.build.steps[0].with.python-version'
+        )
+        assert snapshot_files(tmp_path) == before
+
+    def test_unresolved_legacy_reference_retains_its_value(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Leave unsupported textual values visible to membership checking.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        """
+        path = tmp_path / 'ci.yml'
+        value = '${{ env.MISSING }}'
+        path.write_text(f'python-version: {value}\n', encoding='utf-8')
+        observations, failures = _workflow_observations(path, 'text')
+        assert failures == []
+        assert tuple(item.value for item in observations) == (value,)
+
+
+# !SECTION

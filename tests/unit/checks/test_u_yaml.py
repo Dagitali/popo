@@ -23,13 +23,40 @@ def parse_yaml_fixture(
     request: pytest.FixtureRequest,
     write_file: FileWriter,
 ) -> Callable[[str], dict[str, object]]:
-    """Select a parsing boundary with an independent input per scenario."""
+    """
+    Select a parsing boundary with an independent input per scenario.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Pytest request carrying the selected fixture parameter.
+    write_file : FileWriter
+        Fixture writing UTF-8 files beneath the temporary consumer root.
+
+    Returns
+    -------
+    Callable[[str], dict[str, object]]
+        Callable writing and parsing YAML within the temporary consumer.
+    """
     if request.param == 'text':
         return parse_mapping
 
     def parse(
         source: str,
     ) -> dict[str, object]:
+        """
+        Write YAML to a temporary input and return its parsed mapping.
+
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+
+        Returns
+        -------
+        dict[str, object]
+            Parsed YAML mapping from the written scenario input.
+        """
         return read_mapping(write_file('ci.yml', source))
 
     return parse
@@ -43,6 +70,8 @@ def parse_yaml_fixture(
 
 class TestMappingTraversal:
     """
+    Cover mapping traversal.
+
     Preserve deterministic traversal without recursion or alias duplication.
     """
 
@@ -53,6 +82,11 @@ class TestMappingTraversal:
     ) -> None:
         """
         Visit mappings beyond Python's recursion limit without recursive calls.
+
+        Parameters
+        ----------
+        container : str
+            Container syntax used to surround the scenario input.
         """
         leaf: dict[str, object] = {'uses': './action'}
         value: object = leaf
@@ -64,6 +98,8 @@ class TestMappingTraversal:
 
     def test_order_and_shared_seen_set(self) -> None:
         """
+        Verify order and shared seen set.
+
         Keep depth-first order, shared-container deduplication and caller
         state.
         """
@@ -101,7 +137,18 @@ class TestYamlSnapshots:
         source: str,
         error: type[Exception],
     ) -> None:
-        """Reject unsafe or malformed inputs with both parsing interfaces."""
+        """
+        Reject unsafe or malformed inputs with both parsing interfaces.
+
+        Parameters
+        ----------
+        parse_yaml : Callable[[str], dict[str, object]]
+            Fixture parser writing YAML to an isolated consumer input.
+        source : str
+            Decoded input text to inspect without executing it.
+        error : type[Exception]
+            Error value or exception class injected by the scenario.
+        """
         with pytest.raises(error):
             parse_yaml(source)
 
@@ -111,7 +158,16 @@ class TestYamlSnapshots:
         parse_yaml: Callable[[str], dict[str, object]],
         source: str,
     ) -> None:
-        """Retain workflow event keys and safely construct cyclic aliases."""
+        """
+        Retain workflow event keys and safely construct cyclic aliases.
+
+        Parameters
+        ----------
+        parse_yaml : Callable[[str], dict[str, object]]
+            Fixture parser writing YAML to an isolated consumer input.
+        source : str
+            Decoded input text to inspect without executing it.
+        """
         document = parse_yaml(source)
         if source.startswith('on:'):
             assert document == {'on': 'push'}

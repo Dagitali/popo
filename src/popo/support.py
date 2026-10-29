@@ -48,7 +48,6 @@ def automation_paths(
     Hidden and generated directories are not explicitly excluded. Glob case
     sensitivity follows the host filesystem's rules.
     """
-
     if not directory.is_dir():
         return []
     return sorted((*directory.rglob('*.yml'), *directory.rglob('*.yaml')))
@@ -78,7 +77,6 @@ def normalize_release(
         zeroes, non-ASCII digits, prerelease suffixes and build metadata are
         not accepted.
     """
-
     if match := RELEASE_PATTERN.fullmatch(release):
         return match.group('version')
     raise ValueError(
@@ -109,7 +107,6 @@ def report(
     int
         One when failures exist; otherwise, zero.
     """
-
     if failures:
         for failure in failures:
             print(f'FAIL: {failure}')

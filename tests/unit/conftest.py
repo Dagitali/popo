@@ -43,7 +43,8 @@ def symlink_fixture() -> Callable[[Path, Path], None]:
         link : pathlib.Path
             New symlink location with an existing parent directory.
         target : pathlib.Path
-            Existing file or directory to reference.
+            File or directory to reference; relative or dangling file targets
+            are permitted without changing the stored link text.
 
         Raises
         ------

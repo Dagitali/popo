@@ -57,6 +57,22 @@ class TestSelfReferences:
         Each case writes only within pytest's temporary tree. A symlink targets
         the tree's parent but never writes there. Validation leaves source
         intact.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        symlink : Callable[[Path, Path], None]
+            Platform-aware fixture creating a symbolic link or skipping
+            support.
+        reference : str
+            Automation reference resolved against the consumer repository.
+        inputs : str
+            Input selection or declarations supplied to the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
         """
         write_file(
             'actions/test/action.yml',
@@ -87,6 +103,11 @@ class TestSelfReferences:
     ) -> None:
         """
         Accept revision-free self paths without weakening remote pin policy.
+
+        Parameters
+        ----------
+        reference : str
+            Automation reference resolved against the consumer repository.
         """
         assert is_pinned(reference)
         assert not is_pinned(reference + '@main')

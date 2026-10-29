@@ -115,6 +115,14 @@ inputs, unsupported expressions and read/parse errors as diagnostics. Legacy tex
 published resolution and I/O propagation behavior. Declaration and source-convention checks remain
 separate commands for both languages.
 
+Both policy adapters collect immutable tuples of `VersionObservation` records before version
+comparison. Swift local/workflow readers retain immutable observation batches; validation uses its
+own working list when adding an explicitly supplied compiler observation. Python's
+`_workflow_observations` reads one selected file; Swift's helper also discovers and confines its
+configured workflow selections. Legacy Python observations retain the input key without claiming
+YAML scope; scoped observations retain their resolved field selectors. Diagnostic wording and
+per-file ordering remain language-specific.
+
 ## Limits and Validation
 
 These checks inspect declarations, not workflow execution, trigger coverage, action identity or

@@ -93,7 +93,6 @@ def validate(
     does not establish target existence or container-image immutability.
     No network requests are made.
     """
-
     if not automation_directory.is_dir():
         return [f'automation directory does not exist: {automation_directory}']
     failures: list[str] = []

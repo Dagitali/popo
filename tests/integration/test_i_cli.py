@@ -74,6 +74,8 @@ reason = "Synthetic metadata"
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """
+        Verify all includes opted in contracts.
+
         Verify aggregate dispatch includes explicitly configured automation
         checks.
 
@@ -228,6 +230,8 @@ reason = "Synthetic metadata"
         message: str,
     ) -> None:
         """
+        Verify commands.
+
         Verify CLI dispatch returns the expected status and standard-output
         diagnostic.
 
@@ -274,6 +278,8 @@ reason = "Synthetic metadata"
         constraint: str,
     ) -> None:
         """
+        Verify dependency command.
+
         Verify CLI dependency checks accept minimum pins with optional
         comments.
 
@@ -300,6 +306,8 @@ reason = "Synthetic metadata"
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """
+        Verify module entry point.
+
         Verify module execution reports the installed version and exits
         successfully.
 
@@ -332,6 +340,8 @@ reason = "Synthetic metadata"
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """
+        Verify parser exits.
+
         Verify informational and invalid arguments use their documented exit
         channels.
 
@@ -371,6 +381,19 @@ class TestHeaderPolicyCommand:
     ) -> None:
         """
         Return success or failure for a complete consumer-owned header policy.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Fixture writing UTF-8 files beneath the temporary consumer root.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        content : str
+            Text written to the scenario input.
+        status : int
+            Expected CLI exit status or hosted response state.
         """
         write_file(
             'pyproject.toml',
@@ -404,7 +427,20 @@ class TestMissingOptionalPolicies:
         command: str,
         message: str,
     ) -> None:
-        """Return a diagnostic without contacting hosted services."""
+        """
+        Return a diagnostic without contacting hosted services.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        command : str
+            Command selected for invocation in the scenario.
+        message : str
+            Expected error message or scenario diagnostic.
+        """
         assert main([command, '--root', str(tmp_path)]) == 1
         assert message in capsys.readouterr().out
 

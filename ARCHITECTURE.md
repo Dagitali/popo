@@ -48,12 +48,13 @@ flowchart LR
 | Entry points | `src/popo/__main__.py`, `src/popo/cli.py` | Parse commands, select roots, dispatch checks, and return statuses |
 | Native commands | `src/popo/_commands.py` | Adapt offline checks and share their handler registry between individual and aggregate dispatch |
 | Configuration | `src/popo/config/` | Load consumer settings and domain-specific defaults; separate Python/Swift policy loading from parsing |
-| Validators | `src/popo/checks/` | Inspect files and return findings |
-| Source and artifact inputs | `src/popo/checks/_source_inputs.py` | Confine opt-in source/log discovery, deduplicate inputs and redact read failures |
+| Validators | `src/popo/checks/` | Inspect files and return findings; automation contracts reuse successful YAML reads within a run while validating each caller independently |
+| Source and artifact inputs | `src/popo/checks/_source_inputs.py` | Confine opt-in discovery, deduplicate selections and share redacted UTF-8 inspection across source/log/result checks |
 | Toolchain declarations | `src/popo/checks/_toolchain_policy.py` | Share scoped workflow observations; Python separates local/workflow findings, while Swift collects typed observations before comparison |
 | Source validation | `src/popo/checks/_source_validation.py` | Share discovery, guide checks and file reads; language-specific `_source_findings` owns parsing and convention checks |
-| Source declarations | `src/popo/checks/_source_declarations.py`, `_python_declarations.py`, `_swift_declarations.py` | Collect immutable shared facts through Python AST and bounded Swift lexical frontends |
+| Source declarations | `src/popo/checks/_source_declarations.py`, `_python_declarations.py`, `_swift_declarations.py`, `_python_syntax.py`, `_swift_syntax.py` | Collect immutable shared facts through Python AST and Tree-sitter Swift syntax with bounded contract/recovery rules |
 | Source documentation | `src/popo/checks/_python_documentation.py`, `_swift_documentation.py`, `_source_documentation.py` | Interpret NumPy/DocC notation into immutable callable evidence and share contract, width, file-limit and guide checks |
+| Actionlint compatibility | `src/popo/checks/actionlint.py` | Share per-run source snapshots and reference resolution across normalization/dependency collection; validate afresh on later runs |
 | Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
 | Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report text results |
 | Native reporting | `src/popo/reporting.py` | Preserve check identities and emit aggregate text or versioned JSON |

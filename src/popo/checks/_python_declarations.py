@@ -5,13 +5,18 @@ Collect Python declaration facts through the standard-library AST.
 """
 
 import ast
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from itertools import chain
 
+from ._python_syntax import DocstringOwner, documentation_lines, nodes
+from ._python_syntax import parse as parse_syntax
 from ._source_declarations import (
     CallableRequirements,
     DeclarationFacts,
+    ParameterSpan,
     SourceFacts,
+    parameter_lines,
 )
 
 # SECTION: TYPE ALIASES
@@ -43,7 +48,8 @@ NONVALUE_RETURN_TYPES = frozenset(
     },
 )
 
-DECLARATION_NODES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+# Native Python AST classes identify declarations before facts are derived.
+DECLARATION_NODE_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 # !SECTION
@@ -55,7 +61,7 @@ DECLARATION_NODES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 @dataclass(frozen=True, slots=True)
 class _Signature:
     """
-    Store one callable's signature observations before body analysis.
+    Store native callable signature observations.
 
     Attributes
     ----------
@@ -63,7 +69,7 @@ class _Signature:
         Documentable names in established AST grouping, excluding a leading
         positional self or cls receiver.
     parameter_lines : bool
-        Whether parameter/default spans satisfy the physical-layout rule.
+        Whether native parameter/default spans satisfy the layout rule.
     returns : bool
         Whether the return annotation alone requires a Returns section.
         Explicit value returns or yields can add requirements in _requirements.
@@ -75,6 +81,7 @@ class _Signature:
     -----
     Native AST arguments already provide parsed syntax. This record retains
     derived signature facts, not another syntax tree or body observations.
+    Its parameter fields structurally satisfy the shared SignatureRecord.
     """
 
     parameter_names: tuple[str, ...]
@@ -106,6 +113,7 @@ class Declaration:
         in declaration order; empty for functions and classes without them.
     """
 
+    # Structurally satisfies DeclarationRecord; native observations stay here.
     facts: DeclarationFacts
     annotated: bool = True
     instance_methods: tuple[str, ...] = ()
@@ -155,7 +163,7 @@ def _declaration(
     syntax: _DeclarationSyntax,
 ) -> Declaration:
     """
-    Convert one declaration's native syntax into facts and observations.
+    Convert one declaration's syntax into facts and observations.
 
     Parameters
     ----------
@@ -181,14 +189,14 @@ def _declaration(
             member.name
             for member in syntax.body
             if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and (parameters := [*member.args.posonlyargs, *member.args.args])
+            and (parameters := member.args.posonlyargs or member.args.args)
             and parameters[0].arg == 'self'
         )
         return Declaration(
             DeclarationFacts(
                 syntax.lineno,
                 'class',
-                ast.get_docstring(syntax) or '',
+                _documentation(syntax),
                 (),
             ),
             instance_methods=methods,
@@ -196,14 +204,12 @@ def _declaration(
     signature = _signature(syntax)
     requirements = _requirements(syntax, signature)
     return Declaration(
-        DeclarationFacts(
-            syntax.lineno,
-            'function',
-            ast.get_docstring(syntax) or '',
-            signature.parameter_names,
-            requirements.return_section,
-            requirements.raises,
-            signature.parameter_lines,
+        DeclarationFacts.from_requirements(
+            line=syntax.lineno,
+            kind='function',
+            documentation=_documentation(syntax),
+            signature=signature,
+            requirements=requirements,
         ),
         signature.annotated,
     )
@@ -213,7 +219,7 @@ def _declaration_syntax(
     tree: ast.Module,
 ) -> Iterator[_DeclarationSyntax]:
     """
-    Yield native declaration nodes from one breadth-first AST traversal.
+    Discover declaration syntax through native node-type classification.
 
     Parameters
     ----------
@@ -224,11 +230,11 @@ def _declaration_syntax(
     ------
     _DeclarationSyntax
         Native class, function and async-function nodes, including nested
-        declarations. Python supplies complete syntax nodes rather than
-        lexical records.
+        declarations, in breadth-first AST order. Python retains complete
+        native nodes; Swift normalizes native/recovered signature observations.
     """
-    for node in ast.walk(tree):
-        if isinstance(node, DECLARATION_NODES):
+    for node in nodes(tree):
+        if isinstance(node, DECLARATION_NODE_TYPES):
             yield node
 
 
@@ -254,6 +260,33 @@ def _declarations(
         yield _declaration(item)
 
 
+def _documentation(
+    syntax: DocstringOwner,
+) -> str:
+    """
+    Extract attached documentation using native syntax conventions.
+
+    Parameters
+    ----------
+    syntax : DocstringOwner
+        Native module, class or callable node that can own a docstring.
+
+    Returns
+    -------
+    str
+        Cleaned leading docstring, or an empty string when absent. Native AST
+        ownership supplies attachment; unrelated string expressions do not.
+
+    Notes
+    -----
+    Python needs no separate attachment/spacing observations, unlike Swift's
+    triple-slash convention. Cleaning preserves ast.get_docstring behavior.
+    Documentation-line spans are collected separately without cleaning.
+    No markup contracts are interpreted and no source is executed.
+    """
+    return ast.get_docstring(syntax) or ''
+
+
 def _file_overview(
     tree: ast.Module,
 ) -> bool:
@@ -274,15 +307,15 @@ def _file_overview(
     Notes
     -----
     Python's parser supplies module-docstring identity. Swift instead uses
-    lexical comment locations before the first code line. Neither front end
-    executes inspected code or validates the overview's prose quality.
+    concrete-syntax comment locations before the first code line. Neither
+    front end executes code or validates the overview's prose quality.
     """
-    return bool(ast.get_docstring(tree))
+    return bool(_documentation(tree))
 
 
 def _parameter_lines(
     node: _CallableSyntax,
-    parameters: list[_ParameterSyntax],
+    parameters: Sequence[_ParameterSyntax],
 ) -> bool:
     """
     Check physical parameter/default spans using native AST locations.
@@ -291,7 +324,7 @@ def _parameter_lines(
     ----------
     node : _CallableSyntax
         Function or async-function node identifying the declaration line.
-    parameters : list[_ParameterSyntax]
+    parameters : collections.abc.Sequence[_ParameterSyntax]
         Native ast.arg nodes from _parameters; defaults come from node.args.
 
     Returns
@@ -305,29 +338,58 @@ def _parameter_lines(
         return True
     args = node.args
     positional = [*args.posonlyargs, *args.args]
-    defaults = [
-        *zip(
+    defaults = chain(
+        zip(
             positional[len(positional) - len(args.defaults) :],
             args.defaults,
             strict=True,
         ),
-        *(
+        (
             (arg, default)
             for arg, default in zip(args.kwonlyargs, args.kw_defaults, strict=True)
             if default is not None
         ),
-    ]
-    return (
-        len({arg.lineno for arg in parameters}) == len(parameters)
-        and all(
-            arg.lineno > node.lineno and arg.lineno == arg.end_lineno
-            for arg in parameters
-        )
-        and all(
-            arg.lineno == default.lineno == default.end_lineno
-            for arg, default in defaults
-        )
     )
+    return parameter_lines(
+        node.lineno,
+        (ParameterSpan(arg.lineno, arg.end_lineno) for arg in parameters),
+    ) and all(
+        arg.lineno == default.lineno == default.end_lineno for arg, default in defaults
+    )
+
+
+def _parameter_names(
+    node: _CallableSyntax,
+    parameters: Sequence[_ParameterSyntax],
+) -> tuple[str, ...]:
+    """
+    Interpret documentable names from native parameter syntax.
+
+    Parameters
+    ----------
+    node : _CallableSyntax
+        Callable node identifying positional receiver placement.
+    parameters : collections.abc.Sequence[_ParameterSyntax]
+        Native argument nodes in the established _parameters grouping order.
+        The sequence is inspected without modification.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Names excluding an initial positional self or cls receiver. An empty
+        tuple is a supported signature with no documentable parameters.
+
+    Notes
+    -----
+    Receiver exclusion does not waive annotation requirements. Unlike Swift's
+    bounded text interpretation, native AST arguments need no unsupported-name
+    marker. Layout checks remain separate; no defaults are executed.
+    """
+    positional = node.args.posonlyargs or node.args.args
+    names = [arg.arg for arg in parameters]
+    if positional and positional[0].arg in {'self', 'cls'}:
+        names.remove(positional[0].arg)
+    return tuple(names)
 
 
 def _parameters(
@@ -363,7 +425,7 @@ def _requirements(
     signature: _Signature,
 ) -> CallableRequirements:
     """
-    Derive callable return and exception documentation requirements.
+    Derive callable result and exception documentation requirements.
 
     Parameters
     ----------
@@ -376,15 +438,19 @@ def _requirements(
     -------
     CallableRequirements
         Yields for generators, otherwise Returns for a value-bearing annotation
-        or explicit value return, and raise coverage for explicit statements.
-        None-valued returns alone do not require a section. Nested scopes do
-        not contribute; locally caught raises still require documentation.
+        or explicit value return, plus exception documentation for explicit
+        raise statements. None-valued returns alone do not require a section.
+        Nested scopes do not contribute; locally caught raises still require
+        documentation.
 
     Notes
     -----
     Python combines annotations with AST body observations. Swift instead
     derives these requirements from bounded signatures; neither approach
-    resolves types, executes code or proves exception escape behavior.
+    resolves types, executes code or proves exception escape behavior. Shared
+    normalization selects the result section after native observations.
+    Stop scanning once yield and raise observations fully determine the
+    contract; later return observations cannot override a generator section.
     """
     returns = signature.returns
     yields = raises = False
@@ -397,17 +463,51 @@ def _requirements(
             returns |= item.value is not None and not (
                 isinstance(item.value, ast.Constant) and item.value.value is None
             )
-    return CallableRequirements(
-        'Yields' if yields else 'Returns' if returns else '',
-        raises,
+        if yields and raises:
+            break
+    return CallableRequirements.from_observations(
+        returns=returns,
+        yields=yields,
+        exceptions=raises,
     )
+
+
+def _returns(
+    annotation: ast.expr | None,
+) -> bool:
+    """
+    Determine whether native result syntax requires documentation.
+
+    Parameters
+    ----------
+    annotation : ast.expr or None
+        Native return annotation, or None when absent.
+
+    Returns
+    -------
+    bool
+        Whether the annotation spelling is outside NONVALUE_RETURN_TYPES.
+        Absent annotations do not require result documentation by themselves.
+        String-literal annotations use their exact contents; other expressions
+        use ast.unparse. Aliases and whitespace in quoted text are unresolved.
+
+    Notes
+    -----
+    Body returns and yields can add requirements later in _requirements.
+    Python's non-value spellings differ from Swift's Void/Never spellings;
+    this classification neither resolves types nor executes annotations.
+    """
+    text = ast.unparse(annotation) if annotation is not None else ''
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        text = annotation.value
+    return text not in NONVALUE_RETURN_TYPES
 
 
 def _signature(
     node: _CallableSyntax,
 ) -> _Signature:
     """
-    Extract one callable's signature observations from native AST nodes.
+    Extract one callable's native signature observations.
 
     Parameters
     ----------
@@ -428,21 +528,12 @@ def _signature(
     _requirements, which uses _body to exclude nested scopes. No consumer code
     executes.
     """
-    args = node.args
-    positional = [*args.posonlyargs, *args.args]
     parameters = _parameters(node)
-    names = [arg.arg for arg in parameters]
-    if positional and positional[0].arg in {'self', 'cls'}:
-        names.remove(positional[0].arg)
-    result_type = node.returns
-    annotation = ast.unparse(result_type) if result_type is not None else ''
-    if isinstance(result_type, ast.Constant) and isinstance(result_type.value, str):
-        annotation = result_type.value
-    returns = annotation not in NONVALUE_RETURN_TYPES
+    names = _parameter_names(node, parameters)
     return _Signature(
-        tuple(names),
+        names,
         _parameter_lines(node, parameters),
-        returns,
+        _returns(node.returns),
         node.returns is not None
         and all(arg.annotation is not None for arg in parameters),
     )
@@ -463,7 +554,8 @@ def parse(
     Parameters
     ----------
     source : str
-        Source text; modules are never imported or executed.
+        Decoded source text; consumer modules and defaults are not executed.
+        No consumer files are read or written.
 
     Returns
     -------
@@ -477,28 +569,25 @@ def parse(
     SyntaxError
         If the standard-library parser rejects the source. The file validator
         converts this into a location-only diagnostic.
+    UnicodeEncodeError
+        Direct text contains code points that cannot be encoded as UTF-8.
 
     Notes
     -----
     Positional-only, keyword-only, async and variadic signatures are included.
-    Nested functions and classes receive their own records. Their bodies do
-    not contribute return/yield/raise requirements to the enclosing function.
+    Discovery retains breadth-first AST order, rather than Swift's source
+    order. Nested functions and classes receive their own records. Their
+    bodies do not contribute return/yield/raise requirements to the enclosing
+    function.
     Quoted non-value return annotations use the same rules as unquoted ones.
     Explicit raises include locally caught ones; indirect exceptions and escape
     analysis are not inferred. Type annotations are observed, not validated.
     """
-    tree = ast.parse(source)
-    documentation: set[int] = set()
+    tree = parse_syntax(source)
     syntax = tuple(_declaration_syntax(tree))
-    for node in (tree, *syntax):
-        if ast.get_docstring(node, clean=False) is not None:
-            doc = node.body[0]
-            documentation.update(
-                range(doc.lineno, (doc.end_lineno or doc.lineno) + 1),
-            )
     return SourceFacts(
         _file_overview(tree),
-        tuple(sorted(documentation)),
+        documentation_lines((tree, *syntax)),
         tuple(_declarations(syntax)),
     )
 

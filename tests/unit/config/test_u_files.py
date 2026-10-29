@@ -4,6 +4,7 @@
 Reject malformed required-file and header policies before source inspection.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -23,8 +24,9 @@ class TestFilePolicyConfig:
         tmp_path: Path,
     ) -> None:
         """
-        Leave existing consumers unaffected when file tables are
-        absent.
+        Verify absent settings are opt in.
+
+        Leave existing consumers unaffected when file tables are absent.
 
         Parameters
         ----------
@@ -35,30 +37,39 @@ class TestFilePolicyConfig:
         assert load_headers_config(tmp_path) is None
 
     @pytest.mark.parametrize(
-        'extra',
+        'overrides,message',
         [
-            'format = "unsupported"',
-            'prefix = "{unknown}"',
-            'prefix = "{project.name}"',
-            'prefix = "{project!r}"',
-            'prefix = "{project:10}"',
-            'prefix = "{"',
-            'patterns = ["../outside"]',
-            'patterns = []',
-            'patterns = [1]',
-            'purpose-required = "false"',
-            'unknown = true',
-            'first-line = true',
-            'first-line = "x"\nfirst-line-prefix = "y"',
-            'required-text = [false]',
-            'preamble-prefixes = "schema"',
+            ({'format': 'unsupported'}, 'unsupported header format'),
+            *(
+                ({'prefix': prefix}, 'invalid header prefix template')
+                for prefix in (
+                    '{unknown}',
+                    '{project.name}',
+                    '{project!r}',
+                    '{project:10}',
+                    '{',
+                )
+            ),
+            ({'patterns': ['../outside']}, 'must stay inside the repository'),
+            ({'patterns': []}, 'header patterns must not be empty'),
+            ({'patterns': [1]}, 'header patterns must be an array'),
+            ({'purpose-required': 'false'}, 'purpose-required must be boolean'),
+            ({'unknown': True}, 'unknown header rule setting'),
+            ({'first-line': True}, 'use one string first-line or first-line-prefix'),
+            (
+                {'first-line': 'x', 'first-line-prefix': 'y'},
+                'use one string first-line or first-line-prefix',
+            ),
+            ({'required-text': [False]}, 'required-text must be an array'),
+            ({'preamble-prefixes': 'schema'}, 'preamble-prefixes must be an array'),
         ],
     )
     def test_invalid_header_rules(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        extra: str,
+        overrides: dict[str, object],
+        message: str,
     ) -> None:
         """
         Reject malformed patterns, templates and directive contracts.
@@ -69,48 +80,56 @@ class TestFilePolicyConfig:
             Isolated temporary consumer root.
         write_file : FileWriter
             UTF-8 writer creating synthetic policy inputs.
-        extra : str
+        overrides : dict[str, object]
             Malformed header configuration overriding valid fixture fields.
+        message : str
+            Specific diagnostic for the intended rule-contract violation.
         """
         fields = {
-            'patterns': '["*.py"]',
-            'format': '"python"',
-            'prefix': '"{filename}"',
-        }
-        for line in extra.splitlines():
-            key, value = line.split('=', 1)
-            fields[key.strip()] = value.strip()
+            'patterns': ['*.py'],
+            'format': 'python',
+            'prefix': '{filename}',
+        } | overrides
         body = (
             '[tool.popo.headers]\nproject = "Sample"\nnotice = "Copyright"\n'
             '[[tool.popo.headers.rules]]\n'
         )
         write_file(
             'pyproject.toml',
-            body + '\n'.join(f'{key} = {value}' for key, value in fields.items()),
+            body
+            + '\n'.join(
+                f'{key} = {json.dumps(value)}' for key, value in fields.items()
+            ),
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'extra',
+        'overrides,message',
         [
-            'unknown = true',
-            'project = false',
-            'ignored-directories = ["../outside"]',
-            'ignored-directories = ["*"]',
-            'exceptions = "skip"',
-            'rules = []',
+            ({'unknown': 'true'}, 'unknown tool.popo.headers setting'),
+            ({'project': 'false'}, 'project must be a non-empty string'),
+            (
+                {'ignored-directories': '["../outside"]'},
+                'ignored-directories must contain literal directory names',
+            ),
+            (
+                {'ignored-directories': '["*"]'},
+                'ignored-directories must contain literal directory names',
+            ),
+            ({'exceptions': '"skip"'}, 'headers.exceptions must be an array'),
+            ({'rules': '[]'}, 'headers.rules must be a nonempty array'),
         ],
     )
     def test_invalid_header_tables(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        extra: str,
+        overrides: dict[str, str],
+        message: str,
     ) -> None:
         """
-        Fail malformed top-level settings instead of silently weakening
-        scope.
+        Fail malformed top-level settings instead of silently weakening scope.
 
         Parameters
         ----------
@@ -118,32 +137,41 @@ class TestFilePolicyConfig:
             Isolated temporary consumer root.
         write_file : FileWriter
             UTF-8 writer creating synthetic policy inputs.
-        extra : str
-            Malformed header configuration overriding valid fixture fields.
+        overrides : dict[str, str]
+            Raw TOML field values replacing otherwise valid header settings.
+        message : str
+            Diagnostic identifying the intended top-level contract violation.
         """
-        identity = '' if extra.startswith('project =') else 'project = "Sample"\n'
-        rules = (
-            ''
-            if extra.startswith('rules =')
-            else (
-                '\n[[tool.popo.headers.rules]]\npatterns=["*"]\nformat="raw"\nprefix="X"'
-            )
-        )
+        fields = {
+            'project': '"Sample"',
+            'notice': '"Copyright"',
+            'rules': '[{patterns=["*"],format="raw",prefix="X"}]',
+        } | overrides
         write_file(
             'pyproject.toml',
-            '[tool.popo.headers]\n' + identity + 'notice="Copyright"\n' + extra + rules,
+            '[tool.popo.headers]\n'
+            + '\n'.join(f'{key} = {value}' for key, value in fields.items()),
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'entry',
+        'entry,message',
         [
-            'patterns = ["*.bin"]',
-            'patterns = []\nreason = "Binary"',
-            'patterns = ["../outside"]\nreason = "Binary"',
-            'patterns = ["*.bin"]\nreason = "   "',
-            'patterns = ["*.bin"]\nreason = "Binary"\nunknown = true',
+            ('patterns = ["*.bin"]', 'requires patterns and reason'),
+            (
+                'patterns = []\nreason = "Binary"',
+                'exception patterns must not be empty',
+            ),
+            (
+                'patterns = ["../outside"]\nreason = "Binary"',
+                'exception patterns must stay inside the repository',
+            ),
+            ('patterns = ["*.bin"]\nreason = "   "', 'reason must not be blank'),
+            (
+                'patterns = ["*.bin"]\nreason = "Binary"\nunknown = true',
+                'requires patterns and reason',
+            ),
         ],
     )
     def test_invalid_preservation_exceptions(
@@ -151,6 +179,7 @@ class TestFilePolicyConfig:
         tmp_path: Path,
         write_file: FileWriter,
         entry: str,
+        message: str,
     ) -> None:
         """
         Require safe exception patterns and a meaningful explicit reason.
@@ -163,6 +192,8 @@ class TestFilePolicyConfig:
             Writer for the malformed policy fixture.
         entry : str
             Invalid exception fields supplied by the scenario.
+        message : str
+            Specific preservation-contract diagnostic expected for the input.
         """
         write_file(
             'pyproject.toml',
@@ -177,21 +208,32 @@ prefix = "HEADER"
 """
             + entry,
         )
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
 
     @pytest.mark.parametrize(
-        'setting',
+        'setting,message',
         [
-            'required = []',
-            'required = "README.md"',
-            'other = []',
-            'required = ["../outside"]',
-            'required = ["/absolute"]',
-            'required = ["*.md"]',
-            'required = ["C:/outside"]',
-            'required = ["same", "same"]',
-            'required = [1]',
+            ('required = []', 'files.required must not be empty'),
+            ('required = "README.md"', 'files.required must be an array'),
+            ('other = []', 'requires only required'),
+            *(
+                (
+                    f'required = {json.dumps([path])}',
+                    'files.required must stay inside the repository',
+                )
+                for path in (
+                    '../outside',
+                    '/absolute',
+                    '*.md',
+                    'C:/outside',
+                    r'nested\outside',
+                    'file?.md',
+                    '[abc].md',
+                )
+            ),
+            ('required = ["same", "same"]', 'files.required contains duplicates'),
+            ('required = [1]', 'files.required must be an array'),
         ],
     )
     def test_invalid_required_policy(
@@ -199,10 +241,12 @@ prefix = "HEADER"
         tmp_path: Path,
         write_file: FileWriter,
         setting: str,
+        message: str,
     ) -> None:
         """
-        Reject empty, unsafe, ambiguous and misspelled required-file
-        inputs.
+        Verify invalid required policy.
+
+        Reject empty, unsafe, ambiguous and misspelled required-file inputs.
 
         Parameters
         ----------
@@ -212,9 +256,11 @@ prefix = "HEADER"
             UTF-8 writer creating synthetic policy inputs.
         setting : str
             Invalid required-file configuration supplied by the scenario.
+        message : str
+            Specific path, field-shape or duplicate diagnostic expected.
         """
         write_file('pyproject.toml', '[tool.popo.files]\n' + setting)
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match=message):
             load_required_files_config(tmp_path)
 
     def test_valid_header_policy(
@@ -223,8 +269,9 @@ prefix = "HEADER"
         write_file: FileWriter,
     ) -> None:
         """
-        Keep identity, ordered formats and explicit exception reasons
-        intact.
+        Verify valid header policy.
+
+        Keep identity, ordered formats and explicit exception reasons intact.
 
         Parameters
         ----------
@@ -258,8 +305,9 @@ reason = "Binary artwork"
         write_file: FileWriter,
     ) -> None:
         """
-        Resolve root paths while leaving existence checks to the
-        validator.
+        Verify valid required policy.
+
+        Resolve root paths while leaving existence checks to the validator.
 
         Parameters
         ----------

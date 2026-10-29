@@ -104,6 +104,9 @@ domain-specific policy fixtures local to their test module unless multiple layer
 observations live in `tests/support/hosted.py`, with prefixed fixture names and function scope so
 mutable API responses remain isolated. Hosted configuration cases belong in `unit/config/`,
 GET-adapter and observation cases in `unit/checks/`, and public CLI reporting in `integration/`.
+Python boundary consumers in `tests/support/python_boundaries.py` share inert source and policy
+cases across native checker unit tests and direct/aggregate CLI integration tests.
+
 Parameterized CLI-format fixtures in `integration/conftest.py` cover default text, explicit text and
 JSON independently for hosted and native commands; invalid configuration must fail before the
 observer runs. A shared function-scoped selection factory in that conftest configures individual,

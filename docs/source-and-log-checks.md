@@ -119,14 +119,26 @@ the declaration line. These switches default to false; Swift does not inherit Py
 alphabetical-method policies. Documentation width defaults to 79 physical characters and file length
 to 1000 physical lines.
 
-Lexical masking excludes line comments, nested block comments, ordinary strings, multiline strings
-and raw strings before finding line-leading declarations. Balanced parentheses and type/default
-separators support named callable signatures and multiline parameters. Recognized signatures that
-cannot be inspected fail when callable checks are enabled. Declarations sharing a physical line,
-operator functions, regex literals, macros, semantic resolution and the full Swift grammar are
-outside this lexical subset; both conditional-compilation branches are inspected. Block DocC
-comments do not substitute for the configured `///` convention. This is not SwiftSyntax or a
-compiler; keep compiler, DocC and representative syntax tests in the consumer's validation.
+The v0.13.0 Swift backend uses [Tree-sitter Python bindings] and the [Swift grammar] to locate
+comments, ordinary/multiline/raw strings and regex literals, preserving character offsets and line
+numbers across UTF-8 text. Native syntax nodes discover declarations, including declarations sharing
+a physical line. Selective-import keywords do not create declaration records. Documentation attaches
+across attributes, but is not borrowed by later same-line members. Callable and closure bodies do
+not supply member declarations.
+
+Balanced parentheses and type/default separators retain bounded named-callable contract rules.
+Recognized signatures that cannot be inspected fail when callable checks are enabled; operator
+functions remain unsupported by these contract rules. If the grammar recovers malformed or
+unsupported source, bounded lexical declaration discovery preserves existing diagnostics. This
+recovery does not prove valid Swift syntax. Macro expansion, type/symbol resolution and conditional
+compilation are not evaluated; both branches are inspected. Entire literals, including
+interpolation, are masked. Block DocC comments do not replace the configured `///` convention.
+Retain compiler, DocC and representative consumer syntax tests independently.
+
+The two runtime packages are installed with Popo; minimum constraints track their declared lower
+bounds. No Swift compiler, SwiftSyntax helper, grammar generation or network access is needed while
+running checks after installation. The Python collector continues to use its standard-library AST;
+both front ends produce the same shared facts and use the common post-parse evaluation pipeline.
 
 The earlier development names `check-swift-documentation`, `swift-documentation` and `swift_documentation.py`
 were replaced by `check-swift-source`, `swift-source` and `swift_source.py`. No compatibility alias
@@ -140,38 +152,101 @@ as unknown settings; update consumer policy before adopting this revision. No co
 are provided for these pre-release names.
 
 Each language has a declaration frontend and documentation interpreter. `_python_declarations.py`
-collects AST facts; `_swift_declarations.py` collects bounded lexical facts.
-`_python_documentation.py` interprets NumPy sections and `_swift_documentation.py` interprets DocC
-fields. Both expose `_documentation`, `_parameters` and `_section` with matching roles and
-documented contracts. Each `_declaration_findings` checks one declaration before file-level
-aggregation; shared `overview_findings` reports the file-overview policy using collector-supplied
-facts. Presence and spacing decisions stay in their language interpreters. `_documentation` yields
-shared immutable `CallableDocumentation` evidence for parameter names and required result/exception
-content. NumPy retains grouped and starred names, Returns/Yields/Raises sections and case-sensitive
-headings. DocC retains singular/grouped entries, optional name backticks, Returns/Throws fields and
-case-insensitive labels. Declaration/member requirements and Swift documentation spacing remain
-language-specific policies. Both consume the same immutable declaration/source fact model and shared
-contract checks. Source validators own discovery, reading and reporting, while shared configuration
-remains in `popo.config.source_checks`. This alignment does not add Swift annotation/method-order
-rules or replace Python's `Yields` convention.
+collects AST facts through `_python_syntax.py`, sharing native parsing and redacted syntax
+diagnostics with Python boundaries. The syntax layer also collects physical docstring spans without
+rediscovering declarations. `_swift_declarations.py` collects concrete-syntax facts through
+`_swift_syntax.py`, retaining bounded signature rules and lexical recovery. Its local
+`ParsedSwiftSource` view holds Tree-sitter nodes and masked text; it is not the SwiftSyntax library.
+Python retains native `ast.Module` nodes rather than introducing an equivalent wrapper. Both syntax
+modules expose `documentation_lines`: Python uses caller-selected AST docstring owners, while Swift
+checks native comment nodes against the original UTF-8 source. Both also expose `nodes`: Python
+retains native breadth-first traversal, including f-string expressions, while Swift retains
+depth-first named-node traversal and treats masked literals as leaves. Python's `DocstringOwner`
+union identifies four eligible AST owner types; Swift needs no alias for its single native `Node`
+type. Python's `syntax_findings` formats raised parse failures, while Swift keeps recovery
+observations in its parsed-source view. These differences preserve the native parser contracts.
+Swift shielding remains separate so grammar recovery cannot turn hidden comment text into
+documentation. `_python_documentation.py` interprets NumPy sections and `_swift_documentation.py`
+interprets DocC fields. Both expose `_documentation`, `_parameter_names` and `_section` with
+matching roles and documented contracts. Each `_declaration_findings` derives native
+`DocumentationPresence` observations. Shared `declaration_findings` evaluates required presence or
+spacing before callable contracts; missing documentation does not suppress those contracts. Python
+truthiness, Swift whitespace handling and nominal/member switches stay in the native adapters.
+Shared `overview_findings` reports the file-overview policy using collector-supplied facts.
+`_documentation` yields shared immutable `CallableDocumentation` evidence for parameter names and
+required result/exception content. Both native `_documentation` adapters delegate evidence assembly
+to `DIALECT.interpret`. Their immutable `DocumentationDialect` records bind native parameter/section
+readers and explicit `result_section`/`exception_section` label mappings; these implementation
+callbacks are not consumer configuration. Name readers may return any iterable; shared evidence
+assembly consumes it once and freezes/deduplicates names without changing case. NumPy retains
+grouped and starred names, Returns/Yields/Raises sections and case-sensitive headings. DocC retains
+singular/grouped entries, optional name backticks, Returns/Throws fields and case-insensitive
+labels. Declaration/member requirements and Swift documentation spacing remain language-specific
+policies. Both consume the same immutable declaration/source fact model and shared contract checks.
+Source validators own discovery, reading and reporting, while shared configuration remains in
+`popo.config.source_checks`. This alignment does not add Swift annotation/method-order rules or
+replace Python's `Yields` convention.
 
 Both collectors use `_declaration_syntax` to discover syntax and `_declarations` to yield final
 `Declaration` records. In both modules, `_declaration` converts one discovered declaration,
 including nominal declarations and callables; `_declarations` preserves discovery order while
 iterating those conversions. `_parameters` extracts `_ParameterSyntax` values, and
-`_parameter_lines` checks their physical layout. Python aliases native `ast.arg` nodes; Swift uses
-immutable records with named `offset` and `text` fields, preserving lexical spans and nested
-type/default delimiters. Python's `_DeclarationSyntax` aliases native AST nodes; Swift's record of
-that name retains lexical positions and bounded callable facts. Both expose `_signature` and
-immutable `_Signature` observations with named parameter/layout fields. Python reads the parser's
-existing signatures and retains annotation facts before body analysis; Swift balances source text
-and retains trailing signature text and offsets. Swift excludes callable bodies from member
-discovery. Both `_requirements` helpers produce the same immutable `CallableRequirements`
-return/exception model. Python combines annotation observations with explicit returns, yields and
-raises outside nested scopes; Swift reads return types and throws/rethrows from bounded signatures.
-Parameter requirements remain separate in the shared `DeclarationFacts` model. These differences
-remain intentional, along with Python annotation/ method-order facts and Swift documentation
+`_parameter_names` interprets documentable names, retaining Python receiver exclusions and Swift
+internal/unnamed argument rules and unsupported markers. `_parameter_lines` checks physical layout.
+Both adapters supply shared `ParameterSpan` observations to one evaluator for distinct single-line
+parameters after the declaration. Python retains its sole-`self` exception and separate AST
+default-expression checks; Swift derives spans from masked signature text, including defaults.
+Python aliases native `ast.arg` nodes; Swift uses immutable records with named `offset` and `text`
+fields, preserving lexical spans and nested type/default delimiters. Python's `_DeclarationSyntax`
+aliases native AST nodes; Swift's record of that name retains lexical positions and bounded callable
+facts. Both expose `_signature` and immutable `_Signature` observations with named parameter/layout
+fields. Python reads the parser's existing signatures and retains annotation facts before body
+analysis; Swift balances source text and retains trailing signature text and offsets. Swift excludes
+callable bodies from member discovery. Both `_returns` helpers classify native result syntax against
+language-specific non-value spellings without resolving types. Python retains exact
+quoted-annotation handling and Swift retains bounded return-arrow interpretation. Both
+`_requirements` helpers produce the same immutable `CallableRequirements` result/exception model.
+Its `from_observations` factory selects the shared `ResultSection` vocabulary, giving Yields
+priority over Returns while keeping exception requirements independent. Python combines annotation
+observations with explicit returns, yields and raises outside nested scopes; Swift reads return
+types and throws/rethrows from bounded signatures. Native signature records expose parameter
+names/layout through the structural `SignatureRecord` contract, retaining their additional
+annotation or lexical fields. The shared fact factory also accepts Swift's normalized declaration
+record through the same contract.
+
+Both collectors use `DeclarationFacts.from_requirements` to assemble shared fields without manually
+unpacking the result/exception model. Parameter requirements remain separate in `DeclarationFacts`;
+native syntax, attachment and annotation observations remain in their adapters. These differences
+remain intentional, along with Python annotation/method-order facts and Swift documentation
 attachment and spacing facts.
+
+Shared requirement records use `result_section` and `exception_required`; callable documentation
+evidence uses `result_documented` and `exception_documented`. These names cover NumPy
+Returns/Yields/Raises and DocC Returns/Throws without renaming the public `return-docs` or
+`raises-docs` switches or their diagnostics.
+
+Both documentation adapters isolate policy observations in `_presence`, returning the shared
+`DocumentationPresence` record before contract evaluation. Python retains cleaned-docstring
+truthiness and one declaration switch; Swift retains nominal/member switches, whitespace handling
+and spacing precedence. Both evidence interfaces accept the shared `ResultSection` vocabulary.
+
+Both source adapters use `signature_findings` for parameter-layout diagnostics. Swift enables
+unsupported-signature reporting only for recognized callables when a contract/layout switch is
+active; that finding precedes layout. Python retains annotation and method-order diagnostics before
+layout for each declaration.
+
+Both native `Declaration` records satisfy the structural `DeclarationRecord` protocol through their
+read-only `facts` field. `SourceFacts` and generic source/documentation inspectors require that
+contract while retaining each native record type. No inheritance, runtime protocol checks or
+replacement syntax model is imposed.
+
+Both collectors accept read-only parameter sequences for name/layout interpretation. Swift
+attachment/overview helpers accept read-only documentation-line collections and reuse the syntax
+view's existing frozenset; `lexical_view` retains its set-returning compatibility contract.
+
+Both collectors isolate attached-text extraction in `_documentation`. Python uses native AST
+docstring ownership and cleaning; Swift also returns attachment-location and spacing observations.
+Markup interpretation remains separate from these syntax/attachment helpers.
 
 Both collectors isolate file-overview detection in `_file_overview`. Python requires the module's
 leading nonempty docstring; a class or callable docstring alone is insufficient. Swift accepts a
@@ -231,3 +306,6 @@ Prefer a separate log command when artifacts only exist after tests. Consumers w
 profiles must add the new command names themselves. Before removing a local checker, upgrade an
 immutable dependency pin to a released version containing the command, validate equivalent policy
 and representative negative cases, and preserve integration tests for the installed public CLI.
+
+[Swift grammar]: https://github.com/alex-pinkus/tree-sitter-swift
+[Tree-sitter Python bindings]: https://github.com/tree-sitter/py-tree-sitter

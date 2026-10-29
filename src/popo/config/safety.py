@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import NamedTuple, cast
 
-from ._common import ConfigurationError, read_popo, require_table
+from ._common import ConfigurationError, parse_iso_date, read_popo, require_table
 
 # SECTION: DATA CLASSES
 
@@ -109,7 +109,7 @@ def _exception(
         blank/non-string, or expiry is not a canonical quoted ISO date.
     """
     entry = require_table(value, name='safety exception')
-    if set(entry) != {
+    if entry.keys() != {
         'workflow',
         'trigger',
         'owner',
@@ -131,9 +131,7 @@ def _exception(
         raise ConfigurationError('exception details must be nonempty strings')
     owner, reason, approver, expiry = map(str, details)
     try:
-        expires = date.fromisoformat(expiry)
-        if expires.isoformat() != expiry:
-            raise ValueError('noncanonical date')
+        expires = parse_iso_date(expiry)
     except ValueError as error:
         raise ConfigurationError(
             'exception expires must be a quoted ISO date',
@@ -144,7 +142,24 @@ def _exception(
 def _path(
     value: object,
 ) -> str:
-    """Require a nonempty repository-relative policy path."""
+    """
+    Require a nonempty repository-relative policy path.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    str
+        The original nonblank repository-relative path string.
+
+    Raises
+    ------
+    ConfigurationError
+        If the value is blank, absolute or contains a parent path component.
+    """
     if (
         not isinstance(value, str)
         or not value.strip()
@@ -188,7 +203,7 @@ def load_safety_config(
     root = root.resolve()
     popo = read_popo(root)
     table = require_table(popo.get('safety', {}), name='tool.popo.safety')
-    if set(table) - {'workflow-globs', 'exceptions', 'npm-pairs'}:
+    if table.keys() - {'workflow-globs', 'exceptions', 'npm-pairs'}:
         raise ConfigurationError('unknown tool.popo.safety setting')
     arrays: dict[str, list[object]] = {}
     for key in ('workflow-globs', 'exceptions', 'npm-pairs'):
@@ -200,7 +215,7 @@ def load_safety_config(
     pairs: list[tuple[str, str]] = []
     for item in arrays['npm-pairs']:
         pair = require_table(item, name='npm-pairs entry')
-        if set(pair) != {'manifest', 'lockfile'}:
+        if pair.keys() != {'manifest', 'lockfile'}:
             raise ConfigurationError('npm-pairs requires manifest and lockfile')
         pairs.append((_path(pair['manifest']), _path(pair['lockfile'])))
     exceptions = tuple(_exception(item) for item in arrays['exceptions'])

@@ -1,52 +1,77 @@
 """
 :mod:`popo.checks.swift_boundaries` module.
 
-Inspect Swift import and symbol boundaries through lexical masking.
+Inspect Swift import and symbol boundaries through concrete syntax.
 """
 
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from pathlib import Path
 
 from popo.config.source_boundaries import BoundaryConfig, BoundaryLayer
 
-from ._source_boundaries import ImportReference, validate_boundaries
-from ._swift_declarations import lexical_view
-
-# SECTION: CONSTANTS
-
-
-IMPORT_PATTERN = re.compile(
-    r'(?m)^[ \t]*(?:@\w+(?:\([^\n]*\))?\s+)*import\s+'
-    r'(?:(?:struct|class|enum|protocol|typealias|func|let|var)\s+)?(\w+)',
+from ._source_boundaries import (
+    ImportReference,
+    SymbolReference,
+    import_findings,
+    symbol_findings,
+    validate_boundaries,
 )
-TYPE_PATTERN = re.compile(
-    r'(?m)^[ \t]*(?:(?:@\w+(?:\([^\n]*\))?|public|private|fileprivate|'
-    r'internal|open|package|final|indirect|nonisolated|distributed)\s+)*'
-    r'(?:struct|class|enum|actor|protocol|typealias)\s+'
-    r'(?!(?:func|var|let|subscript)\b)`?(\w+)',
-)
-
-
-# !SECTION
-
+from ._swift_syntax import ParsedSwiftSource, nodes
+from ._swift_syntax import parse as parse_syntax
 
 # SECTION: PROTECTED CLASSES
 
 
 class _SwiftBoundaryAnalyzer:
-    """Adapt lexical masking, declaration ownership and Swift token rules."""
+    """
+    Adapt native syntax, ownership and dependency rules to BoundaryAnalyzer.
+
+    Notes
+    -----
+    Native helpers collect imports, symbols and ownership targets. The shared
+    runner owns discovery, read reuse and layer/file ordering; this adapter
+    neither executes source nor resolves runtime dependency bindings.
+    """
 
     @staticmethod
     def findings(
-        source: str,
+        source: ParsedSwiftSource,
         path: Path,
         root: Path,
         layer: BoundaryLayer,
         forbidden_targets: set[str],
         owned_targets: set[str],
     ) -> list[str]:
-        """Exclude locally owned types before adding explicit symbol rules."""
+        """
+        Evaluate native boundary rules without modifying target ownership.
+
+        Parameters
+        ----------
+        source : ParsedSwiftSource
+            Parsed Swift syntax view used for native boundary observations.
+        path : Path
+            Source path inside root, used to label boundary diagnostics.
+        root : Path
+            Consumer repository root used to resolve and label input paths.
+        layer : BoundaryLayer
+            Boundary layer supplying import and symbol restrictions.
+        forbidden_targets : set[str]
+            Ownership targets belonging to forbidden layers.
+        owned_targets : set[str]
+            Ownership targets belonging to the current layer.
+
+        Returns
+        -------
+        list[str]
+            Ordered diagnostics for the native source and configured boundary
+            rules.
+
+        Notes
+        -----
+        Swift excludes locally owned types from forbidden-layer targets before
+        adding explicit symbols. Neither supplied target set is modified.
+        """
         forbidden_symbols = (forbidden_targets - owned_targets) | set(
             layer.forbidden_symbols,
         )
@@ -61,18 +86,68 @@ class _SwiftBoundaryAnalyzer:
     def parse(
         source: str,
         relative: str,
-    ) -> tuple[str, list[str]]:
-        """Mask comments and strings without asserting valid Swift syntax."""
-        return lexical_view(source)[0], []
+    ) -> tuple[ParsedSwiftSource, list[str]]:
+        """
+        Collect native syntax and redacted parse findings without execution.
+
+        Parameters
+        ----------
+        source : str
+            Decoded input text to inspect without executing it.
+        relative : str
+            Repository-relative path used in diagnostics or input selection.
+
+        Returns
+        -------
+        tuple[ParsedSwiftSource, list[str]]
+            Recovery-capable Swift syntax view and an empty parse-diagnostic
+            list.
+
+        Raises
+        ------
+        UnicodeEncodeError
+
+            If the supplied text cannot be encoded for the native parser.
+
+        Notes
+        -----
+        Swift retains recovery nodes and returns no parse diagnostics. Recovery
+        does not establish compiler validity; parser exceptions propagate.
+        """
+        return parse_syntax(source), []
 
     @staticmethod
     def targets(
         path: Path,
         root: Path,
-        source: str | None,
+        source: ParsedSwiftSource | None,
     ) -> set[str]:
-        """Index declared types only when masked source is available."""
-        return set(TYPE_PATTERN.findall(source)) if source is not None else set()
+        """
+        Index native ownership from parsed input or sufficient path identity.
+
+        Parameters
+        ----------
+        path : Path
+            Source path accepted for analyzer parity; not used for Swift
+            ownership.
+        root : Path
+            Repository root accepted for analyzer parity; not used for Swift
+            ownership.
+        source : ParsedSwiftSource | None
+            Parsed Swift syntax view, or None when no source is available.
+
+        Returns
+        -------
+        set[str]
+            Declared nominal/type-alias ownership names; empty without parsed
+            source. Extensions do not establish ownership.
+
+        Notes
+        -----
+        Swift needs parsed declarations; absent source supplies no ownership.
+        path and root remain unused because filenames do not establish types.
+        """
+        return _targets(source)
 
 
 # !SECTION
@@ -86,49 +161,114 @@ def _import_findings(
     layer: BoundaryLayer,
     relative: str,
 ) -> list[str]:
-    """Report Swift modules excluded by the layer's exact import allowlist."""
-    failures: list[str] = []
-    for reference in imports:
-        line, target = reference.line, reference.target
-        if layer.allowed_imports is not None and target not in layer.allowed_imports:
-            failures.append(
-                f'{relative}:{line}: {layer.name}: forbidden import {target}',
-            )
-    return failures
+    """
+    Evaluate native imports using shared boundary reporting.
+
+    Parameters
+    ----------
+    imports : list[ImportReference]
+        Native import observations in established reporting order.
+    layer : BoundaryLayer
+        Current layer's diagnostic name and optional import allowlist.
+    relative : str
+        Repository-relative diagnostic filename.
+
+    Returns
+    -------
+    list[str]
+        Import findings in observation order, without deduplication.
+
+    Notes
+    -----
+    Swift compares module names exactly. Forbidden-layer type ownership is
+    evaluated through symbol rules rather than import-module restrictions.
+    Native collection remains separate; no dependency resolution is performed.
+    """
+    return import_findings(
+        imports,
+        layer,
+        relative,
+    )
 
 
 def _imports(
-    code: str,
+    source: ParsedSwiftSource,
 ) -> list[ImportReference]:
     """
-    Collect Swift imports in source order from lexically masked text.
+    Collect native import observations without executing consumer code.
 
-    Attributed and selective imports retain the module name and its source
-    line. Alias fields remain empty because this checker does not resolve
-    Swift aliases. The supplied text must already have comments and strings
-    masked with line positions preserved.
+    Parameters
+    ----------
+    source : ParsedSwiftSource
+        Native syntax view with comment/literal contents shielded.
+
+    Returns
+    -------
+    list[ImportReference]
+        Imports in native source order, retaining duplicates. Attributed and
+        selective forms retain module names and source lines. Alias fields
+        remain empty because this checker does not resolve Swift aliases.
+
+    Notes
+    -----
+    Native spans recognize same-line and attributed imports without treating
+    comments, strings or regex contents as declarations. Imported members do
+    not replace the module name used for allowlist checks.
     """
     return [
-        ImportReference(code.count('\n', 0, match.start(1)) + 1, match.group(1))
-        for match in IMPORT_PATTERN.finditer(code)
+        ImportReference(
+            name.start_point.row + 1,
+            (name.text or b'').decode('utf-8').split('.')[0].strip('`'),
+        )
+        for node in nodes(source.root)
+        if node.type == 'import_declaration'
+        for name in node.named_children
+        if name.type == 'identifier'
     ]
 
 
 def _source_findings(
-    code: str,
+    source: ParsedSwiftSource,
     layer: BoundaryLayer,
-    forbidden_targets: set[str],
+    forbidden_symbols: set[str],
     relative: str,
 ) -> list[str]:
     """
-    Collect Swift import findings before cross-layer symbol findings per file.
+    Collect import findings before symbol findings for one parsed source.
 
-    Inspect masked source. Forbidden targets already combine explicit symbols
-    with other layers' type names after excluding locally owned type names.
+    Parameters
+    ----------
+    source : ParsedSwiftSource
+        Native syntax for imports and masked text for symbol collection.
+    layer : BoundaryLayer
+        Consumer-owned import and explicit-symbol restrictions.
+    forbidden_symbols : set[str]
+        Combined explicit symbols and forbidden-layer type names, after local
+        ownership exclusions. These are symbol restrictions, not module names.
+    relative : str
+        Repository-relative filename for diagnostics.
+
+    Returns
+    -------
+    list[str]
+        Import findings in native observation order, then symbol findings
+        sorted by line/name. No source is read, parsed again or executed.
+
+    Notes
+    -----
+    Import allowlists match exact modules; symbol rules use masked tokens.
+    An absent allowlist skips native import collection, while an empty one
+    rejects every import. Symbol analysis remains independent of that choice.
+    Forbidden-layer type names have already been combined with explicit
+    symbols by the adapter, preserving locally owned type exclusions.
     """
     return [
-        *_import_findings(_imports(code), layer, relative),
-        *_symbol_findings(code, forbidden_targets, relative, layer.name),
+        *_import_findings(
+            _imports(source) if layer.allowed_imports is not None else [],
+            layer,
+            relative,
+        ),
+        *_symbol_findings(source.code, forbidden_symbols, relative, layer.name),
     ]
 
 
@@ -139,22 +279,110 @@ def _symbol_findings(
     layer_name: str,
 ) -> list[str]:
     """
-    Report configured Swift symbols once per source line.
+    Report forbidden native symbol observations in stable location order.
 
-    Match whole identifier tokens in masked text. Deduplicate each
-    (line, configured symbol) pair and sort by line/name. The supplied
-    restrictions combine explicit symbols and forbidden-layer type names;
-    lexical matches do not resolve scopes or runtime bindings.
+    Parameters
+    ----------
+    code : str
+        Position-preserving Swift text with comments, strings and regex
+        literals masked before whole-identifier matching.
+    forbidden_symbols : collections.abc.Collection[str]
+        Explicit symbols combined with forbidden-layer type names after
+        locally owned types are excluded from cross-layer restrictions.
+    relative : str
+        Repository-relative diagnostic filename.
+    layer_name : str
+        Consumer-owned layer name used to label findings.
+
+    Returns
+    -------
+    list[str]
+        One finding per matching line/configured-symbol pair, sorted by line
+        then symbol. Matching is exact and case-sensitive; source excerpts
+        and duplicate observations are excluded from reporting.
+
+    Notes
+    -----
+    Match whole identifier tokens, including import tokens, without dotted
+    alias expansion. Lexical matches do not resolve scopes or runtime bindings.
+    Native candidate collection stays in _symbols; shared symbol_findings
+    owns restriction filtering, deduplication and diagnostic order.
     """
-    failures: list[str] = []
+    return symbol_findings(
+        _symbols(code),
+        forbidden_symbols,
+        relative,
+        layer_name,
+    )
+
+
+def _symbols(
+    code: str,
+) -> Iterator[SymbolReference]:
+    """
+    Collect native symbol candidates without resolving runtime bindings.
+
+    Parameters
+    ----------
+    code : str
+        Swift text with comments, strings and regex literals already masked.
+
+    Yields
+    ------
+    SymbolReference
+        Whole identifier tokens with their one-based physical source lines.
+        Duplicate candidates are retained for shared filtering/reporting.
+
+    Notes
+    -----
+    Import tokens remain candidates. Unlike Python AST analysis, dotted-name
+    expansion and scope resolution are not performed by this token guard.
+    """
     for number, line in enumerate(code.splitlines(), start=1):
-        for symbol in sorted(
-            set(re.findall(r'\b\w+\b', line)).intersection(forbidden_symbols),
-        ):
-            failures.append(
-                f'{relative}:{number}: {layer_name}: forbidden symbol {symbol}',
-            )
-    return failures
+        for name in re.findall(r'\b\w+\b', line):
+            yield SymbolReference(number, name)
+
+
+def _targets(
+    source: ParsedSwiftSource | None,
+) -> set[str]:
+    """
+    Collect ownership targets using the language's native identity rules.
+
+    Parameters
+    ----------
+    source : ParsedSwiftSource or None
+        Native syntax view, or None after an input read failure.
+
+    Returns
+    -------
+    set[str]
+        Declared nominal/typealias names with backticks removed, excluding
+        extensions. Missing source supplies an empty set, not filename-derived
+        ownership. Duplicate names collapse without inferring qualified names.
+
+    Notes
+    -----
+    Ownership requires parsed declarations, unlike Python module paths.
+    Native traversal masks noncode; recovery does not prove compiler validity.
+    No macro expansion or runtime dependency resolution is performed.
+    """
+    return (
+        {
+            (name.text or b'').decode('utf-8').strip('`')
+            for node in nodes(source.root)
+            if node.type
+            in {
+                'class_declaration',
+                'protocol_declaration',
+                'typealias_declaration',
+            }
+            and not any(child.type == 'extension' for child in node.children)
+            if (name := node.child_by_field_name('name')) is not None
+        }
+        if source is not None
+        else set()
+    )
 
 
 # !SECTION
@@ -198,9 +426,11 @@ def validate(
     Import restrictions are disabled when the allowlist is absent and reject
     every recognized import when it is empty. No consumer code is executed.
 
-    Reuse Swift masking for nested comments and ordinary/raw strings. Imports
-    include attributed and selective forms and use exact module allowlists.
-    Forbidden layers supply declared type names for token matching.
+    Use Tree-sitter native nodes for imports and declared type ownership.
+    Imports include attributed and selective forms and use exact module
+    allowlists. Mask comments, strings and regex literals before symbol token
+    matching. Same-line declarations are recognized; grammar recovery is not
+    compiler validation. Forbidden layers supply declared type names.
     This is a conservative token guard, not semantic dependency resolution.
     Same-name types owned by the current layer are excluded from cross-layer
     restrictions; explicit forbidden symbols still apply. Nested/local names,

@@ -16,6 +16,8 @@ from tests.support.files import FileWriter
 
 class TestMarkdownSyntax:
     """
+    Cover markdown syntax.
+
     Cover explicit anchors, code fences, inline code and comment boundaries.
     """
 
@@ -30,6 +32,8 @@ class TestMarkdownSyntax:
         anchor: str,
     ) -> None:
         """
+        Verify explicit anchors.
+
         Verify maintained HTML id/name anchors satisfy inline and reference
         links.
 

@@ -76,14 +76,21 @@ Parsed YAML mappings are visited once even when shared or cyclic aliases are pre
 continue past recursive aliases to inspect subsequent scripts and checkouts without duplicate
 diagnostics for a shared mapping. The iterative traversal does not remove YAML-parser limits.
 
+Workflow checkout and run-script observations share one cycle-safe YAML traversal. Recursive aliases
+terminate, shared mappings are inspected once, and identical scripts on separate mappings retain
+separate findings. Trigger, checkout and script findings keep their established order.
+
 ## npm Consistency
 
 Each pair compares manifest name/version and dependency, development, and optional-dependency
-specifications against the `packages[""]` root of an npm v2/v3 lockfile. Exact version pins also
-require a matching top-level `node_modules` version. Configure both the committed manifest and any
-source manifest copied into its directory by CI. This catches fixture drift without reimplementing
-npm's resolver or implicitly updating a lockfile. Findings collected before malformed metadata
-remain in the report, and an error in one pair does not prevent later pairs from being checked.
+specifications against the `packages[""]` root of an npm v2/v3 lockfile. The `lockfileVersion` field
+must be integer `2` or `3`; floating-point and string lookalikes are rejected. Exact version pins
+also require a matching top-level `node_modules` version. Literal core, prerelease, build-metadata
+and combined prerelease/build pins use exact text comparison; version precedence is not evaluated.
+Configure both the committed manifest and any source manifest copied into its directory by CI. This
+catches fixture drift without reimplementing npm's resolver or implicitly updating a lockfile.
+Findings collected before malformed metadata remain in the report, and an error in one pair does not
+prevent later pairs from being checked.
 
 Ranges, peer resolution, workspaces, transitive graphs, and platform-specific optional packages are
 not fully validated. Preserve `npm ci` and runtime fixture checks in hosted CI. A successful static

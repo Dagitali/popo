@@ -5,6 +5,7 @@ Observe scoped workflow toolchain declarations without execution.
 """
 
 import re
+from collections import ChainMap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -37,14 +38,17 @@ type ObservationKind = Literal['runtime', 'compiler', 'preferred', 'tools']
 
 @dataclass(frozen=True, slots=True)
 class VersionObservation:
-    """Retain a version's source, selector and interpretation.
+    """
+    Retain a version's source, selector and interpretation.
 
     Attributes
     ----------
     source : pathlib.Path or None
         Input file, or None for an explicitly supplied compiler observation.
+        Native adapters retain provenance even for legacy textual readers.
     location : str
-        Field selector or CLI option identifying the observation.
+        Field selector or CLI option identifying the observation. Legacy Python
+        text uses an input key without claiming YAML scope.
     value : str
         Declared version text; language-specific comparison validates it.
     kind : ObservationKind
@@ -66,7 +70,24 @@ class VersionObservation:
 def _literal(
     value: object,
 ) -> str:
-    """Require nonblank string versions without nested expressions."""
+    """
+    Require nonblank string versions without nested expressions.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+
+    Returns
+    -------
+    str
+        Stripped nonblank literal version string.
+
+    Raises
+    ------
+    ValueError
+        If the value is not a nonblank literal string version.
+    """
     if not isinstance(value, str) or not value.strip() or '${{' in value:
         raise ValueError('expected literal string version')
     return value.strip()
@@ -78,7 +99,30 @@ def _resolve(
     job: dict[str, object],
     step: dict[str, object],
 ) -> tuple[str, ...]:
-    """Resolve only literals, scoped environment values and simple matrices."""
+    """
+    Resolve only literals, scoped environment values and simple matrices.
+
+    Parameters
+    ----------
+    value : object
+        Unvalidated value supplied to the operation.
+    workflow : dict[str, object]
+        Workflow document supplying workflow-scoped environment values.
+    job : dict[str, object]
+        Current workflow job, including scoped environment and matrix values.
+    step : dict[str, object]
+        Current workflow step, including its scoped environment values.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Resolved literal versions in matrix order or a single scoped value.
+
+    Raises
+    ------
+    ValueError
+        If a scope, matrix or referenced version has an unsupported shape.
+    """
     if not isinstance(value, str):
         raise ValueError('expected string version')
     match = REFERENCE_PATTERN.fullmatch(value.strip())
@@ -86,9 +130,11 @@ def _resolve(
         return (_literal(value),)
     scope, name = match.groups()
     if scope == 'env':
-        environment: dict[str, object] = {}
-        for owner in (workflow, job, step):
-            environment.update(require_mapping(owner.get('env', {}), 'env'))
+        environments = [
+            require_mapping(owner.get('env', {}), 'env')
+            for owner in (workflow, job, step)
+        ]
+        environment = ChainMap(*reversed(environments))
         return (_literal(environment.get(name)),)
     strategy = require_mapping(job.get('strategy', {}), 'strategy')
     matrix = require_mapping(strategy.get('matrix', {}), 'matrix')

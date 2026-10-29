@@ -18,6 +18,8 @@ from tests.support.files import snapshot_files
 
 class TestSwiftPolicyCommands:
     """
+    Cover swift policy commands.
+
     Keep the explicit Swift policy independent of Python project metadata.
     """
 
@@ -26,6 +28,16 @@ class TestSwiftPolicyCommands:
         swift_policy_consumer: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify explicit compiler observation.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        """
         assert (
             main(
                 [
@@ -52,6 +64,16 @@ class TestSwiftPolicyCommands:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
+        """
+        Verify invalid configuration is identified.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Per-test temporary directory supplied by pytest.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        """
         assert (
             main(['check-swift-policy', '--root', str(tmp_path), '--format', 'json'])
             == 1
@@ -69,6 +91,22 @@ class TestSwiftPolicyCommands:
         format_arguments: tuple[str, ...],
         select_check: Callable[[Path, str], tuple[str, ...]],
     ) -> None:
+        """
+        Verify public dispatch.
+
+        Parameters
+        ----------
+        swift_policy_consumer : Path
+            Isolated Swift consumer with explicit compiler policy.
+        capsys : pytest.CaptureFixture[str]
+            Pytest fixture capturing standard output and error streams.
+        cli_format : str | None
+            Requested CLI output format, or None for its default.
+        format_arguments : tuple[str, ...]
+            CLI arguments selecting text or JSON output.
+        select_check : Callable[[Path, str], tuple[str, ...]]
+            Fixture selecting individual, aggregate or profiled execution.
+        """
         root = swift_policy_consumer
         arguments = select_check(root, 'check-swift-policy')
         before = snapshot_files(root)

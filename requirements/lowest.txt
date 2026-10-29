@@ -23,3 +23,5 @@
 
 packaging==26.3
 PyYAML==6.0.3
+tree-sitter==0.26.0
+tree-sitter-swift==0.7.4
