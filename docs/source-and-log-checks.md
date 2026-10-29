@@ -119,7 +119,7 @@ the declaration line. These switches default to false; Swift does not inherit Py
 alphabetical-method policies. Documentation width defaults to 79 physical characters and file length
 to 1000 physical lines.
 
-The unreleased Swift backend uses [Tree-sitter Python bindings] and the [Swift grammar] to locate
+The v0.13.0 Swift backend uses [Tree-sitter Python bindings] and the [Swift grammar] to locate
 comments, ordinary/multiline/raw strings and regex literals, preserving character offsets and line
 numbers across UTF-8 text. Native syntax nodes discover declarations, including declarations sharing
 a physical line. Selective-import keywords do not create declaration records. Documentation attaches

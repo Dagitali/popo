@@ -135,8 +135,8 @@ Unreadable/undecodable files fail the check. Files selected by multiple layers a
 each layer's restrictions. All source discovery and declaration indexing happen before dependency
 checks, so configuration order does not define dependency direction.
 
-The unreleased backend shares Tree-sitter syntax with source-convention validation. Native import
-and nominal/typealias nodes recognize same-line declarations and attributed/selective imports;
+The v0.13.0 backend shares Tree-sitter syntax with source-convention validation. Native import and
+nominal/typealias nodes recognize same-line declarations and attributed/selective imports;
 extensions do not establish new type ownership. Nested comments, ordinary/multiline/raw strings and
 regex literals are masked before symbol matching. Findings retain locations, layer IDs, module names
 and configured/declared symbols without printing source lines.
