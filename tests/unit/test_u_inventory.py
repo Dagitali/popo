@@ -8,6 +8,7 @@ behavior.
 import hashlib
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
 
@@ -356,6 +357,7 @@ class TestSourceInventory:
     def test_symlinks_are_not_followed(
         self,
         tmp_path: Path,
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
         Hash committed link text and retain executable and special path modes.
@@ -364,12 +366,11 @@ class TestSourceInventory:
         ----------
         tmp_path : pathlib.Path
             Disposable root for synthetic Git objects and checkout edits.
+        symlink : collections.abc.Callable[[pathlib.Path, pathlib.Path], None]
+            Skip only unsupported or permission-restricted link operations.
         """
         repository(tmp_path)
-        try:
-            (tmp_path / 'external-link').symlink_to('../private-source')
-        except OSError:
-            pytest.skip('Symlinks unavailable on this platform')
+        symlink(tmp_path / 'external-link', Path('../private-source'))
         source = tmp_path / 'space\tline\nü.txt'
         source.write_bytes(b'unusual path')
         source.chmod(0o755)
