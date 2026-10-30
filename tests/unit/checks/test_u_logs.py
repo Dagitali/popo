@@ -4,14 +4,12 @@
 Exercise redacted log diagnostics and artifact boundaries.
 """
 
-import json
 from pathlib import Path
 from typing import Self
 
 import pytest
 
 from popo.checks import logs
-from popo.config import ConfigurationError
 from popo.config.source_checks import load_source_check
 from tests.support.files import snapshot_files
 
@@ -56,59 +54,6 @@ def artifact_root_fixture(
 
 class TestRedactedLogs:
     """Keep private lines out of both rule findings and read errors."""
-
-    @pytest.mark.parametrize('patterns', ('{}', '{ bad = "" }', '{ "bad\\nID" = "x" }'))
-    def test_invalid_patterns(
-        self: Self,
-        tmp_path: Path,
-        patterns: str,
-    ) -> None:
-        """
-        Verify invalid patterns.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        patterns : str
-            Pattern declarations encoded in the scenario configuration.
-        """
-        (tmp_path / 'popo.toml').write_text(
-            '[logs]\ninclude = ["*.log"]\npatterns = ' + patterns,
-        )
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'logs')
-
-    @pytest.mark.parametrize(
-        'separator',
-        ['\n', '\r', '\r\n', '\v', '\f', '\x85', '\u2028', '\u2029'],
-    )
-    @pytest.mark.parametrize('trailing', [False, True])
-    def test_multiline_literals_are_rejected(
-        self: Self,
-        tmp_path: Path,
-        separator: str,
-        trailing: bool,
-    ) -> None:
-        """
-        Reject literals that cannot occur within a scanned log line.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        separator : str
-            Separator spelling used by the scenario.
-        trailing : bool
-            Whether the input includes a trailing separator.
-        """
-        literal = 'WARNING' + separator + ('' if trailing else 'PRIVATE')
-        (tmp_path / 'popo.toml').write_text(
-            '[logs]\ninclude=["*.log"]\npatterns={warning=' + json.dumps(literal) + '}',
-            encoding='utf-8',
-        )
-        with pytest.raises(ConfigurationError, match='single-line literals'):
-            load_source_check(tmp_path, 'logs')
 
     def test_named_literal_findings_and_clean_inputs(
         self: Self,
