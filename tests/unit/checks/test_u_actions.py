@@ -25,16 +25,34 @@ class TestActions:
     executing referenced actions.
     """
 
-    def test_checks_nested_composite_actions_and_ignores_local_steps(
+    @pytest.mark.parametrize(
+        'filename,reference',
+        (
+            pytest.param(
+                'actions/setup/action.yaml',
+                'owner/action@v1',
+                id='nested-composite-action',
+            ),
+            pytest.param(
+                '.github/workflows/ci.yml',
+                'actions/checkout@v4',
+                id='nested-workflow',
+            ),
+        ),
+    )
+    def test_nested_automation_preserves_pin_policy(
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        filename: str,
+        reference: str,
     ) -> None:
         """
-        Verify checks nested composite actions and ignores local steps.
+        Report floating action tags in nested workflows and composite actions.
 
         Verify recursive action discovery reports only the unpinned remote
-        step.
+        step. Local steps and container references remain exempt, and a
+        full uppercase SHA remains accepted alongside the mutable remote tag.
 
         Parameters
         ----------
@@ -42,17 +60,23 @@ class TestActions:
             Temporary directory for isolated test inputs.
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
+        filename : str
+            Nested workflow or composite-action path beneath the selected root.
+        reference : str
+            Floating remote action tag that must produce the sole finding.
         """
         action = write_file(
-            'actions/setup/action.yaml',
+            filename,
             'steps:\n  - uses: ./local\n  - uses: docker://alpine:3\n'
             f'  - uses: "owner/action@{'A' * 40}" # pinned\n'
-            '  - uses: owner/action@v1\n',
+            f'  - uses: {reference}\n',
         )
+        before = snapshot_files(tmp_path)
         assert validate(tmp_path) == [
             f'{action}:5: remote action must use a full '
-            '40-character commit SHA: owner/action@v1',
+            f'40-character commit SHA: {reference}',
         ]
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'reference,accepted',
@@ -118,31 +142,6 @@ class TestActions:
             ]
         )
         assert snapshot_files(tmp_path) == before
-
-    def test_rejects_mutable_remote_action(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify a floating action tag fails while a local step remains exempt.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        workflow = write_file(
-            '.github/workflows/ci.yml',
-            'steps:\n  - uses: actions/checkout@v4\n  - uses: ./local\n',
-        )
-
-        assert validate(tmp_path / '.github') == [
-            f'{workflow}:2: remote action must use a full '
-            '40-character commit SHA: actions/checkout@v4',
-        ]
 
     def test_reports_missing_automation_directory(
         self,
