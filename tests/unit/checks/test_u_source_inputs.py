@@ -171,9 +171,50 @@ class TestSourceInputFailures:
 class TestSourceInspection:
     """Keep shared reads ordered, redacted and independent of domain policy."""
 
+    @pytest.mark.parametrize('consumed', (1, 2, 3, 4))
+    def test_consumes_only_requested_findings(
+        self,
+        tmp_path: Path,
+        consumed: int,
+    ) -> None:
+        """
+        Defer each file read and consume inspector iterators incrementally.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated root containing two readable source inputs.
+        consumed : int
+            Number of findings requested before inspecting read activity.
+        """
+        paths = [tmp_path / name for name in ('first', 'last')]
+        for path in paths:
+            path.write_text(path.name, encoding='utf-8')
+        before = snapshot_files(tmp_path)
+        inspect = Mock(side_effect=lambda path, source: iter((source,) * 2))
+        with patch.object(
+            _source_inputs,
+            'read_source',
+            wraps=_source_inputs.read_source,
+        ) as read:
+            findings = _source_inputs.inspect_sources(iter(paths), tmp_path, inspect)
+            read.assert_not_called()
+            inspect.assert_not_called()
+            expected = ['first', 'first', 'last', 'last']
+            assert [next(findings) for _ in range(consumed)] == expected[:consumed]
+            reached = paths[: (consumed + 1) // 2]
+            assert read.call_args_list == [call(path, tmp_path) for path in reached]
+            assert inspect.call_args_list == [call(path, path.name) for path in reached]
+            assert list(findings) == expected[consumed:]
+            assert list(findings) == []
+            assert read.call_count == inspect.call_count == 2
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize('during_iteration', (False, True))
     def test_inspector_failures_propagate(
         self,
         tmp_path: Path,
+        during_iteration: bool,
     ) -> None:
         """
         Propagate inspector failures instead of reporting partial success.
@@ -182,17 +223,23 @@ class TestSourceInspection:
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
+        during_iteration : bool
+            Raise while consuming findings instead of calling the inspector.
         """
         path = tmp_path / 'input'
         path.write_text('text', encoding='utf-8')
         error = RuntimeError('inspection failed')
-        inspect = Mock(side_effect=error)
+        inspect = (
+            Mock(return_value=iter(Mock(side_effect=error), None))
+            if during_iteration
+            else Mock(side_effect=error)
+        )
         with pytest.raises(
             RuntimeError,
             match='inspection failed',
             check=lambda raised: raised is error,
         ):
-            _source_inputs.inspect_sources((path,), tmp_path, inspect)
+            list(_source_inputs.inspect_sources((path,), tmp_path, inspect))
 
     @pytest.mark.parametrize('failure', ('decode', 'missing'))
     def test_reads_once_and_continues_after_input_errors(
@@ -223,7 +270,9 @@ class TestSourceInspection:
             'read_source',
             wraps=_source_inputs.read_source,
         ) as read:
-            findings = _source_inputs.inspect_sources(iter(paths), tmp_path, inspect)
+            findings = list(
+                _source_inputs.inspect_sources(iter(paths), tmp_path, inspect),
+            )
         assert findings == [
             'first',
             'first',
