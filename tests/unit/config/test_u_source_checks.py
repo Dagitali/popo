@@ -163,6 +163,27 @@ class TestSourceSelectionPolicy:
         assert str(raised.value) == f'{domain}.{setting} {message}'
         assert snapshot_files(tmp_path) == before
 
+    def test_missing_policy_is_explicit(
+        self,
+        tmp_path: Path,
+        domain: str,
+    ) -> None:
+        """
+        Reject absent opt-in tables without silently selecting source checks.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Empty consumer root without either configuration source.
+        domain : str
+            Python, Swift or log domain whose explicit policy is required.
+        """
+        before = snapshot_files(tmp_path)
+        with pytest.raises(ConfigurationError) as raised:
+            load_source_check(tmp_path, domain)
+        assert str(raised.value) == f'{domain} must be a TOML table'
+        assert snapshot_files(tmp_path) == before
+
     @pytest.mark.parametrize(
         'exclusions',
         [
