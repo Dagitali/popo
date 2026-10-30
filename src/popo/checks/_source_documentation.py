@@ -378,7 +378,11 @@ def guide_findings(
     -----
     Read the guide without executing or changing it. Guide entries are exact
     inline backtick spans; this is not a complete Markdown parser. Resolution,
-    file and decode errors become diagnostics rather than propagating.
+    file and decode errors become diagnostics rather than propagating. Retain
+    only selected paths during matching and stop once all are documented.
+    Missing entries preserve input order and duplicates. The guide is still
+    resolved and read when the selection is empty, so read failures remain
+    visible.
     """
     name = str(config.settings['source-guide'])
     if not name:
@@ -392,11 +396,16 @@ def guide_findings(
     guide, failures = read_source(path, config.root)
     if guide is None:
         return failures
-    entries = {match[1] for match in re.finditer(r'`([^`\n]+)`', guide)}
+    relative_paths = [path.relative_to(config.root).as_posix() for path in paths]
+    missing = set(relative_paths)
+    for match in re.finditer(r'`([^`\n]+)`', guide):
+        missing.discard(match[1])
+        if not missing:
+            break
     return [
-        f'{path.relative_to(config.root).as_posix()}: missing source-guide entry'
-        for path in paths
-        if path.relative_to(config.root).as_posix() not in entries
+        f'{relative}: missing source-guide entry'
+        for relative in relative_paths
+        if relative in missing
     ]
 
 
