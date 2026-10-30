@@ -191,9 +191,9 @@ def callable_findings(
     Notes
     -----
     Presence and spacing rules remain the caller's responsibility. Interpreter
-    exceptions propagate when interpretation is needed; disabled rules and
-    unsupported signatures do not request markup evidence. No syntax parsing
-    or consumer execution occurs.
+    exceptions propagate when interpretation is needed. When every callable
+    rule is disabled, or the signature is unsupported, no markup evidence is
+    requested. No syntax parsing or consumer execution occurs.
     """
     if (
         facts.kind not in callable_kinds
@@ -238,32 +238,31 @@ def contract_findings(
     -------
     list[str]
         Consistent rule descriptions without names, prose or source excerpts.
+        Evaluate enabled rules only, in parameter/result/exception order;
+        disabled parameter rules do not compare documented names.
     """
     if facts.parameter_names is None:
         return []
     location = f'{relative}:{facts.line}'
-    rules = (
-        (
-            'parameter-docs',
-            not documentation.parameter_names.issuperset(facts.parameter_names),
-            'parameter documentation incomplete',
-        ),
-        (
-            'return-docs',
-            bool(facts.result_section) and not documentation.result_documented,
-            'return documentation missing',
-        ),
-        (
-            'raises-docs',
-            facts.exception_required and not documentation.exception_documented,
-            'raises documentation missing',
-        ),
-    )
-    return [
-        f'{location}: {message}'
-        for key, failed, message in rules
-        if config.settings[key] and failed
-    ]
+    settings = config.settings
+    failures: list[str] = []
+    if settings['parameter-docs'] and not documentation.parameter_names.issuperset(
+        facts.parameter_names,
+    ):
+        failures.append(f'{location}: parameter documentation incomplete')
+    if (
+        settings['return-docs']
+        and facts.result_section
+        and not documentation.result_documented
+    ):
+        failures.append(f'{location}: return documentation missing')
+    if (
+        settings['raises-docs']
+        and facts.exception_required
+        and not documentation.exception_documented
+    ):
+        failures.append(f'{location}: raises documentation missing')
+    return failures
 
 
 def declaration_findings(
