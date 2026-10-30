@@ -6,6 +6,8 @@ Shared support for popo commands.
 
 import re
 from collections.abc import Iterable
+from itertools import chain
+from os.path import normcase
 from pathlib import Path
 
 # SECTION: CONSTANTS
@@ -46,11 +48,19 @@ def automation_paths(
     Discover matching paths without reading or parsing YAML, checking that
     matches are regular files, or restricting them to recognized workflows.
     Hidden and generated directories are not explicitly excluded. Glob case
-    sensitivity follows the host filesystem's rules.
+    sensitivity follows the host filesystem's rules. Walk the tree once for
+    both suffixes rather than performing a separate traversal for each one.
     """
     if not directory.is_dir():
         return []
-    return sorted((*directory.rglob('*.yml'), *directory.rglob('*.yaml')))
+    paths: list[Path] = []
+    for parent, directories, filenames in directory.walk():
+        paths.extend(
+            parent / name
+            for name in chain(directories, filenames)
+            if normcase(name).endswith(('.yml', '.yaml'))
+        )
+    return sorted(paths)
 
 
 def normalize_release(
