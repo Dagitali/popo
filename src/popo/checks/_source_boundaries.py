@@ -269,12 +269,14 @@ def import_findings(
     -----
     Native adapters own import discovery, alias handling and applicability.
     Matching is case-sensitive; descendant matching requires a dot boundary.
+    Index policy names once and test dotted ancestors rather than scanning
+    every configured name for each import. Preserve literal name spellings.
     No source is read, parsed or executed and no policy collection is mutated.
     """
 
     def matches(
         target: str,
-        names: Collection[str],
+        names: frozenset[str],
     ) -> bool:
         """
         Apply exact matching with an optional dotted-descendant rule.
@@ -283,30 +285,33 @@ def import_findings(
         ----------
         target : str
             Import target tested against the configured matching rule.
-        names : Collection[str]
-            Names checked against the selected matching rule.
+        names : frozenset[str]
+            Indexed names checked against the selected matching rule.
 
         Returns
         -------
         bool
             Whether the target matches exactly or an enabled dotted descendant.
         """
-        return target in names or (
-            allow_descendants and any(target.startswith(name + '.') for name in names)
-        )
+        while target not in names:
+            if not allow_descendants or '.' not in target:
+                return False
+            target = target.rpartition('.')[0]
+        return True
 
+    forbidden = frozenset(forbidden_targets)
+    allowed = (
+        None if layer.allowed_imports is None else frozenset(layer.allowed_imports)
+    )
     failures: list[str] = []
     for reference in imports:
         target = reference.target
         location = f'{relative}:{reference.line}: {layer.name}'
         if report_unresolved and not target:
             failures.append(f'{location}: unresolved relative import')
-        elif matches(target, forbidden_targets):
+        elif matches(target, forbidden):
             failures.append(f'{location}: forbidden layer import {target}')
-        elif layer.allowed_imports is not None and not matches(
-            target,
-            layer.allowed_imports,
-        ):
+        elif allowed is not None and not matches(target, allowed):
             failures.append(f'{location}: forbidden import {target}')
     return failures
 
