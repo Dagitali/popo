@@ -73,22 +73,26 @@ def boundary_sources(
     -------
     tuple[dict[str, list[Path]], dict[Path, str], list[str]]
         Layer selections, readable source texts, and redacted failures.
+        Read each selected path once per call, including empty or unreadable
+        inputs. Readable paths are tracked by the source mapping; only failed
+        reads need a separate set. Later calls inspect all inputs afresh.
     """
     selections: dict[str, list[Path]] = {}
     sources: dict[Path, str] = {}
     failures: list[str] = []
-    inspected: set[Path] = set()
+    unreadable: set[Path] = set()
     for layer in config.layers:
         paths, errors = discover(layer.inputs)
         failures.extend(f'{layer.name}: {error}' for error in errors)
         selections[layer.name] = paths
         for path in paths:
-            if path in inspected:
+            if path in sources or path in unreadable:
                 continue
-            inspected.add(path)
             source, errors = read_source(path, config.root)
             failures.extend(errors)
-            if source is not None:
+            if source is None:
+                unreadable.add(path)
+            else:
                 sources[path] = source
     return selections, sources, failures
 
