@@ -19,6 +19,7 @@ from popo.config import (
     load_automation_config,
     load_config,
 )
+from popo.config.dependencies import parse_dependencies
 from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
@@ -34,6 +35,101 @@ class TestConfiguration:
     discovery, overrides, defaults, facade exports, and domain-specific error
     handling. No consumer policy files are created outside the test fixtures.
     """
+
+    @pytest.mark.parametrize(
+        'metadata,requirements,mode,uninspected',
+        [
+            (
+                'pyproject.toml',
+                'requirements/lowest.txt',
+                'minimum-constraints',
+                ('requirements.txt', 'infra/pyproject.toml', 'infra/requirements.txt'),
+            ),
+            (
+                'pyproject.toml',
+                'requirements.txt',
+                'exact',
+                ('infra/pyproject.toml', 'infra/requirements.txt'),
+            ),
+            (
+                'infra/pyproject.toml',
+                'infra/requirements.txt',
+                'exact',
+                ('requirements/lowest.txt', 'requirements.txt'),
+            ),
+        ],
+        ids=('minimum-first', 'root-exact-before-infra', 'missing-root-metadata'),
+    )
+    def test_dependency_discovery_skips_unneeded_probes(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        write_file: FileWriter,
+        metadata: str,
+        requirements: str,
+        mode: DependencyMode,
+        uninspected: tuple[str, ...],
+    ) -> None:
+        """
+        Stop after a complete layout and skip companions of missing metadata.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated consumer root containing one complete dependency layout.
+        monkeypatch : pytest.MonkeyPatch
+            Restore the filesystem probe after the scenario.
+        write_file : FileWriter
+            Writer creating the selected metadata and requirements inputs.
+        metadata : str
+            Repository-relative metadata path of the selected layout.
+        requirements : str
+            Repository-relative requirements path of the selected layout.
+        mode : DependencyMode
+            Comparison mode established by that layout.
+        uninspected : tuple[str, ...]
+            Unneeded paths whose inspection would raise a private error.
+        """
+        write_file(metadata, 'intentionally not parsed during discovery')
+        write_file(requirements, 'intentionally not parsed during discovery')
+        before = snapshot_files(tmp_path)
+        original = Path.is_file
+        blocked = {tmp_path / name for name in uninspected}
+
+        def is_file(
+            path: Path,
+        ) -> bool:
+            """
+            Reject unneeded probes while retaining real file-existence checks.
+
+            Parameters
+            ----------
+            path : pathlib.Path
+                Candidate path inspected by dependency discovery.
+
+            Returns
+            -------
+            bool
+                Original filesystem observation for a permitted path.
+
+            Raises
+            ------
+            PermissionError
+                If discovery inspects a path excluded by the scenario.
+            """
+            if path in blocked:
+                raise PermissionError('PRIVATE UNNEEDED INPUT')
+            return original(path)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, 'is_file', is_file)
+            config = parse_dependencies(tmp_path, {})
+        assert config == DependencyConfig(
+            tmp_path / metadata,
+            tmp_path / requirements,
+            mode,
+        )
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         ('metadata', 'requirements', 'mode', 'shadowed'),
