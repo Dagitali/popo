@@ -4,6 +4,7 @@
 Reject configured literal diagnostics without disclosing matched log lines.
 """
 
+from collections.abc import Iterator
 from pathlib import Path
 
 from popo.config._common import require_table
@@ -53,7 +54,7 @@ def validate(
     def inspect(
         path: Path,
         source: str,
-    ) -> list[str]:
+    ) -> Iterator[str]:
         """
         Match decoded lines without disclosing their contents.
 
@@ -64,18 +65,18 @@ def validate(
         source : str
             Decoded input text to inspect without executing it.
 
-        Returns
-        -------
-        list[str]
-            Location-prefixed redacted findings for the decoded input.
+        Yields
+        ------
+        str
+            Each location-prefixed redacted finding for the decoded input.
         """
         relative = path.relative_to(boundary)
-        return [
+        return (
             f'{relative}:{number}: {name}'
             for number, line in enumerate(source.splitlines(), start=1)
             for name, pattern in patterns
             if pattern in line
-        ]
+        )
 
     return [*failures, *inspect_sources(paths, boundary, inspect)]
 

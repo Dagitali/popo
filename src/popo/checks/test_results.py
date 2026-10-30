@@ -5,6 +5,7 @@ Validate named native test-summary formats without revealing report contents.
 """
 
 import json
+from collections.abc import Iterator
 from glob import escape
 from pathlib import Path
 
@@ -110,7 +111,7 @@ def validate(
     def inspect(
         path: Path,
         source: str,
-    ) -> list[str]:
+    ) -> Iterator[str]:
         """
         Label adapter findings without disclosing report contents.
 
@@ -121,15 +122,15 @@ def validate(
         source : str
             Decoded input text to inspect without executing it.
 
-        Returns
-        -------
-        list[str]
-            Location-prefixed redacted findings for the decoded input.
+        Yields
+        ------
+        str
+            Each location-prefixed redacted finding for the decoded input.
         """
         relative = path.relative_to(boundary).as_posix()
-        return [
+        return (
             f'{relative}: {finding}' for finding in _report_findings(source, config)
-        ]
+        )
 
     return [*failures, *inspect_sources(paths, boundary, inspect)]
 

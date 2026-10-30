@@ -4,7 +4,7 @@
 Discover configured inputs without following paths outside the selected root.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from fnmatch import fnmatchcase
 from pathlib import Path
 
@@ -66,9 +66,9 @@ def inspect_sources(
     paths: Iterable[Path],
     root: Path,
     inspect: Callable[[Path, str], Iterable[str]],
-) -> list[str]:
+) -> Iterator[str]:
     """
-    Read selected inputs and collect redacted errors or inspection findings.
+    Read selected inputs and yield redacted errors or inspection findings.
 
     Parameters
     ----------
@@ -81,26 +81,26 @@ def inspect_sources(
         Read-only inspector receiving each readable path and decoded text.
         Its findings retain their order and wording, including duplicates.
 
-    Returns
-    -------
-    list[str]
-        Read/decode findings or inspector findings for each input, in order.
+    Yields
+    ------
+    str
+        Each read/decode or inspector finding for each input, in order.
         Unreadable inputs are skipped while remaining inputs are inspected.
 
     Notes
     -----
     Read each supplied input once as UTF-8 without executing consumer code.
+    Reads and inspection occur only as the iterator is consumed. Yield findings
+    without accumulating an intermediate list; callers own final collection.
     Inspectors own domain policy and diagnostic redaction. Inspector and
     iteration exceptions propagate unchanged; no result is reported as success
     after a swallowed inspection failure. No files are modified.
     """
-    failures: list[str] = []
     for path in paths:
         source, errors = read_source(path, root)
-        failures.extend(errors)
+        yield from errors
         if source is not None:
-            failures.extend(inspect(path, source))
-    return failures
+            yield from inspect(path, source)
 
 
 def read_source(
