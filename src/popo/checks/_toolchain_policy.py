@@ -18,7 +18,9 @@ from ._yaml import read_mapping, require_mapping
 
 
 IDENTIFIER_PATTERN = re.compile(r'[A-Za-z_][A-Za-z0-9_-]*')
-REFERENCE_PATTERN = re.compile(r'\$\{\{\s*(env|matrix)\.([A-Za-z_][A-Za-z0-9_-]*)\s*}}')
+REFERENCE_PATTERN = re.compile(
+    r'\s*\$\{\{\s*(env|matrix)\.([A-Za-z_][A-Za-z0-9_-]*)\s*}}\s*',
+)
 
 
 # !SECTION
@@ -81,16 +83,17 @@ def _literal(
     Returns
     -------
     str
-        Stripped nonblank literal version string.
+        Stripped nonblank literal version string, normalized once. Surrounding
+        whitespace is removed without rewriting the workflow input.
 
     Raises
     ------
     ValueError
         If the value is not a nonblank literal string version.
     """
-    if not isinstance(value, str) or not value.strip() or '${{' in value:
+    if not isinstance(value, str) or not (literal := value.strip()) or '${{' in literal:
         raise ValueError('expected literal string version')
-    return value.strip()
+    return literal
 
 
 def _resolve(
@@ -125,7 +128,7 @@ def _resolve(
     """
     if not isinstance(value, str):
         raise ValueError('expected string version')
-    match = REFERENCE_PATTERN.fullmatch(value.strip())
+    match = REFERENCE_PATTERN.fullmatch(value)
     if match is None:
         return (_literal(value),)
     scope, name = match.groups()
