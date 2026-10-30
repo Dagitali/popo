@@ -130,6 +130,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Add `coverage-summary` with explicit LLVM/xccov adapters, POSIX source selection, adapter-specific
+  duplicate/zero-total handling, aggregate Markdown/JSON and redacted failures. The command is
+  read-only, excluded from check profiles and imposes no percentage gate.
+
 ## [0.13.0] - 2026-10-29
 
 ### Added

@@ -57,6 +57,7 @@ flowchart LR
 | Actionlint compatibility | `src/popo/checks/actionlint.py` | Share per-run source snapshots and reference resolution across normalization/dependency collection; validate afresh on later runs |
 | Shared YAML | `src/popo/checks/_yaml.py` | Parse restricted safe YAML and traverse mappings once for automation, actionlint, and safety checks |
 | Shared support | `src/popo/support.py` | Discover automation paths, normalize releases, and report text results |
+| Coverage generation | `src/popo/coverage.py` | Normalize exported LLVM/Xcode metrics and render aggregate Markdown/JSON without native-tool execution; separate from check profiles |
 | Native reporting | `src/popo/reporting.py` | Preserve check identities and emit aggregate text or versioned JSON |
 | Package contract | `src/popo/__init__.py`, `src/popo/py.typed` | Version lookup, intentional exports, and typing marker |
 | Verification | `tests/` | Unit, CLI integration, distribution, and clean-install contracts |
