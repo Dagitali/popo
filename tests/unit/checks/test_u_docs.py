@@ -15,6 +15,7 @@ exclusions, and containment rules. Symlink scenarios skip when the platform
 cannot create them; external destinations are not fetched.
 """
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
@@ -26,6 +27,85 @@ from popo.checks.docs import validate
 from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
+
+
+class TestMarkdownDiscovery:
+    """Prune ignored trees while preserving lexical source discovery."""
+
+    @pytest.mark.parametrize('ignored', sorted(docs.IGNORED_PARTS))
+    def test_ignored_directories_are_not_scanned(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        ignored: str,
+    ) -> None:
+        """
+        Skip ignored subtrees before scanning their contents.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Root containing ignored and similarly named eligible paths.
+        write_file : FileWriter
+            Writer creating isolated discovery inputs.
+        ignored : str
+            Exact ignored directory component at either nesting depth.
+        """
+        for prefix in ('', 'docs/'):
+            write_file(f'{prefix}{ignored}/nested/README.md', '')
+        expected = [
+            write_file(f'docs/{ignored}-guide/README.md', ''),
+            write_file(f'{ignored}.md', ''),
+            write_file('.github/README.md', ''),
+        ]
+        before = snapshot_files(tmp_path)
+        with patch.object(os, 'scandir', wraps=os.scandir) as scan:
+            assert docs._markdown_paths(tmp_path) == sorted(expected)
+        scanned = [
+            Path(call.args[0]).relative_to(tmp_path) for call in scan.call_args_list
+        ]
+        assert all(ignored not in path.parts for path in scanned)
+        assert snapshot_files(tmp_path) == before
+
+    def test_markdown_directories_and_symlinks_remain_selected(
+        self,
+        tmp_path: Path,
+        symlink: Callable[[Path, Path], None],
+    ) -> None:
+        """
+        Retain non-file glob matches without following symlink directories.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Root containing a consumer tree and external link targets.
+        symlink : collections.abc.Callable
+            Fixture creating links or skipping unsupported environments.
+        """
+        root = tmp_path / 'consumer'
+        directory = root / 'folder.md'
+        directory.mkdir(parents=True)
+        child = directory / 'child.md'
+        child.write_text('', encoding='utf-8')
+        external = tmp_path / 'external'
+        external.mkdir()
+        target = external / 'README.md'
+        target.write_text('', encoding='utf-8')
+        symlink(root / 'file.md', target)
+        symlink(root / 'directory.md', external)
+        symlink(root / 'other-directory', external)
+        symlink(root / 'missing.md', external / 'missing')
+        before = snapshot_files(tmp_path)
+        assert docs._markdown_paths(root) == sorted(
+            (
+                directory,
+                child,
+                root / 'file.md',
+                root / 'directory.md',
+                root / 'missing.md',
+            ),
+        )
+        assert snapshot_files(tmp_path) == before
 
 
 class TestMarkdownLinks:
