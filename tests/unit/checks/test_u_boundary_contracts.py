@@ -218,6 +218,79 @@ class TestImportMatching:
         ) == ([f'source:3: core: {expected} {target}'] if expected else [])
         assert list(references) == []
 
+    @pytest.mark.parametrize('forbidden', (False, True))
+    @pytest.mark.parametrize('descendants', (False, True))
+    @pytest.mark.parametrize(
+        'name,target,exact,descendant',
+        [
+            ('pkg', 'pkg.child.leaf', False, True),
+            ('pkg.child', 'pkg.child.leaf', False, True),
+            ('pkg', 'pkg_extra.child', False, False),
+            ('pkg.', 'pkg.child', False, False),
+            ('pkg.', 'pkg..child', False, True),
+            ('pkg', 'pkg.', False, True),
+            ('', '.child', False, True),
+            ('', '', True, True),
+            ('.', '..child', False, True),
+            ('pkg.child', 'pkg.child', True, True),
+        ],
+    )
+    def test_literal_policy_names(
+        self,
+        tmp_path: Path,
+        forbidden: bool,
+        descendants: bool,
+        name: str,
+        target: str,
+        exact: bool,
+        descendant: bool,
+    ) -> None:
+        """
+        Preserve literal prefix matching, duplicate findings and input order.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Root used to construct policy without reading files.
+        forbidden : bool
+            Test forbidden ownership instead of an import allowlist.
+        descendants : bool
+            Enable Python dotted-descendant matching.
+        name : str
+            Literal policy name, including directly constructed edge cases.
+        target : str
+            Imported target supplied by a native analyzer.
+        exact, descendant : bool
+            Expected matches under exact and dotted-descendant policies.
+        """
+        names = (name, name)
+        layer = BoundaryLayer(
+            'core',
+            SourceCheckConfig(tmp_path, 'python-source', (), (), {}),
+            None if forbidden else names,
+            (),
+            (),
+        )
+        matches = descendant if descendants else exact
+        message = 'forbidden layer import' if forbidden else 'forbidden import'
+        reject = matches if forbidden else not matches
+        references = iter(
+            _source_boundaries.ImportReference(line, target) for line in (7, 3, 7)
+        )
+        assert _source_boundaries.import_findings(
+            references,
+            layer,
+            'source',
+            forbidden_targets=names if forbidden else (),
+            allow_descendants=descendants,
+        ) == (
+            [f'source:{line}: core: {message} {target}' for line in (7, 3, 7)]
+            if reject
+            else []
+        )
+        assert list(references) == []
+        assert layer.allowed_imports == (None if forbidden else names)
+
 
 class TestOverlappingBoundaryLayers:
     """Retain layer-specific evaluation while preparing each input once."""
