@@ -263,6 +263,9 @@ def summarize(
     Exclusions override inclusions. LLVM block/file records are additive.
     Xcode duplicates select the greatest covered-line count for a path and
     require consistent executable totals. Unselected metrics are not read.
+    Aggregate duplicates incrementally, retaining one tuple per distinct path.
+    Record validation precedes duplicate-total errors, including when a later
+    record is malformed.
 
     Parameters
     ----------
@@ -296,7 +299,8 @@ def summarize(
     data = _mapping(report)
     groups = _sequence(data.get('data' if adapter == 'llvm' else 'targets'))
     metrics = ('lines', 'functions', 'regions') if adapter == 'llvm' else ('lines',)
-    entries: list[tuple[str, tuple[Metric, ...]]] = []
+    entries: dict[str, tuple[Metric, ...]] = {}
+    inconsistent = False
     for group in groups:
         files = _sequence(
             _mapping(group).get('files', [] if adapter == 'xccov' else None),
@@ -307,9 +311,11 @@ def summarize(
             if not isinstance(path, str) or not path or '\x00' in path:
                 raise ValueError('invalid coverage filename')
             source = PurePosixPath(path)
-            if not any(source.full_match(p, case_sensitive=True) for p in include):
-                continue
-            if any(source.full_match(p, case_sensitive=True) for p in exclude):
+            if not any(
+                source.full_match(pattern, case_sensitive=True) for pattern in include
+            ) or any(
+                source.full_match(pattern, case_sensitive=True) for pattern in exclude
+            ):
                 continue
             if adapter == 'llvm':
                 fields = _mapping(item.get('summary'))
@@ -324,32 +330,37 @@ def summarize(
                 counts = (
                     _metric(item.get('coveredLines'), item.get('executableLines')),
                 )
-            entries.append((path, counts))
+            if (previous := entries.get(path)) is not None:
+                if adapter == 'llvm':
+                    counts = tuple(
+                        Metric(left.covered + right.covered, left.total + right.total)
+                        for left, right in zip(previous, counts, strict=True)
+                    )
+                else:
+                    inconsistent |= previous[0].total != counts[0].total
+                    if previous[0].covered >= counts[0].covered:
+                        continue
+            entries[path] = counts
     if not entries:
         raise ValueError('no selected coverage files; measurement unavailable')
-    if adapter == 'xccov':
-        unique: dict[str, tuple[Metric, ...]] = {}
-        for path, counts in entries:
-            previous = unique.get(path)
-            if previous is not None and previous[0].total != counts[0].total:
-                raise ValueError('inconsistent duplicate coverage totals')
-            if previous is None or counts[0].covered > previous[0].covered:
-                unique[path] = counts
-        entries = list(unique.items())
+    # Complete record validation before reporting conflicting Xcode totals.
+    if inconsistent:
+        raise ValueError('inconsistent duplicate coverage totals')
     totals = tuple(
         (
             name,
             Metric(
-                sum(c[i].covered for _, c in entries),
-                sum(c[i].total for _, c in entries),
+                sum(counts[i].covered for counts in entries.values()),
+                sum(counts[i].total for counts in entries.values()),
             ),
         )
         for i, name in enumerate(metrics)
     )
-    if zero_total == 'reject' or (zero_total is None and adapter == 'xccov'):
-        if any(metric.total == 0 for _, metric in totals):
-            raise ValueError('no executable coverage units; measurement unavailable')
-    return CoverageSummary(adapter, len({path for path, _ in entries}), totals)
+    if (zero_total == 'reject' or (zero_total is None and adapter == 'xccov')) and any(
+        metric.total == 0 for _, metric in totals
+    ):
+        raise ValueError('no executable coverage units; measurement unavailable')
+    return CoverageSummary(adapter, len(entries), totals)
 
 
 # !SECTION
