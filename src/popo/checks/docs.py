@@ -6,6 +6,7 @@ Validate repository-local Markdown links and heading anchors.
 
 import re
 from collections.abc import Iterator
+from itertools import chain
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -189,16 +190,21 @@ def _markdown_paths(
     -----
     Ignore a path when any root-relative component exactly matches a name in
     :data:`~popo.checks.docs.IGNORED_PARTS`; substring matches such as
-    docs/building.md remain. Filtering applies to discovered sources, not
-    explicitly linked targets. Glob matching follows the host filesystem's case
+    docs/building.md remain. Prune ignored directories before descending into
+    them. Filtering applies to discovered sources, not explicitly linked
+    targets. Glob matching follows the host filesystem's case
     rules. Discovery does not enforce the resolved-target boundary used during
     link validation.
     """
-    return sorted(
-        path
-        for path in root.rglob('*.md')
-        if not any(part in IGNORED_PARTS for part in path.relative_to(root).parts)
-    )
+    paths: list[Path] = []
+    for directory, directories, filenames in root.walk():
+        directories[:] = [name for name in directories if name not in IGNORED_PARTS]
+        paths.extend(
+            directory / name
+            for name in chain(directories, filenames)
+            if name not in IGNORED_PARTS and Path(name).match('*.md')
+        )
+    return sorted(paths)
 
 
 def _slugify(
