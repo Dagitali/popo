@@ -20,13 +20,21 @@ class TestCheckReporting:
 
     @pytest.mark.parametrize('command', ('check-docs', 'check-all'))
     @pytest.mark.parametrize('output_format', ('text', 'json'))
-    @pytest.mark.parametrize('failed', (False, True))
+    @pytest.mark.parametrize(
+        'failure_states',
+        (
+            pytest.param((False, False), id='all-pass'),
+            pytest.param((True, False), id='first-fails'),
+            pytest.param((False, True), id='last-fails'),
+            pytest.param((True, True), id='both-fail'),
+        ),
+    )
     def test_check_order_messages_and_exit_status(
         self,
         capsys: pytest.CaptureFixture[str],
         command: str,
         output_format: str,
-        failed: bool,
+        failure_states: tuple[bool, bool],
     ) -> None:
         """
         Preserve check order, duplicate/blank findings and summary selection.
@@ -39,15 +47,20 @@ class TestCheckReporting:
             Individual or aggregate command whose reporting rules apply.
         output_format : str
             Text or versioned JSON output selection.
-        failed : bool
-            Whether the second check supplies failure messages.
+        failure_states : tuple[bool, bool]
+            Independent failure flags for the first and second check.
         """
-        failures = ('first', 'first', '') if failed else ()
+        first_failed, second_failed = failure_states
+        failed = any(failure_states)
+        first_failures = ('earlier',) if first_failed else ()
+        failures = ('first', 'first', '') if second_failed else ()
         results = [
-            CheckResult('check-docs', (), 'docs passed'),
+            CheckResult('check-docs', first_failures, 'docs passed'),
             CheckResult('check-python-policy', failures, 'python passed'),
         ]
+        before = list(results)
         assert report_results(command, results, output_format) == int(failed)
+        assert results == before
         output = capsys.readouterr()
         assert output.err == ''
         if output_format == 'json':
@@ -58,23 +71,29 @@ class TestCheckReporting:
                 'checks': [
                     {
                         'check': 'check-docs',
-                        'passed': True,
-                        'diagnostics': [],
-                        'summary': 'docs passed',
+                        'passed': not first_failed,
+                        'diagnostics': [
+                            {'severity': 'error', 'message': message}
+                            for message in first_failures
+                        ],
+                        'summary': '' if first_failed else 'docs passed',
                     },
                     {
                         'check': 'check-python-policy',
-                        'passed': not failed,
+                        'passed': not second_failed,
                         'diagnostics': [
                             {'severity': 'error', 'message': message}
                             for message in failures
                         ],
-                        'summary': '' if failed else 'python passed',
+                        'summary': '' if second_failed else 'python passed',
                     },
                 ],
             }
         elif failed:
-            assert output.out == 'FAIL: first\nFAIL: first\nFAIL: \n'
+            assert output.out == (
+                ('FAIL: earlier\n' if first_failed else '')
+                + ('FAIL: first\nFAIL: first\nFAIL: \n' if second_failed else '')
+            )
         else:
             assert output.out == (
                 'PASS: all configured repository checks passed\n'

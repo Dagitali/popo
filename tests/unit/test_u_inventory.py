@@ -7,6 +7,7 @@ behavior.
 
 import hashlib
 import json
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -32,6 +33,73 @@ GIT_FAILURE_FACTORIES = [
 
 
 # SECTION: TESTS
+
+
+class TestInventoryFixtures:
+    """Confine synthetic Git setup despite inherited repository overrides."""
+
+    @pytest.mark.parametrize(
+        'key',
+        (
+            'GIT_DIR',
+            'GIT_WORK_TREE',
+            'GIT_INDEX_FILE',
+            'GIT_OBJECT_DIRECTORY',
+            'GIT_CONFIG_COUNT',
+            'GIT_SSH_COMMAND',
+        ),
+    )
+    def test_git_environment_is_isolated(
+        self,
+        tmp_path: Path,
+        key: str,
+    ) -> None:
+        """
+        Remove inherited Git controls while preserving ordinary settings.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Explicit fixture root; no real process is launched in this test.
+        key : str
+            Inherited repository, configuration or transport override.
+        """
+        environment = {'PATH': 'fixture-path', 'POPO_TEST_MARKER': 'kept'}
+        with (
+            patch.dict(os.environ, environment | {key: 'PRIVATE'}, clear=True),
+            patch(
+                'tests.support.inventory.subprocess.check_output',
+                autospec=True,
+                return_value='fixture\n',
+            ) as run,
+        ):
+            assert git(tmp_path, 'status', '--porcelain') == 'fixture'
+        run.assert_called_once_with(
+            [
+                'git',
+                '-C',
+                str(tmp_path),
+                '-c',
+                'core.hooksPath=/dev/null',
+                '-c',
+                'commit.gpgsign=false',
+                '-c',
+                'user.name=Synthetic Fixture',
+                '-c',
+                'user.email=fixture@example.invalid',
+                'status',
+                '--porcelain',
+            ],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=30,
+            env=environment
+            | {
+                'GIT_CONFIG_NOSYSTEM': '1',
+                'GIT_CONFIG_GLOBAL': os.devnull,
+                'GIT_TERMINAL_PROMPT': '0',
+            },
+        )
 
 
 class TestSourceInventory:
