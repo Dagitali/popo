@@ -222,14 +222,24 @@ class TestImportMatching:
 class TestOverlappingBoundaryLayers:
     """Retain layer-specific evaluation while preparing each input once."""
 
+    @pytest.mark.parametrize(
+        'content,expected',
+        [
+            pytest.param(b'', '', id='empty'),
+            pytest.param(b'original', 'original', id='readable'),
+            pytest.param(b'PRIVATE\xff', None, id='undecodable'),
+        ],
+    )
     def test_overlapping_layers_read_once(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         boundary_case: BoundaryCase,
+        content: bytes,
+        expected: str | None,
     ) -> None:
         """
-        Check overlapping selections without repeating source reads.
+        Read overlapping inputs once per run and refresh later observations.
 
         Parameters
         ----------
@@ -239,12 +249,17 @@ class TestOverlappingBoundaryLayers:
             Pytest fixture restoring patched attributes and environment values.
         boundary_case : BoundaryCase
             Language-specific boundary policy and source-writing helpers.
+        content : bytes
+            Empty, readable or invalid UTF-8 contents of the shared input.
+        expected : str or None
+            Decoded contents, or None when the initial read must fail.
         """
         read = Mock(wraps=_source_boundaries.read_source)
         monkeypatch.setattr(_source_boundaries, 'read_source', read)
 
         domain = boundary_case.domain
-        (tmp_path / 'source').write_text('', encoding='utf-8')
+        source = tmp_path / 'source'
+        source.write_bytes(content)
         (tmp_path / 'popo.toml').write_text(
             ''.join(
                 f'[[{domain}.layers]]\nname="{name}"\ninclude=["source"]\n'
@@ -252,13 +267,28 @@ class TestOverlappingBoundaryLayers:
             ),
             encoding='utf-8',
         )
-        paths, sources, failures = _source_boundaries.boundary_sources(
-            load_boundaries_config(tmp_path, domain),
+        config = load_boundaries_config(tmp_path, domain)
+        before = snapshot_files(tmp_path)
+        paths, sources, failures = _source_boundaries.boundary_sources(config)
+        assert paths == {'one': [source], 'two': [source]}
+        assert sources == ({source: expected} if expected is not None else {})
+        read.assert_called_once_with(source, tmp_path)
+        assert failures == (
+            [] if expected is not None else ['source: cannot read UTF-8 input']
         )
-        assert len(paths) == 2
-        assert sources == {tmp_path / 'source': ''}
-        read.assert_called_once_with(tmp_path / 'source', tmp_path)
-        assert failures == []
+        assert snapshot_files(tmp_path) == before
+
+        source.write_text('refreshed', encoding='utf-8')
+        before = snapshot_files(tmp_path)
+        read.reset_mock()
+        next_paths, next_sources, next_failures = _source_boundaries.boundary_sources(
+            config,
+        )
+        assert next_paths == paths
+        assert next_sources == {source: 'refreshed'}
+        assert next_failures == []
+        read.assert_called_once_with(source, tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize('readable', (False, True))
     def test_overlapping_selections_prepare_once(
