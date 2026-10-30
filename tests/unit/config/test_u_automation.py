@@ -100,8 +100,6 @@ class TestAutomationConfiguration:
         ('setting', 'message'),
         [
             ('unknown = []', 'unknown tool.popo.automation setting'),
-            ('workflow-globs = "x"', 'workflow-globs must be an array'),
-            ('action-globs = [1]', 'action-globs must be an array'),
             ('yaml-globs = ["../x"]', 'yaml-globs must stay inside'),
             ('template-globs = ["/absolute"]', 'template-globs must stay inside'),
             (
@@ -148,7 +146,19 @@ class TestAutomationConfiguration:
         with pytest.raises(ConfigurationError, match=message):
             load_automation_config(tmp_path)
 
-    @pytest.mark.parametrize('value', ('false', '0', '""', '{}'))
+    @pytest.mark.parametrize(
+        'value',
+        (
+            pytest.param('false', id='boolean'),
+            pytest.param('0', id='integer'),
+            pytest.param('""', id='empty-string'),
+            pytest.param('"x"', id='nonempty-string'),
+            pytest.param('{}', id='table'),
+            pytest.param('[1]', id='nonstring-element'),
+            pytest.param('[""]', id='empty-element'),
+            pytest.param('[" "]', id='blank-element'),
+        ),
+    )
     def test_malformed_explicit_values_never_use_defaults(
         self,
         tmp_path: Path,
@@ -159,7 +169,10 @@ class TestAutomationConfiguration:
         value: str,
     ) -> None:
         """
-        Reject falsey non-array values instead of silently using defaults.
+        Reject malformed explicit arrays and values instead of using defaults.
+
+        Falsey non-array settings must not silently select model defaults.
+        Invalid array elements fail consistently for every supported key.
 
         Parameters
         ----------
@@ -172,9 +185,9 @@ class TestAutomationConfiguration:
         prefix : str
             Table header appropriate to the selected configuration source.
         automation_key : str
-            Array setting whose explicit type is invalid.
+            Array setting receiving an invalid explicit value.
         value : str
-            Valid TOML scalar or mapping with an invalid setting type.
+            Valid TOML scalar, mapping or array with an invalid setting shape.
         """
         write_file(filename, prefix + f'{automation_key}={value}')
         before = snapshot_files(tmp_path)
