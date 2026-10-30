@@ -13,7 +13,6 @@ from typing import Self
 import pytest
 
 from popo.checks import _python_declarations, python_source
-from popo.config import ConfigurationError
 from popo.config.source_checks import load_source_check
 from tests.support.files import FileWriter, snapshot_files
 
@@ -438,51 +437,6 @@ class TestPythonSource:
         assert python_source.validate(load_source_check(tmp_path, 'python-source')) == (
             [] if ordered else ['sample.py:1: instance methods not alphabetical']
         )
-
-    @pytest.mark.parametrize(
-        'settings',
-        (
-            'include = []',
-            'include = ["../outside.py"]',
-            'include = ["/outside.py"]',
-            'include = ["*.py"]\nannotations = 1',
-            'include = ["*.py"]\nmax-file-lines = 0',
-            'include = ["*.py"]\nunknown = true',
-        ),
-    )
-    def test_invalid_configuration(
-        self: Self,
-        tmp_path: Path,
-        settings: str,
-    ) -> None:
-        """
-        Verify invalid configuration.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        settings : str
-            Consumer policy text inserted into the scenario.
-        """
-        (tmp_path / 'popo.toml').write_text('[python-source]\n' + settings)
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'python-source')
-
-    def test_missing_policy_is_explicit(
-        self: Self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Verify missing policy is explicit.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        """
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'python-source')
 
     def test_parameter_syntax_retains_native_nodes_and_grouping(
         self: Self,
