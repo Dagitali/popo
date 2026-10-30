@@ -10,7 +10,7 @@ from typing import Self
 
 import pytest
 
-from popo.coverage import document, markdown, read_summary, summarize
+from popo.coverage import Metric, document, markdown, read_summary, summarize
 from tests.support.coverage import export_report
 
 # SECTION: FIXTURES
@@ -39,6 +39,27 @@ def adapter_fixture(
     return str(request.param)
 
 
+@pytest.fixture(name='metric_names')
+def metric_names_fixture(
+    adapter: str,
+) -> tuple[str, ...]:
+    """
+    Supply the complete ordered metric contract for each export adapter.
+
+    Parameters
+    ----------
+    adapter : str
+        LLVM or Xcode adapter supplied by the parameterized fixture.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Expected public metric names, independent of normalization output.
+        LLVM reports lines, functions and regions; Xcode reports only lines.
+    """
+    return ('lines', 'functions', 'regions') if adapter == 'llvm' else ('lines',)
+
+
 # !SECTION
 
 
@@ -46,7 +67,7 @@ def adapter_fixture(
 
 
 class TestCoverage:
-    """Exercise pure normalization without input/output or native processes."""
+    """Exercise normalization and exported-input reads without native tools."""
 
     @pytest.mark.parametrize(
         'covered,total',
@@ -96,6 +117,7 @@ class TestCoverage:
         self: Self,
         adapter: str,
         reverse: bool,
+        metric_names: tuple[str, ...],
     ) -> None:
         """
         Add LLVM blocks and select best Xcode file coverage in either order.
@@ -106,6 +128,8 @@ class TestCoverage:
             Export adapter exercised by the fixture.
         reverse : bool
             Whether to reverse the target/block discovery order.
+        metric_names : tuple[str, ...]
+            Complete ordered metric contract for the selected adapter.
         """
         rows = [('App/File.swift', 10, 100), ('App/File.swift', 40, 100)]
         summary = summarize(
@@ -114,10 +138,8 @@ class TestCoverage:
             ('**/App/**/*.swift',),
         )
         assert summary.files == 1
-        metric = dict(summary.metrics)['lines']
-        assert (metric.covered, metric.total) == (
-            (50, 200) if adapter == 'llvm' else (40, 100)
-        )
+        expected = Metric(50, 200) if adapter == 'llvm' else Metric(40, 100)
+        assert summary.metrics == tuple((name, expected) for name in metric_names)
 
     def test_inconsistent_xcode_denominators_fail(
         self: Self,
@@ -135,6 +157,7 @@ class TestCoverage:
         self: Self,
         adapter: str,
         reverse: bool,
+        metric_names: tuple[str, ...],
     ) -> None:
         """
         Aggregate repeated paths without confusing records with source files.
@@ -145,6 +168,8 @@ class TestCoverage:
             Export adapter supplied by the parameterized fixture.
         reverse : bool
             Whether records arrive in reverse block or target order.
+        metric_names : tuple[str, ...]
+            Complete ordered metric contract for the selected adapter.
         """
         rows = [
             ('App/A.swift', 10, 100),
@@ -161,10 +186,8 @@ class TestCoverage:
             ('**/*.swift',),
         )
         assert summary.files == 2
-        expected = (103, 460) if adapter == 'llvm' else (46, 120)
-        assert all(
-            (metric.covered, metric.total) == expected for _, metric in summary.metrics
-        )
+        expected = Metric(103, 460) if adapter == 'llvm' else Metric(46, 120)
+        assert summary.metrics == tuple((name, expected) for name in metric_names)
 
     def test_llvm_duplicates_preserve_independent_metrics(self) -> None:
         """Sum each LLVM metric independently across repeated file records."""
@@ -194,9 +217,11 @@ class TestCoverage:
         }
         summary = summarize(report, 'llvm', ('**/*.swift',))
         assert summary.files == 1
-        assert {
-            name: (metric.covered, metric.total) for name, metric in summary.metrics
-        } == {'lines': (8, 10), 'functions': (12, 14), 'regions': (16, 18)}
+        assert summary.metrics == (
+            ('lines', Metric(8, 10)),
+            ('functions', Metric(12, 14)),
+            ('regions', Metric(16, 18)),
+        )
 
     @pytest.mark.parametrize(
         'report',
@@ -269,6 +294,7 @@ class TestCoverage:
     def test_selection_exclusion_and_private_outputs(
         self: Self,
         adapter: str,
+        metric_names: tuple[str, ...],
     ) -> None:
         """
         Exclude generated/test records before reading their metrics.
@@ -277,6 +303,8 @@ class TestCoverage:
         ----------
         adapter : str
             Export adapter exercised by the fixture.
+        metric_names : tuple[str, ...]
+            Complete ordered metric contract for the selected adapter.
         """
         rows = [
             ('PRIVATE/App/Domain/A.swift', 1, 4),
@@ -299,10 +327,7 @@ class TestCoverage:
         assert summary.files == 2
         data = document(summary)
         assert data['metrics'] == {
-            name: {'covered': 3, 'total': 10, 'percent': 30.0}
-            for name in (
-                ('lines', 'functions', 'regions') if adapter == 'llvm' else ('lines',)
-            )
+            name: {'covered': 3, 'total': 10, 'percent': 30.0} for name in metric_names
         }
         assert '| lines | 3 | 10 | 30.0% |' in markdown(summary)
         assert 'PRIVATE' not in markdown(summary) + json.dumps(data)
