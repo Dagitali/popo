@@ -9,14 +9,14 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Self
-from unittest.mock import Mock
+from unittest.mock import patch
 
 import pytest
 
 from popo.checks.test_results import validate, xcode_summary
 from popo.config.test_results import THRESHOLDS, load_test_results_config
 from popo.config.test_results import TestResultsConfig as ResultConfig
-from tests.support.files import snapshot_files
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -259,6 +259,7 @@ class TestResultInputs:
         tmp_path: Path,
         result_config: ResultConfig,
         passing: dict[str, object],
+        write_file: FileWriter,
     ) -> None:
         """
         Escape filename glob characters and honor only the explicit report.
@@ -272,11 +273,21 @@ class TestResultInputs:
             Fresh loaded policy selecting JSON reports in this consumer root.
         passing : dict[str, object]
             Fresh accepted native-summary mapping, isolated per scenario.
+        write_file : FileWriter
+            Shared UTF-8 writer creating report fixtures.
         """
-        selected = tmp_path / 'summary[1].json'
-        selected.write_text(json.dumps(passing))
-        (tmp_path / 'summary1.json').write_text('PRIVATE invalid JSON')
-        assert validate(result_config, summary=selected) == []
+        selected = write_file('summary[1].json', json.dumps(passing))
+        write_file('summary1.json', 'PRIVATE invalid JSON')
+        before = snapshot_files(tmp_path)
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=Path.read_text,
+        ) as read:
+            assert validate(result_config, summary=selected) == []
+        read.assert_called_once_with(selected, encoding='utf-8')
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'case',
@@ -348,17 +359,28 @@ class TestDirectResultConfiguration:
         result_config : ResultConfig
             Isolated test-result policy and report-writing helpers.
         """
-        assert validate(result_config, tmp_path, tmp_path / 'missing.json') == [
-            'choose either a result root or a single summary',
-        ]
+        before = snapshot_files(tmp_path)
+        with (
+            patch.object(Path, 'resolve', autospec=True) as resolve,
+            patch.object(Path, 'read_text', autospec=True) as read,
+            patch('popo.checks.test_results.discover', autospec=True) as discover,
+        ):
+            assert validate(result_config, tmp_path, tmp_path / 'missing.json') == [
+                'choose either a result root or a single summary',
+            ]
+        resolve.assert_not_called()
+        read.assert_not_called()
+        discover.assert_not_called()
+        assert snapshot_files(tmp_path) == before
 
+    @pytest.mark.parametrize('selection', ('default', 'root', 'summary'))
     @pytest.mark.parametrize('error_type', (OSError, ValueError))
     def test_root_resolution_errors_are_redacted(
         self,
         tmp_path: Path,
         result_config: ResultConfig,
-        monkeypatch: pytest.MonkeyPatch,
         error_type: type[Exception],
+        selection: str,
     ) -> None:
         """
         Report unusable artifact roots without disclosing exception text.
@@ -369,13 +391,36 @@ class TestDirectResultConfiguration:
             Per-test temporary directory supplied by pytest.
         result_config : ResultConfig
             Isolated test-result policy and report-writing helpers.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest fixture restoring patched attributes and environment values.
         error_type : type[Exception]
             Exception class injected into the inspected operation.
+        selection : str
+            Default root, explicit artifact root or explicit summary path.
         """
-        monkeypatch.setattr(Path, 'resolve', Mock(side_effect=error_type('PRIVATE')))
-        assert validate(result_config) == ['cannot resolve selected result root']
+        root = tmp_path / 'artifacts' if selection == 'root' else None
+        summary = tmp_path / 'summary.json' if selection == 'summary' else None
+        selected = (
+            summary.absolute().parent
+            if summary is not None
+            else root or result_config.inputs.root
+        )
+        before = snapshot_files(tmp_path)
+        with (
+            patch.object(
+                Path,
+                'resolve',
+                autospec=True,
+                side_effect=error_type('PRIVATE'),
+            ) as resolve,
+            patch.object(Path, 'read_text', autospec=True) as read,
+            patch('popo.checks.test_results.discover', autospec=True) as discover,
+        ):
+            assert validate(result_config, root, summary) == [
+                'cannot resolve selected result root',
+            ]
+        resolve.assert_called_once_with(selected)
+        read.assert_not_called()
+        discover.assert_not_called()
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize('valid_json', (False, True))
     def test_unsupported_adapter_preserves_json_error_precedence(
