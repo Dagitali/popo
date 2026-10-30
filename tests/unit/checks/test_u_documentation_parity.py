@@ -5,6 +5,7 @@ Compare callable documentation evidence without merging markup conventions.
 """
 
 from pathlib import Path
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
@@ -124,6 +125,66 @@ class TestCallableDocumentation:
                 'sample:7: raises documentation missing',
             ]
         )
+
+    @pytest.mark.parametrize('parameter_docs', (False, True))
+    @pytest.mark.parametrize('return_docs', (False, True))
+    @pytest.mark.parametrize('raises_docs', (False, True))
+    @pytest.mark.parametrize('language', ('python', 'swift'))
+    def test_disabled_parameter_rules_skip_name_comparison(
+        self,
+        tmp_path: Path,
+        parameter_docs: bool,
+        return_docs: bool,
+        raises_docs: bool,
+        language: str,
+    ) -> None:
+        """
+        Compare parameter names only when their rule is enabled.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Consumer root used only for configuration identity.
+        parameter_docs : bool
+            Whether parameter coverage must be evaluated.
+        return_docs : bool
+            Whether missing result evidence must produce a finding.
+        raises_docs : bool
+            Whether missing exception evidence must produce a finding.
+        language : str
+            Native source policy whose defaults supply the remaining settings.
+        """
+        domain = f'{language}-source'
+        config = SourceCheckConfig(
+            tmp_path,
+            domain,
+            (),
+            (),
+            DOMAINS[domain]
+            | {
+                'parameter-docs': parameter_docs,
+                'return-docs': return_docs,
+                'raises-docs': raises_docs,
+            },
+        )
+        names = Mock(spec=frozenset)
+        names.issuperset.return_value = False
+        documentation = CallableDocumentation(
+            parameter_names=cast(frozenset[str], names),
+        )
+        facts = DeclarationFacts(7, 'function', '', ('value',), 'Returns', True)
+        expected = []
+        if parameter_docs:
+            expected.append('sample:7: parameter documentation incomplete')
+        if return_docs:
+            expected.append('sample:7: return documentation missing')
+        if raises_docs:
+            expected.append('sample:7: raises documentation missing')
+        assert contract_findings(facts, config, 'sample', documentation) == expected
+        if parameter_docs:
+            names.issuperset.assert_called_once_with(('value',))
+        else:
+            names.issuperset.assert_not_called()
 
     def test_empty_sections_have_no_evidence(
         self,
