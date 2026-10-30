@@ -70,9 +70,11 @@ def report_results(
     -----
     JSON serialization preserves supplied messages; it does not redact or
     sanitize them. Callers own the contents of diagnostics and summaries.
+    Text reporting streams messages in check/diagnostic order without building
+    a flattened list; JSON retains its complete versioned document.
     """
-    failed = any(result.failures for result in results)
     if output_format == 'json':
+        failed = any(result.failures for result in results)
         print(
             json.dumps(
                 {
@@ -96,7 +98,7 @@ def report_results(
         )
         return int(failed)
     return report(
-        [message for result in results for message in result.failures],
+        (message for result in results for message in result.failures),
         success=(
             'all configured repository checks passed'
             if command == 'check-all'

@@ -5,7 +5,7 @@ Shared support for popo commands.
 """
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable
 from pathlib import Path
 
 # SECTION: CONSTANTS
@@ -86,7 +86,7 @@ def normalize_release(
 
 
 def report(
-    failures: Sequence[str],
+    failures: Iterable[str],
     /,
     *,
     success: str,
@@ -96,9 +96,10 @@ def report(
 
     Parameters
     ----------
-    failures : collections.abc.Sequence[str]
-        Validation failures to print to standard output with ``FAIL:``
-        prefixes.
+    failures : collections.abc.Iterable[str]
+        Validation failures consumed once and printed to standard output with
+        ``FAIL:`` prefixes, preserving order and duplicates. Empty strings
+        still count as failures; an empty iterable reports success.
     success : str
         Message to print with a ``PASS:`` prefix when there are no failures.
 
@@ -106,13 +107,20 @@ def report(
     -------
     int
         One when failures exist; otherwise, zero.
+
+    Notes
+    -----
+    Do not inspect iterable truthiness or materialize its contents. Iteration
+    and printing errors propagate; no success is printed after partial output
+    if consuming the remaining failures raises an exception.
     """
-    if failures:
-        for failure in failures:
-            print(f'FAIL: {failure}')
-        return 1
-    print(f'PASS: {success}')
-    return 0
+    failed = False
+    for failure in failures:
+        print(f'FAIL: {failure}')
+        failed = True
+    if not failed:
+        print(f'PASS: {success}')
+    return int(failed)
 
 
 # !SECTION
