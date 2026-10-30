@@ -27,7 +27,7 @@ class TestPythonSyntax:
         Parameters
         ----------
         reverse : bool
-            Whether conflicting CLI arguments appear in reversed order.
+            Whether selected documentation owners are visited in reverse order.
         """
         tree = _python_syntax.parse(
             '"""Overview 😀.\nMore details.\n"""\n'
@@ -43,9 +43,11 @@ class TestPythonSyntax:
                 (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
             )
         ]
+        before = ast.dump(tree, include_attributes=True)
         assert _python_syntax.documentation_lines(
             reversed(owners * 2) if reverse else owners * 2,
         ) == (1, 2, 3, 5, 7)
+        assert ast.dump(tree, include_attributes=True) == before
 
     @pytest.mark.parametrize(
         'source,kind',
@@ -77,7 +79,7 @@ class TestPythonSyntax:
         source : str
             Decoded input text to inspect without executing it.
         kind : type[ast.AST]
-            Native syntax kind or policy variant under test.
+            Expected native AST statement class for the parsed snippet.
         """
         tree = _python_syntax.parse(source)
         assert isinstance(tree, ast.Module)
@@ -138,11 +140,13 @@ class TestPythonSyntaxTraversal:
             Decoded input text to inspect without executing it.
         """
         tree = _python_syntax.parse(source)
+        before = ast.dump(tree, include_attributes=True)
         expected = list(ast.walk(tree))
         actual = list(_python_syntax.nodes(tree))
         assert len(actual) == len(expected)
         assert all(left is right for left, right in zip(actual, expected, strict=True))
         assert actual[0] is tree
+        assert ast.dump(tree, include_attributes=True) == before
 
 
 # !SECTION
