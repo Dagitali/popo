@@ -6,12 +6,13 @@ Exercise redacted log diagnostics and artifact boundaries.
 
 from pathlib import Path
 from typing import Self
+from unittest.mock import patch
 
 import pytest
 
 from popo.checks import logs
 from popo.config.source_checks import load_source_check
-from tests.support.files import snapshot_files
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -59,6 +60,7 @@ class TestRedactedLogs:
         self: Self,
         tmp_path: Path,
         artifact_root: Path | None,
+        write_file: FileWriter,
     ) -> None:
         """
         Verify named literal findings and clean inputs.
@@ -69,17 +71,23 @@ class TestRedactedLogs:
             Per-test temporary directory supplied by pytest.
         artifact_root : Path | None
             Explicit artifact directory, or None to use the consumer root.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the consumer policy.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[logs]\ninclude = ["**/*.log"]\n'
             '[logs.patterns]\nlayout = "Invalid frame dimension"',
         )
         artifact = artifact_root or tmp_path
         log = artifact / 'private.log'
-        log.write_text('Normal\nInvalid frame dimension: PRIVATE BALANCE\n')
+        log.write_text(
+            'Normal\nInvalid frame dimension: PRIVATE BALANCE\n',
+            encoding='utf-8',
+        )
         config = load_source_check(tmp_path, 'logs')
         assert logs.validate(config, artifact_root) == ['private.log:2: layout']
-        log.write_text('Normal\n')
+        log.write_text('Normal\n', encoding='utf-8')
         assert logs.validate(config, artifact_root) == []
         log.unlink()
         assert logs.validate(config, artifact_root) == ['no inputs match: **/*.log']
@@ -88,6 +96,7 @@ class TestRedactedLogs:
         self: Self,
         tmp_path: Path,
         artifact_root: Path | None,
+        write_file: FileWriter,
     ) -> None:
         """
         Report each matching rule once per line, in declaration order.
@@ -98,10 +107,12 @@ class TestRedactedLogs:
             Per-test temporary directory supplied by pytest.
         artifact_root : Path | None
             Explicit artifact directory, or None to use the consumer root.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the consumer policy.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[logs]\ninclude=["**/*.log"]\npatterns={warning="WARN", broad="WAR"}',
-            encoding='utf-8',
         )
         boundary = artifact_root or tmp_path
         for filename in ('z.log', 'a.log'):
@@ -123,7 +134,7 @@ class TestRedactedLogs:
     def test_root_resolution_failures_are_redacted(
         self: Self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        write_file: FileWriter,
         error: type[Exception],
         artifact_root: Path | None,
     ) -> None:
@@ -134,40 +145,31 @@ class TestRedactedLogs:
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest fixture restoring patched attributes and environment values.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the consumer policy.
         error : type[Exception]
             Error value or exception class injected by the scenario.
         artifact_root : Path | None
             Explicit artifact directory, or None to use the consumer root.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[logs]\ninclude=["*.log"]\npatterns={warning="WARNING"}',
         )
         config = load_source_check(tmp_path, 'logs')
 
-        def fail_resolution(
-            path: Path,
-        ) -> Path:
-            """
-            Raise the selected error instead of resolving the private log root.
-
-            Parameters
-            ----------
-            path : Path
-                Input path inspected by the operation.
-
-            Raises
-            ------
-            OSError, ValueError
-                Always raise the exception selected by the enclosing scenario.
-            """
-            raise error('PRIVATE ROOT')
-
-        monkeypatch.setattr(Path, 'resolve', fail_resolution)
-        assert logs.validate(config, artifact_root) == [
-            'cannot resolve selected input root',
-        ]
+        before = snapshot_files(tmp_path)
+        with patch.object(
+            Path,
+            'resolve',
+            autospec=True,
+            side_effect=error('PRIVATE ROOT'),
+        ) as resolve:
+            assert logs.validate(config, artifact_root) == [
+                'cannot resolve selected input root',
+            ]
+        resolve.assert_called_once_with(artifact_root or config.root)
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION
