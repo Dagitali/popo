@@ -122,15 +122,81 @@ class TestCoverage:
     def test_inconsistent_xcode_denominators_fail(
         self: Self,
     ) -> None:
-        """
-        Reject ambiguous duplicate totals instead of silently choosing one.
-        """
+        """Reject conflicting totals instead of silently choosing one."""
         report = export_report(
             'xccov',
             [('App/File.swift', 1, 2), ('App/File.swift', 2, 3)],
         )
         with pytest.raises(ValueError, match='inconsistent duplicate'):
             summarize(report, 'xccov', ('**/App/**/*.swift',))
+
+    @pytest.mark.parametrize('reverse', (False, True))
+    def test_interleaved_duplicates_keep_distinct_file_counts(
+        self: Self,
+        adapter: str,
+        reverse: bool,
+    ) -> None:
+        """
+        Aggregate repeated paths without confusing records with source files.
+
+        Parameters
+        ----------
+        adapter : str
+            Export adapter supplied by the parameterized fixture.
+        reverse : bool
+            Whether records arrive in reverse block or target order.
+        """
+        rows = [
+            ('App/A.swift', 10, 100),
+            ('App/B.swift', 4, 20),
+            ('App/A.swift', 40, 100),
+            ('App/A.swift', 40, 100),
+            ('App/B.swift', 6, 20),
+            ('App/B.swift', 3, 20),
+            ('App/A.swift', 0, 100),
+        ]
+        summary = summarize(
+            export_report(adapter, rows[::-1] if reverse else rows),
+            adapter,
+            ('**/*.swift',),
+        )
+        assert summary.files == 2
+        expected = (103, 460) if adapter == 'llvm' else (46, 120)
+        assert all(
+            (metric.covered, metric.total) == expected for _, metric in summary.metrics
+        )
+
+    def test_llvm_duplicates_preserve_independent_metrics(self) -> None:
+        """Sum each LLVM metric independently across repeated file records."""
+        report = {
+            'data': [
+                {
+                    'files': [
+                        {
+                            'filename': 'App/A.swift',
+                            'summary': {
+                                'lines': {'covered': 1, 'count': 2},
+                                'functions': {'covered': 3, 'count': 4},
+                                'regions': {'covered': 5, 'count': 6},
+                            },
+                        },
+                        {
+                            'filename': 'App/A.swift',
+                            'summary': {
+                                'lines': {'covered': 7, 'count': 8},
+                                'functions': {'covered': 9, 'count': 10},
+                                'regions': {'covered': 11, 'count': 12},
+                            },
+                        },
+                    ],
+                },
+            ],
+        }
+        summary = summarize(report, 'llvm', ('**/*.swift',))
+        assert summary.files == 1
+        assert {
+            name: (metric.covered, metric.total) for name, metric in summary.metrics
+        } == {'lines': (8, 10), 'functions': (12, 14), 'regions': (16, 18)}
 
     @pytest.mark.parametrize(
         'report',
@@ -274,6 +340,42 @@ class TestCoverage:
         """
         with pytest.raises(ValueError):
             summarize({}, adapter, include, exclude, zero)
+
+    @pytest.mark.parametrize(
+        'rows,message',
+        [
+            (
+                [('App/A.swift', 2, 3), ('App/A.swift', 1, 2)],
+                'inconsistent duplicate coverage totals',
+            ),
+            (
+                [
+                    ('App/A.swift', 1, 2),
+                    ('App/A.swift', 2, 3),
+                    ('App/B.swift', -1, 2),
+                ],
+                'invalid coverage count arithmetic',
+            ),
+        ],
+        ids=('lower-covered-conflict', 'later-invalid-count'),
+    )
+    def test_xcode_conflicts_preserve_record_validation_precedence(
+        self: Self,
+        rows: list[tuple[str, int, int]],
+        message: str,
+    ) -> None:
+        """
+        Validate every record before reporting a duplicate denominator error.
+
+        Parameters
+        ----------
+        rows : list[tuple[str, int, int]]
+            Conflicting duplicates with an optional later malformed record.
+        message : str
+            Exact error expected under the established validation precedence.
+        """
+        with pytest.raises(ValueError, match=f'^{message}$'):
+            summarize(export_report('xccov', rows), 'xccov', ('**/*.swift',))
 
     @pytest.mark.parametrize('zero', (None, 'allow', 'reject'))
     def test_zero_totals_are_explicit(
