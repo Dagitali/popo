@@ -13,6 +13,7 @@ from popo.config._common import ConfigurationError
 from popo.config.source_boundaries import load_boundaries_config
 from popo.config.swift_boundaries import load_swift_boundaries_config
 from popo.config.test_results import load_test_results_config
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: CONSTANTS
 
@@ -45,6 +46,7 @@ class TestResultPolicy:
     def test_invalid_result_policy(
         self: Self,
         tmp_path: Path,
+        write_file: FileWriter,
         settings: str,
         message: str,
     ) -> None:
@@ -56,14 +58,18 @@ class TestResultPolicy:
         tmp_path : Path
             Pytest-managed directory containing only disposable consumer
             inputs.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the isolated consumer policy.
         settings : str
             Standalone TOML settings deliberately violating loader contracts.
         message : str
             Diagnostic identifying the intended invalid configuration field.
         """
-        (tmp_path / 'popo.toml').write_text('[test-results]\n' + settings)
+        write_file('popo.toml', '[test-results]\n' + settings)
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_test_results_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'field',
@@ -79,6 +85,7 @@ class TestResultPolicy:
     def test_thresholds_require_nonnegative_integers(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
         field: str,
         value: str,
     ) -> None:
@@ -89,20 +96,21 @@ class TestResultPolicy:
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the isolated consumer policy.
         field : str
             Configuration or report field selected for mutation.
         value : str
             Unvalidated value supplied to the operation.
         """
-        (tmp_path / 'popo.toml').write_text(
-            f'[test-results]\n{RESULT_SETTINGS}\n{field}={value}',
-            encoding='utf-8',
-        )
+        write_file('popo.toml', f'[test-results]\n{RESULT_SETTINGS}\n{field}={value}')
+        before = snapshot_files(tmp_path)
         with pytest.raises(
             ConfigurationError,
             match=rf'test-results\.{field} requires a nonnegative integer',
         ):
             load_test_results_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
 
 class TestBoundaryPolicy:
@@ -119,6 +127,11 @@ class TestBoundaryPolicy:
             ('', 'layers must be a nonempty array'),
             ('layers=[]', 'layers must be a nonempty array'),
             ('unknown=true', 'unknown .* setting'),
+            (
+                '[[DOMAIN.layers]]\nname="core"\ninclude=["source"]\n'
+                'allowed-import=["UnexpectedTypo"]',
+                'unknown boundary layer setting',
+            ),
             (
                 '[[DOMAIN.layers]]\nname="bad name"\ninclude=["*.SOURCE"]',
                 'name must be a literal identifier',
@@ -147,6 +160,7 @@ class TestBoundaryPolicy:
     def test_invalid_policy(
         self: Self,
         tmp_path: Path,
+        write_file: FileWriter,
         language: str,
         settings: str,
         message: str,
@@ -154,11 +168,15 @@ class TestBoundaryPolicy:
         """
         Reject invalid names, unknown/self references and escaping globs.
 
+        Misspelled layer rules must fail instead of silently weakening policy.
+
         Parameters
         ----------
         tmp_path : pathlib.Path
             Pytest-managed directory containing only disposable consumer
             inputs.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the isolated consumer policy.
         language : str
             Python or Swift policy namespace, independent of source syntax.
         settings : str
@@ -169,16 +187,16 @@ class TestBoundaryPolicy:
         domain = f'{language}-boundaries'
         suffix = 'py' if language == 'python' else 'swift'
         settings = settings.replace('DOMAIN', domain).replace('SOURCE', suffix)
-        (tmp_path / 'popo.toml').write_text(
-            f'[{domain}]\n{settings}',
-            encoding='utf-8',
-        )
+        write_file('popo.toml', f'[{domain}]\n{settings}')
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_boundaries_config(tmp_path, domain)
+        assert snapshot_files(tmp_path) == before
 
     def test_swift_imports_reject_dotted_modules(
         self: Self,
         tmp_path: Path,
+        write_file: FileWriter,
     ) -> None:
         """
         Reject dotted Swift modules through the native configuration loader.
@@ -187,39 +205,18 @@ class TestBoundaryPolicy:
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the isolated consumer policy.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[[swift-boundaries.layers]]\nname="core"\ninclude=["*.swift"]\n'
             'allowed-imports=["bad.module"]',
-            encoding='utf-8',
         )
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match='must be identifiers'):
             load_swift_boundaries_config(tmp_path)
-
-    @pytest.mark.parametrize('language', ('python', 'swift'))
-    def test_unknown_layer_settings_are_rejected(
-        self,
-        tmp_path: Path,
-        language: str,
-    ) -> None:
-        """
-        Reject misspelled rules instead of silently weakening layer policy.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        language : str
-            Native source language selected by the scenario.
-        """
-        domain = f'{language}-boundaries'
-        (tmp_path / 'popo.toml').write_text(
-            f'[[{domain}.layers]]\nname="core"\ninclude=["source"]\n'
-            'allowed-import=["UnexpectedTypo"]',
-            encoding='utf-8',
-        )
-        with pytest.raises(ConfigurationError, match='unknown boundary layer setting'):
-            load_boundaries_config(tmp_path, domain)
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION
