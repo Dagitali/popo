@@ -5,6 +5,7 @@ Verify source discovery, read failures and inspection without source writes.
 """
 
 from collections.abc import Iterator
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Self
 from unittest.mock import Mock, call, patch
@@ -104,16 +105,52 @@ class TestSourceInputDiscovery:
 class TestSourceInputFailures:
     """Keep discovery/read errors redacted and equivalent across languages."""
 
-    @pytest.mark.parametrize('kind', ['decode', 'directory', 'inspect', 'glob'])
+    @pytest.mark.parametrize(
+        ('kind', 'operation', 'messages'),
+        (
+            pytest.param(
+                'decode',
+                None,
+                ('{filename}: cannot read UTF-8 input',),
+                id='decode',
+            ),
+            pytest.param(
+                'directory',
+                None,
+                ('no inputs match: {filename}',),
+                id='directory',
+            ),
+            pytest.param(
+                'inspect',
+                'is_file',
+                (
+                    '{filename}: cannot inspect selected input',
+                    'no inputs match: {filename}',
+                ),
+                id='inspection-failure',
+            ),
+            pytest.param(
+                'glob',
+                'glob',
+                (
+                    'cannot discover configured source inputs',
+                    'no inputs match: {filename}',
+                ),
+                id='discovery-failure',
+            ),
+        ),
+    )
     def test_failed_inputs(
         self: Self,
         source_case: SourceCase,
         write_file: FileWriter,
         tmp_path: Path,
         kind: str,
+        operation: str | None,
+        messages: tuple[str, ...],
     ) -> None:
         """
-        Verify failed inputs.
+        Preserve exact redacted failure order without changing source inputs.
 
         Parameters
         ----------
@@ -124,7 +161,11 @@ class TestSourceInputFailures:
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
         kind : str
-            Native syntax kind or policy variant under test.
+            Invalid encoding, directory, inspection or discovery failure.
+        operation : str | None
+            Path operation to fail, or None to inspect real malformed inputs.
+        messages : tuple[str, ...]
+            Ordered diagnostic templates with native filename placeholders.
         """
         domain, filename, validate = source_case
         write_file('popo.toml', f'[{domain}]\ninclude=["{filename}"]')
@@ -134,14 +175,17 @@ class TestSourceInputFailures:
         else:
             path.write_bytes(b'\xff' if kind == 'decode' else b'value = 1')
         config = load_source_check(tmp_path, domain)
-        if kind in {'inspect', 'glob'}:
-            operation = 'is_file' if kind == 'inspect' else 'glob'
-            with patch.object(Path, operation, side_effect=PermissionError('PRIVATE')):
-                failures = validate(config)
-        else:
-            failures = validate(config)
-        assert failures
-        assert 'PRIVATE' not in '\n'.join(failures)
+        before = snapshot_files(tmp_path)
+        context = (
+            patch.object(Path, operation, side_effect=PermissionError('PRIVATE'))
+            if operation is not None
+            else nullcontext()
+        )
+        with context:
+            assert validate(config) == [
+                message.format(filename=filename) for message in messages
+            ]
+        assert snapshot_files(tmp_path) == before
 
     def test_undecodable_logs_do_not_disclose_content(
         self: Self,
@@ -255,7 +299,7 @@ class TestSourceInspection:
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
         failure : str
-            Expected failure text, or None for a successful scenario.
+            Invalid UTF-8 bytes or a missing input between readable sources.
         """
         first, bad, last = (tmp_path / name for name in ('first', 'bad', 'last'))
         first.write_text('one', encoding='utf-8')
