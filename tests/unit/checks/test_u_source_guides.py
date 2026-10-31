@@ -5,6 +5,7 @@ Verify exact selected-path matching and read-only source-guide diagnostics.
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -90,22 +91,48 @@ class TestSourceGuides:
         ]
         assert snapshot_files(tmp_path) == before
 
-    def test_unreadable_guide_is_reported_without_selected_sources(
+    @pytest.mark.parametrize(
+        'failure',
+        ('missing', 'directory', 'decode', 'permission'),
+    )
+    @pytest.mark.parametrize(
+        'selected',
+        (False, True),
+        ids=('no-sources', 'selected-source'),
+    )
+    def test_unreadable_guide_is_reported_for_every_selection(
         self,
         tmp_path: Path,
         source_case: SourceCase,
+        failure: str,
+        selected: bool,
     ) -> None:
         """
-        Keep guide read failures visible even when no source path is selected.
+        Keep guide read failures visible regardless of source selection.
+
+        Empty selections still require a readable guide. Selected source files
+        must not be opened while checking guide entries or read failures.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
-            Consumer root without its configured guide.
+            Isolated consumer root containing the guide failure scenario.
         source_case : SourceCase
             Python or Swift domain supplied by the shared language fixture.
+        failure : str
+            Missing guide, directory, invalid UTF-8 or denied read.
+        selected : bool
+            Whether to select an unreadable native source as a read guard.
         """
-        domain, _, _ = source_case
+        domain, filename, _ = source_case
+        guide = tmp_path / 'Guide.md'
+        if failure == 'directory':
+            guide.mkdir()
+        elif failure != 'missing':
+            guide.write_bytes(b'PRIVATE\xff' if failure == 'decode' else b'PRIVATE')
+        paths = [tmp_path / filename] if selected else []
+        for path in paths:
+            path.write_bytes(b'PRIVATE SOURCE\xff')
         config = SourceCheckConfig(
             tmp_path,
             domain,
@@ -113,7 +140,21 @@ class TestSourceGuides:
             (),
             {'source-guide': 'Guide.md'},
         )
-        assert guide_findings(config, []) == ['Guide.md: cannot read UTF-8 input']
+        before = snapshot_files(tmp_path)
+        read = Path.read_text
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=PermissionError('PRIVATE READ')
+            if failure == 'permission'
+            else read,
+        ) as reader:
+            assert guide_findings(config, paths) == [
+                'Guide.md: cannot read UTF-8 input',
+            ]
+        reader.assert_called_once_with(guide, encoding='utf-8')
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION
