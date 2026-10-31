@@ -280,7 +280,7 @@ def run(
         command_parts[0] = str(Path(command_parts[0]).absolute())
     sources = _collect_sources(config, selected)
     with tempfile.TemporaryDirectory(prefix='popo-actionlint-') as directory:
-        mirror = Path(directory)
+        mirror = Path(directory).resolve()
         for path, source in sources.items():
             destination = mirror / path.relative_to(root)
             destination.parent.mkdir(parents=True, exist_ok=True)
