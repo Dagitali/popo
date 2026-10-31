@@ -20,7 +20,38 @@ from tests.support.files import FileWriter, snapshot_files
 class TestLogConfiguration:
     """Validate log pattern settings independently of checker execution."""
 
-    @pytest.mark.parametrize('patterns', ('{}', '{ bad = "" }', '{ "bad\\nID" = "x" }'))
+    @pytest.mark.parametrize(
+        'patterns',
+        (
+            pytest.param('{}', id='empty-table'),
+            pytest.param('{ bad = "" }', id='empty-literal'),
+            pytest.param('{ "bad\\nID" = "x" }', id='multiline-rule-name'),
+            *(
+                pytest.param(
+                    '{warning='
+                    + json.dumps(
+                        'WARNING' + separator + ('' if trailing else 'PRIVATE'),
+                    )
+                    + '}',
+                    id=f'{label}-{'trailing' if trailing else 'embedded'}',
+                )
+                for label, separator in (
+                    ('lf', '\n'),
+                    ('cr', '\r'),
+                    ('crlf', '\r\n'),
+                    ('vertical-tab', '\v'),
+                    ('form-feed', '\f'),
+                    ('file-separator', '\x1c'),
+                    ('group-separator', '\x1d'),
+                    ('record-separator', '\x1e'),
+                    ('next-line', '\x85'),
+                    ('line-separator', '\u2028'),
+                    ('paragraph-separator', '\u2029'),
+                )
+                for trailing in (False, True)
+            ),
+        ),
+    )
     def test_invalid_patterns(
         self: Self,
         tmp_path: Path,
@@ -30,6 +61,9 @@ class TestLogConfiguration:
         """
         Reject empty literals, empty rule tables and malformed rule names.
 
+        Literals must fit within one scanned log line. Embedded and trailing
+        separators are rejected for every supported line-break spelling.
+
         Parameters
         ----------
         tmp_path : Path
@@ -37,7 +71,8 @@ class TestLogConfiguration:
         write_file : FileWriter
             Shared UTF-8 writer creating the consumer policy.
         patterns : str
-            Pattern declarations encoded in the scenario configuration.
+            Malformed rule tables, names or single-line literal declarations
+            encoded as TOML, including embedded and trailing separators.
         """
         write_file(
             'popo.toml',
@@ -48,54 +83,6 @@ class TestLogConfiguration:
             ConfigurationError,
             match=r'^logs\.patterns requires named nonempty single-line literals$',
         ):
-            load_source_check(tmp_path, 'logs')
-        assert snapshot_files(tmp_path) == before
-
-    @pytest.mark.parametrize(
-        'separator',
-        [
-            pytest.param('\n', id='lf'),
-            pytest.param('\r', id='cr'),
-            pytest.param('\r\n', id='crlf'),
-            pytest.param('\v', id='vertical-tab'),
-            pytest.param('\f', id='form-feed'),
-            pytest.param('\x1c', id='file-separator'),
-            pytest.param('\x1d', id='group-separator'),
-            pytest.param('\x1e', id='record-separator'),
-            pytest.param('\x85', id='next-line'),
-            pytest.param('\u2028', id='line-separator'),
-            pytest.param('\u2029', id='paragraph-separator'),
-        ],
-    )
-    @pytest.mark.parametrize('trailing', [False, True])
-    def test_multiline_literals_are_rejected(
-        self: Self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        separator: str,
-        trailing: bool,
-    ) -> None:
-        """
-        Reject literals that cannot occur within a scanned log line.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        write_file : FileWriter
-            Shared UTF-8 writer creating the consumer policy.
-        separator : str
-            Separator spelling used by the scenario.
-        trailing : bool
-            Whether the input includes a trailing separator.
-        """
-        literal = 'WARNING' + separator + ('' if trailing else 'PRIVATE')
-        write_file(
-            'popo.toml',
-            '[logs]\ninclude=["*.log"]\npatterns={warning=' + json.dumps(literal) + '}',
-        )
-        before = snapshot_files(tmp_path)
-        with pytest.raises(ConfigurationError, match='single-line literals'):
             load_source_check(tmp_path, 'logs')
         assert snapshot_files(tmp_path) == before
 
