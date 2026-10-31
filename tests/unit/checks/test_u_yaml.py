@@ -116,6 +116,85 @@ class TestMappingTraversal:
         assert list(mapping_nodes(root, seen)) == []
         assert {id(root), id(root['children']), id(first), id(last)} <= seen
 
+    @pytest.mark.parametrize('container', ('mapping', 'sequence'))
+    def test_partial_consumption_tracks_only_reached_containers(
+        self,
+        container: str,
+    ) -> None:
+        """
+        Retain native identities and caller state while traversal is paused.
+
+        Parameters
+        ----------
+        container : str
+            Whether siblings belong to a mapping or sequence.
+        """
+        first: dict[str, object] = {'name': 'first'}
+        last: dict[str, object] = {'name': 'last'}
+        root: dict[str, object] | list[object] = (
+            {'first': first, 'last': last} if container == 'mapping' else [first, last]
+        )
+        seen: set[int] = set()
+        traversal = mapping_nodes(root, seen)
+        if container == 'mapping':
+            assert next(traversal) is root
+        assert next(traversal) is first
+        assert seen == {id(root), id(first)}
+        assert next(traversal) is last
+        assert list(traversal) == []
+        assert seen == {id(root), id(first), id(last)}
+        assert root == (
+            {'first': first, 'last': last} if container == 'mapping' else [first, last]
+        )
+
+    @pytest.mark.parametrize('container', ('mapping', 'sequence'))
+    def test_previsited_shared_containers_skip_their_descendants(
+        self,
+        container: str,
+    ) -> None:
+        """
+        Skip caller-visited aliases without suppressing independent siblings.
+
+        Parameters
+        ----------
+        container : str
+            Container variant shared between two parent paths.
+        """
+        hidden: dict[str, object] = {'name': 'hidden'}
+        shared: dict[str, object] | list[object] = (
+            {'child': hidden} if container == 'mapping' else [hidden]
+        )
+        visible: dict[str, object] = {'name': 'visible'}
+        root: dict[str, object] = {
+            'first': shared,
+            'second': [shared, visible],
+        }
+        root['cycle'] = root
+        seen = {id(shared)}
+        assert [id(node) for node in mapping_nodes(root, seen)] == [
+            id(root),
+            id(visible),
+        ]
+        assert id(hidden) not in seen
+        assert {id(root), id(shared), id(root['second']), id(visible)} == seen
+
+    @pytest.mark.parametrize('value', (None, False, 0, '', 'PRIVATE', (), set()))
+    def test_scalars_do_not_change_caller_state(
+        self,
+        value: object,
+    ) -> None:
+        """
+        Ignore values outside the mapping/list traversal contract.
+
+        Parameters
+        ----------
+        value : object
+            Scalar or unsupported container that supplies no mapping nodes.
+        """
+        seen = {123}
+        assert list(mapping_nodes(value, seen)) == []
+        assert seen == {123}
+
 
 class TestYamlSnapshots:
     """Keep text and file parsing under the same safe mapping contract."""

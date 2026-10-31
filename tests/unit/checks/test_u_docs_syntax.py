@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from popo.checks.docs import validate
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -98,24 +98,6 @@ class TestMarkdownSyntax:
             f'{readme}:2: anchor does not exist: guide.md#hidden',
         ]
 
-    def test_fenced_reference_definitions_are_examples(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Verify reference definitions inside fenced examples are not checked.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        """
-        write_file('README.md', '```markdown\n[example]: missing.md\n```\n')
-        assert validate(tmp_path) == []
-
     def test_multiline_comments_preserve_diagnostic_line_numbers(
         self,
         tmp_path: Path,
@@ -142,6 +124,7 @@ class TestMarkdownSyntax:
         [
             '```markdown\n[Example](missing.md)\n```',
             '~~~markdown\n[Example](missing.md)\n~~~',
+            '```markdown\n[example]: missing.md\n```',
             '```\n~~~\n[Example](missing.md)\n```',
             '````\n```\n[Example](missing.md)\n````',
             '```\n```python\n[Example](missing.md)\n```',
@@ -152,6 +135,7 @@ class TestMarkdownSyntax:
         ids=[
             'backticks',
             'tildes',
+            'reference-definition',
             'mixed',
             'shorter',
             'info-string',
@@ -169,6 +153,9 @@ class TestMarkdownSyntax:
         """
         Only a matching, sufficiently long closing fence ends an example.
 
+        Reference definitions inside fenced examples are not checked. Active
+        links after the example retain their original diagnostic line numbers.
+
         Parameters
         ----------
         tmp_path : pathlib.Path
@@ -176,13 +163,16 @@ class TestMarkdownSyntax:
         write_file : FileWriter
             UTF-8 writer creating parent directories in ``tmp_path``.
         block : str
-            Fenced code example inserted before an active broken link.
+            Fenced code, reference definition or literal comment delimiter
+            inserted before an active broken link.
         """
         readme = write_file('README.md', f'{block}\n[Real](missing.md)\n')
         line = len(block.splitlines()) + 1
+        before = snapshot_files(tmp_path)
         assert validate(tmp_path) == [
             f'{readme}:{line}: local target does not exist: missing.md',
         ]
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize('fence', ['```', '~~~'])
     def test_unclosed_fence_extends_to_end_of_file(

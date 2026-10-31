@@ -23,13 +23,31 @@ class TestSwiftPolicyCommands:
     Keep the explicit Swift policy independent of Python project metadata.
     """
 
+    @pytest.mark.parametrize(
+        ('observed', 'message'),
+        (
+            pytest.param('6.2.0', None, id='supported'),
+            pytest.param(
+                '6.3.0',
+                'compiler version is not supported by policy',
+                id='unsupported',
+            ),
+            pytest.param(
+                '6.1-SNAPSHOT',
+                'invalid stable Swift version',
+                id='malformed',
+            ),
+        ),
+    )
     def test_explicit_compiler_observation(
         self,
         swift_policy_consumer: Path,
         capsys: pytest.CaptureFixture[str],
+        observed: str,
+        message: str | None,
     ) -> None:
         """
-        Verify explicit compiler observation.
+        Report explicit compiler observations without changing declarations.
 
         Parameters
         ----------
@@ -37,27 +55,51 @@ class TestSwiftPolicyCommands:
             Isolated Swift consumer with explicit compiler policy.
         capsys : pytest.CaptureFixture[str]
             Pytest fixture capturing standard output and error streams.
+        observed : str
+            Supported, unsupported or malformed explicit compiler observation.
+        message : str | None
+            Exact diagnostic detail, or None for a supported observation.
         """
-        assert (
-            main(
-                [
-                    'check-swift-policy',
-                    '--root',
-                    str(swift_policy_consumer),
-                    '--compiler-version',
-                    '6.3.0',
-                    '--format',
-                    'json',
-                ],
-            )
-            == 1
-        )
-        report = json.loads(capsys.readouterr().out)
-        assert not report['passed']
-        assert (
-            'compiler version is not supported'
-            in report['checks'][0]['diagnostics'][0]['message']
-        )
+        before = snapshot_files(swift_policy_consumer)
+        failed = message is not None
+        assert main(
+            [
+                'check-swift-policy',
+                '--root',
+                str(swift_policy_consumer),
+                '--compiler-version',
+                observed,
+                '--format',
+                'json',
+            ],
+        ) == int(failed)
+        output = capsys.readouterr()
+        assert output.err == ''
+        assert json.loads(output.out) == {
+            'schema_version': 1,
+            'command': 'check-swift-policy',
+            'passed': not failed,
+            'checks': [
+                {
+                    'check': 'check-swift-policy',
+                    'passed': not failed,
+                    'diagnostics': (
+                        []
+                        if message is None
+                        else [
+                            {
+                                'severity': 'error',
+                                'message': f'--compiler-version: {message}',
+                            },
+                        ]
+                    ),
+                    'summary': ''
+                    if failed
+                    else 'Swift toolchain declarations are consistent',
+                },
+            ],
+        }
+        assert snapshot_files(swift_policy_consumer) == before
 
     def test_invalid_configuration_is_identified(
         self,

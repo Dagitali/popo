@@ -191,9 +191,9 @@ def callable_findings(
     Notes
     -----
     Presence and spacing rules remain the caller's responsibility. Interpreter
-    exceptions propagate when interpretation is needed; disabled rules and
-    unsupported signatures do not request markup evidence. No syntax parsing
-    or consumer execution occurs.
+    exceptions propagate when interpretation is needed. When every callable
+    rule is disabled, or the signature is unsupported, no markup evidence is
+    requested. No syntax parsing or consumer execution occurs.
     """
     if (
         facts.kind not in callable_kinds
@@ -238,32 +238,31 @@ def contract_findings(
     -------
     list[str]
         Consistent rule descriptions without names, prose or source excerpts.
+        Evaluate enabled rules only, in parameter/result/exception order;
+        disabled parameter rules do not compare documented names.
     """
     if facts.parameter_names is None:
         return []
     location = f'{relative}:{facts.line}'
-    rules = (
-        (
-            'parameter-docs',
-            not documentation.parameter_names.issuperset(facts.parameter_names),
-            'parameter documentation incomplete',
-        ),
-        (
-            'return-docs',
-            bool(facts.result_section) and not documentation.result_documented,
-            'return documentation missing',
-        ),
-        (
-            'raises-docs',
-            facts.exception_required and not documentation.exception_documented,
-            'raises documentation missing',
-        ),
-    )
-    return [
-        f'{location}: {message}'
-        for key, failed, message in rules
-        if config.settings[key] and failed
-    ]
+    settings = config.settings
+    failures: list[str] = []
+    if settings['parameter-docs'] and not documentation.parameter_names.issuperset(
+        facts.parameter_names,
+    ):
+        failures.append(f'{location}: parameter documentation incomplete')
+    if (
+        settings['return-docs']
+        and facts.result_section
+        and not documentation.result_documented
+    ):
+        failures.append(f'{location}: return documentation missing')
+    if (
+        settings['raises-docs']
+        and facts.exception_required
+        and not documentation.exception_documented
+    ):
+        failures.append(f'{location}: raises documentation missing')
+    return failures
 
 
 def declaration_findings(
@@ -379,7 +378,11 @@ def guide_findings(
     -----
     Read the guide without executing or changing it. Guide entries are exact
     inline backtick spans; this is not a complete Markdown parser. Resolution,
-    file and decode errors become diagnostics rather than propagating.
+    file and decode errors become diagnostics rather than propagating. Retain
+    only selected paths during matching and stop once all are documented.
+    Missing entries preserve input order and duplicates. The guide is still
+    resolved and read when the selection is empty, so read failures remain
+    visible.
     """
     name = str(config.settings['source-guide'])
     if not name:
@@ -393,11 +396,16 @@ def guide_findings(
     guide, failures = read_source(path, config.root)
     if guide is None:
         return failures
-    entries = {match[1] for match in re.finditer(r'`([^`\n]+)`', guide)}
+    relative_paths = [path.relative_to(config.root).as_posix() for path in paths]
+    missing = set(relative_paths)
+    for match in re.finditer(r'`([^`\n]+)`', guide):
+        missing.discard(match[1])
+        if not missing:
+            break
     return [
-        f'{path.relative_to(config.root).as_posix()}: missing source-guide entry'
-        for path in paths
-        if path.relative_to(config.root).as_posix() not in entries
+        f'{relative}: missing source-guide entry'
+        for relative in relative_paths
+        if relative in missing
     ]
 
 

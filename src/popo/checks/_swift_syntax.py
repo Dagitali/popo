@@ -121,14 +121,19 @@ def _mask(
     Parameters
     ----------
     text : str
-        Original text from which a header or masked view is derived.
+        Noncode text measured in Unicode characters, not UTF-8 bytes.
 
     Returns
     -------
     str
         Spaces replacing noncode characters, with newlines unchanged.
+        Only LF is retained; CR and other line separators become spaces.
+        A local translation table retains one entry per distinct character
+        rather than a list of per-character output fragments.
     """
-    return ''.join('\n' if char == '\n' else ' ' for char in text)
+    table = dict.fromkeys(map(ord, text), ' ')
+    table[ord('\n')] = '\n'
+    return text.translate(table)
 
 
 def _source_view(

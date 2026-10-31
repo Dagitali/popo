@@ -15,6 +15,7 @@ exclusions, and containment rules. Symlink scenarios skip when the platform
 cannot create them; external destinations are not fetched.
 """
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
@@ -26,6 +27,85 @@ from popo.checks.docs import validate
 from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
+
+
+class TestMarkdownDiscovery:
+    """Prune ignored trees while preserving lexical source discovery."""
+
+    @pytest.mark.parametrize('ignored', sorted(docs.IGNORED_PARTS))
+    def test_ignored_directories_are_not_scanned(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        ignored: str,
+    ) -> None:
+        """
+        Skip ignored subtrees before scanning their contents.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Root containing ignored and similarly named eligible paths.
+        write_file : FileWriter
+            Writer creating isolated discovery inputs.
+        ignored : str
+            Exact ignored directory component at either nesting depth.
+        """
+        for prefix in ('', 'docs/'):
+            write_file(f'{prefix}{ignored}/nested/README.md', '')
+        expected = [
+            write_file(f'docs/{ignored}-guide/README.md', ''),
+            write_file(f'{ignored}.md', ''),
+            write_file('.github/README.md', ''),
+        ]
+        before = snapshot_files(tmp_path)
+        with patch.object(os, 'scandir', wraps=os.scandir) as scan:
+            assert docs._markdown_paths(tmp_path) == sorted(expected)
+        scanned = [
+            Path(call.args[0]).relative_to(tmp_path) for call in scan.call_args_list
+        ]
+        assert all(ignored not in path.parts for path in scanned)
+        assert snapshot_files(tmp_path) == before
+
+    def test_markdown_directories_and_symlinks_remain_selected(
+        self,
+        tmp_path: Path,
+        symlink: Callable[[Path, Path], None],
+    ) -> None:
+        """
+        Retain non-file glob matches without following symlink directories.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Root containing a consumer tree and external link targets.
+        symlink : collections.abc.Callable
+            Fixture creating links or skipping unsupported environments.
+        """
+        root = tmp_path / 'consumer'
+        directory = root / 'folder.md'
+        directory.mkdir(parents=True)
+        child = directory / 'child.md'
+        child.write_text('', encoding='utf-8')
+        external = tmp_path / 'external'
+        external.mkdir()
+        target = external / 'README.md'
+        target.write_text('', encoding='utf-8')
+        symlink(root / 'file.md', target)
+        symlink(root / 'directory.md', external)
+        symlink(root / 'other-directory', external)
+        symlink(root / 'missing.md', external / 'missing')
+        before = snapshot_files(tmp_path)
+        assert docs._markdown_paths(root) == sorted(
+            (
+                directory,
+                child,
+                root / 'file.md',
+                root / 'directory.md',
+                root / 'missing.md',
+            ),
+        )
+        assert snapshot_files(tmp_path) == before
 
 
 class TestMarkdownLinks:
@@ -562,42 +642,32 @@ class TestTitledDestinations:
 class TestHeadingSlugCollisions:
     """Allocate unique heading suffixes without affecting explicit anchors."""
 
-    def test_explicit_anchors_do_not_reserve_heading_suffixes(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Keep HTML anchors separate from heading suffix allocation.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        write_file : FileWriter
-            Fixture writing UTF-8 files beneath the temporary consumer root.
-        """
-        path = write_file(
-            'README.md',
-            '<a id="echo-1"></a>\n# Echo\n# Echo\n',
-        )
-        assert docs._anchors(path) == {'echo', 'echo-1'}
-        assert validate(tmp_path) == []
-
     @pytest.mark.parametrize(
-        'headings,expected',
+        ('headings', 'expected', 'anchors'),
         (
-            (
+            pytest.param(
                 ('Echo', 'Echo', 'Echo 1', 'Echo-1', 'Echo'),
                 ('echo', 'echo-1', 'echo-1-1', 'echo-1-2', 'echo-2'),
+                (),
+                id='generated-collisions',
             ),
-            (
+            pytest.param(
                 ('Foxtrot-1', 'Foxtrot', 'Foxtrot'),
                 ('foxtrot-1', 'foxtrot', 'foxtrot-2'),
+                (),
+                id='natural-suffix-first',
             ),
-            (
+            pytest.param(
                 ('A-1', 'A-2', 'A', 'A', 'A'),
                 ('a-1', 'a-2', 'a', 'a-3', 'a-4'),
+                (),
+                id='multiple-natural-suffixes',
+            ),
+            pytest.param(
+                ('Echo', 'Echo'),
+                ('echo', 'echo-1'),
+                ('echo-1',),
+                id='explicit-anchor-independent',
             ),
         ),
     )
@@ -607,9 +677,13 @@ class TestHeadingSlugCollisions:
         write_file: FileWriter,
         headings: tuple[str, ...],
         expected: tuple[str, ...],
+        anchors: tuple[str, ...],
     ) -> None:
         """
-        Resolve links to headings colliding with generated or natural IDs.
+        Resolve heading collisions without reserving explicit anchor names.
+
+        Keep HTML anchors separate from heading suffix allocation. Generated
+        or natural heading IDs must remain usable as local link destinations.
 
         Parameters
         ----------
@@ -620,12 +694,16 @@ class TestHeadingSlugCollisions:
         headings : tuple[str, ...]
             Heading sequence used to exercise generated anchor collisions.
         expected : tuple[str, ...]
-            Expected result for the selected parameterized scenario.
+            Expected heading IDs and active local-link destinations.
+        anchors : tuple[str, ...]
+            HTML anchor IDs declared before headings; these do not reserve
+            generated heading suffixes.
         """
         path = write_file(
             'README.md',
             '\n'.join(
                 [
+                    *(f'<a id="{anchor}"></a>' for anchor in anchors),
                     *(f'# {heading}' for heading in headings),
                     *(f'[Heading](#{slug})' for slug in expected),
                 ],

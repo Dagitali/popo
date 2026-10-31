@@ -73,7 +73,10 @@ coercion.
 Supported values are literals, `${{ env.NAME }}` and `${{ matrix.NAME }}`. Environment precedence is
 workflow, job, then step. Matrix values come only from that job's nonempty literal list. Job-scoped
 values are never borrowed from another job. General expressions, nested references, dynamic matrices
-and matrix `include`/`exclude` resolution are unsupported and produce findings.
+and matrix `include`/`exclude` resolution are unsupported and produce findings. Surrounding ASCII
+and Unicode whitespace is trimmed from literal versions, resolved environment/matrix values and
+reference expressions without rewriting the workflow file. The scoped Python reader shares this
+normalization behavior.
 
 Every resolved CI version must be supported. At least one must match the preference across the
 selected workflows unless `require-preferred-in-ci=false`. Missing, malformed, escaping or

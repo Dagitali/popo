@@ -189,13 +189,26 @@ class TestValidationCommands:
         assert '--summary' in output.err
         assert '--results-root' in output.err
 
+    @pytest.mark.parametrize(
+        ('source', 'message'),
+        (
+            pytest.param('struct Rule {}', None, id='allowed'),
+            pytest.param(
+                'let dependency: Screen',
+                'Core.swift:1: core: forbidden symbol Screen',
+                id='forbidden-reference',
+            ),
+        ),
+    )
     def test_boundary_profile_and_negative_reference(
         self: Self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        source: str,
+        message: str | None,
     ) -> None:
         """
-        Public profile selection runs the configured graph without writes.
+        Run allowed and forbidden profile graphs independently without writes.
 
         Parameters
         ----------
@@ -204,6 +217,10 @@ class TestValidationCommands:
             inputs.
         capsys : pytest.CaptureFixture[str]
             Pytest fixture capturing public CLI text or JSON output.
+        source : str
+            Core declaration with or without a forbidden UI reference.
+        message : str | None
+            Complete boundary finding, or None for an allowed graph.
         """
         (tmp_path / 'popo.toml').write_text(
             '[profiles.layers]\nchecks=["check-swift-boundaries"]\n'
@@ -211,9 +228,10 @@ class TestValidationCommands:
             '[[swift-boundaries.layers]]\nname="core"\ninclude=["Core.swift"]\n'
             'forbidden-layers=["ui"]\n'
             '[[swift-boundaries.layers]]\nname="ui"\ninclude=["UI.swift"]',
+            encoding='utf-8',
         )
-        (tmp_path / 'Core.swift').write_text('struct Rule {}')
-        (tmp_path / 'UI.swift').write_text('struct Screen {}')
+        (tmp_path / 'Core.swift').write_text(source, encoding='utf-8')
+        (tmp_path / 'UI.swift').write_text('struct Screen {}', encoding='utf-8')
         before = snapshot_files(tmp_path)
         args = [
             'check-all',
@@ -224,15 +242,30 @@ class TestValidationCommands:
             '--format',
             'json',
         ]
-        assert main(args) == 0
-        assert (
-            json.loads(capsys.readouterr().out)['checks'][0]['check']
-            == 'check-swift-boundaries'
-        )
+        failed = message is not None
+        assert main(args) == int(failed)
+        output = capsys.readouterr()
+        assert output.err == ''
+        assert json.loads(output.out) == {
+            'schema_version': 1,
+            'command': 'check-all',
+            'passed': not failed,
+            'checks': [
+                {
+                    'check': 'check-swift-boundaries',
+                    'passed': not failed,
+                    'diagnostics': (
+                        []
+                        if message is None
+                        else [
+                            {'severity': 'error', 'message': message},
+                        ]
+                    ),
+                    'summary': '' if failed else 'configured Swift boundaries passed',
+                },
+            ],
+        }
         assert snapshot_files(tmp_path) == before
-        (tmp_path / 'Core.swift').write_text('let dependency: Screen')
-        assert main(args) == 1
-        assert 'forbidden symbol Screen' in capsys.readouterr().out
 
     @pytest.mark.parametrize('command', ('check-python-boundaries', 'check-all'))
     def test_python_boundary_selection_and_reporting(

@@ -89,14 +89,13 @@ def _detect_dependencies(
         ('pyproject.toml', 'requirements.txt', 'exact'),
         ('infra/pyproject.toml', 'infra/requirements.txt', 'exact'),
     )
-    for metadata, requirements, mode in candidates:
+    for layout in candidates:
+        metadata, requirements, mode = layout
         if (root / metadata).is_file() and (root / requirements).is_file():
-            return DependencyConfig(root / metadata, root / requirements, mode)
-    return DependencyConfig(
-        root / 'pyproject.toml',
-        root / 'requirements/lowest.txt',
-        'minimum-constraints',
-    )
+            break
+    else:
+        metadata, requirements, mode = candidates[0]
+    return DependencyConfig(root / metadata, root / requirements, mode)
 
 
 # !SECTION

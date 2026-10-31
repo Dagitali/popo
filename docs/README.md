@@ -43,6 +43,7 @@ branch-protection and release policies.
 
 | Need | Document |
 | --- | --- |
+| Summarize exported LLVM/Xcode coverage (unreleased) | [Coverage summaries] |
 | Install and run the CLI | [Project overview] |
 | Try a check and diagnose a failure | [First repository tutorial] |
 | Configure a consumer repository | [Configuration reference] |
@@ -130,6 +131,7 @@ Use reference links sorted by destination and keep file headers and tables of co
 [API notes]: api/README.md
 [Architecture notes]: architecture/README.md
 [Change-impact map]: architecture/change-impact-map.md
+[Coverage summaries]: coverage-summaries.md
 [engineering guidance]: engineering.md
 [File policies]: file-policies.md
 [Shared guardrails]: guardrails.md

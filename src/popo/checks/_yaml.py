@@ -129,21 +129,28 @@ def mapping_nodes(
     visited only once. Values are not copied or mutated; keys are assumed to
     have been validated by the loader. The visited set is updated as the
     iterator is consumed. An explicit stack avoids the Python recursion limit
-    for deeply nested parsed data; YAML parsing has its own limits.
+    for deeply nested parsed data; YAML parsing has its own limits. Store child
+    iterators rather than queuing every sibling, keeping traversal-stack memory
+    proportional to nesting depth. The visited set still retains each reached
+    container identity. Callers must not mutate containers during traversal.
     """
     seen = set() if seen is None else seen
-    pending = [value]
+    pending: list[Iterator[object]] = [iter((value,))]
     while pending:
-        current = pending.pop()
+        try:
+            current = next(pending[-1])
+        except StopIteration:
+            pending.pop()
+            continue
         if not isinstance(current, (dict, list)) or id(current) in seen:
             continue
         seen.add(id(current))
         if isinstance(current, dict):
             mapping = cast(dict[str, object], current)
             yield mapping
-            pending.extend(reversed(mapping.values()))
+            pending.append(iter(mapping.values()))
         else:
-            pending.extend(reversed(cast(list[object], current)))
+            pending.append(iter(cast(list[object], current)))
 
 
 def parse_mapping(

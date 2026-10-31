@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from popo.checks.docs import validate
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -21,38 +21,6 @@ class TestMarkdownReferencesAndImages:
 
     Cover reference definitions, reference labels and inline images offline.
     """
-
-    @pytest.mark.parametrize(
-        ('target', 'message'),
-        [
-            ('missing.md', 'local target does not exist'),
-            ('#missing', 'anchor does not exist'),
-        ],
-    )
-    def test_broken_reference_definitions(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        target: str,
-        message: str,
-    ) -> None:
-        """
-        Check even unused definitions and retain their source line numbers.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        target : str
-            Destination of an unused reference definition that must fail
-            validation.
-        message : str
-            Expected diagnostic text for the broken reference destination.
-        """
-        readme = write_file('README.md', f'# Project\n\n[unused]: {target}\n')
-        assert validate(tmp_path) == [f'{readme}:3: {message}: {target}']
 
     def test_inline_images_cannot_escape_through_symlinks(
         self,
@@ -80,16 +48,28 @@ class TestMarkdownReferencesAndImages:
         ]
 
     @pytest.mark.parametrize(
-        ('content', 'message'),
+        ('content', 'line', 'message'),
         [
-            ('[Text][missing]', 'undefined reference: missing'),
-            ('[Text][]', 'undefined reference: Text'),
-            ('![Image][missing]', 'undefined reference: missing'),
-            ('[same]: one.png\n[ SAME ]: two.png', 'conflicting reference:  SAME '),
-            ('![Image](missing.png)', 'local target does not exist: missing.png'),
-            ('![](missing.png)', 'local target does not exist: missing.png'),
-            ('![Image](../outside.png)', 'link escapes repository: ../outside.png'),
-            ('![Image](images/)', 'local target does not exist: images/'),
+            pytest.param(
+                '# Project\n\n[unused]: missing.md\n',
+                3,
+                'local target does not exist: missing.md',
+                id='unused-missing-target',
+            ),
+            pytest.param(
+                '# Project\n\n[unused]: #missing\n',
+                3,
+                'anchor does not exist: #missing',
+                id='unused-missing-anchor',
+            ),
+            ('[Text][missing]', 1, 'undefined reference: missing'),
+            ('[Text][]', 1, 'undefined reference: Text'),
+            ('![Image][missing]', 1, 'undefined reference: missing'),
+            ('[same]: one.png\n[ SAME ]: two.png', 2, 'conflicting reference:  SAME '),
+            ('![Image](missing.png)', 1, 'local target does not exist: missing.png'),
+            ('![](missing.png)', 1, 'local target does not exist: missing.png'),
+            ('![Image](../outside.png)', 1, 'link escapes repository: ../outside.png'),
+            ('![Image](images/)', 1, 'local target does not exist: images/'),
         ],
     )
     def test_reference_and_image_failures(
@@ -97,10 +77,14 @@ class TestMarkdownReferencesAndImages:
         tmp_path: Path,
         write_file: FileWriter,
         content: str,
+        line: int,
         message: str,
     ) -> None:
         """
         Reject missing labels, conflicting definitions and invalid images.
+
+        Check even unused definitions and retain their source line numbers.
+        Missing local files and anchors fail independently of reference usage.
 
         Parameters
         ----------
@@ -110,14 +94,18 @@ class TestMarkdownReferencesAndImages:
             UTF-8 writer for the Markdown source and target files.
         content : str
             Active Markdown whose observable failure is checked.
+        line : int
+            Exact one-based source line that must supply the sole finding.
         message : str
-            Expected diagnostic independent of the temporary root.
+            Complete diagnostic suffix, independent of the temporary root.
         """
-        write_file('README.md', content)
+        source = write_file('README.md', content)
         write_file('one.png', 'synthetic')
         write_file('two.png', 'synthetic')
         (tmp_path / 'images').mkdir()
-        assert any(message in failure for failure in validate(tmp_path))
+        before = snapshot_files(tmp_path)
+        assert validate(tmp_path) == [f'{source}:{line}: {message}']
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'content',
@@ -156,7 +144,9 @@ class TestMarkdownReferencesAndImages:
         write_file('README.md', content)
         write_file('image.png', 'synthetic')
         write_file('my image.png', 'synthetic')
+        before = snapshot_files(tmp_path)
         assert validate(tmp_path) == []
+        assert snapshot_files(tmp_path) == before
 
     def test_reference_destination_with_spaces(
         self,

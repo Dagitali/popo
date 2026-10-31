@@ -5,6 +5,8 @@ Verify independent local/CI guardrail scenarios through public CLI output.
 """
 
 import json
+import subprocess
+from unittest.mock import Mock
 
 import pytest
 
@@ -31,6 +33,7 @@ class TestGuardrailCommand:
         capsys: pytest.CaptureFixture[str],
         cli_format: str | None,
         format_arguments: tuple[str, ...],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         Verify contract.
@@ -54,8 +57,14 @@ class TestGuardrailCommand:
             Requested CLI output format, or None for its default.
         format_arguments : tuple[str, ...]
             CLI arguments selecting text or JSON output.
+        monkeypatch : pytest.MonkeyPatch
+            Restore the process-launch guard after each independent scenario.
         """
         root = guardrail_consumer.root
+        launcher = Mock(
+            side_effect=AssertionError('guardrail checks must not execute tools'),
+        )
+        monkeypatch.setattr(subprocess, 'Popen', launcher)
         before = snapshot_files(root)
         assert main(
             [
@@ -65,6 +74,7 @@ class TestGuardrailCommand:
                 *format_arguments,
             ],
         ) == int(guardrail_failure is not None)
+        launcher.assert_not_called()
         output = capsys.readouterr()
         assert output.err == ''
         if cli_format == 'json':

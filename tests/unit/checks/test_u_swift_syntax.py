@@ -107,6 +107,41 @@ class TestSwiftSyntax:
             'struct',
         ]
 
+    @pytest.mark.parametrize(
+        'text,expected',
+        [
+            pytest.param('', '', id='empty'),
+            pytest.param('abc', '   ', id='ascii'),
+            pytest.param('\n', '\n', id='lf'),
+            pytest.param('\n\n', '\n\n', id='only-lf'),
+            pytest.param('\r\n', ' \n', id='crlf'),
+            pytest.param('\né😀\r\n', '\n   \n', id='unicode-and-crlf'),
+            pytest.param(
+                '\r\v\f\x1c\x1d\x1e\x85\u2028\u2029',
+                '         ',
+                id='non-lf-separators',
+            ),
+            pytest.param('\x00\tvalue', '       ', id='nul-and-tab'),
+            pytest.param('a\ud800b', '   ', id='unencodable-characters'),
+        ],
+    )
+    def test_mask_preserves_only_lf_and_character_positions(
+        self,
+        text: str,
+        expected: str,
+    ) -> None:
+        """
+        Shield noncode by character count without normalizing line endings.
+
+        Parameters
+        ----------
+        text : str
+            Noncode fragment, including Unicode and non-LF line separators.
+        expected : str
+            Exact spaces and retained LF characters required by source offsets.
+        """
+        assert _swift_syntax._mask(text) == expected
+
     @pytest.mark.parametrize('indent', ('  ', '\t', '\u00a0'))
     @pytest.mark.parametrize(
         'suffix,continues',
