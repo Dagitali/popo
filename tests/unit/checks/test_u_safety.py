@@ -54,23 +54,49 @@ def cyclic_workflow(
 # SECTION: TESTS
 
 
-class TestNpmDependencyShapes:
+class TestNpmPairs:
     """
-    Cover npm dependency shapes.
+    Check source manifests even when CI copies them into locked fixtures.
 
+    Notes
+    -----
     Validate dependency objects without resolving floating version ranges.
+    Reject malformed specifications even when root metadata matches.
     """
 
     @pytest.mark.parametrize(
+        'group',
+        ('dependencies', 'devDependencies', 'optionalDependencies'),
+    )
+    @pytest.mark.parametrize(
         ('dependencies', 'message'),
-        [([], 'dependencies must be an object'), ({'lib': '^2.0'}, '')],
+        (
+            pytest.param([], '{group} must be an object', id='nonobject'),
+            pytest.param({'lib': '^2.0'}, None, id='floating-range'),
+            pytest.param(
+                {'lib': 123},
+                '{group} specifications must be strings',
+                id='numeric',
+            ),
+            pytest.param(
+                {'lib': ''},
+                '{group} specifications must be strings',
+                id='empty',
+            ),
+            pytest.param(
+                {'lib': ' '},
+                '{group} specifications must be strings',
+                id='blank',
+            ),
+        ),
     )
     def test_dependency_shapes(
         self,
         tmp_path: Path,
         write_file: FileWriter,
+        group: str,
         dependencies: object,
-        message: str,
+        message: str | None,
     ) -> None:
         """
         Reject non-objects and permit matching non-exact specifications.
@@ -81,61 +107,32 @@ class TestNpmDependencyShapes:
             Per-test temporary directory supplied by pytest.
         write_file : FileWriter
             Fixture writing UTF-8 files beneath the temporary consumer root.
+        group : str
+            Runtime, development or optional dependency group under inspection.
         dependencies : object
             Dependency declaration shape supplied to the scenario.
-        message : str
-            Expected error message or scenario diagnostic.
+        message : str | None
+            Exact diagnostic template, or None for a matching floating range.
         """
-        write_file('package.json', json.dumps({'dependencies': dependencies}))
+        write_file('package.json', json.dumps({group: dependencies}))
         write_file(
             'package-lock.json',
             json.dumps(
                 {
                     'lockfileVersion': 3,
-                    'packages': {'': {'dependencies': dependencies}},
+                    'packages': {'': {group: dependencies}},
                 },
             ),
         )
-        failures = validate(
+        before = snapshot_files(tmp_path)
+        assert validate(
             SafetyConfig(tmp_path, npm_pairs=(('package.json', 'package-lock.json'),)),
+        ) == (
+            []
+            if message is None
+            else [f'package.json -> package-lock.json: {message.format(group=group)}']
         )
-        assert bool(failures) == bool(message)
-        if message:
-            assert message in failures[0]
-
-
-class TestNpmPairs:
-    """Check source manifests even when CI copies them into locked fixtures."""
-
-    def test_invalid_dependency_specification(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Reject malformed specifications even when root metadata matches.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        write_file : FileWriter
-            Fixture writing UTF-8 files beneath the temporary consumer root.
-        """
-        write_file('package.json', '{"dependencies":{"lib":123}}')
-        write_file(
-            'package-lock.json',
-            '{"lockfileVersion":3,"packages":{"":{"dependencies":{"lib":123}}}}',
-        )
-        assert (
-            'specifications must be strings'
-            in validate(
-                SafetyConfig(
-                    tmp_path,
-                    npm_pairs=(('package.json', 'package-lock.json'),),
-                ),
-            )[0]
-        )
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'content',
