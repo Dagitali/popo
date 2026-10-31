@@ -78,9 +78,9 @@ configured; see the [release policy].
 
 ## Features
 
-- Unreleased read-only LLVM/Xcode [coverage summaries], with explicit source selections,
-  memory-efficient duplicate aggregation and aggregate Markdown/JSON output; generation does not run
-  tests or impose percentage gates;
+- Read-only LLVM/Xcode [coverage summaries], with explicit source selections, memory-efficient
+  duplicate aggregation and aggregate Markdown/JSON output; generation does not run tests or impose
+  percentage gates (added in v0.14.0);
 - Native test-summary acceptance in v0.12.0 and configurable Python/Swift layer boundaries; Python
   module ownership supports flat and `src/` layouts, including modules named `src.py`. Overlapping
   layers share input reads within a check. Import policies are indexed per evaluation, retaining
@@ -208,9 +208,9 @@ popo check-all
 popo source-inventory --revision HEAD --name Example > source-inventory.json
 ```
 
-Repository-check and inventory commands accept `--root`. The unreleased `coverage-summary` command
-instead takes an explicit exported report and source-selection patterns; see [coverage summaries].
-The equivalent module entry point is `python -m popo`.
+Repository-check and inventory commands accept `--root`. The `coverage-summary` command (added in
+v0.14.0) instead takes an explicit exported report and source-selection patterns; see [coverage
+summaries]. The equivalent module entry point is `python -m popo`.
 
 `source-inventory` reads committed Git blobs and reports malformed blob responses without including
 raw header text or source bytes in diagnostic messages; see [source inventories]. Hashing uses

@@ -20,6 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
+- [0.14.0 - 2026-10-31](#0140---2026-10-31)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
@@ -132,6 +133,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   - [Fixed](#fixed-18)
 
 ## Unreleased
+
+## [0.14.0] - 2026-10-31
 
 ### Added
 
