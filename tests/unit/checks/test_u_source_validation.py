@@ -9,12 +9,13 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from popo.checks import _python_declarations, _source_validation
+from popo.checks import _python_declarations, _source_validation, _swift_declarations
 from popo.config.source_checks import SourceCheckConfig
 
 # SECTION: TESTS
 
 
+@pytest.mark.parametrize('language', ('python', 'swift'))
 class TestParsedSourceFindings:
     """Preserve limit, documentation and convention evaluation contracts."""
 
@@ -23,6 +24,7 @@ class TestParsedSourceFindings:
         self,
         tmp_path: Path,
         single_pass: bool,
+        language: str,
     ) -> None:
         """
         Collect list or iterator findings after physical source limits.
@@ -33,11 +35,15 @@ class TestParsedSourceFindings:
             Lexical consumer root; no files are read or written.
         single_pass : bool
             Supply single-pass iterators instead of reusable lists.
+        language : str
+            Native Python or Swift front end supplying source facts.
         """
-        source = '"""Overview."""'
-        parsed = _python_declarations.parse(source)
+        source = '"""Overview."""' if language == 'python' else '/// Overview.'
+        frontend = _python_declarations if language == 'python' else _swift_declarations
+        parsed = frontend.parse(source)
+        filename = 'source.py' if language == 'python' else 'source.swift'
         settings: dict[str, object] = {'documentation-width': 5, 'max-file-lines': 0}
-        config = SourceCheckConfig(tmp_path, 'python-source', (), (), settings)
+        config = SourceCheckConfig(tmp_path, f'{language}-source', (), (), settings)
         inspectors = Mock()
         documentation = ['documentation', 'documentation']
         conventions = ['convention']
@@ -50,20 +56,20 @@ class TestParsedSourceFindings:
         assert _source_validation.parsed_source_findings(
             parsed,
             config,
-            tmp_path / 'source.py',
+            tmp_path / filename,
             [source],
             inspectors.documentation,
             inspectors.conventions,
         ) == [
-            'source.py: file exceeds configured line limit',
-            'source.py:1: documentation line too long',
+            f'{filename}: file exceeds configured line limit',
+            f'{filename}:1: documentation line too long',
             'documentation',
             'documentation',
             'convention',
         ]
         assert inspectors.mock_calls == [
-            call.documentation(parsed, config, 'source.py'),
-            call.conventions(parsed, config, 'source.py'),
+            call.documentation(parsed, config, filename),
+            call.conventions(parsed, config, filename),
         ]
         assert documentation == ['documentation', 'documentation']
         assert conventions == ['convention']
@@ -74,6 +80,7 @@ class TestParsedSourceFindings:
         self,
         tmp_path: Path,
         stage: str,
+        language: str,
     ) -> None:
         """
         Propagate deferred inspector failures before invoking later stages.
@@ -84,11 +91,15 @@ class TestParsedSourceFindings:
             Lexical consumer root used without filesystem access.
         stage : str
             Inspector whose iterator fails after yielding one finding.
+        language : str
+            Native Python or Swift front end supplying source facts.
         """
-        parsed = _python_declarations.parse('')
+        frontend = _python_declarations if language == 'python' else _swift_declarations
+        parsed = frontend.parse('')
+        filename = 'source.py' if language == 'python' else 'source.swift'
         config = SourceCheckConfig(
             tmp_path,
-            'python-source',
+            f'{language}-source',
             (),
             (),
             {'documentation-width': 79, 'max-file-lines': 1000},
@@ -109,16 +120,16 @@ class TestParsedSourceFindings:
             _source_validation.parsed_source_findings(
                 parsed,
                 config,
-                tmp_path / 'source.py',
+                tmp_path / filename,
                 [],
                 inspectors.documentation,
                 inspectors.conventions,
             )
-        inspectors.documentation.assert_called_once_with(parsed, config, 'source.py')
+        inspectors.documentation.assert_called_once_with(parsed, config, filename)
         if stage == 'documentation':
             inspectors.conventions.assert_not_called()
         else:
-            inspectors.conventions.assert_called_once_with(parsed, config, 'source.py')
+            inspectors.conventions.assert_called_once_with(parsed, config, filename)
 
 
 # !SECTION
