@@ -31,16 +31,53 @@ class TestResultPolicy:
     """Keep adapter selection explicit and counts strongly typed."""
 
     @pytest.mark.parametrize(
-        'settings,message',
+        ('settings', 'message'),
         (
-            ('', 'adapter must be xcode-summary'),
-            ('adapter="unknown"\ninclude=["*.json"]', 'adapter must be xcode-summary'),
-            ('adapter="xcode-summary"\ninclude=[]', 'include must not be empty'),
-            (
-                'adapter="xcode-summary"\ninclude=["../*.json"]',
-                'include must stay inside the selected root',
+            pytest.param(
+                '',
+                'test-results.adapter must be xcode-summary',
+                id='missing-adapter',
             ),
-            (RESULT_SETTINGS + '\nquery="arbitrary"', 'unknown test-results setting'),
+            pytest.param(
+                'adapter="unknown"\ninclude=["*.json"]',
+                'test-results.adapter must be xcode-summary',
+                id='unknown-adapter',
+            ),
+            pytest.param(
+                'adapter="xcode-summary"\ninclude=[]',
+                'test-results.include must not be empty',
+                id='empty-selection',
+            ),
+            pytest.param(
+                'adapter="xcode-summary"\ninclude=["../*.json"]',
+                'test-results.include must stay inside the selected root',
+                id='escaping-selection',
+            ),
+            pytest.param(
+                RESULT_SETTINGS + '\nquery="arbitrary"',
+                'unknown test-results setting',
+                id='unknown-setting',
+            ),
+            *(
+                pytest.param(
+                    f'{RESULT_SETTINGS}\n{field}={value}',
+                    f'test-results.{field} requires a nonnegative integer',
+                    id=f'{field}-{label}',
+                )
+                for field in (
+                    'minimum-tests',
+                    'minimum-passed',
+                    'maximum-failed',
+                    'maximum-skipped',
+                    'maximum-warnings',
+                )
+                for label, value in (
+                    ('boolean', 'true'),
+                    ('negative', '-1'),
+                    ('string', '"1"'),
+                    ('float', '1.0'),
+                )
+            ),
         ),
     )
     def test_invalid_result_policy(
@@ -53,6 +90,9 @@ class TestResultPolicy:
         """
         Reject unknown formats, unsafe selection and unsupported settings.
 
+        Every count rejects boolean, negative, string and float values; valid
+        adapter and selection settings isolate each threshold failure.
+
         Parameters
         ----------
         tmp_path : Path
@@ -63,53 +103,13 @@ class TestResultPolicy:
         settings : str
             Standalone TOML settings deliberately violating loader contracts.
         message : str
-            Diagnostic identifying the intended invalid configuration field.
+            Complete diagnostic identifying the intended invalid field.
         """
         write_file('popo.toml', '[test-results]\n' + settings)
         before = snapshot_files(tmp_path)
-        with pytest.raises(ConfigurationError, match=message):
+        with pytest.raises(ConfigurationError) as raised:
             load_test_results_config(tmp_path)
-        assert snapshot_files(tmp_path) == before
-
-    @pytest.mark.parametrize(
-        'field',
-        (
-            'minimum-tests',
-            'minimum-passed',
-            'maximum-failed',
-            'maximum-skipped',
-            'maximum-warnings',
-        ),
-    )
-    @pytest.mark.parametrize('value', ('true', '-1', '"1"', '1.0'))
-    def test_thresholds_require_nonnegative_integers(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        field: str,
-        value: str,
-    ) -> None:
-        """
-        Reject boolean, negative, string and float values for every count.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        write_file : FileWriter
-            Shared UTF-8 writer creating the isolated consumer policy.
-        field : str
-            Configuration or report field selected for mutation.
-        value : str
-            Unvalidated value supplied to the operation.
-        """
-        write_file('popo.toml', f'[test-results]\n{RESULT_SETTINGS}\n{field}={value}')
-        before = snapshot_files(tmp_path)
-        with pytest.raises(
-            ConfigurationError,
-            match=rf'test-results\.{field} requires a nonnegative integer',
-        ):
-            load_test_results_config(tmp_path)
+        assert str(raised.value) == message
         assert snapshot_files(tmp_path) == before
 
 
