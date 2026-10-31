@@ -56,14 +56,31 @@ def artifact_root_fixture(
 class TestRedactedLogs:
     """Keep private lines out of both rule findings and read errors."""
 
+    @pytest.mark.parametrize(
+        ('content', 'expected'),
+        (
+            pytest.param(
+                'Normal\nInvalid frame dimension: PRIVATE BALANCE\n',
+                ('private.log:2: layout',),
+                id='redacted-finding',
+            ),
+            pytest.param('Normal\n', (), id='clean'),
+            pytest.param(None, ('no inputs match: **/*.log',), id='missing'),
+        ),
+    )
     def test_named_literal_findings_and_clean_inputs(
         self: Self,
         tmp_path: Path,
         artifact_root: Path | None,
         write_file: FileWriter,
+        content: str | None,
+        expected: tuple[str, ...],
     ) -> None:
         """
-        Verify named literal findings and clean inputs.
+        Report named findings, clean logs and missing inputs independently.
+
+        Literal matches report rule names and line numbers without revealing
+        private log text; validation leaves consumer and artifact bytes intact.
 
         Parameters
         ----------
@@ -73,6 +90,10 @@ class TestRedactedLogs:
             Explicit artifact directory, or None to use the consumer root.
         write_file : FileWriter
             Shared UTF-8 writer creating the consumer policy.
+        content : str | None
+            Log contents, or None to leave the selected input absent.
+        expected : tuple[str, ...]
+            Exact ordered diagnostics; an empty tuple denotes a clean log.
         """
         write_file(
             'popo.toml',
@@ -80,17 +101,12 @@ class TestRedactedLogs:
             '[logs.patterns]\nlayout = "Invalid frame dimension"',
         )
         artifact = artifact_root or tmp_path
-        log = artifact / 'private.log'
-        log.write_text(
-            'Normal\nInvalid frame dimension: PRIVATE BALANCE\n',
-            encoding='utf-8',
-        )
+        if content is not None:
+            (artifact / 'private.log').write_text(content, encoding='utf-8')
         config = load_source_check(tmp_path, 'logs')
-        assert logs.validate(config, artifact_root) == ['private.log:2: layout']
-        log.write_text('Normal\n', encoding='utf-8')
-        assert logs.validate(config, artifact_root) == []
-        log.unlink()
-        assert logs.validate(config, artifact_root) == ['no inputs match: **/*.log']
+        before = snapshot_files(tmp_path)
+        assert logs.validate(config, artifact_root) == list(expected)
+        assert snapshot_files(tmp_path) == before
 
     def test_overlapping_rules_preserve_redacted_order(
         self: Self,
