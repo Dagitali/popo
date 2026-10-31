@@ -22,11 +22,6 @@ class TestPythonSourceConfiguration:
         'settings,message',
         (
             pytest.param(
-                'include = []',
-                'python-source.include must not be empty',
-                id='empty-selection',
-            ),
-            pytest.param(
                 'include = ["*.py"]\nannotations = 1',
                 'python-source.annotations: invalid setting type',
                 id='nonboolean-rule',

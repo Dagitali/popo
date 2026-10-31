@@ -116,17 +116,23 @@ class TestSourceSelectionPolicy:
             load_source_check(tmp_path, domain)
         assert snapshot_files(tmp_path) == before
 
-    @pytest.mark.parametrize('setting', ('include', 'exclude'))
     @pytest.mark.parametrize(
-        'value,message',
+        ('setting', 'value', 'message'),
         (
-            pytest.param(False, 'must be an array of nonempty strings', id='boolean'),
-            pytest.param(1, 'must be an array of nonempty strings', id='integer'),
-            pytest.param('*.py', 'must be an array of nonempty strings', id='scalar'),
-            pytest.param((1,), 'must be an array of nonempty strings', id='nonstring'),
-            pytest.param(('',), 'must be an array of nonempty strings', id='empty'),
-            pytest.param((' ',), 'must be an array of nonempty strings', id='blank'),
-            pytest.param(('same', 'same'), 'contains duplicates', id='duplicate'),
+            *(
+                pytest.param(setting, value, message, id=f'{setting}-{label}')
+                for setting in ('include', 'exclude')
+                for label, value, message in (
+                    ('boolean', False, 'must be an array of nonempty strings'),
+                    ('integer', 1, 'must be an array of nonempty strings'),
+                    ('scalar', '*.py', 'must be an array of nonempty strings'),
+                    ('nonstring', (1,), 'must be an array of nonempty strings'),
+                    ('empty', ('',), 'must be an array of nonempty strings'),
+                    ('blank', (' ',), 'must be an array of nonempty strings'),
+                    ('duplicate', ('same', 'same'), 'contains duplicates'),
+                )
+            ),
+            pytest.param('include', (), 'must not be empty', id='empty-selection'),
         ),
     )
     def test_malformed_patterns_identify_the_setting(
@@ -139,7 +145,7 @@ class TestSourceSelectionPolicy:
         message: str,
     ) -> None:
         """
-        Reject malformed arrays consistently before domain-specific rules.
+        Reject malformed arrays and empty selections before domain rules.
 
         Parameters
         ----------
