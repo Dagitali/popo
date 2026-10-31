@@ -11,7 +11,7 @@ import pytest
 
 from popo import __version__
 from popo.cli import main
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -99,6 +99,8 @@ reason = "Synthetic metadata"
         ('arguments', 'path', 'content', 'status', 'message'),
         [
             (['check-docs'], 'README.md', '# Project\n', 0, 'PASS:'),
+            (['audit-github-settings'], None, '', 1, 'configuration:'),
+            (['check-file-headers'], None, '', 1, 'requires tool.popo.headers'),
             (
                 ['check-required-files'],
                 'README.md',
@@ -220,27 +222,25 @@ reason = "Synthetic metadata"
     def test_commands(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
         arguments: list[str],
-        path: str,
+        path: str | None,
         content: str,
         status: int,
         message: str,
     ) -> None:
         """
-        Verify commands.
+        Dispatch against the explicit root regardless of the current directory.
 
-        Verify CLI dispatch returns the expected status and standard-output
-        diagnostic.
+        Explicit relative changelog and automation-directory overrides retain
+        their documented working-directory base. Preserve files in both roots
+        while checking exit status and standard-output diagnostics.
 
         Parameters
         ----------
         tmp_path : pathlib.Path
             Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
         monkeypatch : pytest.MonkeyPatch
             Restore environment, attributes, and working directory.
         capsys : pytest.CaptureFixture[str]
@@ -248,9 +248,8 @@ reason = "Synthetic metadata"
         arguments : list[str]
             CLI argument sequence for the parameterized dispatch or parser
             scenario.
-        path : str
-            Repository-relative path whose contents are prepared for the
-            scenario.
+        path : str | None
+            Repository-relative fixture path, or None for an empty consumer.
         content : str
             File contents selected for the parameterized success or failure
             scenario.
@@ -259,12 +258,23 @@ reason = "Synthetic metadata"
         message : str
             Expected standard-output substring for the supplied exit status.
         """
-        write_file(path, content)
-        monkeypatch.chdir(tmp_path)
+        invocation = tmp_path.parent / f'{tmp_path.name}-invocation'
+        invocation.mkdir()
+        if path is not None:
+            explicit_path = {'--changelog', '--automation-directory'} & set(arguments)
+            fixture_root = invocation if explicit_path else tmp_path
+            source = fixture_root / path
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text(content, encoding='utf-8')
+        before = snapshot_files(tmp_path)
+        invocation_before = snapshot_files(invocation)
+        monkeypatch.chdir(invocation)
         assert main([*arguments, '--root', str(tmp_path)]) == status
         captured = capsys.readouterr()
         assert message in captured.out
         assert not captured.err
+        assert snapshot_files(tmp_path) == before
+        assert snapshot_files(invocation) == invocation_before
 
     @pytest.mark.parametrize(
         'constraint',
@@ -408,41 +418,6 @@ class TestHeaderPolicyCommand:
         write_file('sample.txt', content)
         assert main(['check-file-headers', '--root', str(tmp_path)]) == status
         assert ('PASS:' if status == 0 else 'FAIL:') in capsys.readouterr().out
-
-
-class TestMissingOptionalPolicies:
-    """Report absent policies consistently through the public dispatcher."""
-
-    @pytest.mark.parametrize(
-        ('command', 'message'),
-        [
-            ('check-file-headers', 'requires tool.popo.headers'),
-            ('audit-github-settings', 'configuration:'),
-        ],
-    )
-    def test_missing_policy(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        command: str,
-        message: str,
-    ) -> None:
-        """
-        Return a diagnostic without contacting hosted services.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        capsys : pytest.CaptureFixture[str]
-            Pytest fixture capturing standard output and error streams.
-        command : str
-            Command selected for invocation in the scenario.
-        message : str
-            Expected error message or scenario diagnostic.
-        """
-        assert main([command, '--root', str(tmp_path)]) == 1
-        assert message in capsys.readouterr().out
 
 
 # !SECTION
