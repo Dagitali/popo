@@ -5,16 +5,46 @@ Exercise Swift declaration drift without launching tools or manifests.
 """
 
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from popo.checks.swift_policy import validate
 from popo.config.swift_policy import load_swift_policy_config
 from tests.support.files import snapshot_files
+
+# SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='reject_tool_execution',
+    autouse=True,
+)
+def reject_tool_execution_fixture() -> Iterator[None]:
+    """
+    Guard every Swift-policy scenario against external tool execution.
+
+    Yields
+    ------
+    None
+        A process-launch guard active throughout each test and its dependent
+        fixture setup. Attempted launches fail immediately; teardown also
+        rejects attempts whose assertion the validator might have caught.
+    """
+    with patch.object(
+        subprocess,
+        'run',
+        side_effect=AssertionError('no tools may execute'),
+    ) as runner:
+        yield
+        runner.assert_not_called()
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -51,11 +81,13 @@ class TestSwiftPolicy:
         message : str
             Expected error message or scenario diagnostic.
         """
+        before = snapshot_files(swift_policy_consumer)
         failures = validate(
             load_swift_policy_config(swift_policy_consumer),
             compiler_version=observed,
         )
         assert failures == [f'--compiler-version: {message}']
+        assert snapshot_files(swift_policy_consumer) == before
 
     @pytest.mark.parametrize('require_preferred', [False, True])
     @pytest.mark.parametrize('ci_version', ['6.2.0', '6.3.0'])
@@ -85,9 +117,9 @@ class TestSwiftPolicy:
         workflow = root / '.github/workflows/ci.yml'
         source = workflow.read_text(encoding='utf-8')
         marker = '["6.1.2", "6.2.0"]'
-        assert marker in source
+        assert source.count(marker) == 1
         workflow.write_text(
-            source.replace(marker, f'["{ci_version}"]'),
+            source.replace(marker, f'["{ci_version}"]', 1),
             encoding='utf-8',
         )
         config = replace(
@@ -112,7 +144,6 @@ class TestSwiftPolicy:
     def test_consistent_declarations(
         self,
         swift_policy_consumer: Path,
-        monkeypatch: pytest.MonkeyPatch,
         observed: str | None,
     ) -> None:
         """
@@ -122,19 +153,14 @@ class TestSwiftPolicy:
         ----------
         swift_policy_consumer : Path
             Isolated Swift consumer with explicit compiler policy.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest fixture restoring patched attributes and environment values.
         observed : str | None
             Observed version or evidence value supplied by the scenario.
         """
         root = swift_policy_consumer
         before = snapshot_files(root)
-        runner = Mock(side_effect=AssertionError('no tools may execute'))
-        monkeypatch.setattr(subprocess, 'run', runner)
         assert validate(load_swift_policy_config(root), compiler_version=observed) == []
         assert snapshot_files(root) == before
         assert not (root / 'pyproject.toml').exists()
-        runner.assert_not_called()
 
     @pytest.mark.parametrize(
         'filename,content,message',
