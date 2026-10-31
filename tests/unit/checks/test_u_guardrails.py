@@ -50,7 +50,9 @@ class TestGuardrailParity:
             path.read_text(encoding='utf-8') + '        args: []\n',
             encoding='utf-8',
         )
+        before = snapshot_files(guardrail_consumer.root)
         assert validate(guardrail_consumer) == []
+        assert snapshot_files(guardrail_consumer.root) == before
 
     @pytest.mark.parametrize(
         ('old', 'new', 'failure'),
@@ -124,7 +126,7 @@ class TestGuardrailParity:
         new : str
             Replacement value supplied by the scenario.
         failure : str
-            Expected failure text, or None for a successful scenario.
+            Expected diagnostic key identifying the mutated entry point.
         """
         path = (
             guardrail_consumer.hooks
@@ -132,8 +134,8 @@ class TestGuardrailParity:
             else guardrail_consumer.workflow
         )
         content = path.read_text(encoding='utf-8')
-        assert old in content, f'Mutation marker missing from {path}'
-        path.write_text(content.replace(old, new), encoding='utf-8')
+        assert content.count(old) == 1, f'Mutation marker must be unique in {path}'
+        path.write_text(content.replace(old, new, 1), encoding='utf-8')
         before = snapshot_files(guardrail_consumer.root)
         assert validate(guardrail_consumer) == [guardrail_diagnostics[failure]]
         assert snapshot_files(guardrail_consumer.root) == before
