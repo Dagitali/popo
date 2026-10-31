@@ -64,6 +64,45 @@ class TestSafetyConfiguration:
         assert str(raised.value) == 'duplicate safety exception scope'
         assert snapshot_files(tmp_path) == before
 
+    @pytest.mark.parametrize('field', ('workflow-globs', 'npm-pairs', 'exceptions'))
+    @pytest.mark.parametrize(
+        'value',
+        (
+            pytest.param('false', id='boolean'),
+            pytest.param('0', id='integer'),
+            pytest.param('""', id='empty-string'),
+            pytest.param('"x"', id='nonempty-string'),
+            pytest.param('{}', id='table'),
+        ),
+    )
+    def test_invalid_array_settings(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        field: str,
+        value: str,
+    ) -> None:
+        """
+        Reject nonarrays for every safety setting, including falsey values.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated consumer root containing the malformed policy.
+        write_file : FileWriter
+            UTF-8 writer creating the consumer policy.
+        field : str
+            Array setting receiving a scalar or mapping.
+        value : str
+            TOML spelling of a value that must not become an empty default.
+        """
+        write_file('pyproject.toml', f'[tool.popo.safety]\n{field}={value}')
+        before = snapshot_files(tmp_path)
+        with pytest.raises(ConfigurationError) as raised:
+            load_safety_config(tmp_path)
+        assert str(raised.value) == 'safety settings must be arrays'
+        assert snapshot_files(tmp_path) == before
+
     @pytest.mark.parametrize(
         'field,value,message',
         [
@@ -122,62 +161,15 @@ class TestSafetyConfiguration:
         assert str(raised.value) == message
         assert snapshot_files(tmp_path) == before
 
-    @pytest.mark.parametrize('field', ('workflow-globs', 'npm-pairs', 'exceptions'))
-    @pytest.mark.parametrize(
-        'value',
-        (
-            pytest.param('false', id='boolean'),
-            pytest.param('0', id='integer'),
-            pytest.param('""', id='empty-string'),
-            pytest.param('"x"', id='nonempty-string'),
-            pytest.param('{}', id='table'),
-        ),
-    )
-    def test_invalid_array_settings(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        field: str,
-        value: str,
-    ) -> None:
-        """
-        Reject nonarrays for every safety setting, including falsey values.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Isolated consumer root containing the malformed policy.
-        write_file : FileWriter
-            UTF-8 writer creating the consumer policy.
-        field : str
-            Array setting receiving a scalar or mapping.
-        value : str
-            TOML spelling of a value that must not become an empty default.
-        """
-        write_file('pyproject.toml', f'[tool.popo.safety]\n{field}={value}')
-        before = snapshot_files(tmp_path)
-        with pytest.raises(ConfigurationError) as raised:
-            load_safety_config(tmp_path)
-        assert str(raised.value) == 'safety settings must be arrays'
-        assert snapshot_files(tmp_path) == before
-
     @pytest.mark.parametrize(
         'content,message',
         [
             ('unknown = true', 'unknown tool.popo.safety setting'),
             (
-                'workflow-globs = ["../x"]',
-                'safety paths must stay inside the repository',
-            ),
-            (
                 'npm-pairs = [{manifest = "x"}]',
                 'npm-pairs requires manifest and lockfile',
             ),
             ('exceptions = [{}]', 'safety exception requires exact scope and approval'),
-            (
-                'npm-pairs = [{manifest = "", lockfile = "x"}]',
-                'safety paths must stay inside the repository',
-            ),
         ],
     )
     def test_invalid_policy(
@@ -208,15 +200,34 @@ class TestSafetyConfiguration:
         assert str(raised.value) == message
         assert snapshot_files(tmp_path) == before
 
-    @pytest.mark.parametrize('field', ('workflow', 'manifest', 'lockfile'))
-    def test_native_absolute_paths_are_rejected(
+    @pytest.mark.parametrize(
+        'setting',
+        (
+            pytest.param('workflow-globs=[PATH]', id='workflow'),
+            pytest.param(
+                'npm-pairs=[{manifest=PATH,lockfile="package-lock.json"}]',
+                id='manifest',
+            ),
+            pytest.param(
+                'npm-pairs=[{manifest="package.json",lockfile=PATH}]',
+                id='lockfile',
+            ),
+        ),
+    )
+    @pytest.mark.parametrize(
+        'path',
+        (None, '../ci.yml', ''),
+        ids=('absolute', 'traversal', 'empty'),
+    )
+    def test_paths_stay_inside_repository(
         self,
         tmp_path: Path,
         write_file: FileWriter,
-        field: str,
+        setting: str,
+        path: str | None,
     ) -> None:
         """
-        Reject native absolute paths in workflow and npm pair settings.
+        Reject absolute, traversing and empty workflow or npm pair paths.
 
         Parameters
         ----------
@@ -224,19 +235,13 @@ class TestSafetyConfiguration:
             Consumer root used to construct a platform-native absolute path.
         write_file : FileWriter
             UTF-8 writer creating the consumer policy.
-        field : str
-            Workflow pattern or npm pair member receiving an absolute path.
+        setting : str
+            TOML template with one unsafe path marker and valid companions.
+        path : str | None
+            Invalid relative path, or None to construct a native absolute path.
         """
-        absolute = json.dumps(str(tmp_path / 'outside-policy.yml'))
-        if field == 'workflow':
-            settings = f'workflow-globs=[{absolute}]'
-        else:
-            pair = {'manifest': 'package.json', 'lockfile': 'package-lock.json'}
-            pair[field] = str(tmp_path / 'package.json')
-            entries = ','.join(
-                f'{key}={json.dumps(value)}' for key, value in pair.items()
-            )
-            settings = f'npm-pairs=[{{{entries}}}]'
+        pattern = str(tmp_path / 'ci.yml') if path is None else path
+        settings = setting.replace('PATH', json.dumps(pattern))
         write_file('pyproject.toml', '[tool.popo.safety]\n' + settings)
         before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError) as raised:
