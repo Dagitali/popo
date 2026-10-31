@@ -281,33 +281,56 @@ class TestConsumerConfiguration:
         ]
         assert snapshot_files(tmp_path) == before
 
+    @pytest.mark.parametrize('loader', (read_popo, load_plan), ids=('settings', 'plan'))
     @pytest.mark.parametrize('kind', ['directory', 'dangling'])
     def test_unreadable_standalone(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
+        loader: Callable[[Path], object],
         kind: str,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        An invalid standalone input cannot silently select another source.
+        Reject unreadable standalone inputs despite valid fallback metadata.
+
+        Neither settings reads nor plan loading may inspect Python metadata
+        after selecting the malformed standalone input.
 
         Parameters
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            UTF-8 writer creating valid fallback Python metadata.
+        loader : collections.abc.Callable[[pathlib.Path], object]
+            Settings reader or aggregate-plan loader under test.
         kind : str
             Directory or dangling-symlink shape of the standalone policy.
         symlink : Callable[[Path, Path], None]
             Platform-aware fixture creating a symbolic link or skipping
             support.
         """
+        write_file('pyproject.toml', '[tool.popo]\nchecks=["check-docs"]')
         path = tmp_path / 'popo.toml'
         if kind == 'directory':
             path.mkdir()
         else:
             symlink(path, tmp_path / 'absent')
-        with pytest.raises(OSError):
-            read_popo(tmp_path)
+        before = snapshot_files(tmp_path)
+        with (
+            patch.object(
+                Path,
+                'read_text',
+                autospec=True,
+                side_effect=Path.read_text,
+            ) as read,
+            pytest.raises(OSError),
+        ):
+            loader(tmp_path)
+        read.assert_called_once_with(path, encoding='utf-8')
+        assert snapshot_files(tmp_path) == before
+        assert path.is_dir() if kind == 'directory' else path.is_symlink()
 
 
 # !SECTION
