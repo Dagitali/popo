@@ -98,7 +98,9 @@ native check-result, inventory and hosted-audit JSON.
 Exit status is 0 for a complete measurement, 1 for input/schema/selection failures and 2 for usage
 errors. Input failures leave stdout empty and emit redacted diagnostics to stderr. Read/decode
 errors do not echo paths or native exception text. Original reports remain private artifacts and are
-not sanitized or modified by this command. Reports are decoded in memory.
+not sanitized or modified by this command. Reports are decoded in memory. Normalization retains one
+metric tuple per distinct selected path rather than every duplicate block/target record; it still
+validates every selected record before reporting conflicting Xcode duplicate totals.
 
 ## Consumer Migration
 

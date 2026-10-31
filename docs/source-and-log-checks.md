@@ -77,11 +77,16 @@ themselves require a return section. `raises-docs` requires a nonempty `Raises` 
 raise statements, including locally caught ones. These are syntax-based coverage rules, not
 exception escape analysis, type validation, prose-quality assessment or proof that every indirect
 exception is documented. Nested callable bodies do not contribute return/yield/raise requirements to
-their enclosing function.
+their enclosing function. Yields inside nested function/lambda defaults, function/class decorators,
+and class bases or keyword values do belong to the enclosing callable and require its `Yields`
+section. These expressions are inspected without evaluation; annotation evaluation and indirect
+callee behavior are not modeled.
 
 For either language, a nonempty `source-guide` requires each selected root-relative filename in an
 exact backtick span. The guide must remain inside the repository, including after symlink
-resolution; missing, unreadable and invalid UTF-8 guides fail. Empty `source-guide` disables this
+resolution; missing, unreadable and invalid UTF-8 guides fail. Matching retains only selected paths
+and stops once they are all found, while missing entries retain selection order and duplicates.
+Guide reads still occur for empty selections, so unreadable guides remain failures. Empty `source-guide` disables this
 check. File length counts physical lines, and documentation width includes indentation and
 delimiters. These shared mechanics do not require identical language conventions.
 
@@ -121,10 +126,12 @@ to 1000 physical lines.
 
 The v0.13.0 Swift backend uses [Tree-sitter Python bindings] and the [Swift grammar] to locate
 comments, ordinary/multiline/raw strings and regex literals, preserving character offsets and line
-numbers across UTF-8 text. Native syntax nodes discover declarations, including declarations sharing
-a physical line. Selective-import keywords do not create declaration records. Documentation attaches
-across attributes, but is not borrowed by later same-line members. Callable and closure bodies do
-not supply member declarations.
+numbers across UTF-8 text. Masking replaces non-LF characters with spaces using a local translation
+table; positions count Unicode characters rather than UTF-8 bytes. CR and other line separators are
+masked, while LF boundaries remain intact. Native syntax nodes discover declarations, including
+declarations sharing a physical line. Selective-import keywords do not create declaration records.
+Documentation attaches across attributes, but is not borrowed by later same-line members. Callable
+and closure bodies do not supply member declarations.
 
 Balanced parentheses and type/default separators retain bounded named-callable contract rules.
 Recognized signatures that cannot be inspected fail when callable checks are enabled; operator

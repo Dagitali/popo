@@ -132,8 +132,10 @@ Layer names must be unique literal identifiers. References must name other confi
 unknown and self references fail. Include patterns must be nonempty. Patterns cannot be absolute or
 contain `..`; symlink escapes fail. Every layer pattern needs at least one file after exclusions.
 Unreadable/undecodable files fail the check. Files selected by multiple layers are checked under
-each layer's restrictions. All source discovery and declaration indexing happen before dependency
-checks, so configuration order does not define dependency direction.
+each layer's restrictions. Read each distinct selected path once per validation, including empty and
+unreadable inputs; overlapping layers reuse that observation. Later validations read inputs afresh.
+All source discovery and declaration indexing happen before dependency checks, so configuration
+order does not define dependency direction.
 
 The v0.13.0 backend shares Tree-sitter syntax with source-convention validation. Native import and
 nominal/typealias nodes recognize same-line declarations and attributed/selective imports;
