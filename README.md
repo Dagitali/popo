@@ -78,34 +78,41 @@ configured; see the [release policy].
 
 ## Features
 
-- Unreleased read-only LLVM/Xcode [coverage summaries], with explicit source selections and
-  aggregate Markdown/JSON output; generation does not run tests or impose percentage gates;
+- Unreleased read-only LLVM/Xcode [coverage summaries], with explicit source selections,
+  memory-efficient duplicate aggregation and aggregate Markdown/JSON output; generation does not run
+  tests or impose percentage gates;
 - Native test-summary acceptance in v0.12.0 and configurable Python/Swift layer boundaries; Python
-  module ownership supports flat and `src/` layouts, including modules named `src.py`. See [result
-  and boundary checks](docs/result-and-boundary-checks.md);
+  module ownership supports flat and `src/` layouts, including modules named `src.py`. Overlapping
+  layers share input reads within a check. Import policies are indexed per evaluation, retaining
+  Python dotted-descendant matching and Swift exact matching. See [result and boundary
+  checks](docs/result-and-boundary-checks.md);
 - Opt-in Python and Swift source conventions, documentation contracts and redacted log checks; the
   v0.13.0 Swift backend distinguishes declarations from imports through Tree-sitter concrete syntax
   without a Swift installation; quoted Python return annotations follow unquoted rules, log-root
   errors stay redacted, and log patterns must be nonblank single-line literals. Source/log include
-  and exclude patterns share root-confinement validation with setting-specific diagnostics. See
-  [source and log checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
+  and exclude patterns share root-confinement validation with setting-specific diagnostics. Shared
+  source/log/result inspection yields findings without an intermediate aggregate list; source
+  validation reuses its result list across ordered inspection stages. Callable documentation rules
+  are evaluated independently when enabled. Source guides retain exact selected-path matching.
+  Python generator contracts include yields in enclosing-scope definition expressions. See [source
+  and log checks](docs/source-and-log-checks.md) for v0.11.0 scope and configuration;
 - Opt-in Swift compiler, package tools-version and scoped CI declaration checks; see [Swift
   toolchain policy](docs/swift-policy.md);
 - Committed Git source inventories in JSON or source-only SPDX 2.3; see [source inventories];
 - Local Markdown inline links/images, reference definitions, and heading or explicit HTML anchors,
-  including collision-aware suffixes for repeated headings,
-  with undefined full/collapsed labels and conflicting definitions rejected. Angle-wrapped local
-  destinations accept optional double-quoted titles, including paths with spaces and fragments.
-  Malformed URLs and invalid decoded local paths are reported without skipping later links.
-  Fenced/inline code and HTML comments are excluded, targets cannot escape the repository, and
-  fragment validation applies only to Markdown; generated and vendored sources such as
-  `node_modules` are excluded;
+  including collision-aware suffixes for repeated headings, with undefined full/collapsed labels and
+  conflicting definitions rejected. Angle-wrapped local destinations accept optional double-quoted
+  titles, including paths with spaces and fragments. Malformed URLs and invalid decoded local paths
+  are reported without skipping later links. Fenced/inline code and HTML comments are excluded,
+  targets cannot escape the repository, and fragment validation applies only to Markdown; generated
+  and vendored sources such as `node_modules` are pruned during discovery;
 - Opt-in required-file and configurable header checks in the v0.8.0 release scope; see [file
   policies];
 - Language-neutral standalone policy, explicit check profiles, JSON results and local/CI guardrail
   parity. Guardrail entry points and profile selection use one configuration snapshot; see the
   [guardrail guide];
-- Named remote GitHub Actions references pinned to full commit SHAs;
+- Named remote GitHub Actions references pinned to full commit SHAs, with both YAML suffixes
+  discovered in one directory traversal;
 - Configurable automation contracts for local workflows/actions, composite steps, and templates;
 - Dependency metadata synchronized with requirements or constraints files, including commented pins;
 - Opt-in npm root and literal resolved-pin checks for integer lockfile versions 2/3, including
@@ -136,8 +143,10 @@ Local commands, hooks, and CI invoke the same CLI. It selects the repository roo
 configuration for checks that need it, and dispatches through native adapters to the relevant
 checker. Checkers inspect repository files and return findings; shared reporting prints text
 `PASS`/`FAIL` messages or versioned JSON and returns `0` for successful native checks or `1` for
-reported failures. Invalid command-line arguments are handled separately by the argument parser.
-External actionlint and hosted-audit commands retain their separate reporting contracts.
+reported failures. Text diagnostics stream in check/finding order without a flattened copy;
+duplicates and blank messages remain failures. Invalid command-line arguments are handled separately
+by the argument parser. External actionlint and hosted-audit commands retain their separate
+reporting contracts.
 
 Configuration models and loaders live in the `popo.config` subpackage, organized by dependency,
 Python-policy, automation, file/header, safety, hosted-audit, guardrail, and selection settings.
@@ -249,9 +258,11 @@ Dependency modes are:
   `name==version` constraint.
 - `exact`: project dependencies and installer requirements must be semantically identical.
 
-When dependency configuration is absent, `popo` detects the layouts
-`pyproject.toml` plus `requirements/lowest.txt`, root `requirements.txt`, or
-`infra/pyproject.toml` plus `infra/requirements.txt`.
+When dependency configuration is absent, `popo` selects the first complete pair: root
+`pyproject.toml` with `requirements/lowest.txt`, root `pyproject.toml` with `requirements.txt`, then
+`infra/pyproject.toml` with `infra/requirements.txt`. Detection checks file existence without
+parsing contents and stops at the first match. If no pair exists, the root minimum-constraints
+layout remains the default without creating files.
 
 ### Automation Contracts
 
@@ -261,6 +272,7 @@ references. Use `--pins-only` to skip input, composite, and metadata checks; par
 target resolution still run. The older `check-github-actions-pins` command remains available and
 also recognizes valid revision-free self references. Parsed YAML traversal visits shared mappings
 once and handles recursive aliases; safety checks retain diagnostics without recursion crashes.
+The traversal stack grows with nesting depth rather than sibling count.
 Automation and safety discovery failures are reported while independent patterns and checks
 continue. Orphan template-metadata discovery failures also retain findings from later directories.
 
@@ -278,9 +290,11 @@ template-placeholder-refs = ["REPLACE_WITH_RELEASE_SHA"]
 ```
 
 All settings are arrays of strings. Only `workflow-globs` has a nonempty default, as shown above;
-other settings default to `[]`. Patterns are root-relative and must each match a file. Use `[]` to
-disable a category. Add `.yaml` patterns if used by your repository. `yaml-globs` validates syntax
-only. Invalid settings, unreadable files, and escaping paths fail validation.
+other settings default to `[]`. Omitted settings inherit model defaults; explicit empty arrays
+remain empty, and malformed supplied values never fall back to defaults. Patterns are root-relative
+and must each match a file. Use `[]` to disable a category. Add `.yaml` patterns if used by your
+repository. `yaml-globs` validates syntax only. Invalid settings, unreadable files, and escaping
+paths fail validation.
 
 Local `./` and same-repository `$/` references, plus configured `owner/repository` aliases, resolve
 against the current checkout, never against historical or remote commits. Calls reject
@@ -313,12 +327,13 @@ popo check-actionlint --root . --actionlint 'actionlint -color' .github/workflow
 
 The view contains only selected automation, referenced local targets and existing implicit linter
 configuration. Each automation file is read once, and validation and normalization use the same text
-snapshot. Real self-reference YAML values become local paths for older actionlint versions; script
-text, duplicate-key rejection, source files, and native contract validation are preserved.
-Diagnostics map back to source paths, and the exact linter exit status is returned. The command
-never installs tools or executes workflow commands; it is separate from `check-all` and requires no
-consumer schema changes. It does not make GitHub Enterprise Server support `$/`; that is a
-hosted-platform limitation.
+snapshot. Repeated references share one pending entry while retaining last-reference-first priority.
+Real self-reference YAML values become local paths for older actionlint versions; script text,
+duplicate-key rejection, source files, and native contract validation are preserved. Diagnostics on
+both streams map back to source paths, including when temporary directories use symlinked paths, and
+the exact linter exit status is returned. The command never installs tools or executes workflow
+commands; it is separate from `check-all` and requires no consumer schema changes. It does not make
+GitHub Enterprise Server support `$/`; that is a hosted-platform limitation.
 
 ### Hosted Settings Audit
 
