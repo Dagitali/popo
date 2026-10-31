@@ -309,15 +309,53 @@ class TestConfiguration:
         assert load_config(tmp_path).python_policy.requires_python == '>=3.13'
 
     @pytest.mark.parametrize(
-        ('content', 'message'),
+        ('loader', 'content', 'message'),
         [
-            ('[', 'invalid TOML'),
-            ('tool = 1', 'tool must be a TOML table'),
-            ('[tool]\npopo = []', 'tool.popo must be a TOML table'),
+            *(
+                pytest.param(loader, content, message, id=f'{domain}-{case}')
+                for domain, loader in (
+                    ('project', load_config),
+                    ('automation', load_automation_config),
+                )
+                for case, content, message in (
+                    ('invalid-toml', '[', 'invalid TOML'),
+                    ('invalid-tool', 'tool = 1', 'tool must be a TOML table'),
+                    (
+                        'invalid-popo',
+                        '[tool]\npopo = []',
+                        'tool.popo must be a TOML table',
+                    ),
+                )
+            ),
+            *(
+                pytest.param(load_config, content, message, id=case)
+                for case, content, message in (
+                    (
+                        'dependency-table',
+                        '[tool.popo]\ndependencies = []',
+                        'tool.popo.dependencies must be a TOML table',
+                    ),
+                    (
+                        'dependency-mode',
+                        '[tool.popo.dependencies]\nmode = "unknown"',
+                        'dependency mode must be',
+                    ),
+                    (
+                        'empty-metadata',
+                        '[tool.popo.dependencies]\nmetadata = ""',
+                        'metadata must be a non-empty string',
+                    ),
+                    (
+                        'python-version',
+                        '[tool.popo.python-policy]\npython-version = 313',
+                        'python-version must be',
+                    ),
+                    ('project-table', 'project = []', 'project must be a TOML table'),
+                )
+            ),
         ],
     )
-    @pytest.mark.parametrize('loader', [load_config, load_automation_config])
-    def test_loaders_share_root_validation(
+    def test_loaders_reject_invalid_configuration(
         self,
         tmp_path: Path,
         write_file: FileWriter,
@@ -326,10 +364,11 @@ class TestConfiguration:
         message: str,
     ) -> None:
         """
-        Verify loaders share root validation.
+        Reject shared root errors and project-specific policy errors.
 
-        Verify project and automation loaders reject malformed root settings
-        alike.
+        Both loaders reject malformed root settings. Dependency and Python
+        policy failures apply only to the project loader; automation loading
+        intentionally ignores those domains.
 
         Parameters
         ----------
@@ -345,8 +384,10 @@ class TestConfiguration:
             Regular expression matching the expected configuration error.
         """
         write_file('pyproject.toml', content)
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             loader(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     def test_loaders_validate_only_their_domains(
         self,
@@ -411,53 +452,6 @@ class TestConfiguration:
         assert config.python_policy.metadata == tmp_path / 'python.toml'
         assert config.python_policy.ruff_config == tmp_path / 'dependencies.toml'
         assert config.python_policy.requires_python == '>=3.14'
-
-    @pytest.mark.parametrize(
-        ('content', 'message'),
-        [
-            (
-                '[tool.popo]\ndependencies = []',
-                'tool.popo.dependencies must be a TOML table',
-            ),
-            ('[tool.popo.dependencies]\nmode = "unknown"', 'dependency mode must be'),
-            (
-                '[tool.popo.dependencies]\nmetadata = ""',
-                'metadata must be a non-empty string',
-            ),
-            (
-                '[tool.popo.python-policy]\npython-version = 313',
-                'python-version must be',
-            ),
-            ('project = []', 'project must be a TOML table'),
-        ],
-    )
-    def test_rejects_invalid_configuration(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        content: str,
-        message: str,
-    ) -> None:
-        """
-        Verify rejects invalid configuration.
-
-        Verify project loading reports the expected invalid-configuration
-        error.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        content : str
-            Invalid project configuration supplied to the loader.
-        message : str
-            Regular expression matching the expected configuration error.
-        """
-        write_file('pyproject.toml', content)
-        with pytest.raises(ConfigurationError, match=message):
-            load_config(tmp_path)
 
 
 # !SECTION
