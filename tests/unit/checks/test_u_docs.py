@@ -642,42 +642,32 @@ class TestTitledDestinations:
 class TestHeadingSlugCollisions:
     """Allocate unique heading suffixes without affecting explicit anchors."""
 
-    def test_explicit_anchors_do_not_reserve_heading_suffixes(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-    ) -> None:
-        """
-        Keep HTML anchors separate from heading suffix allocation.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        write_file : FileWriter
-            Fixture writing UTF-8 files beneath the temporary consumer root.
-        """
-        path = write_file(
-            'README.md',
-            '<a id="echo-1"></a>\n# Echo\n# Echo\n',
-        )
-        assert docs._anchors(path) == {'echo', 'echo-1'}
-        assert validate(tmp_path) == []
-
     @pytest.mark.parametrize(
-        'headings,expected',
+        ('headings', 'expected', 'anchors'),
         (
-            (
+            pytest.param(
                 ('Echo', 'Echo', 'Echo 1', 'Echo-1', 'Echo'),
                 ('echo', 'echo-1', 'echo-1-1', 'echo-1-2', 'echo-2'),
+                (),
+                id='generated-collisions',
             ),
-            (
+            pytest.param(
                 ('Foxtrot-1', 'Foxtrot', 'Foxtrot'),
                 ('foxtrot-1', 'foxtrot', 'foxtrot-2'),
+                (),
+                id='natural-suffix-first',
             ),
-            (
+            pytest.param(
                 ('A-1', 'A-2', 'A', 'A', 'A'),
                 ('a-1', 'a-2', 'a', 'a-3', 'a-4'),
+                (),
+                id='multiple-natural-suffixes',
+            ),
+            pytest.param(
+                ('Echo', 'Echo'),
+                ('echo', 'echo-1'),
+                ('echo-1',),
+                id='explicit-anchor-independent',
             ),
         ),
     )
@@ -687,9 +677,13 @@ class TestHeadingSlugCollisions:
         write_file: FileWriter,
         headings: tuple[str, ...],
         expected: tuple[str, ...],
+        anchors: tuple[str, ...],
     ) -> None:
         """
-        Resolve links to headings colliding with generated or natural IDs.
+        Resolve heading collisions without reserving explicit anchor names.
+
+        Keep HTML anchors separate from heading suffix allocation. Generated
+        or natural heading IDs must remain usable as local link destinations.
 
         Parameters
         ----------
@@ -700,12 +694,16 @@ class TestHeadingSlugCollisions:
         headings : tuple[str, ...]
             Heading sequence used to exercise generated anchor collisions.
         expected : tuple[str, ...]
-            Expected result for the selected parameterized scenario.
+            Expected heading IDs and active local-link destinations.
+        anchors : tuple[str, ...]
+            HTML anchor IDs declared before headings; these do not reserve
+            generated heading suffixes.
         """
         path = write_file(
             'README.md',
             '\n'.join(
                 [
+                    *(f'<a id="{anchor}"></a>' for anchor in anchors),
                     *(f'# {heading}' for heading in headings),
                     *(f'[Heading](#{slug})' for slug in expected),
                 ],
