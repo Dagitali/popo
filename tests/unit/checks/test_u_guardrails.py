@@ -31,32 +31,15 @@ class TestGuardrailParity:
     Collect independent drift without invoking any configured consumer tool.
     """
 
-    def test_empty_arguments(
-        self,
-        guardrail_consumer: GuardrailsConfig,
-    ) -> None:
-        """
-        An empty list preserves the canonical Make invocation.
-
-        Permit an explicitly empty argument list without weakening type checks.
-
-        Parameters
-        ----------
-        guardrail_consumer : GuardrailsConfig
-            Isolated consumer paths and guardrail parity expectations.
-        """
-        path = guardrail_consumer.hooks
-        path.write_text(
-            path.read_text(encoding='utf-8') + '        args: []\n',
-            encoding='utf-8',
-        )
-        before = snapshot_files(guardrail_consumer.root)
-        assert validate(guardrail_consumer) == []
-        assert snapshot_files(guardrail_consumer.root) == before
-
     @pytest.mark.parametrize(
         ('old', 'new', 'failure'),
         [
+            pytest.param(
+                NO_FILENAMES,
+                NO_FILENAMES + '\n        args: []',
+                None,
+                id='explicit-empty-arguments',
+            ),
             ('entry: make guardrails', 'entry: popo check-docs', 'hook'),
             ('language: system', 'language: python', 'hook'),
             (NO_FILENAMES, NO_FILENAMES + '\n        args: false', 'hook'),
@@ -101,19 +84,21 @@ class TestGuardrailParity:
             ('  guardrails:', '  other:', 'workflow'),
         ],
     )
-    def test_entry_point_drift(
+    def test_entry_point_settings(
         self,
         guardrail_consumer: GuardrailsConfig,
         guardrail_diagnostics: dict[str, str],
         old: str,
         new: str,
-        failure: str,
+        failure: str | None,
     ) -> None:
         """
         Check whole-repository hook settings and reject appended arguments.
 
         Reject drift in the declared workflow step, root or job selection.
-        Each mutation runs against an independent consumer fixture.
+        Each mutation runs against an independent consumer fixture. An empty
+        argument list preserves the canonical Make invocation without weakening
+        type checks.
 
         Parameters
         ----------
@@ -125,19 +110,21 @@ class TestGuardrailParity:
             Original value replaced by the scenario.
         new : str
             Replacement value supplied by the scenario.
-        failure : str
-            Expected diagnostic key identifying the mutated entry point.
+        failure : str | None
+            Diagnostic key for drift, or None for accepted empty arguments.
         """
         path = (
             guardrail_consumer.hooks
-            if failure == 'hook'
+            if failure in ('hook', None)
             else guardrail_consumer.workflow
         )
         content = path.read_text(encoding='utf-8')
         assert content.count(old) == 1, f'Mutation marker must be unique in {path}'
         path.write_text(content.replace(old, new, 1), encoding='utf-8')
         before = snapshot_files(guardrail_consumer.root)
-        assert validate(guardrail_consumer) == [guardrail_diagnostics[failure]]
+        assert validate(guardrail_consumer) == (
+            [] if failure is None else [guardrail_diagnostics[failure]]
+        )
         assert snapshot_files(guardrail_consumer.root) == before
 
     def test_independent_missing_inputs(
@@ -159,7 +146,9 @@ class TestGuardrailParity:
         )
         for path in paths:
             path.unlink()
+        before = snapshot_files(guardrail_consumer.root)
         failures = validate(guardrail_consumer)
+        assert snapshot_files(guardrail_consumer.root) == before
         assert len(failures) == len(paths)
         for path, failure in zip(paths, failures, strict=True):
             assert failure.startswith('guardrail parity: ')
@@ -260,7 +249,9 @@ class TestGuardrailParity:
         """
         guardrail_consumer.workflow.write_text(content, encoding='utf-8')
         guardrail_consumer.hooks.write_text(content, encoding='utf-8')
+        before = snapshot_files(guardrail_consumer.root)
         failures = validate(guardrail_consumer)
+        assert snapshot_files(guardrail_consumer.root) == before
         if parse_error is None:
             assert failures == [
                 guardrail_diagnostics['hook'],
