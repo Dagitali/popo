@@ -4,6 +4,8 @@
 Verify scoped workflow observations without cross-job value borrowing.
 """
 
+import json
+
 import pytest
 
 from popo.checks._toolchain_policy import workflow_observations
@@ -153,12 +155,13 @@ jobs:
         assert values == ()
         assert errors == ['cannot read a valid workflow version declaration']
 
+    @pytest.mark.parametrize('padding', ('', ' ', '\t', '\u00a0', '\u2028'))
     @pytest.mark.parametrize(
         'expression,expected',
         [
-            ('"6.1.2"', ('6.1.2',)),
-            ('"${{ env.TOOL }}"', ('6.1.2',)),
-            ('"${{ matrix.tool }}"', ('6.1.2', '6.2.0')),
+            ('6.1.2', ('6.1.2',)),
+            ('${{ env.TOOL }}', ('6.1.2',)),
+            ('${{ matrix.tool }}', ('6.1.2', '6.2.0')),
         ],
     )
     def test_supported_declarations(
@@ -167,9 +170,10 @@ jobs:
         key: str,
         expression: str,
         expected: tuple[str, ...],
+        padding: str,
     ) -> None:
         """
-        Verify supported declarations.
+        Normalize literal, environment and matrix values without source edits.
 
         Parameters
         ----------
@@ -181,7 +185,12 @@ jobs:
             Workflow version expression under test.
         expected : tuple[str, ...]
             Expected result for the selected parameterized scenario.
+        padding : str
+            Surrounding ASCII or Unicode whitespace in references and values.
         """
+        expression = json.dumps(padding + expression + padding)
+        first = json.dumps(padding + '6.1.2' + padding)
+        second = json.dumps(padding + '6.2.0' + padding)
         path = write_file(
             'ci.yml',
             f"""env: {{ TOOL: "6.0.0" }}
@@ -190,13 +199,14 @@ jobs:
     env: {{ TOOL: "6.1.0" }}
     strategy:
       matrix:
-        tool: ["6.1.2", "6.2.0"]
+        tool: [{first}, {second}]
     steps:
-      - env: {{ TOOL: "6.1.2" }}
+      - env: {{ TOOL: {first} }}
         with:
           {key}: {expression}
 """,
         )
+        before = path.read_bytes()
         observations, errors = workflow_observations(path, key)
         assert errors == []
         assert tuple(item.value for item in observations) == expected
@@ -204,6 +214,7 @@ jobs:
             item.source == path and item.location == f'jobs.build.steps[0].with.{key}'
             for item in observations
         )
+        assert path.read_bytes() == before
 
     @pytest.mark.parametrize(
         'matrix',

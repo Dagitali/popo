@@ -314,10 +314,11 @@ class TestPythonPolicy:
             policy.
         """
         path = write_file('ruff.toml', f'target-version = "{target}"')
-        failures = validate(replace(policy, ruff_config=path), running_version='3.13')
-        assert (failures == []) is valid
-        if not valid:
-            assert 'Ruff target-version' in failures[0]
+        before = snapshot_files(policy.metadata.parent)
+        assert validate(replace(policy, ruff_config=path), running_version='3.13') == (
+            [] if valid else [f"{path}: Ruff target-version must equal 'py313'"]
+        )
+        assert snapshot_files(policy.metadata.parent) == before
 
     @pytest.mark.parametrize(
         'declaration',
@@ -573,19 +574,34 @@ class TestScopedPythonPolicy:
     """Opt into scoped observations without changing legacy text defaults."""
 
     @pytest.mark.parametrize(
-        'scenario,message',
-        [
-            ('matrix', None),
-            ('missing-declarations', 'no explicit python-version declarations'),
-            ('missing-workflow', 'no Python policy workflows found'),
-        ],
+        ('source', 'messages'),
+        (
+            pytest.param(
+                'jobs:\n  build:\n    strategy:\n      matrix:\n'
+                '        python: ["3.13", "3.14"]\n'
+                '    steps:\n      - with:\n'
+                '          python-version: ${{ matrix.python }}\n',
+                (),
+                id='matrix',
+            ),
+            pytest.param(
+                'jobs: {}',
+                ('{workflow}: no explicit python-version declarations',),
+                id='missing-declarations',
+            ),
+            pytest.param(
+                None,
+                ('no Python policy workflows found',),
+                id='missing-workflow',
+            ),
+        ),
     )
     def test_scoped_workflow_declarations(
         self,
         policy: PythonPolicyConfig,
         tmp_path: Path,
-        scenario: str,
-        message: str | None,
+        source: str | None,
+        messages: tuple[str, ...],
     ) -> None:
         """
         Validate each scoped observation case with independent inputs.
@@ -594,43 +610,23 @@ class TestScopedPythonPolicy:
         ----------
         policy : PythonPolicyConfig
             Consumer-owned expectations used by the operation.
-        tmp_path : Path
+        tmp_path : pathlib.Path
             Per-test temporary directory supplied by pytest.
-        scenario : str
-            Selected parameterized behavior or input variant.
-        message : str | None
-            Expected error message or scenario diagnostic.
+        source : str | None
+            Workflow text, or None to remove the existing workflow fixture.
+        messages : tuple[str, ...]
+            Ordered diagnostics, with an optional workflow-path placeholder.
         """
         workflow = policy.workflow_directory / 'ci.yml'
-        if scenario == 'missing-workflow':
+        if source is None:
             workflow.unlink()
         else:
-            source = (
-                """jobs:
-  build:
-    strategy:
-      matrix:
-        python: ["3.13", "3.14"]
-    steps:
-      - with:
-          python-version: ${{ matrix.python }}
-"""
-                if scenario == 'matrix'
-                else 'jobs: {}'
-            )
             workflow.write_text(source, encoding='utf-8')
-        expected = []
-        if message is not None:
-            expected = [
-                f'{workflow}: {message}'
-                if scenario == 'missing-declarations'
-                else message,
-            ]
         before = snapshot_files(tmp_path)
-        assert (
-            validate(replace(policy, workflow_parser='scoped'), running_version='3.13')
-            == expected
-        )
+        assert validate(
+            replace(policy, workflow_parser='scoped'),
+            running_version='3.13',
+        ) == [message.format(workflow=workflow) for message in messages]
         assert snapshot_files(tmp_path) == before
 
 

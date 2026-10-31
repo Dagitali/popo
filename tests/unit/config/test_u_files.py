@@ -5,13 +5,72 @@ Reject malformed required-file and header policies before source inspection.
 """
 
 import json
+import re
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from popo.config import ConfigurationError
 from popo.config.files import load_headers_config, load_required_files_config
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
+
+# SECTION: FIXTURES
+
+
+@pytest.fixture(
+    name='write_policy',
+    params=('popo.toml', 'pyproject.toml'),
+)
+def write_policy_fixture(
+    request: pytest.FixtureRequest,
+    write_file: FileWriter,
+) -> Callable[[str], Path]:
+    """
+    Write the same file-policy contract under either supported namespace.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Standalone or embedded policy source selected for this scenario.
+    write_file : FileWriter
+        Shared UTF-8 writer creating isolated consumer inputs.
+
+    Returns
+    -------
+    collections.abc.Callable[[str], pathlib.Path]
+        Writer accepting embedded fixture TOML, including array-table headers.
+        Standalone cases remove tool.popo only from leading table headers;
+        literal field values remain unchanged. This is a fixture namespace
+        transform, not a general TOML parser or configuration merger.
+    """
+    filename = str(request.param)
+
+    def write(
+        settings: str,
+    ) -> Path:
+        """
+        Preserve policy values while selecting the fixture's table namespace.
+
+        Parameters
+        ----------
+        settings : str
+            File-policy fixture with tool.popo table or array-table headers.
+
+        Returns
+        -------
+        pathlib.Path
+            Written standalone or embedded policy file.
+        """
+        if filename == 'popo.toml':
+            settings = re.sub(r'(?m)^(\[\[?)tool\.popo\.', r'\1', settings)
+        return write_file(filename, settings)
+
+    return write
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -67,7 +126,7 @@ class TestFilePolicyConfig:
     def test_invalid_header_rules(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        write_policy: Callable[[str], Path],
         overrides: dict[str, object],
         message: str,
     ) -> None:
@@ -78,7 +137,7 @@ class TestFilePolicyConfig:
         ----------
         tmp_path : pathlib.Path
             Isolated temporary consumer root.
-        write_file : FileWriter
+        write_policy : collections.abc.Callable
             UTF-8 writer creating synthetic policy inputs.
         overrides : dict[str, object]
             Malformed header configuration overriding valid fixture fields.
@@ -94,15 +153,16 @@ class TestFilePolicyConfig:
             '[tool.popo.headers]\nproject = "Sample"\nnotice = "Copyright"\n'
             '[[tool.popo.headers.rules]]\n'
         )
-        write_file(
-            'pyproject.toml',
+        write_policy(
             body
             + '\n'.join(
                 f'{key} = {json.dumps(value)}' for key, value in fields.items()
             ),
         )
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'overrides,message',
@@ -124,7 +184,7 @@ class TestFilePolicyConfig:
     def test_invalid_header_tables(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        write_policy: Callable[[str], Path],
         overrides: dict[str, str],
         message: str,
     ) -> None:
@@ -135,7 +195,7 @@ class TestFilePolicyConfig:
         ----------
         tmp_path : pathlib.Path
             Isolated temporary consumer root.
-        write_file : FileWriter
+        write_policy : collections.abc.Callable
             UTF-8 writer creating synthetic policy inputs.
         overrides : dict[str, str]
             Raw TOML field values replacing otherwise valid header settings.
@@ -147,13 +207,14 @@ class TestFilePolicyConfig:
             'notice': '"Copyright"',
             'rules': '[{patterns=["*"],format="raw",prefix="X"}]',
         } | overrides
-        write_file(
-            'pyproject.toml',
+        write_policy(
             '[tool.popo.headers]\n'
             + '\n'.join(f'{key} = {value}' for key, value in fields.items()),
         )
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'entry,message',
@@ -177,7 +238,7 @@ class TestFilePolicyConfig:
     def test_invalid_preservation_exceptions(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        write_policy: Callable[[str], Path],
         entry: str,
         message: str,
     ) -> None:
@@ -188,15 +249,14 @@ class TestFilePolicyConfig:
         ----------
         tmp_path : pathlib.Path
             Isolated consumer root.
-        write_file : FileWriter
+        write_policy : collections.abc.Callable
             Writer for the malformed policy fixture.
         entry : str
             Invalid exception fields supplied by the scenario.
         message : str
             Specific preservation-contract diagnostic expected for the input.
         """
-        write_file(
-            'pyproject.toml',
+        write_policy(
             """[tool.popo.headers]
 project = "Sample"
 notice = "Copyright"
@@ -208,8 +268,10 @@ prefix = "HEADER"
 """
             + entry,
         )
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_headers_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         'setting,message',
@@ -239,7 +301,7 @@ prefix = "HEADER"
     def test_invalid_required_policy(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        write_policy: Callable[[str], Path],
         setting: str,
         message: str,
     ) -> None:
@@ -252,21 +314,23 @@ prefix = "HEADER"
         ----------
         tmp_path : pathlib.Path
             Isolated temporary consumer root.
-        write_file : FileWriter
+        write_policy : collections.abc.Callable
             UTF-8 writer creating synthetic policy inputs.
         setting : str
             Invalid required-file configuration supplied by the scenario.
         message : str
             Specific path, field-shape or duplicate diagnostic expected.
         """
-        write_file('pyproject.toml', '[tool.popo.files]\n' + setting)
+        write_policy('[tool.popo.files]\n' + setting)
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_required_files_config(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     def test_valid_header_policy(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        write_policy: Callable[[str], Path],
     ) -> None:
         """
         Verify valid header policy.
@@ -277,11 +341,10 @@ prefix = "HEADER"
         ----------
         tmp_path : pathlib.Path
             Isolated temporary consumer root.
-        write_file : FileWriter
+        write_policy : collections.abc.Callable
             UTF-8 writer creating synthetic policy inputs.
         """
-        write_file(
-            'pyproject.toml',
+        write_policy(
             """[tool.popo.headers]
 project = "Sample"
 notice = "Copyright"
@@ -294,15 +357,17 @@ patterns = ["*.bin"]
 reason = "Binary artwork"
 """,
         )
+        before = snapshot_files(tmp_path)
         config = load_headers_config(tmp_path)
         assert config is not None and config.project == 'Sample'
         assert config.rules[0].format == 'python'
         assert config.exceptions[0].reason == 'Binary artwork'
+        assert snapshot_files(tmp_path) == before
 
     def test_valid_required_policy(
         self,
         tmp_path: Path,
-        write_file: FileWriter,
+        write_policy: Callable[[str], Path],
     ) -> None:
         """
         Verify valid required policy.
@@ -313,13 +378,15 @@ reason = "Binary artwork"
         ----------
         tmp_path : pathlib.Path
             Isolated temporary consumer root.
-        write_file : FileWriter
+        write_policy : collections.abc.Callable
             UTF-8 writer creating synthetic policy inputs.
         """
-        write_file('pyproject.toml', '[tool.popo.files]\nrequired = ["README.md"]')
+        write_policy('[tool.popo.files]\nrequired = ["README.md"]')
+        before = snapshot_files(tmp_path)
         config = load_required_files_config(tmp_path)
         assert config is not None and config.required == ('README.md',)
         assert config.root == tmp_path.resolve()
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION

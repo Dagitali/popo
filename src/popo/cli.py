@@ -12,7 +12,7 @@ from typing import cast
 
 import yaml
 
-from . import __version__, inventory
+from . import __version__, coverage, inventory
 from ._commands import NATIVE_HANDLERS, Command
 from .checks import actionlint, hosted
 from .config import ConfigurationError
@@ -46,6 +46,44 @@ def _add_root(
         default=Path.cwd(),
         help='Repository root (default: current directory)',
     )
+
+
+def _coverage_summary(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Generate aggregate coverage without writing files or running native tools.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Explicit adapter, source path, selections and output format.
+
+    Returns
+    -------
+    int
+        Zero after emitting a complete summary, one after a redacted failure.
+        Failed commands leave stdout empty and report diagnostics to stderr.
+    """
+    try:
+        summary = coverage.read_summary(
+            args.source,
+            args.adapter,
+            tuple(args.include),
+            tuple(args.exclude),
+            args.zero_total,
+        )
+    except (OSError, UnicodeError):
+        print('error: coverage-summary: cannot read coverage input', file=sys.stderr)
+        return 1
+    except ValueError as error:
+        print(f'error: coverage-summary: {error}', file=sys.stderr)
+        return 1
+    if args.format == 'json':
+        print(json.dumps(coverage.document(summary), indent=2))
+    else:
+        print(coverage.markdown(summary), end='')
+    return 0
 
 
 def _explain(
@@ -348,6 +386,16 @@ def create_parser() -> argparse.ArgumentParser:
     parsers['check-actionlint'].add_argument('paths', nargs='*')
     parsers['check-release-changelog'].add_argument('release')
     parsers['check-release-changelog'].add_argument('--changelog', type=Path)
+    summary = commands.add_parser(
+        'coverage-summary',
+        help='Normalize an exported LLVM or Xcode coverage report',
+    )
+    summary.add_argument('source', type=Path)
+    summary.add_argument('--adapter', choices=('llvm', 'xccov'), required=True)
+    summary.add_argument('--include', action='append', required=True)
+    summary.add_argument('--exclude', action='append', default=[])
+    summary.add_argument('--zero-total', choices=('allow', 'reject'))
+    summary.add_argument('--format', choices=('markdown', 'json'), default='markdown')
     source = commands.add_parser('source-inventory', help='Committed source inventory')
     _add_root(source)
     source.add_argument('--revision', required=True)
@@ -395,10 +443,14 @@ def main(
     the external linter's streams and exact returned exit status.
     source-inventory emits committed evidence, not check-result JSON. Failures
     print only diagnostics to stderr; generation is excluded from profiles.
+    coverage-summary emits aggregate Markdown or JSON to stdout and redacted
+    failures to stderr. It is excluded from check profiles and runs no tools.
     audit-github-settings is an explicit network operation, excluded from
     check-all. It prints sanitized text or JSON findings to standard output.
     """
     args = create_parser().parse_args(argv)
+    if args.command == 'coverage-summary':
+        return _coverage_summary(args)
     if args.command == 'source-inventory':
         return _source_inventory(args)
     if args.command == 'audit-github-settings':

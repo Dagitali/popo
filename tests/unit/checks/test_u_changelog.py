@@ -5,6 +5,7 @@ Test release headings, calendar dates, and missing changelog errors.
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -27,21 +28,52 @@ class TestChangelog:
     @pytest.mark.parametrize(
         ('content', 'expected'),
         [
-            ('## [1.2.3] - 2026-09-20\n', []),
-            ('# Changelog\n', ['CHANGELOG.md has no dated section for 1.2.3']),
-            (
+            pytest.param('## [1.2.3] - 2026-09-20\n', (), id='dated-release'),
+            pytest.param(
+                '# Changelog\n',
+                ('CHANGELOG.md has no dated section for 1.2.3',),
+                id='missing-section',
+            ),
+            pytest.param(
                 '## [1.2.3] - 2026-02-30\n',
-                ['CHANGELOG.md has an invalid date for 1.2.3: 2026-02-30'],
+                ('CHANGELOG.md has an invalid date for 1.2.3: 2026-02-30',),
+                id='impossible-date',
+            ),
+            pytest.param('## [1.2.3] - 2028-02-29\n', (), id='future-leap-day'),
+            pytest.param('## [1.2.3] - 2000-02-29\n', (), id='leap-century'),
+            pytest.param(
+                '## [1.2.3] - 1900-02-29\n',
+                ('CHANGELOG.md has an invalid date for 1.2.3: 1900-02-29',),
+                id='non-leap-century',
+            ),
+            pytest.param(
+                '## [1.2.3] - 2026-09-20\n## [1.2.3] - 2026-02-30\n',
+                (),
+                id='first-valid-heading-wins',
+            ),
+            pytest.param(
+                '## [1.2.3] - 2026-02-30\n## [1.2.3] - 2026-09-20\n',
+                ('CHANGELOG.md has an invalid date for 1.2.3: 2026-02-30',),
+                id='first-invalid-heading-wins',
+            ),
+            pytest.param(
+                '```markdown\n## [1.2.3] - 2026-09-20\n```\n',
+                (),
+                id='textual-heading-in-fence',
+            ),
+            pytest.param(
+                '## 1.2.3 - 2026-09-20\n',
+                ('CHANGELOG.md has no dated section for 1.2.3',),
+                id='brackets-required',
             ),
         ],
-        ids=['dated-release', 'missing-section', 'impossible-date'],
     )
     @pytest.mark.parametrize('release', ['1.2.3', 'v1.2.3'])
     def test_dated_release(
         self,
         write_file: FileWriter,
         content: str,
-        expected: list[str],
+        expected: tuple[str, ...],
         release: str,
     ) -> None:
         """
@@ -54,12 +86,15 @@ class TestChangelog:
         content : str
             File contents selected for the parameterized success or failure
             scenario.
-        expected : list[str]
-            Exact expected diagnostics; an empty list means validation passes.
+        expected : tuple[str, ...]
+            Immutable expected diagnostics; an empty tuple means success.
         release : str
             Release-version string supplied to changelog validation.
         """
-        assert validate(write_file('CHANGELOG.md', content), release) == expected
+        path = write_file('CHANGELOG.md', content)
+        before = path.read_bytes()
+        assert validate(path, release) == list(expected)
+        assert path.read_bytes() == before
 
     @pytest.mark.parametrize(
         'release',
@@ -80,9 +115,16 @@ class TestChangelog:
         release : str
             Release-version string supplied to changelog validation.
         """
-        failures = validate(tmp_path / 'CHANGELOG.md', release)
-        assert len(failures) == 1
-        assert 'release version must use' in failures[0]
+        with (
+            patch.object(Path, 'is_file', autospec=True) as is_file,
+            patch.object(Path, 'read_text', autospec=True) as read,
+        ):
+            assert validate(tmp_path / 'CHANGELOG.md', release) == [
+                'release version must use vMAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH: '
+                f'{release!r}',
+            ]
+        is_file.assert_not_called()
+        read.assert_not_called()
 
     def test_missing_file(
         self,

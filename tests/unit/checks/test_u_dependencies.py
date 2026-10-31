@@ -204,19 +204,30 @@ class TestDependencyPolicy:
         [('Demo_Pkg', 'demo-pkg'), ('demo.pkg', 'Demo__Pkg'), ('DEMO', 'demo')],
     )
     @pytest.mark.parametrize(
-        'suffix',
-        [
-            '==1',
-            '[feature]>=1,<2',
-            '>=1,<2; python_version < "3.15"',
-            ' @ https://example.com/demo.whl#sha256=abc123',
-        ],
+        ('declaration_suffix', 'constraint_suffix'),
+        (
+            *(
+                (suffix, suffix)
+                for suffix in (
+                    '==1',
+                    '[feature]>=1,<2',
+                    '>=1,<2; python_version < "3.15"',
+                    ' @ https://example.com/demo.whl#sha256=abc123',
+                )
+            ),
+            pytest.param(
+                ' @ https://example.com/demo.whl#sha256=abc123',
+                ' @ https://example.com/demo.whl#sha256=abc123 # artifact',
+                id='url-fragment-with-comment',
+            ),
+        ),
     )
     def test_exact_comparison_canonicalizes_only_package_names(
         self,
         write_file: FileWriter,
         names: tuple[str, str],
-        suffix: str,
+        declaration_suffix: str,
+        constraint_suffix: str,
     ) -> None:
         """
         Accept equivalent package spelling while preserving other fields.
@@ -227,16 +238,26 @@ class TestDependencyPolicy:
             Fixture writing UTF-8 files beneath the temporary consumer root.
         names : tuple[str, str]
             Names checked against the selected matching rule.
-        suffix : str
-            Suffix appended to the version or syntax input.
+        declaration_suffix : str
+            Version, extras, marker or URL text declared in project metadata.
+        constraint_suffix : str
+            Corresponding requirement text, optionally with an inline comment.
+
+        Notes
+        -----
+        Do not erase a URL hash when stripping a separate inline comment.
+        Trailing requirement text exercises comment and URL-fragment handling.
         """
-        expected, actual = (name + suffix for name in names)
+        expected = names[0] + declaration_suffix
+        actual = names[1] + constraint_suffix
         metadata = write_file(
             'pyproject.toml',
             f'[project]\ndependencies = [{json.dumps(expected)}]',
         )
         requirements = write_file('requirements.txt', actual)
+        before = snapshot_files(metadata.parent)
         assert validate(DependencyConfig(metadata, requirements, 'exact')) == []
+        assert snapshot_files(metadata.parent) == before
 
     @pytest.mark.parametrize(
         'suffix',
@@ -448,34 +469,6 @@ class TestDependencyPolicy:
         failures = validate(DependencyConfig(metadata, requirements, 'exact'))
         assert len(failures) == 1
         assert 'expected' in failures[0]
-
-    @pytest.mark.parametrize(
-        'suffix',
-        ['', ' # artifact'],
-    )
-    def test_url_fragments_remain_part_of_exact_requirements(
-        self,
-        write_file: FileWriter,
-        suffix: str,
-    ) -> None:
-        """
-        Do not erase a URL hash when stripping a separate inline comment.
-
-        Parameters
-        ----------
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        suffix : str
-            Trailing requirement text exercising comment or URL-fragment
-            handling.
-        """
-        requirement = 'demo @ https://example.com/demo.whl#sha256=abc123'
-        metadata = write_file(
-            'pyproject.toml',
-            f'[project]\ndependencies = ["{requirement}"]',
-        )
-        requirements = write_file('requirements.txt', requirement + suffix)
-        assert validate(DependencyConfig(metadata, requirements, 'exact')) == []
 
 
 # !SECTION

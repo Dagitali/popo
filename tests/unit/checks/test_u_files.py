@@ -655,11 +655,28 @@ class TestHeaderPolicies:
             'sample: header does not match configured identity/prefix',
         ]
 
+    @pytest.mark.parametrize(
+        ('style', 'prefix', 'directive', 'separator'),
+        (
+            pytest.param(
+                'hash',
+                '# yaml-language-server:',
+                '# yaml-language-server: schema',
+                '#\n',
+                id='hash',
+            ),
+            pytest.param('slash', '// directive', '// directive', '', id='slash'),
+        ),
+    )
     @pytest.mark.parametrize('preamble', [False, True])
     @pytest.mark.parametrize('notes', ['Maintainer Notes', 'Notes'])
     def test_optional_schema_preamble_and_required_notes(
         self,
         headers: HeadersConfig,
+        style: str,
+        prefix: str,
+        directive: str,
+        separator: str,
         preamble: bool,
         notes: str,
     ) -> None:
@@ -667,11 +684,21 @@ class TestHeaderPolicies:
         Verify optional schema preamble and required notes.
 
         Keep schema directives above hash headers and require maintainer text.
+        Skip matching directives before slash-comment headers independently
+        of hash separators.
 
         Parameters
         ----------
         headers : HeadersConfig
             Synthetic identity, formats and source-discovery policy.
+        style : str
+            Hash or slash-comment header format selected independently.
+        prefix : str
+            Configured prefix identifying an optional preamble directive.
+        directive : str
+            Literal schema or slash-comment directive placed before the header.
+        separator : str
+            Optional hash-comment separator; slash preambles have none.
         preamble : bool
             Include or omit the optional schema directive.
         notes : str
@@ -683,13 +710,15 @@ class TestHeaderPolicies:
         )
         rule = replace(
             headers.rules[0],
+            format=style,
             required_text=('\n\nMaintainer Notes\n- ',),
-            preamble_prefixes=('# yaml-language-server:',),
+            preamble_prefixes=(prefix,),
         )
         config = replace(headers, rules=(rule,))
         source = headers.root / 'sample'
-        directive = '# yaml-language-server: schema\n#\n' if preamble else ''
-        source.write_text(directive + body, encoding='utf-8')
+        marker = '#' if style == 'hash' else '//'
+        before = f'{directive}\n{separator}' if preamble else ''
+        source.write_text(before + body.replace('#', marker), encoding='utf-8')
         original = snapshot_files(headers.root)
         assert validate_headers(config) == (
             []
@@ -712,8 +741,10 @@ class TestHeaderPolicies:
         """
         (headers.root / 'sample').write_text('source', encoding='utf-8')
         error = PermissionError('unreadable source')
+        before = snapshot_files(headers.root)
         with patch.object(Path, 'read_text', side_effect=error):
-            assert 'unreadable source' in validate_headers(headers)[0]
+            assert validate_headers(headers) == ['sample: unreadable source']
+        assert snapshot_files(headers.root) == before
 
     @pytest.mark.parametrize(
         ('first', 'prefix', 'trim', 'before'),
@@ -829,34 +860,6 @@ class TestHeaderPolicies:
             assert '--others' in run.call_args.args[0]
             assert '--exclude-standard' in run.call_args.args[0]
             assert run.call_args.kwargs['timeout'] == 30
-
-
-class TestNonHashPreambles:
-    """Keep non-hash preamble handling independent of hash separators."""
-
-    def test_slash_preamble(
-        self,
-        headers: HeadersConfig,
-    ) -> None:
-        """
-        Skip a matching directive before a slash-comment source header.
-
-        Parameters
-        ----------
-        headers : HeadersConfig
-            Header rules and consumer identity for the scenario.
-        """
-        (headers.root / 'sample').write_text(
-            '// directive\n// sample\n// Sample\n//\n'
-            '// Copyright Sample\n//\n// Purpose.\n',
-            encoding='utf-8',
-        )
-        rule = replace(
-            headers.rules[0],
-            format='slash',
-            preamble_prefixes=('// directive',),
-        )
-        assert validate_headers(replace(headers, rules=(rule,))) == []
 
 
 class TestRequiredFilePolicies:

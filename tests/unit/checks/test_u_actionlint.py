@@ -16,7 +16,7 @@ Unit coverage for the temporary actionlint source view.
 import subprocess
 from collections import Counter
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, call, patch
 
 import pytest
 import yaml
@@ -437,6 +437,151 @@ class TestReferenceResolutionReuse:
         with pytest.raises(ValueError, match='missing local automation target'):
             actionlint._collect_sources(config, selected)
         assert resolve.call_count == 2
+
+
+class TestSourceCollection:
+    """Keep source scheduling deterministic across repeated references."""
+
+    @pytest.mark.parametrize('name', ('actionlint.yml', 'actionlint.yaml'))
+    def test_already_collected_configuration(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        name: str,
+    ) -> None:
+        """
+        Read selected implicit configuration once without normalizing it.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Consumer root containing implicit actionlint configuration.
+        write_file : FileWriter
+            Writer creating the selected configuration file.
+        name : str
+            Supported implicit configuration basename.
+        """
+        source = 'self-hosted-runner:\n  labels: [custom]\n'
+        path = write_file(f'.github/{name}', source)
+        before = snapshot_files(tmp_path)
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=Path.read_text,
+        ) as read:
+            sources = actionlint._collect_sources(AutomationConfig(tmp_path), [path])
+        assert sources == {path: source}
+        read.assert_called_once_with(path, encoding='utf-8')
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize(
+        'selected,edges,expected',
+        [
+            (('a', 'b', 'a'), (), ('a', 'b')),
+            (('entry',), (('entry', ('a', 'b', 'a')),), ('entry', 'a', 'b')),
+            (
+                ('a', 'b', 'entry'),
+                (('entry', ('a', 'b', 'a')),),
+                ('entry', 'a', 'b'),
+            ),
+            (
+                ('entry',),
+                (
+                    ('entry', ('a', 'b', 'a')),
+                    ('a', ('entry', 'b')),
+                    ('b', ('a',)),
+                ),
+                ('entry', 'a', 'b'),
+            ),
+        ],
+        ids=('duplicate-inputs', 'duplicate-edges', 'queued-targets', 'cycles'),
+    )
+    def test_collection_order_and_reads(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        selected: tuple[str, ...],
+        edges: tuple[tuple[str, tuple[str, ...]], ...],
+        expected: tuple[str, ...],
+    ) -> None:
+        """
+        Preserve last-reference-first priority and read each source once.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Consumer root containing three isolated automation inputs.
+        write_file : FileWriter
+            Writer creating the selected reference graph.
+        selected : tuple[str, ...]
+            Initial source identifiers, including intentional duplicates.
+        edges : tuple[tuple[str, tuple[str, ...]], ...]
+            Per-source references in original YAML order.
+        expected : tuple[str, ...]
+            Required source read and insertion order after deduplication.
+        """
+        graph = dict(edges)
+        for name in ('entry', 'a', 'b'):
+            write_file(
+                f'{name}.yml',
+                yaml.safe_dump(
+                    {
+                        'steps': [
+                            {'uses': f'./{child}.yml'} for child in graph.get(name, ())
+                        ],
+                    },
+                ),
+            )
+        paths = [tmp_path / f'{name}.yml' for name in selected]
+        order = [tmp_path / f'{name}.yml' for name in expected]
+        before = snapshot_files(tmp_path)
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=Path.read_text,
+        ) as read:
+            sources = actionlint._collect_sources(AutomationConfig(tmp_path), paths)
+        assert list(sources) == order
+        assert read.call_args_list == [call(path, encoding='utf-8') for path in order]
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize('reference', ('./', '$/'))
+    def test_duplicate_references_preserve_first_error(
+        self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        reference: str,
+    ) -> None:
+        """
+        Keep YAML failure priority ahead of an older undecodable pending file.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Consumer root containing independent malformed target inputs.
+        write_file : FileWriter
+            Writer creating repeated local or self references.
+        reference : str
+            Literal local or revision-free self-reference prefix.
+        """
+        entry = write_file(
+            'entry.yml',
+            yaml.safe_dump(
+                {
+                    'steps': [
+                        {'uses': f'{reference}{name}.yml'} for name in ('a', 'b', 'a')
+                    ],
+                },
+            ),
+        )
+        write_file('a.yml', '[')
+        write_file('b.yml', '').write_bytes(b'PRIVATE\xff')
+        before = snapshot_files(tmp_path)
+        with pytest.raises(yaml.YAMLError):
+            actionlint._collect_sources(AutomationConfig(tmp_path), [entry])
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION

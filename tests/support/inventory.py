@@ -4,6 +4,7 @@
 Create small committed Git repositories for source-inventory acceptance tests.
 """
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -16,6 +17,10 @@ def git(
 ) -> str:
     """
     Run bounded Git fixture commands without user hooks or commit signing.
+
+    Ignore inherited Git overrides and system/global configuration so fixture
+    commands remain confined to the explicit disposable repository. Preserve
+    ordinary process settings such as executable search paths.
 
     Parameters
     ----------
@@ -54,6 +59,16 @@ def git(
         stderr=subprocess.DEVNULL,
         text=True,
         timeout=30,
+        env={
+            key: value
+            for key, value in os.environ.items()
+            if not key.startswith('GIT_')
+        }
+        | {
+            'GIT_CONFIG_NOSYSTEM': '1',
+            'GIT_CONFIG_GLOBAL': os.devnull,
+            'GIT_TERMINAL_PROMPT': '0',
+        },
     ).strip()
 
 

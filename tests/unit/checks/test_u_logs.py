@@ -4,16 +4,15 @@
 Exercise redacted log diagnostics and artifact boundaries.
 """
 
-import json
 from pathlib import Path
 from typing import Self
+from unittest.mock import patch
 
 import pytest
 
 from popo.checks import logs
-from popo.config import ConfigurationError
 from popo.config.source_checks import load_source_check
-from tests.support.files import snapshot_files
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -57,66 +56,31 @@ def artifact_root_fixture(
 class TestRedactedLogs:
     """Keep private lines out of both rule findings and read errors."""
 
-    @pytest.mark.parametrize('patterns', ('{}', '{ bad = "" }', '{ "bad\\nID" = "x" }'))
-    def test_invalid_patterns(
-        self: Self,
-        tmp_path: Path,
-        patterns: str,
-    ) -> None:
-        """
-        Verify invalid patterns.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        patterns : str
-            Pattern declarations encoded in the scenario configuration.
-        """
-        (tmp_path / 'popo.toml').write_text(
-            '[logs]\ninclude = ["*.log"]\npatterns = ' + patterns,
-        )
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'logs')
-
     @pytest.mark.parametrize(
-        'separator',
-        ['\n', '\r', '\r\n', '\v', '\f', '\x85', '\u2028', '\u2029'],
+        ('content', 'expected'),
+        (
+            pytest.param(
+                'Normal\nInvalid frame dimension: PRIVATE BALANCE\n',
+                ('private.log:2: layout',),
+                id='redacted-finding',
+            ),
+            pytest.param('Normal\n', (), id='clean'),
+            pytest.param(None, ('no inputs match: **/*.log',), id='missing'),
+        ),
     )
-    @pytest.mark.parametrize('trailing', [False, True])
-    def test_multiline_literals_are_rejected(
-        self: Self,
-        tmp_path: Path,
-        separator: str,
-        trailing: bool,
-    ) -> None:
-        """
-        Reject literals that cannot occur within a scanned log line.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        separator : str
-            Separator spelling used by the scenario.
-        trailing : bool
-            Whether the input includes a trailing separator.
-        """
-        literal = 'WARNING' + separator + ('' if trailing else 'PRIVATE')
-        (tmp_path / 'popo.toml').write_text(
-            '[logs]\ninclude=["*.log"]\npatterns={warning=' + json.dumps(literal) + '}',
-            encoding='utf-8',
-        )
-        with pytest.raises(ConfigurationError, match='single-line literals'):
-            load_source_check(tmp_path, 'logs')
-
     def test_named_literal_findings_and_clean_inputs(
         self: Self,
         tmp_path: Path,
         artifact_root: Path | None,
+        write_file: FileWriter,
+        content: str | None,
+        expected: tuple[str, ...],
     ) -> None:
         """
-        Verify named literal findings and clean inputs.
+        Report named findings, clean logs and missing inputs independently.
+
+        Literal matches report rule names and line numbers without revealing
+        private log text; validation leaves consumer and artifact bytes intact.
 
         Parameters
         ----------
@@ -124,25 +88,31 @@ class TestRedactedLogs:
             Per-test temporary directory supplied by pytest.
         artifact_root : Path | None
             Explicit artifact directory, or None to use the consumer root.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the consumer policy.
+        content : str | None
+            Log contents, or None to leave the selected input absent.
+        expected : tuple[str, ...]
+            Exact ordered diagnostics; an empty tuple denotes a clean log.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[logs]\ninclude = ["**/*.log"]\n'
             '[logs.patterns]\nlayout = "Invalid frame dimension"',
         )
         artifact = artifact_root or tmp_path
-        log = artifact / 'private.log'
-        log.write_text('Normal\nInvalid frame dimension: PRIVATE BALANCE\n')
+        if content is not None:
+            (artifact / 'private.log').write_text(content, encoding='utf-8')
         config = load_source_check(tmp_path, 'logs')
-        assert logs.validate(config, artifact_root) == ['private.log:2: layout']
-        log.write_text('Normal\n')
-        assert logs.validate(config, artifact_root) == []
-        log.unlink()
-        assert logs.validate(config, artifact_root) == ['no inputs match: **/*.log']
+        before = snapshot_files(tmp_path)
+        assert logs.validate(config, artifact_root) == list(expected)
+        assert snapshot_files(tmp_path) == before
 
     def test_overlapping_rules_preserve_redacted_order(
         self: Self,
         tmp_path: Path,
         artifact_root: Path | None,
+        write_file: FileWriter,
     ) -> None:
         """
         Report each matching rule once per line, in declaration order.
@@ -153,10 +123,12 @@ class TestRedactedLogs:
             Per-test temporary directory supplied by pytest.
         artifact_root : Path | None
             Explicit artifact directory, or None to use the consumer root.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the consumer policy.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[logs]\ninclude=["**/*.log"]\npatterns={warning="WARN", broad="WAR"}',
-            encoding='utf-8',
         )
         boundary = artifact_root or tmp_path
         for filename in ('z.log', 'a.log'):
@@ -178,7 +150,7 @@ class TestRedactedLogs:
     def test_root_resolution_failures_are_redacted(
         self: Self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        write_file: FileWriter,
         error: type[Exception],
         artifact_root: Path | None,
     ) -> None:
@@ -189,40 +161,31 @@ class TestRedactedLogs:
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest fixture restoring patched attributes and environment values.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the consumer policy.
         error : type[Exception]
             Error value or exception class injected by the scenario.
         artifact_root : Path | None
             Explicit artifact directory, or None to use the consumer root.
         """
-        (tmp_path / 'popo.toml').write_text(
+        write_file(
+            'popo.toml',
             '[logs]\ninclude=["*.log"]\npatterns={warning="WARNING"}',
         )
         config = load_source_check(tmp_path, 'logs')
 
-        def fail_resolution(
-            path: Path,
-        ) -> Path:
-            """
-            Raise the selected error instead of resolving the private log root.
-
-            Parameters
-            ----------
-            path : Path
-                Input path inspected by the operation.
-
-            Raises
-            ------
-            OSError, ValueError
-                Always raise the exception selected by the enclosing scenario.
-            """
-            raise error('PRIVATE ROOT')
-
-        monkeypatch.setattr(Path, 'resolve', fail_resolution)
-        assert logs.validate(config, artifact_root) == [
-            'cannot resolve selected input root',
-        ]
+        before = snapshot_files(tmp_path)
+        with patch.object(
+            Path,
+            'resolve',
+            autospec=True,
+            side_effect=error('PRIVATE ROOT'),
+        ) as resolve:
+            assert logs.validate(config, artifact_root) == [
+                'cannot resolve selected input root',
+            ]
+        resolve.assert_called_once_with(artifact_root or config.root)
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION

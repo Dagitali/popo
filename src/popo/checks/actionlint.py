@@ -20,6 +20,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+from collections import OrderedDict
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
@@ -45,6 +46,8 @@ def _collect_sources(
     reference resolver. Later collections resolve afresh. Retain
     implicit linter configuration without adding unrelated consumer files.
     Read, decode, YAML and target errors propagate before creating the mirror.
+    Keep one pending entry per target and promote repeated references to the
+    front, preserving last-reference-first reads and their error precedence.
 
     Parameters
     ----------
@@ -97,9 +100,10 @@ def _collect_sources(
         if path.is_file():
             path = _inside(root, path)
             sources[path] = path.read_text(encoding='utf-8')
-    pending = list(selected)
+    # Newest references take precedence, including duplicate initial inputs.
+    pending: OrderedDict[Path, None] = OrderedDict.fromkeys(reversed(selected))
     while pending:
-        path = pending.pop()
+        path, _ = pending.popitem(last=False)
         if path in sources:
             continue
         source = path.read_text(encoding='utf-8')
@@ -109,8 +113,9 @@ def _collect_sources(
             reference = node.get('uses')
             if isinstance(reference, str):
                 target = resolve(reference)
-                if target is not None:
-                    pending.append(target)
+                if target is not None and target not in sources:
+                    pending[target] = None
+                    pending.move_to_end(target, last=False)
     return sources
 
 
@@ -275,7 +280,7 @@ def run(
         command_parts[0] = str(Path(command_parts[0]).absolute())
     sources = _collect_sources(config, selected)
     with tempfile.TemporaryDirectory(prefix='popo-actionlint-') as directory:
-        mirror = Path(directory)
+        mirror = Path(directory).resolve()
         for path, source in sources.items():
             destination = mirror / path.relative_to(root)
             destination.parent.mkdir(parents=True, exist_ok=True)

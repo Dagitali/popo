@@ -5,9 +5,10 @@ Cover automation discovery, release versions and source-import fallback.
 """
 
 import runpy
+from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -129,14 +130,65 @@ class TestSupport:
         write_file : FileWriter
             Callable for writing test files.
         """
-        for filename in ('z.yml', 'a.yaml', 'nested/c.yml', 'ignored.txt'):
+        for filename in (
+            'z.yml',
+            'a.yaml',
+            'nested/c.yml',
+            '.github/hidden.yaml',
+            'build/generated.yml',
+            'nested/ignored.yml.txt',
+            'ignored.txt',
+        ):
             write_file(filename, 'fixture')
         (tmp_path / 'folder.yaml').mkdir()
         before = snapshot_files(tmp_path)
-        assert automation_paths(tmp_path) == [
-            tmp_path / name
-            for name in ('a.yaml', 'folder.yaml', 'nested/c.yml', 'z.yml')
-        ]
+        with patch.object(Path, 'walk', autospec=True, side_effect=Path.walk) as walk:
+            assert automation_paths(tmp_path) == [
+                tmp_path / name
+                for name in (
+                    '.github/hidden.yaml',
+                    'a.yaml',
+                    'build/generated.yml',
+                    'folder.yaml',
+                    'nested/c.yml',
+                    'z.yml',
+                )
+            ]
+        walk.assert_called_once_with(tmp_path)
+        assert snapshot_files(tmp_path) == before
+
+    @pytest.mark.parametrize('suffix', ('.yml', '.yaml', '.YML', '.YAML'))
+    def test_automation_discovery_preserves_symlink_and_case_matching(
+        self,
+        tmp_path: Path,
+        symlink: Callable[[Path, Path], None],
+        suffix: str,
+    ) -> None:
+        """
+        Keep native glob case rules without descending directory symlinks.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Isolated parent of discovery root and external targets.
+        symlink : collections.abc.Callable
+            Link creator that skips environments without symlink support.
+        suffix : str
+            YAML suffix tested under the current platform's glob rules.
+        """
+        root = tmp_path / 'consumer'
+        root.mkdir()
+        external = tmp_path / 'external'
+        external.mkdir()
+        target = external / 'workflow.yml'
+        target.write_text('', encoding='utf-8')
+        symlink(root / f'file{suffix}', target)
+        symlink(root / f'directory{suffix}', external)
+        symlink(root / f'missing{suffix}', external / 'absent')
+        before = snapshot_files(tmp_path)
+        expected = sorted((*root.rglob('*.yml'), *root.rglob('*.yaml')))
+        assert automation_paths(root) == expected
+        assert all(path.parent == root for path in expected)
         assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize('kind', ('absent', 'file', 'empty-directory'))

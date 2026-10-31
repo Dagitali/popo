@@ -72,6 +72,14 @@ def load_automation_config(
         patterns.
     OSError, UnicodeError
         Unreadable or undecodable configuration.
+
+    Notes
+    -----
+    Validate explicitly supplied arrays and inherit immutable model defaults
+    directly for omitted settings. Explicit empty arrays remain empty;
+    malformed
+    supplied values never fall back to defaults. Duplicate entries retain their
+    declaration order for compatibility with repeated discovery patterns.
     """
     root = root.resolve()
     popo = read_popo(root)
@@ -90,8 +98,11 @@ def load_automation_config(
         raise ConfigurationError('unknown tool.popo.automation setting')
     values: dict[str, tuple[str, ...]] = {}
     for key in keys:
-        value = table.get(key, list(getattr(defaults, key.replace('-', '_'))))
-        strings = read_strings(value, key, unique=False)
+        strings: tuple[str, ...] = (
+            read_strings(table[key], key, unique=False)
+            if key in table
+            else getattr(defaults, key.replace('-', '_'))
+        )
         for item in strings:
             if key.endswith('-globs') and (
                 Path(item).is_absolute() or '..' in Path(item).parts

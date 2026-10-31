@@ -17,6 +17,18 @@ from popo.config.swift_policy import (
     parse_swift_policy,
     parse_version,
 )
+from tests.support.files import snapshot_files
+
+# SECTION: CONSTANTS
+
+
+REQUIRED_SETTINGS_MESSAGE = (
+    'Swift policy requires compilers, workflows and a boolean CI preference'
+)
+
+
+# !SECTION
+
 
 # SECTION: TESTS
 
@@ -25,49 +37,97 @@ class TestSwiftPolicyConfiguration:
     """Reject ambiguous versions, unsafe paths and inconsistent preferences."""
 
     @pytest.mark.parametrize(
-        'old,new',
-        [
-            ('[swift-policy]', '[other]'),
-            ('tools-version = "5.9"', 'tools-version = "snapshot"'),
-            ('compiler-versions = ["6.1.2", "6.2.0"]', 'compiler-versions = []'),
-            (
-                'compiler-versions = ["6.1.2", "6.2.0"]',
-                'compiler-versions = ["6.1", "6.1.0"]',
+        'old,new,message',
+        (
+            pytest.param(
+                '[swift-policy]',
+                '[other]',
+                'swift-policy must be a TOML table',
+                id='missing-table',
             ),
-            ('preferred-version = "6.1.2"', 'preferred-version = "6.3.0"'),
-            ('tools-version = "5.9"', 'tools-version = "7.0"'),
-            ('workflow-globs = [".github/workflows/ci.yml"]', 'workflow-globs = []'),
-            (
+            pytest.param(
+                'tools-version = "5.9"',
+                'tools-version = "snapshot"',
+                'Swift policy requires stable numeric versions',
+                id='unstable-tools',
+            ),
+            pytest.param(
+                'compiler-versions = ["6.1.2", "6.2.0"]',
+                'compiler-versions = []',
+                REQUIRED_SETTINGS_MESSAGE,
+                id='empty-compilers',
+            ),
+            pytest.param(
+                'compiler-versions = ["6.1.2", "6.2.0"]',
+                'compiler-versions = ["6.1", "6.1.0", "6.1.2"]',
+                'Swift compiler versions, preference and tools minimum conflict',
+                id='duplicate-compilers',
+            ),
+            pytest.param(
+                'preferred-version = "6.1.2"',
+                'preferred-version = "6.3.0"',
+                'Swift compiler versions, preference and tools minimum conflict',
+                id='unsupported-preference',
+            ),
+            pytest.param(
+                'tools-version = "5.9"',
+                'tools-version = "7.0"',
+                'Swift compiler versions, preference and tools minimum conflict',
+                id='incompatible-tools',
+            ),
+            pytest.param(
+                'workflow-globs = [".github/workflows/ci.yml"]',
+                'workflow-globs = []',
+                REQUIRED_SETTINGS_MESSAGE,
+                id='empty-workflows',
+            ),
+            pytest.param(
                 'workflow-globs = [".github/workflows/ci.yml"]',
                 'workflow-globs = ["../ci.yml"]',
+                'Swift policy paths must stay inside root',
+                id='escaping-workflow',
             ),
-            (
+            pytest.param(
                 'tools-version = "5.9"',
                 'tools-version = "5.9"\nmanifest="/Package.swift"',
+                'Swift policy paths must stay inside root',
+                id='absolute-manifest',
             ),
-            (
+            pytest.param(
                 'tools-version = "5.9"',
                 'tools-version = "5.9"\nversion-file="../version"',
+                'Swift policy paths must stay inside root',
+                id='escaping-version-file',
             ),
-            (
+            pytest.param(
                 'tools-version = "5.9"',
                 'tools-version = "5.9"\nrequire-preferred-in-ci=1',
+                REQUIRED_SETTINGS_MESSAGE,
+                id='nonboolean-preference',
             ),
-            (
+            pytest.param(
                 'tools-version = "5.9"',
                 'tools-version = "5.9"\nworkflow-version-key="bad key"',
+                'workflow-version-key must be a literal identifier',
+                id='invalid-input-key',
             ),
-            ('tools-version = "5.9"', 'tools-version = "5.9"\nunknown=true'),
-        ],
+            pytest.param(
+                'tools-version = "5.9"',
+                'tools-version = "5.9"\nunknown=true',
+                'unknown swift-policy setting',
+                id='unknown-setting',
+            ),
+        ),
     )
     def test_invalid_configuration(
         self,
         swift_policy_consumer: Path,
         old: str,
         new: str,
+        message: str,
     ) -> None:
         """
-        Verify invalid configuration.
+        Reject each mutation for its intended error without changing files.
 
         Parameters
         ----------
@@ -77,13 +137,18 @@ class TestSwiftPolicyConfiguration:
             Original value replaced by the scenario.
         new : str
             Replacement value supplied by the scenario.
+        message : str
+            Complete expected diagnostic for the selected policy violation.
         """
         path = swift_policy_consumer / 'popo.toml'
-        text = path.read_text()
-        assert old in text
-        path.write_text(text.replace(old, new), encoding='utf-8')
-        with pytest.raises(ConfigurationError):
+        text = path.read_text(encoding='utf-8')
+        assert text.count(old) == 1
+        path.write_text(text.replace(old, new, 1), encoding='utf-8')
+        before = snapshot_files(swift_policy_consumer)
+        with pytest.raises(ConfigurationError) as raised:
             load_swift_policy_config(swift_policy_consumer)
+        assert str(raised.value) == message
+        assert snapshot_files(swift_policy_consumer) == before
 
     def test_parse_without_reading_inputs(
         self,

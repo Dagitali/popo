@@ -7,13 +7,12 @@ Exercise Python source policy and language-specific findings.
 import ast
 from collections.abc import Callable
 from pathlib import Path
-from textwrap import dedent
+from textwrap import dedent, indent
 from typing import Self
 
 import pytest
 
 from popo.checks import _python_declarations, python_source
-from popo.config import ConfigurationError
 from popo.config.source_checks import load_source_check
 from tests.support.files import FileWriter, snapshot_files
 
@@ -89,6 +88,94 @@ class TestPythonDocumentation:
         assert (
             python_source.validate(load_source_check(tmp_path, 'python-source')) == []
         )
+
+    @pytest.mark.parametrize('prefix', ('', 'async '))
+    @pytest.mark.parametrize(
+        'body,expected',
+        [
+            ('def inner(value=(yield 1)): pass', 'Yields'),
+            ('def inner(*, required, value=(yield 1)): pass', 'Yields'),
+            ('async def inner(value=(yield 1)): pass', 'Yields'),
+            ('supplier = lambda value=(yield 1): value', 'Yields'),
+            ('supplier = lambda *, required, value=(yield 1): value', 'Yields'),
+            ('@(yield decorator)\ndef inner(): pass', 'Yields'),
+            ('@(yield decorator)\nasync def inner(): pass', 'Yields'),
+            ('class Inner((yield Base)): pass', 'Yields'),
+            ('class Inner(metaclass=(yield Meta)): pass', 'Yields'),
+            ('class Inner(**(yield keywords)): pass', 'Yields'),
+            ('@(yield decorator)\nclass Inner: pass', 'Yields'),
+            ('def inner(value=lambda: (yield 1)): pass', ''),
+            ('supplier = lambda: (yield 1)', ''),
+            ('def inner(): yield 1; raise ValueError()', ''),
+            ('async def inner(): yield 1; raise ValueError()', ''),
+            ('class Inner:\n    def method(self): yield 1; raise ValueError()', ''),
+            ('class Inner(lambda: (yield 1)): pass', ''),
+            ('@(lambda: (yield 1))\ndef inner(): pass', ''),
+            ('def inner(value=(lambda other=(yield 1): other)): pass', 'Yields'),
+        ],
+    )
+    def test_definition_expressions_use_the_enclosing_callable_scope(
+        self: Self,
+        prefix: str,
+        body: str,
+        expected: str,
+    ) -> None:
+        """
+        Attribute yields in definition-time expressions to their real scope.
+
+        Parameters
+        ----------
+        prefix : str
+            Synchronous or asynchronous outer-function prefix.
+        body : str
+            Nested declaration or lambda with unresolved synthetic names.
+        expected : str
+            Required result section for the enclosing callable alone.
+        """
+        source = f'{prefix}def outer():\n' + indent(body, '    ') + '\n'
+        syntax = ast.parse(source).body[0]
+        assert isinstance(syntax, (ast.FunctionDef, ast.AsyncFunctionDef))
+        before = ast.dump(syntax, include_attributes=True)
+        facts = _python_declarations._declaration(syntax).facts
+        assert facts.result_section == expected
+        assert not facts.exception_required
+        assert ast.dump(syntax, include_attributes=True) == before
+
+    @pytest.mark.parametrize('section', ('Returns', 'Yields'))
+    def test_definition_time_yields_require_generator_documentation(
+        self: Self,
+        tmp_path: Path,
+        write_file: FileWriter,
+        section: str,
+    ) -> None:
+        """
+        Require Yields rather than Returns for a nested default's outer yield.
+
+        Parameters
+        ----------
+        tmp_path : pathlib.Path
+            Consumer root containing the source and explicit policy.
+        write_file : FileWriter
+            Writer creating isolated consumer inputs.
+        section : str
+            NumPy result section documented on the enclosing generator.
+        """
+        write_file(
+            'popo.toml',
+            '[python-source]\ninclude=["sample.py"]\nreturn-docs=true',
+        )
+        write_file(
+            'sample.py',
+            'def outer():\n'
+            f'    """Overview.\n\n    {section}\n    -------\n'
+            '    int\n        Item.\n    """\n'
+            '    def inner(value=(yield must_not_execute())): pass\n',
+        )
+        before = snapshot_files(tmp_path)
+        assert python_source.validate(load_source_check(tmp_path, 'python-source')) == (
+            [] if section == 'Yields' else ['sample.py:1: return documentation missing']
+        )
+        assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
         ('source', 'option', 'expected'),
@@ -350,51 +437,6 @@ class TestPythonSource:
         assert python_source.validate(load_source_check(tmp_path, 'python-source')) == (
             [] if ordered else ['sample.py:1: instance methods not alphabetical']
         )
-
-    @pytest.mark.parametrize(
-        'settings',
-        (
-            'include = []',
-            'include = ["../outside.py"]',
-            'include = ["/outside.py"]',
-            'include = ["*.py"]\nannotations = 1',
-            'include = ["*.py"]\nmax-file-lines = 0',
-            'include = ["*.py"]\nunknown = true',
-        ),
-    )
-    def test_invalid_configuration(
-        self: Self,
-        tmp_path: Path,
-        settings: str,
-    ) -> None:
-        """
-        Verify invalid configuration.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        settings : str
-            Consumer policy text inserted into the scenario.
-        """
-        (tmp_path / 'popo.toml').write_text('[python-source]\n' + settings)
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'python-source')
-
-    def test_missing_policy_is_explicit(
-        self: Self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Verify missing policy is explicit.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        """
-        with pytest.raises(ConfigurationError):
-            load_source_check(tmp_path, 'python-source')
 
     def test_parameter_syntax_retains_native_nodes_and_grouping(
         self: Self,

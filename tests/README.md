@@ -38,13 +38,28 @@ Within `tests/unit/`:
 
 - `checks/` mirrors `popo.checks`; larger checker suites may span focused test modules. Python and
   Swift source suites use `test_u_python_source.py` and `test_u_swift_source.py`;
-  `test_u_source_parity.py` covers their common contracts, `test_u_documentation_parity.py` covers
-  comparable NumPy/DocC evidence and intentional markup differences, and `test_u_logs.py` covers log
-  findings.
+  `test_u_source_parity.py` covers their common contracts, `test_u_source_inputs.py` covers shared
+  discovery/reads, and `test_u_source_guides.py` covers exact guide entries. Their language cases
+  share the fixture in `tests/support/source_checks.py`. `test_u_documentation_parity.py` covers
+  comparable NumPy/DocC evidence and intentional markup differences; `test_u_logs.py` covers log
+  diagnostics, artifact roots and exact root selection under resolution failures.
+  `test_u_test_results.py` verifies result schemas and thresholds, pre-discovery failures and
+  single-summary reads that leave sibling reports untouched. `test_u_changelog.py` covers calendar
+  boundaries, first-matching-heading semantics and version validation before filesystem inspection.
+  `test_u_github_adapter.py` uses a fresh mocked process runner to verify complete GET commands,
+  sanitized responses and pagination failures without network access.
 - `config/` covers `popo.config`: project loading and shared loader contracts in
-  `test_u_project.py`, with domain-specific modules for automation, files, guardrails, hosted
-  audits, safety, and selection.
-- Tests for shared support, Make, hooks, and repository workflows remain at the unit-layer root.
+  `test_u_project.py`, shared calendar parsing in `test_u_common.py`, and domain-specific modules
+  for automation, files, guardrails, hosted audits, safety, and selection. `config/test_u_logs.py`
+  covers named log rules and the complete `str.splitlines()` separator set, independently of checker
+  execution. Python-policy tests share policy setup while reporting each rejected parser value and
+  loader independently; accepted settings still compare independent and aggregate loader results.
+  Shared source-selection cases use one policy writer for Python, Swift and logs, preserving path
+  escaping and checking malformed includes/excludes and missing policies with exact diagnostics.
+  `config/test_u_python_source.py` covers Python-specific rule switches and limits without parsing
+  source files; checker suites retain native syntax and diagnostic behavior tests.
+- Tests for reporting, shared support, Make, hooks, and repository workflows remain at the
+  unit-layer root; `test_u_reporting.py` covers single-pass text and structured result contracts.
 
 Both subdirectories inherit the `unit` marker and shared fixtures. Checker tests may construct or
 load configuration to exercise a validator; configuration-only validation belongs in `config/`.
@@ -96,16 +111,20 @@ logical groups, preserving fixture/hook sections and definition-time dependencie
 or method parameter on its own line with a trailing comma, including `self` when other parameters
 exist. Only a sole `self` parameter may remain inline; parameterless definitions remain compact.
 Parameterize inputs that share a contract so each scenario has independent setup and failure
-reporting; reserve loops for assertions about one result. Assert specific diagnostics, not merely a
-nonempty result. For mutation cases, verify the source marker exists before replacing it. Compare
-file-byte snapshots when checking that validation preserves consumer inputs, including rejected
-configurations. The `write_file` fixture creates temporary UTF-8 repository files. Keep
-domain-specific policy fixtures local to their test module unless multiple layers use them. Hosted
-observations live in `tests/support/hosted.py`, with prefixed fixture names and function scope so
-mutable API responses remain isolated. Hosted configuration cases belong in `unit/config/`,
-GET-adapter and observation cases in `unit/checks/`, and public CLI reporting in `integration/`.
-Python boundary consumers in `tests/support/python_boundaries.py` share inert source and policy
-cases across native checker unit tests and direct/aggregate CLI integration tests.
+reporting; reserve loops for assertions about one result. Check fields of one returned configuration
+together rather than recreating it for each field. Assert specific diagnostics, not merely a
+nonempty result. For complete collections, assert expected names, counts and order rather than using
+predicates that also pass on empty output. For mutation cases, verify the source marker exists
+before replacing it. Compare file-byte snapshots when checking that validation preserves consumer
+inputs, including rejected configurations. For read-only AST helpers, compare structural snapshots
+including source locations as well as node identities and traversal order. The `write_file` fixture
+creates temporary UTF-8 repository files. Keep domain-specific policy fixtures local to their test
+module unless multiple layers use them. Hosted observations live in `tests/support/hosted.py`, with
+prefixed fixture names and function scope so mutable API responses remain isolated. Hosted
+configuration cases belong in `unit/config/`, GET-adapter and observation cases in `unit/checks/`,
+and public CLI reporting in `integration/`. Python boundary consumers in
+`tests/support/python_boundaries.py` share inert source and policy cases across native checker unit
+tests and direct/aggregate CLI integration tests.
 
 Parameterized CLI-format fixtures in `integration/conftest.py` cover default text, explicit text and
 JSON independently for hosted and native commands; invalid configuration must fail before the
@@ -116,15 +135,17 @@ parameterized fixture so failures are reported independently. Toolchain suites l
 scoped workflow states and CI preference modes. Missing, undecodable and permission-denied Swift
 inputs assert exact diagnostics and unchanged input bytes; loader defaults are tested under
 `config/`. Subprocess tests use timeouts; Make runs against a temporary copy of the Makefile, and
-Make and Git fixtures exclude inherited tool configuration where it can change the result. The Make
-runner derives configurable variables from the copied Makefile and strips caller overrides such as
-`TEST_ARGS`; pass deliberate overrides as Make command arguments instead. Header-policy unit
-fixtures simulate missing Git by default, with explicit subprocess outcomes for inventory cases.
-Required-file and header-policy cases use separate class suites. Directive presence, optional schema
-preambles, required maintainer notes and rule ordering are parameterized with fresh consumers and
-file-byte snapshots, including rejected inputs. Actionlint unit tests inspect the temporary source
-view during the mocked tool call and check cleanup after successful execution, tool failure, and
-process-launch failure.
+Make and Git fixtures exclude inherited tool configuration where it can change the result. Synthetic
+inventory Git commands discard inherited `GIT_*` controls and disable system/global configuration,
+preserving ordinary process settings such as `PATH`. The Make runner derives configurable variables
+from the copied Makefile and strips caller overrides such as `TEST_ARGS`; pass deliberate overrides
+as Make command arguments instead. Header-policy unit fixtures simulate missing Git by default, with
+explicit subprocess outcomes for inventory cases. Required-file and header-policy cases use separate
+class suites. Configuration cases share a writer for standalone and embedded policy tables,
+including array tables. Directive presence, optional schema preambles, required maintainer notes and
+rule ordering are parameterized with fresh consumers and file-byte snapshots, including rejected
+inputs. Actionlint unit tests inspect the temporary source view during the mocked tool call and
+check cleanup after successful execution, tool failure, and process-launch failure.
 
 Installed-CLI scenarios share a module-scoped environment per artifact, but each consumer check gets
 its own temporary project. Help and version checks exercise both the console script and module entry

@@ -4,7 +4,7 @@
 Run shared source discovery, guide checks and read-only file inspection.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from functools import partial
 from pathlib import Path
 
@@ -19,7 +19,7 @@ from ._source_inputs import discover, inspect_sources
 
 type ParsedSourceInspector[Declaration: DeclarationRecord] = Callable[
     [SourceFacts[Declaration], SourceCheckConfig, str],
-    list[str],
+    Iterable[str],
 ]
 type SourceInspector = Callable[[SourceCheckConfig, Path, str], list[str]]
 
@@ -54,6 +54,7 @@ def parsed_source_findings[Declaration: DeclarationRecord](
     documentation, conventions : ParsedSourceInspector[Declaration]
         Language-specific inspectors receiving parsed facts, config and the
         relative filename. Their native declaration types remain intact.
+        Findings may be yielded and are consumed once in inspector order.
 
     Returns
     -------
@@ -75,11 +76,10 @@ def parsed_source_findings[Declaration: DeclarationRecord](
     not intercepted. No files are read and no consumer code is executed.
     """
     relative = path.relative_to(config.root).as_posix()
-    return [
-        *limits(config, path, lines, parsed.documentation_lines),
-        *documentation(parsed, config, relative),
-        *conventions(parsed, config, relative),
-    ]
+    failures = limits(config, path, lines, parsed.documentation_lines)
+    failures.extend(documentation(parsed, config, relative))
+    failures.extend(conventions(parsed, config, relative))
+    return failures
 
 
 def signature_findings(
@@ -160,10 +160,10 @@ def validate_sources(
     """
     paths, failures = discover(config)
     failures.extend(guide_findings(config, paths))
-    return [
-        *failures,
-        *inspect_sources(paths, config.root, partial(source_findings, config)),
-    ]
+    failures.extend(
+        inspect_sources(paths, config.root, partial(source_findings, config)),
+    )
+    return failures
 
 
 # !SECTION

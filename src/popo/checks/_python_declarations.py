@@ -139,21 +139,38 @@ def _body(
     ------
     ast.AST
         Body nodes outside nested function, async-function, class and lambda
-        scopes. Traversal collects facts; it does not model execution order.
+        bodies. Defaults, decorators, class bases and class keyword values
+        belong to the enclosing callable and remain visible. Traversal collects
+        facts; it does not model execution order.
 
     Notes
     -----
     Python has native body nodes to inspect. Swift's bounded front end instead
     derives callable contracts from signatures and tracks lexical scope while
     discovering declarations; it does not infer exceptions from body text.
+    Inspect definition-time expressions without evaluating them. Do not treat
+    nested bodies or annotation/type-parameter expressions as body facts.
     """
     pending: list[ast.AST] = list(node.body)
     while pending:
         current = pending.pop()
-        if isinstance(
-            current,
-            (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda),
-        ):
+        if isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            pending.extend(
+                default
+                for default in chain(current.args.defaults, current.args.kw_defaults)
+                if default is not None
+            )
+            if not isinstance(current, ast.Lambda):
+                pending.extend(current.decorator_list)
+            continue
+        if isinstance(current, ast.ClassDef):
+            pending.extend(
+                chain(
+                    current.bases,
+                    current.decorator_list,
+                    (keyword.value for keyword in current.keywords),
+                ),
+            )
             continue
         yield current
         pending.extend(ast.iter_child_nodes(current))
@@ -180,7 +197,7 @@ def _declaration(
     Notes
     -----
     Signature observations come from _signature using native AST arguments.
-    _requirements combines them with body facts while excluding nested scopes;
+    _requirements combines them with body facts while excluding nested bodies;
     explicit raises include locally caught ones. Type annotations are observed,
     not resolved or validated.
     """
@@ -440,7 +457,8 @@ def _requirements(
         Yields for generators, otherwise Returns for a value-bearing annotation
         or explicit value return, plus exception documentation for explicit
         raise statements. None-valued returns alone do not require a section.
-        Nested scopes do not contribute; locally caught raises still require
+        Nested bodies do not contribute; definition-time expressions evaluated
+        in the enclosing callable do. Locally caught raises still require
         documentation.
 
     Notes
@@ -525,7 +543,7 @@ def _signature(
     -----
     Quoted non-value return annotations follow the same rules as unquoted
     forms. Body-derived return/yield/raise requirements come from
-    _requirements, which uses _body to exclude nested scopes. No consumer code
+    _requirements, which uses _body to exclude nested bodies. No consumer code
     executes.
     """
     parameters = _parameters(node)

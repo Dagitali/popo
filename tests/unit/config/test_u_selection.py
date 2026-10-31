@@ -7,13 +7,14 @@ Exercise consumer-language-independent configuration and check planning.
 import re
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import call, patch
 
 import pytest
 
 from popo.config import ConfigurationError
 from popo.config._common import read_popo
 from popo.config.selection import BASELINE, load_plan
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: FIXTURES
 
@@ -56,7 +57,7 @@ def write_selection_fixture(
         Returns
         -------
         Path
-            Path of the written standalone policy file.
+            Path of the selected standalone or embedded policy file.
         """
         if filename == 'pyproject.toml':
             settings = '[tool.popo]\n' + re.sub(r'(?m)^\[', '[tool.popo.', settings)
@@ -162,8 +163,10 @@ class TestCheckSelection:
             Expected error message or scenario diagnostic.
         """
         write_selection(settings)
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match=message):
             load_plan(tmp_path, profile)
+        assert snapshot_files(tmp_path) == before
 
     def test_opt_in_defaults(
         self,
@@ -240,8 +243,11 @@ class TestConsumerConfiguration:
             Text written to the scenario input.
         """
         write_file('popo.toml', content)
+        write_file('pyproject.toml', '[tool.popo]\nchecks=["check-docs"]')
+        before = snapshot_files(tmp_path)
         with pytest.raises(ConfigurationError, match='invalid TOML'):
             read_popo(tmp_path)
+        assert snapshot_files(tmp_path) == before
 
     def test_standalone_precedence(
         self,
@@ -259,39 +265,72 @@ class TestConsumerConfiguration:
             Per-test temporary directory supplied by pytest.
         """
         standalone = write_file('popo.toml', 'checks=["check-docs"]')
-        metadata = write_file('pyproject.toml', '[')
-        before = [p.read_bytes() for p in (standalone, metadata)]
-        assert read_popo(tmp_path) == {'checks': ['check-docs']}
-        assert load_plan(tmp_path).source == standalone
-        assert [p.read_bytes() for p in (standalone, metadata)] == before
+        write_file('pyproject.toml', '[')
+        before = snapshot_files(tmp_path)
+        with patch.object(
+            Path,
+            'read_text',
+            autospec=True,
+            side_effect=Path.read_text,
+        ) as read:
+            assert read_popo(tmp_path) == {'checks': ['check-docs']}
+            assert load_plan(tmp_path).source == standalone
+        assert read.call_args_list == [
+            call(standalone, encoding='utf-8'),
+            call(standalone, encoding='utf-8'),
+        ]
+        assert snapshot_files(tmp_path) == before
 
+    @pytest.mark.parametrize('loader', (read_popo, load_plan), ids=('settings', 'plan'))
     @pytest.mark.parametrize('kind', ['directory', 'dangling'])
     def test_unreadable_standalone(
         self,
         tmp_path: Path,
+        write_file: FileWriter,
+        loader: Callable[[Path], object],
         kind: str,
         symlink: Callable[[Path, Path], None],
     ) -> None:
         """
-        An invalid standalone input cannot silently select another source.
+        Reject unreadable standalone inputs despite valid fallback metadata.
+
+        Neither settings reads nor plan loading may inspect Python metadata
+        after selecting the malformed standalone input.
 
         Parameters
         ----------
         tmp_path : Path
             Per-test temporary directory supplied by pytest.
+        write_file : FileWriter
+            UTF-8 writer creating valid fallback Python metadata.
+        loader : collections.abc.Callable[[pathlib.Path], object]
+            Settings reader or aggregate-plan loader under test.
         kind : str
-            Native syntax kind or policy variant under test.
+            Directory or dangling-symlink shape of the standalone policy.
         symlink : Callable[[Path, Path], None]
             Platform-aware fixture creating a symbolic link or skipping
             support.
         """
+        write_file('pyproject.toml', '[tool.popo]\nchecks=["check-docs"]')
         path = tmp_path / 'popo.toml'
         if kind == 'directory':
             path.mkdir()
         else:
             symlink(path, tmp_path / 'absent')
-        with pytest.raises(OSError):
-            read_popo(tmp_path)
+        before = snapshot_files(tmp_path)
+        with (
+            patch.object(
+                Path,
+                'read_text',
+                autospec=True,
+                side_effect=Path.read_text,
+            ) as read,
+            pytest.raises(OSError),
+        ):
+            loader(tmp_path)
+        read.assert_called_once_with(path, encoding='utf-8')
+        assert snapshot_files(tmp_path) == before
+        assert path.is_dir() if kind == 'directory' else path.is_symlink()
 
 
 # !SECTION

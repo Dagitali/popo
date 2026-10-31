@@ -20,115 +20,157 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [0.13.0 - 2026-10-29](#0130---2026-10-29)
+- [0.14.0 - 2026-10-31](#0140---2026-10-31)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
-- [0.12.0 - 2026-10-27](#0120---2026-10-27)
+- [0.13.0 - 2026-10-29](#0130---2026-10-29)
   - [Added](#added-1)
   - [Changed](#changed-1)
   - [Fixed](#fixed-1)
-- [0.11.0 - 2026-10-26](#0110---2026-10-26)
+- [0.12.0 - 2026-10-27](#0120---2026-10-27)
   - [Added](#added-2)
   - [Changed](#changed-2)
   - [Fixed](#fixed-2)
-- [0.10.0 - 2026-10-25](#0100---2026-10-25)
+- [0.11.0 - 2026-10-26](#0110---2026-10-26)
   - [Added](#added-3)
-- [0.9.1 - 2026-10-24](#091---2026-10-24)
-  - [Added](#added-4)
   - [Changed](#changed-3)
   - [Fixed](#fixed-3)
-- [0.9.0 - 2026-10-24](#090---2026-10-24)
+- [0.10.0 - 2026-10-25](#0100---2026-10-25)
+  - [Added](#added-4)
+- [0.9.1 - 2026-10-24](#091---2026-10-24)
   - [Added](#added-5)
   - [Changed](#changed-4)
   - [Fixed](#fixed-4)
-- [0.8.2 - 2026-10-23](#082---2026-10-23)
-  - [Fixed](#fixed-5)
-- [0.8.1 - 2026-10-23](#081---2026-10-23)
-  - [Changed](#changed-5)
-  - [Fixed](#fixed-6)
-- [0.8.0 - 2026-10-23](#080---2026-10-23)
+- [0.9.0 - 2026-10-24](#090---2026-10-24)
   - [Added](#added-6)
+  - [Changed](#changed-5)
+  - [Fixed](#fixed-5)
+- [0.8.2 - 2026-10-23](#082---2026-10-23)
+  - [Fixed](#fixed-6)
+- [0.8.1 - 2026-10-23](#081---2026-10-23)
   - [Changed](#changed-6)
-- [0.7.0 - 2026-10-22](#070---2026-10-22)
+  - [Fixed](#fixed-7)
+- [0.8.0 - 2026-10-23](#080---2026-10-23)
   - [Added](#added-7)
   - [Changed](#changed-7)
-- [0.6.6 - 2026-10-08](#066---2026-10-08)
+- [0.7.0 - 2026-10-22](#070---2026-10-22)
+  - [Added](#added-8)
   - [Changed](#changed-8)
+- [0.6.6 - 2026-10-08](#066---2026-10-08)
+  - [Changed](#changed-9)
 - [0.6.5 - 2026-10-08](#065---2026-10-08)
   - [Removed](#removed)
 - [0.6.4 - 2026-10-07](#064---2026-10-07)
   - [Removed](#removed-1)
 - [0.6.3 - 2026-10-07](#063---2026-10-07)
-  - [Fixed](#fixed-7)
-- [0.6.2 - 2026-10-07](#062---2026-10-07)
   - [Fixed](#fixed-8)
-- [0.6.1 - 2026-10-07](#061---2026-10-07)
-  - [Changed](#changed-9)
-- [0.6.0 - 2026-10-07](#060---2026-10-07)
-  - [Added](#added-8)
-- [0.5.2 - 2026-10-06](#052---2026-10-06)
-  - [Changed](#changed-10)
+- [0.6.2 - 2026-10-07](#062---2026-10-07)
   - [Fixed](#fixed-9)
-- [0.5.1 - 2026-10-06](#051---2026-10-06)
-  - [Changed](#changed-11)
-- [0.5.0 - 2026-10-06](#050---2026-10-06)
+- [0.6.1 - 2026-10-07](#061---2026-10-07)
+  - [Changed](#changed-10)
+- [0.6.0 - 2026-10-07](#060---2026-10-07)
   - [Added](#added-9)
-- [0.4.1 - 2026-10-04](#041---2026-10-04)
+- [0.5.2 - 2026-10-06](#052---2026-10-06)
+  - [Changed](#changed-11)
   - [Fixed](#fixed-10)
-- [0.4.0 - 2026-10-04](#040---2026-10-04)
-  - [Added](#added-10)
-- [0.3.7 - 2026-10-01](#037---2026-10-01)
+- [0.5.1 - 2026-10-06](#051---2026-10-06)
   - [Changed](#changed-12)
-- [0.3.6 - 2026-10-01](#036---2026-10-01)
-  - [Added](#added-11)
-- [0.3.5 - 2026-10-01](#035---2026-10-01)
-  - [Changed](#changed-13)
-- [0.3.4 - 2026-10-01](#034---2026-10-01)
-  - [Changed](#changed-14)
-- [0.3.3 - 2026-09-30](#033---2026-09-30)
-  - [Changed](#changed-15)
-- [0.3.2 - 2026-09-30](#032---2026-09-30)
+- [0.5.0 - 2026-10-06](#050---2026-10-06)
+  - [Added](#added-10)
+- [0.4.1 - 2026-10-04](#041---2026-10-04)
   - [Fixed](#fixed-11)
-- [0.3.1 - 2026-09-30](#031---2026-09-30)
-  - [Changed](#changed-16)
-- [0.3.0 - 2026-09-30](#030---2026-09-30)
+- [0.4.0 - 2026-10-04](#040---2026-10-04)
+  - [Added](#added-11)
+- [0.3.7 - 2026-10-01](#037---2026-10-01)
+  - [Changed](#changed-13)
+- [0.3.6 - 2026-10-01](#036---2026-10-01)
   - [Added](#added-12)
-  - [Changed](#changed-17)
+- [0.3.5 - 2026-10-01](#035---2026-10-01)
+  - [Changed](#changed-14)
+- [0.3.4 - 2026-10-01](#034---2026-10-01)
+  - [Changed](#changed-15)
+- [0.3.3 - 2026-09-30](#033---2026-09-30)
+  - [Changed](#changed-16)
+- [0.3.2 - 2026-09-30](#032---2026-09-30)
   - [Fixed](#fixed-12)
-- [0.2.4 - 2026-09-27](#024---2026-09-27)
-  - [Changed](#changed-18)
-- [0.2.3 - 2026-09-27](#023---2026-09-27)
-  - [Changed](#changed-19)
-- [0.2.2 - 2026-09-26](#022---2026-09-26)
-  - [Changed](#changed-20)
-- [0.2.1 - 2026-09-26](#021---2026-09-26)
-  - [Fixed](#fixed-13)
-- [0.2.0 - 2026-09-26](#020---2026-09-26)
+- [0.3.1 - 2026-09-30](#031---2026-09-30)
+  - [Changed](#changed-17)
+- [0.3.0 - 2026-09-30](#030---2026-09-30)
   - [Added](#added-13)
+  - [Changed](#changed-18)
+  - [Fixed](#fixed-13)
+- [0.2.4 - 2026-09-27](#024---2026-09-27)
+  - [Changed](#changed-19)
+- [0.2.3 - 2026-09-27](#023---2026-09-27)
+  - [Changed](#changed-20)
+- [0.2.2 - 2026-09-26](#022---2026-09-26)
   - [Changed](#changed-21)
+- [0.2.1 - 2026-09-26](#021---2026-09-26)
   - [Fixed](#fixed-14)
-- [0.1.5 - 2026-09-24](#015---2026-09-24)
+- [0.2.0 - 2026-09-26](#020---2026-09-26)
   - [Added](#added-14)
+  - [Changed](#changed-22)
+  - [Fixed](#fixed-15)
+- [0.1.5 - 2026-09-24](#015---2026-09-24)
+  - [Added](#added-15)
   - [Removed](#removed-2)
 - [0.1.4 - 2026-09-24](#014---2026-09-24)
-  - [Added](#added-15)
-  - [Fixed](#fixed-15)
-- [0.1.3 - 2026-09-24](#013---2026-09-24)
-  - [Changed](#changed-22)
-- [0.1.2 - 2026-09-24](#012---2026-09-24)
-  - [Changed](#changed-23)
-  - [Removed](#removed-3)
-  - [Fixed](#fixed-16)
-- [0.1.1 - 2026-09-24](#011---2026-09-24)
   - [Added](#added-16)
+  - [Fixed](#fixed-16)
+- [0.1.3 - 2026-09-24](#013---2026-09-24)
+  - [Changed](#changed-23)
+- [0.1.2 - 2026-09-24](#012---2026-09-24)
   - [Changed](#changed-24)
-- [0.1.0 - 2026-09-24](#010---2026-09-24)
+  - [Removed](#removed-3)
+  - [Fixed](#fixed-17)
+- [0.1.1 - 2026-09-24](#011---2026-09-24)
   - [Added](#added-17)
   - [Changed](#changed-25)
-  - [Fixed](#fixed-17)
+- [0.1.0 - 2026-09-24](#010---2026-09-24)
+  - [Added](#added-18)
+  - [Changed](#changed-26)
+  - [Fixed](#fixed-18)
 
 ## Unreleased
+
+## [0.14.0] - 2026-10-31
+
+### Added
+
+- Add read-only `coverage-summary` with LLVM/xccov adapters, POSIX source selection, aggregate
+  Markdown/JSON output and redacted failures; keep it outside check profiles without a percentage
+  gate.
+
+### Changed
+
+- Stream source inspection and text reporting, reuse boundary-read caches, bound source-guide
+  matching, and mask Swift noncode with translation tables; preserve diagnostic order, duplicates,
+  Unicode positions, LF boundaries, JSON schemas and exit codes.
+- Simplify callable documentation checks, scoped Python/Swift toolchain normalization, dependency
+  layout discovery, automation defaults and YAML traversal while preserving native language rules,
+  scope precedence, provenance, lazy selection, explicit empty arrays and cycle/alias handling.
+- Consolidate and parameterize configuration, source, Markdown, dependency, npm, safety and hosted
+  policy tests with named cases, exact diagnostics, unique mutation markers and read-only
+  assertions; retain native Python/Swift differences, validation precedence and documented fixture
+  contracts.
+- Strengthen CLI, reporting and guardrail tests with independent success/failure scenarios, complete
+  text/JSON assertions, explicit-root and relative-override checks, redaction, process-launch guards
+  and unchanged-input checks across repository and artifact roots.
+- Split the oversized source-parity suite into focused modules with shared Python/Swift fixtures;
+  expand coverage for documentation rules, iterator failures, source-guide reads, toolchain
+  literals, standalone-policy precedence, header preambles, Markdown anchors and npm specification
+  shapes.
+
+### Fixed
+
+- Resolve actionlint temporary views before execution so both output streams map canonicalized paths
+  back to sources through symlinked temporary roots, avoiding duplicate macOS `/private` prefixes
+  while preserving validator status and source files.
+- Correct Python generator documentation requirements for yields in nested defaults, decorators and
+  class-header expressions without attributing nested callable bodies to their enclosing scope.
+- Aggregate coverage records by distinct selected path, preserving LLVM addition, Xcode best-count
+  selection, adapter-specific zero-total handling and record-validation error precedence.
 
 ## [0.13.0] - 2026-10-29
 
@@ -154,14 +196,24 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 - Stream source discovery, Markdown references, documentation matches and native syntax scans; reuse
   immutable evidence and source offsets, and skip disabled-rule analysis. Preserve diagnostic order,
   partial traversal results, Unicode/CRLF locations, duplicate handling and read-only checks.
+- Prune ignored Markdown source directories before traversal instead of scanning generated/vendor
+  trees and filtering afterward; retain sorted results and lexical symlink/directory selection.
+- Discover both automation YAML suffixes in one traversal, avoiding duplicate directory scans and
+  an intermediate combined tuple while preserving native case and symlink matching.
 - Reuse automation YAML reads, actionlint reference resolutions and boundary ownership observations
   within each validation run, with fresh reads on later runs. Resolve scoped workflow environment
   references through read-only views while retaining precedence and validation of every scope.
+- Deduplicate pending actionlint source paths while preserving last-reference-first priority, cycle
+  handling, single reads and first-error precedence.
+- Index import-boundary policy names once per evaluation and match dotted ancestors without
+  scanning every configured name; preserve exact Swift matching and diagnostic order.
 - Share UTF-8 input/error orchestration across source, log and test-result checks, canonical
   calendar dates across approval loaders, and cycle-safe workflow safety traversal. Simplify slotted
   hosted records, JSON decoding, configuration key checks and malformed dependency-metadata
   fallbacks; retain expiry policy, sanitized evidence, finding order and propagated read/decode
-  errors.
+  errors. Yield shared inspection findings incrementally, avoiding intermediate aggregate and
+  per-file log/result finding lists while retaining public list results. Reuse source-validation
+  result lists across limit, documentation and convention stages; accept single-pass inspectors.
 - Hash committed inventory blobs through read-only buffer views, preserving checksums, batch
   validation, path ordering and memory limits; avoid whole-file copies during Swift lexical scans.
 - Alphabetize Python functions and methods while preserving fixture dependencies; complete NumPy
@@ -171,7 +223,46 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   isolated fixtures, fresh exception instances and precise platform-capability skips. Strengthen
   exact ordered/redacted diagnostics, configuration precedence, threshold and version boundaries,
   parser non-execution, symlink containment, input snapshots, aggregate continuation, actionlint
-  cleanup and installed-artifact reporting coverage.
+  cleanup and installed-artifact reporting coverage. Move log configuration cases into their own
+  suite, reuse UTF-8 writers and cover every line-separator spelling with read-only snapshots.
+  Replace redundant log-root error helpers with signature-checked mocks that verify the selected
+  root and preserve fixture bytes after failures. Verify test-result overrides fail before discovery
+  or reads, cover every root-selection mode, and assert that explicit summaries are read once
+  without opening sibling reports. Use immutable changelog expectations and exact version
+  diagnostics; exercise leap-century dates, duplicate-heading precedence and version rejection
+  before filesystem inspection. Share isolated GitHub process mocks, compare complete adapter
+  responses and GET invocations, and extend pagination failure/redaction cases without network
+  access. Consolidate workflow/composite-action pinning regressions into named parameterized cases,
+  preserving mutable-tag diagnostics, local/container exemptions and uppercase-SHA acceptance.
+  Separate accepted and rejected Python workflow-parser settings with shared policy fixtures and
+  independent loader cases, including malformed booleans, numbers, arrays and tables. Reuse a UTF-8
+  source-selection policy writer with portable path escaping, and verify malformed include/exclude
+  arrays consistently across Python, Swift and log configuration. Check guardrail default fields
+  together to avoid repeated consumer setup, and preserve policy file snapshots when validating
+  configuration-read reuse. Share expected coverage metric names and replace partial/vacuous
+  aggregation assertions with complete ordered metric comparisons, retaining independent LLVM and
+  Xcode contracts. Move shared calendar parsing out of safety-policy tests, separate
+  accepted/rejected cases and cover date bounds, Unicode digits and trailing whitespace
+  independently of approval expiry. Move Python source-setting rejections into configuration tests,
+  remove duplicated escape cases and check missing-policy diagnostics consistently across Python,
+  Swift and logs. Verify Python documentation-span collection and native traversal preserve complete
+  AST fields and locations, alongside existing identity/order checks; clarify syntax-test parameter
+  docs. Reuse selection-policy byte snapshots, verify exact standalone reads and provide valid
+  fallback metadata when testing malformed standalone precedence; preserve rejected policy files.
+  Consolidate automation array-shape rejection into named cross-setting cases, covering invalid
+  scalars and array elements for both policy sources without duplicated one-off scenarios. Isolate
+  synthetic inventory Git commands from inherited repository/transport overrides and system/global
+  configuration while retaining ordinary process settings and bounded execution. Exercise first,
+  last and multiple failing checks in reporting matrices, preserving aggregate status, ordered
+  diagnostics, per-check summaries and caller-owned result lists. Share file-policy namespace setup
+  across standalone and embedded configuration, including rule and exception array tables; preserve
+  all valid/rejected fixture bytes during loader checks. Merge misspelled boundary-layer rules into
+  the shared language matrix, reuse UTF-8 writers and assert that rejected result/boundary
+  configuration leaves consumer files unchanged. Assert complete Markdown reference/image diagnostic
+  lists and exact source lines instead of substring presence; preserve fixture bytes for both
+  passing and failing document cases. Give Swift-policy mutations exact diagnostics and isolated
+  failure conditions; retain preferred compiler membership when testing normalized duplicates and
+  verify read-only loader failures.
 
 ### Fixed
 

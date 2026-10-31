@@ -13,7 +13,7 @@ import pytest
 from popo.config import ConfigurationError, guardrails, selection
 from popo.config._common import read_popo
 from popo.config.guardrails import GuardrailsConfig, load_guardrails_config
-from tests.support.files import FileWriter
+from tests.support.files import FileWriter, snapshot_files
 
 # SECTION: TESTS
 
@@ -21,19 +21,9 @@ from tests.support.files import FileWriter
 class TestGuardrailConfiguration:
     """Reject ambiguous or unsafe entry-point settings before inspection."""
 
-    @pytest.mark.parametrize(
-        'attribute,relative',
-        [
-            ('makefile', 'Makefile'),
-            ('hooks', '.pre-commit-config.yaml'),
-            ('workflow', '.github/workflows/ci.yml'),
-        ],
-    )
     def test_defaults(
         self,
         guardrail_consumer: GuardrailsConfig,
-        attribute: str,
-        relative: str,
     ) -> None:
         """
         Resolve each default path under the consumer root.
@@ -42,15 +32,17 @@ class TestGuardrailConfiguration:
         ----------
         guardrail_consumer : GuardrailsConfig
             Isolated consumer paths and guardrail parity expectations.
-        attribute : str
-            Attribute whose observation is replaced in this scenario.
-        relative : str
-            Repository-relative path used in diagnostics or input selection.
         """
         assert guardrail_consumer.target == 'guardrails'
-        assert (
-            getattr(guardrail_consumer, attribute) == guardrail_consumer.root / relative
-        )
+        assert {
+            'makefile': guardrail_consumer.makefile,
+            'hooks': guardrail_consumer.hooks,
+            'workflow': guardrail_consumer.workflow,
+        } == {
+            'makefile': guardrail_consumer.root / 'Makefile',
+            'hooks': guardrail_consumer.root / '.pre-commit-config.yaml',
+            'workflow': guardrail_consumer.root / '.github/workflows/ci.yml',
+        }
 
     @pytest.mark.parametrize(
         'settings,message',
@@ -147,6 +139,7 @@ class TestGuardrailConfigurationSnapshot:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         filename: str,
+        write_file: FileWriter,
     ) -> None:
         """
         Do not combine entry points with a subsequently changed profile.
@@ -159,20 +152,24 @@ class TestGuardrailConfigurationSnapshot:
             Pytest fixture restoring patched attributes and environment values.
         filename : str
             Input filename used in the scenario.
+        write_file : FileWriter
+            Shared UTF-8 writer creating the selected consumer policy.
         """
         prefix = '' if filename == 'popo.toml' else 'tool.popo.'
-        (tmp_path / filename).write_text(
+        write_file(
+            filename,
             f'[{prefix}guardrails]\n'
             f'[{prefix}profiles.guardrails]\nchecks=["check-docs"]',
-            encoding='utf-8',
         )
         original = read_popo(tmp_path)
+        before = snapshot_files(tmp_path)
         reader = Mock(side_effect=[original, {}])
         monkeypatch.setattr(guardrails, 'read_popo', reader)
         monkeypatch.setattr(selection, 'read_popo', reader)
         assert load_guardrails_config(tmp_path).profile == 'guardrails'
         reader.assert_called_once_with(tmp_path)
         assert original['profiles'] == {'guardrails': {'checks': ['check-docs']}}
+        assert snapshot_files(tmp_path) == before
 
 
 # !SECTION
