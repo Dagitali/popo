@@ -135,70 +135,76 @@ class TestNpmPairs:
         assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
-        'content',
-        ['[]', '{', '{"lockfileVersion":1}', '{"lockfileVersion":3}'],
+        ('content', 'messages'),
+        (
+            pytest.param('[]', ('npm documents must be objects',), id='nonobject'),
+            pytest.param(
+                '{',
+                (
+                    'Expecting property name enclosed in double quotes: '
+                    'line 1 column 2 (char 1)',
+                ),
+                id='invalid-json',
+            ),
+            pytest.param(
+                '{"lockfileVersion":1}',
+                ('only npm lockfile versions 2 and 3 are supported',),
+                id='unsupported-before-missing-root',
+            ),
+            pytest.param(
+                '{"lockfileVersion":3}',
+                ('lockfile packages root is required',),
+                id='missing-root',
+            ),
+            *(
+                pytest.param(
+                    json.dumps({'lockfileVersion': version, 'packages': {'': {}}}),
+                    ()
+                    if valid
+                    else ('only npm lockfile versions 2 and 3 are supported',),
+                    id=label,
+                )
+                for label, version, valid in (
+                    ('version-2', 2, True),
+                    ('version-3', 3, True),
+                    ('float-2', 2.0, False),
+                    ('float-3', 3.0, False),
+                    ('string', '2', False),
+                    ('boolean', True, False),
+                )
+            ),
+        ),
     )
-    def test_invalid_lock(
+    def test_lockfile_contract(
         self,
         tmp_path: Path,
         write_file: FileWriter,
         content: str,
+        messages: tuple[str, ...],
     ) -> None:
         """
         Report malformed or unsupported lockfiles without running npm.
 
+        Reject numeric lookalikes without rejecting either supported format.
+        Retain document, version and packages-root validation precedence.
+
         Parameters
         ----------
-        tmp_path : Path
+        tmp_path : pathlib.Path
             Per-test temporary directory supplied by pytest.
         write_file : FileWriter
             Fixture writing UTF-8 files beneath the temporary consumer root.
         content : str
-            Text written to the scenario input.
+            Lockfile text with a malformed document, root or version value.
+        messages : tuple[str, ...]
+            Exact ordered diagnostic details, or an empty tuple for success.
         """
         write_file('package.json', '{}')
         write_file('package-lock.json', content)
+        before = snapshot_files(tmp_path)
         assert validate(
             SafetyConfig(tmp_path, npm_pairs=(('package.json', 'package-lock.json'),)),
-        )
-
-    @pytest.mark.parametrize(
-        'version,valid',
-        [(2, True), (3, True), (2.0, False), (3.0, False), ('2', False), (True, False)],
-    )
-    def test_lock_version_requires_supported_integer(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        version: object,
-        valid: bool,
-    ) -> None:
-        """
-        Reject numeric lookalikes without rejecting either supported format.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Per-test temporary directory supplied by pytest.
-        write_file : FileWriter
-            Fixture writing UTF-8 files beneath the temporary consumer root.
-        version : object
-            Version value supplied to the parser or policy comparison.
-        valid : bool
-            Whether the scenario input satisfies the selected contract.
-        """
-        write_file('package.json', '{}')
-        write_file(
-            'package-lock.json',
-            json.dumps({'lockfileVersion': version, 'packages': {'': {}}}),
-        )
-        before = snapshot_files(tmp_path)
-        findings = validate(
-            SafetyConfig(tmp_path, npm_pairs=(('package.json', 'package-lock.json'),)),
-        )
-        assert bool(findings) is not valid
-        if not valid:
-            assert 'only npm lockfile versions 2 and 3 are supported' in findings[0]
+        ) == [f'package.json -> package-lock.json: {message}' for message in messages]
         assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
