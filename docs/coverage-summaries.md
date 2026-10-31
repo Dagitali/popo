@@ -12,7 +12,7 @@ Maintainer Notes
 
 # Coverage Summaries
 
-This command is **unreleased**. It reads an existing exported report and emits aggregate Markdown or
+Added in v0.14.0, this command reads an existing exported report and emits aggregate Markdown or
 JSON to stdout. It does not invoke LLVM, Xcode, a compiler or test tools, read source files, write
 artifacts, install dependencies, or establish that tests passed. It is separate from `check-all` and
 cannot be selected through check profiles. No percentage gate is imposed.
