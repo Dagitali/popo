@@ -22,38 +22,6 @@ class TestMarkdownReferencesAndImages:
     Cover reference definitions, reference labels and inline images offline.
     """
 
-    @pytest.mark.parametrize(
-        ('target', 'message'),
-        [
-            ('missing.md', 'local target does not exist'),
-            ('#missing', 'anchor does not exist'),
-        ],
-    )
-    def test_broken_reference_definitions(
-        self,
-        tmp_path: Path,
-        write_file: FileWriter,
-        target: str,
-        message: str,
-    ) -> None:
-        """
-        Check even unused definitions and retain their source line numbers.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Temporary directory for isolated test inputs.
-        write_file : FileWriter
-            UTF-8 writer creating parent directories in ``tmp_path``.
-        target : str
-            Destination of an unused reference definition that must fail
-            validation.
-        message : str
-            Expected diagnostic text for the broken reference destination.
-        """
-        readme = write_file('README.md', f'# Project\n\n[unused]: {target}\n')
-        assert validate(tmp_path) == [f'{readme}:3: {message}: {target}']
-
     def test_inline_images_cannot_escape_through_symlinks(
         self,
         tmp_path: Path,
@@ -82,6 +50,18 @@ class TestMarkdownReferencesAndImages:
     @pytest.mark.parametrize(
         ('content', 'line', 'message'),
         [
+            pytest.param(
+                '# Project\n\n[unused]: missing.md\n',
+                3,
+                'local target does not exist: missing.md',
+                id='unused-missing-target',
+            ),
+            pytest.param(
+                '# Project\n\n[unused]: #missing\n',
+                3,
+                'anchor does not exist: #missing',
+                id='unused-missing-anchor',
+            ),
             ('[Text][missing]', 1, 'undefined reference: missing'),
             ('[Text][]', 1, 'undefined reference: Text'),
             ('![Image][missing]', 1, 'undefined reference: missing'),
@@ -102,6 +82,9 @@ class TestMarkdownReferencesAndImages:
     ) -> None:
         """
         Reject missing labels, conflicting definitions and invalid images.
+
+        Check even unused definitions and retain their source line numbers.
+        Missing local files and anchors fail independently of reference usage.
 
         Parameters
         ----------
