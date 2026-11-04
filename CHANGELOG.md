@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Separate OpenStep grammar tests from Apple metadata policy tests and parameterize supported values
+  independently, preserving every parser assertion and documentation without duplicated test bodies.
 - Isolate shared Apple metadata failures from individual CLI scenarios, replacing repeated checks
   and substring assertions with exact ordered rule findings, output-channel and read-only checks.
 - Index referenced Xcode configurations once per selection, preserving requested order, native
