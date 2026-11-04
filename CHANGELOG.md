@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Share platform-aware symlink fixtures across unit and integration suites, removing duplicate setup
+  and broad error skips; assert exact Apple escape diagnostics and unchanged inside/outside bytes.
 - Separate OpenStep grammar tests from Apple metadata policy tests and parameterize supported values
   independently, preserving every parser assertion and documentation without duplicated test bodies.
 - Isolate shared Apple metadata failures from individual CLI scenarios, replacing repeated checks
