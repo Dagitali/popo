@@ -16,6 +16,15 @@ from popo.cli import main
 from tests.support.apple_metadata import INFO, POLICY, PROJECT
 from tests.support.files import snapshot_files
 
+# SECTION: CONSTANTS
+
+
+FAILURE_DETAIL = 'metadata missing, invalid or violates policy'
+
+
+# !SECTION
+
+
 # SECTION: FIXTURES
 
 
@@ -36,11 +45,11 @@ def apple_project_fixture(
     pathlib.Path
         Populated repository requiring no Xcode installation.
     """
-    (tmp_path / 'pyproject.toml').write_text(POLICY)
+    (tmp_path / 'pyproject.toml').write_text(POLICY, encoding='utf-8')
     (tmp_path / 'Info.plist').write_bytes(plistlib.dumps(INFO))
     project = tmp_path / 'Example.xcodeproj/project.pbxproj'
     project.parent.mkdir()
-    project.write_text(PROJECT)
+    project.write_text(PROJECT, encoding='utf-8')
     return tmp_path
 
 
@@ -51,7 +60,7 @@ def apple_project_fixture(
 
 
 class TestAppleMetadataCLI:
-    """Validate native contracts without inspecting source or invoking tools."""
+    """Check native contracts without inspecting source or invoking tools."""
 
     @pytest.mark.parametrize('binary', (False, True))
     @pytest.mark.parametrize('command', ('check-apple-metadata', 'check-all'))
@@ -92,25 +101,53 @@ class TestAppleMetadataCLI:
         assert snapshot_files(apple_project) == before
 
     @pytest.mark.parametrize(
-        'case',
+        ('case', 'identities'),
         (
-            'missing',
-            'malformed',
-            'not-mapping',
-            'bool-as-int',
-            'absent',
-            'project-schema',
-            'target',
-            'configuration',
-            'reference',
-            'settings-type',
-            'setting',
-            'consistent',
-            'missing-consistent',
-            'root-project',
-            'configuration-list',
-            'reference-type',
-            'xml',
+            pytest.param('missing', ('privacy',), id='missing'),
+            pytest.param('malformed', ('privacy',), id='malformed'),
+            pytest.param('not-mapping', ('privacy',), id='not-mapping'),
+            pytest.param('bool-as-int', ('privacy',), id='bool-as-int'),
+            pytest.param('absent', ('privacy',), id='absent'),
+            pytest.param(
+                'project-schema',
+                ('identity', 'project-settings'),
+                id='project-schema',
+            ),
+            pytest.param('target', ('identity',), id='target'),
+            pytest.param(
+                'configuration',
+                ('identity', 'project-settings'),
+                id='configuration',
+            ),
+            pytest.param('reference', ('project-settings',), id='reference'),
+            pytest.param(
+                'settings-type',
+                ('identity', 'project-settings'),
+                id='settings-type',
+            ),
+            pytest.param('setting', ('identity',), id='setting'),
+            pytest.param(
+                'consistent',
+                ('identity', 'project-settings'),
+                id='consistent',
+            ),
+            pytest.param(
+                'missing-consistent',
+                ('identity', 'project-settings'),
+                id='missing-consistent',
+            ),
+            pytest.param('root-project', ('project-settings',), id='root-project'),
+            pytest.param(
+                'configuration-list',
+                ('identity', 'project-settings'),
+                id='configuration-list',
+            ),
+            pytest.param(
+                'reference-type',
+                ('identity', 'project-settings'),
+                id='reference-type',
+            ),
+            pytest.param('xml', ('privacy',), id='xml'),
         ),
     )
     def test_failed_metadata_is_redacted_and_other_rules_continue(
@@ -118,6 +155,7 @@ class TestAppleMetadataCLI:
         apple_project: Path,
         capsys: pytest.CaptureFixture[str],
         case: str,
+        identities: tuple[str, ...],
     ) -> None:
         """
         Fail closed on unavailable, malformed and policy-violating inputs.
@@ -130,6 +168,8 @@ class TestAppleMetadataCLI:
             Captured command diagnostics.
         case : str
             Independent native metadata failure.
+        identities : tuple[str, ...]
+            Exact failing rule identities in declaration order.
         """
         info = apple_project / 'Info.plist'
         project = apple_project / 'Example.xcodeproj/project.pbxproj'
@@ -170,21 +210,52 @@ class TestAppleMetadataCLI:
                 ),
                 'missing-consistent': ('MARKETING_VERSION', 'PRIVATE'),
             }[case]
-            project.write_text(PROJECT.replace(before, after, 1))
+            project.write_text(PROJECT.replace(before, after, 1), encoding='utf-8')
+        original = snapshot_files(apple_project)
         assert main(['check-apple-metadata', '--root', str(apple_project)]) == 1
         output = capsys.readouterr()
-        assert 'PRIVATE' not in output.out + output.err
-        assert 'metadata missing, invalid or violates policy' in output.out
-        # A second independent failure must still be reported.
-        project.write_text('PRIVATE')
-        info.write_bytes(b'PRIVATE')
-        assert main(['check-apple-metadata', '--root', str(apple_project)]) == 1
-        assert (
-            capsys.readouterr().out.count(
-                'metadata missing, invalid or violates policy',
-            )
-            == 3
+        assert output.err == ''
+        assert output.out == ''.join(
+            f'FAIL: {identity}: {FAILURE_DETAIL}\n' for identity in identities
         )
+        assert snapshot_files(apple_project) == original
+
+    def test_independent_metadata_failures_are_all_reported(
+        self,
+        apple_project: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        Report every independent rule after both native inputs become invalid.
+
+        A passing first call must not retain successful observations after
+        metadata changes between invocations.
+
+        Parameters
+        ----------
+        apple_project : pathlib.Path
+            Disposable consumer with three rules sharing two native files.
+        capsys : pytest.CaptureFixture[str]
+            Captured public command diagnostics.
+        """
+        arguments = ['check-apple-metadata', '--root', str(apple_project)]
+        original = snapshot_files(apple_project)
+        assert main(arguments) == 0
+        passed = capsys.readouterr()
+        assert passed.out.startswith('PASS:')
+        assert passed.err == ''
+        assert snapshot_files(apple_project) == original
+        (apple_project / 'Info.plist').write_bytes(b'PRIVATE')
+        (apple_project / 'Example.xcodeproj/project.pbxproj').write_bytes(b'PRIVATE')
+        before = snapshot_files(apple_project)
+        assert main(arguments) == 1
+        output = capsys.readouterr()
+        assert output.err == ''
+        assert output.out == ''.join(
+            f'FAIL: {identity}: {FAILURE_DETAIL}\n'
+            for identity in ('privacy', 'identity', 'project-settings')
+        )
+        assert snapshot_files(apple_project) == before
 
     def test_symlink_cannot_escape_root(
         self: Self,
