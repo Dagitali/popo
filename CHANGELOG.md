@@ -20,7 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [0.14.0 - 2026-10-31](#0140---2026-10-31)
+- [\[0.14.0\] - 2026-10-31](#0140---2026-10-31)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
@@ -134,6 +134,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Cover empty Apple metadata policies and assertion-free rules in focused configuration suites,
+  preserving checker/parser separation, unique mutations and read-only loader contracts.
+- Validate boundary imports and symbols with one compiled native identifier pattern per policy load
+  and direct tuple iteration, preserving Python dotted names, Swift identifiers and diagnostic
+  order.
 - Add opt-in `check-apple-metadata` for typed XML/binary plist expectations and explicit Xcode
   target/configuration contracts, with root confinement and value-redacted diagnostics. This does
   not evaluate resolved build settings, inspect signatures or validate schemes/test plans.
