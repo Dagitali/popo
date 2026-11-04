@@ -121,13 +121,17 @@ def _settings(
         isinstance(key, str) for key in references
     ):
         raise ValueError('expected configuration references')
-    configs = [_mapping(objects[key]) for key in references]
+    configs: dict[str, dict[str, Any] | None] = {}
+    for key in references:
+        config = _mapping(objects[key])
+        if isinstance(name := config.get('name'), str):
+            configs[name] = None if name in configs else config
     result = []
     for name in rule.configurations:
-        matches = [item for item in configs if item.get('name') == name]
-        if len(matches) != 1 or matches[0].get('isa') != 'XCBuildConfiguration':
+        selected = configs.get(name)
+        if selected is None or selected.get('isa') != 'XCBuildConfiguration':
             raise ValueError('expected one named build configuration')
-        result.append(_mapping(matches[0]['buildSettings']))
+        result.append(_mapping(selected['buildSettings']))
     return result
 
 
