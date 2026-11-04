@@ -12,8 +12,8 @@ Maintainer Notes
 
 # Apple Metadata
 
-This **unreleased** command checks consumer-owned expectations without Xcode, signing tools or
-platform credentials. It is not available in v0.14.0. Checks read files and never modify them.
+Added in v0.15.0, this command checks consumer-owned expectations without Xcode, signing tools or
+platform credentials. Checks read files and never modify them.
 
 - [Usage](#usage)
 - [Contracts](#contracts)
