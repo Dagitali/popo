@@ -40,6 +40,8 @@ def parse_project(
     ------
     ValueError
         Tokens are truncated, duplicated, malformed or remain after the root.
+        Unquoted structural delimiters cannot be scalar values or dictionary
+        keys; quoted punctuation remains string data.
     """
     pattern = r'\s+|//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|[{}()=;,]|[^\s{}()=;,"]+'
     tokens = []
@@ -141,6 +143,8 @@ def parse_project(
                     take(',')
             take(')')
             return items
+        if token in {'}', ')', '=', ';', ','}:
+            raise ValueError('Unexpected project delimiter')
         return json.loads(token) if token.startswith('"') else token
 
     result = value()
