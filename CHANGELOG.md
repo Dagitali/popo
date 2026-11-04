@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Reject unquoted OpenStep structural delimiters as scalar values or dictionary keys, preserving
+  quoted punctuation and preventing malformed Xcode project syntax from being accepted.
 - Cover empty Apple metadata policies and assertion-free rules in focused configuration suites,
   preserving checker/parser separation, unique mutations and read-only loader contracts.
 - Validate boundary imports and symbols with one compiled native identifier pattern per policy load
