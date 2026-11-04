@@ -97,6 +97,9 @@ argument errors follow the normal usage status of two.
 
 ## Limits and Adoption
 
+Shared inputs, including failed reads or parses, are read once per path/adapter in a validation run.
+Each rule retains its own diagnostic; a later run inspects repaired or changed inputs afresh.
+
 The OpenStep reader supports explicit dictionaries, arrays, comments and JSON-compatible quoted
 strings. Structural delimiters used as scalar values or dictionary keys must be quoted. It is not an
 Xcode build-settings evaluator. No variable expansion, inherited settings, xcconfig resolution, SDK
