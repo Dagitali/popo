@@ -4,6 +4,7 @@
 Exercise OpenStep parsing and strict typed Apple metadata comparisons.
 """
 
+import json
 from typing import Self
 
 import pytest
@@ -30,6 +31,15 @@ class TestAppleMetadata:
             '{ a = "unfinished; }',
             '{} "',
             '{ a 1; }',
+            pytest.param('}', id='unmatched-brace'),
+            pytest.param(')', id='unmatched-parenthesis'),
+            pytest.param('=', id='unquoted-equals'),
+            pytest.param(';', id='unquoted-semicolon'),
+            pytest.param(',', id='unquoted-comma'),
+            pytest.param('(,)', id='comma-array-value'),
+            pytest.param('(=)', id='equals-array-value'),
+            pytest.param('{ ; = value; }', id='delimiter-key'),
+            pytest.param('{ key = =; }', id='delimiter-value'),
         ),
     )
     def test_malformed_openstep_fails(
@@ -54,6 +64,24 @@ class TestAppleMetadata:
             'a': ['one', 'two words'],
             'b': {},
         }
+
+    @pytest.mark.parametrize('symbol', tuple('{}()=;,'))
+    def test_quoted_delimiters_remain_strings(
+        self,
+        symbol: str,
+    ) -> None:
+        """
+        Preserve quoted punctuation as scalar values and dictionary keys.
+
+        Parameters
+        ----------
+        symbol : str
+            Structural delimiter that is valid only inside a quoted string.
+        """
+        quoted = json.dumps(symbol)
+        assert parse_project(quoted) == symbol
+        assert parse_project(f'({quoted})') == [symbol]
+        assert parse_project(f'{{ {quoted} = {quoted}; }}') == {symbol: symbol}
 
     @pytest.mark.parametrize(
         'actual,expected,equal',
