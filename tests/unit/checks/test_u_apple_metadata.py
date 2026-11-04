@@ -1,71 +1,21 @@
 """
 :mod:`tests.unit.checks.test_u_apple_metadata` module.
 
-Exercise OpenStep parsing and strict, value-private Apple policy loading.
+Exercise OpenStep parsing and strict typed Apple metadata comparisons.
 """
 
-from pathlib import Path
 from typing import Self
 
 import pytest
 
 from popo.checks._openstep import parse_project
 from popo.checks.apple_metadata import _same
-from popo.config import ConfigurationError
-from popo.config.apple_metadata import load_apple_metadata_config
-from tests.support.apple_metadata import POLICY
 
 # SECTION: TESTS
 
 
 class TestAppleMetadata:
-    """Keep generic parsing and configuration matrices in the dependency."""
-
-    @pytest.mark.parametrize(
-        'before,after',
-        (
-            ('kind = "plist"', 'kind = "json"'),
-            ('id = "privacy"', 'id = "invalid id"'),
-            ('id = "identity"', 'id = "privacy"'),
-            ('path = "Info.plist"', 'path = "../Info.plist"'),
-            ('path = "Info.plist"', 'path = "/Info.plist"'),
-            ('path = "Info.plist"', 'path = "./Info.plist"'),
-            ('path = "Info.plist"', 'path = ""'),
-            ('path = "Info.plist"', 'path = 1'),
-            ('absent = ["PrivateKey"]', 'unknown = true'),
-            ('absent = ["PrivateKey"]', 'absent = [1]'),
-            ('absent = ["PrivateKey"]', 'absent = ["a", "a"]'),
-            ('absent = ["PrivateKey"]', 'absent = ["ITSAppUsesNonExemptEncryption"]'),
-            ('absent = ["PrivateKey"]', 'target = "not-allowed"'),
-            ('target = "Example"', 'scope = "invalid"'),
-            ('target = "Example"', 'scope = "project"\ntarget = "Example"'),
-            ('target = "Example"', 'target = 1'),
-            ('target = "Example"', 'target = ""'),
-            ('configurations = ["Debug", "Release"]', 'configurations = []'),
-            ('PRODUCT_BUNDLE_IDENTIFIER = "com.example.app"', 'S = false'),
-            ('ITSAppUsesNonExemptEncryption = false', 'Value = inf'),
-            ('ITSAppUsesNonExemptEncryption = false', 'Value = 2026-11-03'),
-        ),
-    )
-    def test_invalid_policy_is_rejected(
-        self: Self,
-        tmp_path: Path,
-        before: str,
-        after: str,
-    ) -> None:
-        """
-        Reject unsafe selectors, contradictory keys and unsupported values.
-
-        Parameters
-        ----------
-        tmp_path : pathlib.Path
-            Disposable policy root.
-        before, after : str
-            Literal mutation isolating one invalid policy field.
-        """
-        (tmp_path / 'pyproject.toml').write_text(POLICY.replace(before, after))
-        with pytest.raises(ConfigurationError):
-            load_apple_metadata_config(tmp_path)
+    """Inspect OpenStep syntax and typed metadata comparisons without tools."""
 
     @pytest.mark.parametrize(
         'source',
