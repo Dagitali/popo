@@ -99,9 +99,11 @@ Use the session-scoped `repository_root` fixture for project-level fixture needs
 the narrowest useful scope and put cross-layer helpers in `support/`. Do not add empty layers for
 infrastructure or examples that this project does not have.
 
-Keep helpers used by one unit module in that module. Put fixtures shared by multiple unit modules in
-`tests/unit/conftest.py`, which pytest discovers throughout the unit tree. Its `symlink` fixture
-skips unavailable operations and permission restrictions; unexpected filesystem errors propagate.
+Keep helpers used by one unit module in that module. Fixtures shared only by unit modules belong in
+`tests/unit/conftest.py`; register cross-layer fixtures from `support/` in the root conftest.
+`support/symlinks.py` provides the unit/integration `symlink` fixture, preserving directory targets
+on Windows and skipping only unavailable operations or permission restrictions. Unexpected
+filesystem errors propagate.
 
 ## Suite Design
 
