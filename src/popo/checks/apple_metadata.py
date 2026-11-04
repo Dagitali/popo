@@ -11,34 +11,10 @@ from xml.parsers.expat import ExpatError
 
 from ..config.apple_metadata import AppleRule
 from ._openstep import parse_project
+from ._xcode import configuration_settings
+from ._xcode import mapping as _mapping
 
 # SECTION: PROTECTED FUNCTIONS
-
-
-def _mapping(
-    value: object,
-) -> dict[str, Any]:
-    """
-    Require dictionary-shaped native metadata.
-
-    Parameters
-    ----------
-    value : object
-        Decoded property-list value or referenced project object.
-
-    Returns
-    -------
-    dict[str, Any]
-        Validated mapping.
-
-    Raises
-    ------
-    ValueError
-        The supplied value is not a dictionary.
-    """
-    if not isinstance(value, dict):
-        raise ValueError('expected a dictionary')
-    return value
 
 
 def _same(
@@ -97,42 +73,7 @@ def _settings(
     KeyError, TypeError, ValueError
         Targets, configuration lists or references are missing or ambiguous.
     """
-    objects = _mapping(project['objects'])
-    if rule.target:
-        targets = [
-            _mapping(item)
-            for item in objects.values()
-            if isinstance(item, dict)
-            and item.get('isa') == 'PBXNativeTarget'
-            and item.get('name') == rule.target
-        ]
-        if len(targets) != 1:
-            raise ValueError('expected one native target')
-        owner = targets[0]
-    else:
-        owner = _mapping(objects[project['rootObject']])
-        if owner.get('isa') != 'PBXProject':
-            raise ValueError('expected the root project')
-    listing = _mapping(objects[owner['buildConfigurationList']])
-    if listing.get('isa') != 'XCConfigurationList':
-        raise ValueError('expected a configuration list')
-    references = listing['buildConfigurations']
-    if not isinstance(references, list) or not all(
-        isinstance(key, str) for key in references
-    ):
-        raise ValueError('expected configuration references')
-    configs: dict[str, dict[str, Any] | None] = {}
-    for key in references:
-        config = _mapping(objects[key])
-        if isinstance(name := config.get('name'), str):
-            configs[name] = None if name in configs else config
-    result = []
-    for name in rule.configurations:
-        selected = configs.get(name)
-        if selected is None or selected.get('isa') != 'XCBuildConfiguration':
-            raise ValueError('expected one named build configuration')
-        result.append(_mapping(selected['buildSettings']))
-    return result
+    return configuration_settings(project, rule.target, rule.configurations)
 
 
 # !SECTION
