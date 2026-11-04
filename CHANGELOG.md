@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Isolate shared Apple metadata failures from individual CLI scenarios, replacing repeated checks
+  and substring assertions with exact ordered rule findings, output-channel and read-only checks.
 - Index referenced Xcode configurations once per selection, preserving requested order, native
   settings identities and rejection of ambiguous selected names without rejecting unused duplicates.
 - Cache failed Apple metadata reads and parses once per path/adapter within each validation run,
