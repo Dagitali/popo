@@ -5,12 +5,14 @@ Exercise OpenStep parsing and strict typed Apple metadata comparisons.
 """
 
 import json
+from copy import deepcopy
 from typing import Self
 
 import pytest
 
 from popo.checks._openstep import parse_project
-from popo.checks.apple_metadata import _same
+from popo.checks.apple_metadata import _same, _settings
+from popo.config.apple_metadata import AppleRule
 
 # SECTION: TESTS
 
@@ -111,6 +113,85 @@ class TestAppleMetadata:
             Exact recursive comparison result.
         """
         assert _same(actual, expected) is equal
+
+
+class TestProjectConfigurationSelection:
+    """Keep native configuration lookup ordered and ambiguity-aware."""
+
+    @pytest.mark.parametrize(
+        ('names', 'selected', 'expected'),
+        (
+            pytest.param(
+                ('Debug', 'Release'),
+                ('Release', 'Debug'),
+                (1, 0),
+                id='order',
+            ),
+            pytest.param(('Debug', 'Debug'), ('Debug',), None, id='selected-duplicate'),
+            pytest.param(
+                ('Debug', 'Release', 'Release'),
+                ('Debug',),
+                (0,),
+                id='unselected-duplicate',
+            ),
+            pytest.param(('Debug', []), ('Debug',), (0,), id='unselected-list-name'),
+            pytest.param(('Debug', {}), ('Debug',), (0,), id='unselected-mapping-name'),
+            pytest.param(('Debug',), ('Release',), None, id='missing-selection'),
+        ),
+    )
+    def test_native_configuration_selection(
+        self,
+        names: tuple[object, ...],
+        selected: tuple[str, ...],
+        expected: tuple[int, ...] | None,
+    ) -> None:
+        """
+        Preserve selection order and native identities when indexing names.
+
+        Parameters
+        ----------
+        names : tuple[object, ...]
+            Literal configuration names, including malformed unselected names.
+        selected : tuple[str, ...]
+            Requested names in consumer-defined result order.
+        expected : tuple[int, ...] | None
+            Expected source-object indices, or None for missing/ambiguous names.
+        """
+        configs = {
+            str(index): {
+                'isa': 'XCBuildConfiguration',
+                'name': name,
+                'buildSettings': {'index': index},
+            }
+            for index, name in enumerate(names)
+        }
+        project = {
+            'rootObject': 'project',
+            'objects': configs
+            | {
+                'project': {'isa': 'PBXProject', 'buildConfigurationList': 'list'},
+                'list': {
+                    'isa': 'XCConfigurationList',
+                    'buildConfigurations': list(configs),
+                },
+            },
+        }
+        rule = AppleRule('selection', 'project', 'xcode', {}, (), '', selected, ())
+        before = deepcopy(project)
+        if expected is None:
+            with pytest.raises(
+                ValueError,
+                match='^expected one named build configuration$',
+            ):
+                _settings(project, rule)
+        else:
+            actual = _settings(project, rule)
+            assert actual == [{'index': index} for index in expected]
+            assert all(
+                item is configs[str(index)]['buildSettings']
+                for item, index in zip(actual, expected, strict=True)
+            )
+        assert project == before
 
 
 # !SECTION
