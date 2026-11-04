@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Index referenced Xcode configurations once per selection, preserving requested order, native
+  settings identities and rejection of ambiguous selected names without rejecting unused duplicates.
 - Cache failed Apple metadata reads and parses once per path/adapter within each validation run,
   retaining independent rule findings and refreshing repaired inputs on subsequent runs.
 - Reject unquoted OpenStep structural delimiters as scalar values or dictionary keys, preserving
