@@ -18,9 +18,7 @@ from tests.support.files import FileWriter, snapshot_files
 
 
 class TestAppleMetadataConfiguration:
-    """
-    Validate explicit selectors, typed expectations and rule requirements.
-    """
+    """Check explicit selectors, typed expectations and rule requirements."""
 
     @pytest.mark.parametrize(
         ('content', 'message'),
@@ -67,32 +65,139 @@ class TestAppleMetadataConfiguration:
         assert snapshot_files(tmp_path) == before
 
     @pytest.mark.parametrize(
-        'before,after',
+        ('before', 'after', 'message'),
         (
-            ('kind = "plist"', 'kind = "json"'),
-            ('id = "privacy"', 'id = "invalid id"'),
-            ('id = "identity"', 'id = "privacy"'),
-            ('path = "Info.plist"', 'path = "../Info.plist"'),
-            ('path = "Info.plist"', 'path = "/Info.plist"'),
-            ('path = "Info.plist"', 'path = "./Info.plist"'),
-            ('path = "Info.plist"', 'path = ""'),
-            ('path = "Info.plist"', 'path = 1'),
-            ('absent = ["PrivateKey"]', 'unknown = true'),
-            ('absent = ["PrivateKey"]', 'absent = [1]'),
-            ('absent = ["PrivateKey"]', 'absent = ["a", "a"]'),
-            ('absent = ["PrivateKey"]', 'absent = ["ITSAppUsesNonExemptEncryption"]'),
-            ('absent = ["PrivateKey"]', 'target = "not-allowed"'),
-            ('target = "Example"', 'scope = "invalid"'),
-            ('target = "Example"', 'scope = "project"\ntarget = "Example"'),
-            ('target = "Example"', 'target = 1'),
-            ('target = "Example"', 'target = ""'),
-            (
-                'target = "Example"\nconfigurations = ["Debug", "Release"]',
-                'target = "Example"\nconfigurations = []',
+            *(
+                pytest.param(before, after, message, id=label)
+                for label, before, after, message in (
+                    (
+                        'invalid-kind',
+                        'kind = "plist"',
+                        'kind = "json"',
+                        'kind must be plist or xcode',
+                    ),
+                    (
+                        'invalid-id',
+                        'id = "privacy"',
+                        'id = "invalid id"',
+                        'invalid rule id',
+                    ),
+                    (
+                        'duplicate-id',
+                        'id = "identity"',
+                        'id = "privacy"',
+                        'duplicate rule id',
+                    ),
+                    (
+                        'parent-path',
+                        'path = "Info.plist"',
+                        'path = "../Info.plist"',
+                        'requires a confined literal path',
+                    ),
+                    (
+                        'absolute-path',
+                        'path = "Info.plist"',
+                        'path = "/Info.plist"',
+                        'requires a confined literal path',
+                    ),
+                    (
+                        'dot-path',
+                        'path = "Info.plist"',
+                        'path = "./Info.plist"',
+                        'requires a confined literal path',
+                    ),
+                    (
+                        'empty-path',
+                        'path = "Info.plist"',
+                        'path = ""',
+                        'requires a confined literal path',
+                    ),
+                    (
+                        'nonstring-path',
+                        'path = "Info.plist"',
+                        'path = 1',
+                        'requires a confined literal path',
+                    ),
+                    (
+                        'unknown-setting',
+                        'absent = ["PrivateKey"]',
+                        'unknown = true',
+                        'unknown rule setting',
+                    ),
+                    (
+                        'nonstring-list-member',
+                        'absent = ["PrivateKey"]',
+                        'absent = [1]',
+                        'expected a list of nonblank strings',
+                    ),
+                    (
+                        'duplicate-list-member',
+                        'absent = ["PrivateKey"]',
+                        'absent = ["a", "a"]',
+                        'duplicate list entry',
+                    ),
+                    (
+                        'contradictory-keys',
+                        'absent = ["PrivateKey"]',
+                        'absent = ["ITSAppUsesNonExemptEncryption"]',
+                        'contradictory key requirements',
+                    ),
+                    (
+                        'plist-target',
+                        'absent = ["PrivateKey"]',
+                        'target = "not-allowed"',
+                        'plist rules cannot select targets',
+                    ),
+                    (
+                        'invalid-scope',
+                        'target = "Example"',
+                        'scope = "invalid"',
+                        'invalid xcode scope',
+                    ),
+                    (
+                        'project-scope-target',
+                        'target = "Example"',
+                        'scope = "project"\ntarget = "Example"',
+                        'xcode needs target, configurations and string values',
+                    ),
+                    (
+                        'nonstring-target',
+                        'target = "Example"',
+                        'target = 1',
+                        'target must be a string',
+                    ),
+                    (
+                        'empty-target',
+                        'target = "Example"',
+                        'target = ""',
+                        'xcode needs target, configurations and string values',
+                    ),
+                    (
+                        'empty-configurations',
+                        'target = "Example"\nconfigurations = ["Debug", "Release"]',
+                        'target = "Example"\nconfigurations = []',
+                        'xcode needs target, configurations and string values',
+                    ),
+                    (
+                        'nonstring-xcode-value',
+                        'PRODUCT_BUNDLE_IDENTIFIER = "com.example.app"',
+                        'S = false',
+                        'xcode needs target, configurations and string values',
+                    ),
+                    (
+                        'nonfinite-value',
+                        'ITSAppUsesNonExemptEncryption = false',
+                        'Value = inf',
+                        'unsupported expected values',
+                    ),
+                    (
+                        'date-value',
+                        'ITSAppUsesNonExemptEncryption = false',
+                        'Value = 2026-11-03',
+                        'unsupported expected values',
+                    ),
+                )
             ),
-            ('PRODUCT_BUNDLE_IDENTIFIER = "com.example.app"', 'S = false'),
-            ('ITSAppUsesNonExemptEncryption = false', 'Value = inf'),
-            ('ITSAppUsesNonExemptEncryption = false', 'Value = 2026-11-03'),
         ),
     )
     def test_invalid_policy_is_rejected(
@@ -100,6 +205,7 @@ class TestAppleMetadataConfiguration:
         tmp_path: Path,
         before: str,
         after: str,
+        message: str,
     ) -> None:
         """
         Reject unsafe selectors, contradictory keys and unsupported values.
@@ -110,6 +216,8 @@ class TestAppleMetadataConfiguration:
             Disposable policy root.
         before, after : str
             Literal mutation isolating one invalid policy field.
+        message : str
+            Exact diagnostic detail following the Apple-metadata prefix.
         """
         assert POLICY.count(before) == 1
         (tmp_path / 'pyproject.toml').write_text(
@@ -117,8 +225,9 @@ class TestAppleMetadataConfiguration:
             encoding='utf-8',
         )
         original = snapshot_files(tmp_path)
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError) as raised:
             load_apple_metadata_config(tmp_path)
+        assert str(raised.value) == f'apple-metadata: {message}'
         assert snapshot_files(tmp_path) == original
 
 
