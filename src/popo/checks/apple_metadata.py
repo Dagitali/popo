@@ -159,12 +159,13 @@ def validate(
 
     Notes
     -----
-    Files are read once per path/adapter in this invocation. Only literal
+    Files are read once per path/adapter in this invocation, including failed
+    reads and parses. Later invocations inspect inputs afresh. Only literal
     source values are checked. This does not resolve xcconfig inheritance,
     inspect signatures, invoke Xcode or establish App Store compliance.
     """
     failures = []
-    documents: dict[tuple[Path, str], dict[str, Any]] = {}
+    documents: dict[tuple[Path, str], dict[str, Any] | None] = {}
     for rule in rules:
         try:
             path = root / rule.path
@@ -172,17 +173,17 @@ def validate(
                 raise ValueError('input escapes root')
             key = (path, rule.kind)
             if key not in documents:
+                documents[key] = None
                 data = path.read_bytes()
                 documents[key] = _mapping(
                     plistlib.loads(data)
                     if rule.kind == 'plist'
                     else parse_project(data.decode('utf-8')),
                 )
-            mappings = (
-                [documents[key]]
-                if rule.kind == 'plist'
-                else _settings(documents[key], rule)
-            )
+            document = documents[key]
+            if document is None:
+                raise ValueError('metadata read or parse previously failed')
+            mappings = [document] if rule.kind == 'plist' else _settings(document, rule)
             for mapping in mappings:
                 if any(
                     key not in mapping or not _same(mapping[key], value)
