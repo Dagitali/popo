@@ -20,143 +20,147 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [\[0.14.0\] - 2026-10-31](#0140---2026-10-31)
+- [\[0.15.0\] - 2026-11-04](#0150---2026-11-04)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
-- [0.13.0 - 2026-10-29](#0130---2026-10-29)
+- [\[0.14.0\] - 2026-10-31](#0140---2026-10-31)
   - [Added](#added-1)
   - [Changed](#changed-1)
   - [Fixed](#fixed-1)
-- [0.12.0 - 2026-10-27](#0120---2026-10-27)
+- [0.13.0 - 2026-10-29](#0130---2026-10-29)
   - [Added](#added-2)
   - [Changed](#changed-2)
   - [Fixed](#fixed-2)
-- [0.11.0 - 2026-10-26](#0110---2026-10-26)
+- [0.12.0 - 2026-10-27](#0120---2026-10-27)
   - [Added](#added-3)
   - [Changed](#changed-3)
   - [Fixed](#fixed-3)
-- [0.10.0 - 2026-10-25](#0100---2026-10-25)
+- [0.11.0 - 2026-10-26](#0110---2026-10-26)
   - [Added](#added-4)
-- [0.9.1 - 2026-10-24](#091---2026-10-24)
-  - [Added](#added-5)
   - [Changed](#changed-4)
   - [Fixed](#fixed-4)
-- [0.9.0 - 2026-10-24](#090---2026-10-24)
+- [0.10.0 - 2026-10-25](#0100---2026-10-25)
+  - [Added](#added-5)
+- [0.9.1 - 2026-10-24](#091---2026-10-24)
   - [Added](#added-6)
   - [Changed](#changed-5)
   - [Fixed](#fixed-5)
-- [0.8.2 - 2026-10-23](#082---2026-10-23)
-  - [Fixed](#fixed-6)
-- [0.8.1 - 2026-10-23](#081---2026-10-23)
-  - [Changed](#changed-6)
-  - [Fixed](#fixed-7)
-- [0.8.0 - 2026-10-23](#080---2026-10-23)
+- [0.9.0 - 2026-10-24](#090---2026-10-24)
   - [Added](#added-7)
+  - [Changed](#changed-6)
+  - [Fixed](#fixed-6)
+- [0.8.2 - 2026-10-23](#082---2026-10-23)
+  - [Fixed](#fixed-7)
+- [0.8.1 - 2026-10-23](#081---2026-10-23)
   - [Changed](#changed-7)
-- [0.7.0 - 2026-10-22](#070---2026-10-22)
+  - [Fixed](#fixed-8)
+- [0.8.0 - 2026-10-23](#080---2026-10-23)
   - [Added](#added-8)
   - [Changed](#changed-8)
-- [0.6.6 - 2026-10-08](#066---2026-10-08)
+- [0.7.0 - 2026-10-22](#070---2026-10-22)
+  - [Added](#added-9)
   - [Changed](#changed-9)
+- [0.6.6 - 2026-10-08](#066---2026-10-08)
+  - [Changed](#changed-10)
 - [0.6.5 - 2026-10-08](#065---2026-10-08)
   - [Removed](#removed)
 - [0.6.4 - 2026-10-07](#064---2026-10-07)
   - [Removed](#removed-1)
 - [0.6.3 - 2026-10-07](#063---2026-10-07)
-  - [Fixed](#fixed-8)
-- [0.6.2 - 2026-10-07](#062---2026-10-07)
   - [Fixed](#fixed-9)
-- [0.6.1 - 2026-10-07](#061---2026-10-07)
-  - [Changed](#changed-10)
-- [0.6.0 - 2026-10-07](#060---2026-10-07)
-  - [Added](#added-9)
-- [0.5.2 - 2026-10-06](#052---2026-10-06)
-  - [Changed](#changed-11)
+- [0.6.2 - 2026-10-07](#062---2026-10-07)
   - [Fixed](#fixed-10)
-- [0.5.1 - 2026-10-06](#051---2026-10-06)
-  - [Changed](#changed-12)
-- [0.5.0 - 2026-10-06](#050---2026-10-06)
+- [0.6.1 - 2026-10-07](#061---2026-10-07)
+  - [Changed](#changed-11)
+- [0.6.0 - 2026-10-07](#060---2026-10-07)
   - [Added](#added-10)
-- [0.4.1 - 2026-10-04](#041---2026-10-04)
+- [0.5.2 - 2026-10-06](#052---2026-10-06)
+  - [Changed](#changed-12)
   - [Fixed](#fixed-11)
-- [0.4.0 - 2026-10-04](#040---2026-10-04)
-  - [Added](#added-11)
-- [0.3.7 - 2026-10-01](#037---2026-10-01)
+- [0.5.1 - 2026-10-06](#051---2026-10-06)
   - [Changed](#changed-13)
-- [0.3.6 - 2026-10-01](#036---2026-10-01)
-  - [Added](#added-12)
-- [0.3.5 - 2026-10-01](#035---2026-10-01)
-  - [Changed](#changed-14)
-- [0.3.4 - 2026-10-01](#034---2026-10-01)
-  - [Changed](#changed-15)
-- [0.3.3 - 2026-09-30](#033---2026-09-30)
-  - [Changed](#changed-16)
-- [0.3.2 - 2026-09-30](#032---2026-09-30)
+- [0.5.0 - 2026-10-06](#050---2026-10-06)
+  - [Added](#added-11)
+- [0.4.1 - 2026-10-04](#041---2026-10-04)
   - [Fixed](#fixed-12)
-- [0.3.1 - 2026-09-30](#031---2026-09-30)
-  - [Changed](#changed-17)
-- [0.3.0 - 2026-09-30](#030---2026-09-30)
+- [0.4.0 - 2026-10-04](#040---2026-10-04)
+  - [Added](#added-12)
+- [0.3.7 - 2026-10-01](#037---2026-10-01)
+  - [Changed](#changed-14)
+- [0.3.6 - 2026-10-01](#036---2026-10-01)
   - [Added](#added-13)
-  - [Changed](#changed-18)
+- [0.3.5 - 2026-10-01](#035---2026-10-01)
+  - [Changed](#changed-15)
+- [0.3.4 - 2026-10-01](#034---2026-10-01)
+  - [Changed](#changed-16)
+- [0.3.3 - 2026-09-30](#033---2026-09-30)
+  - [Changed](#changed-17)
+- [0.3.2 - 2026-09-30](#032---2026-09-30)
   - [Fixed](#fixed-13)
-- [0.2.4 - 2026-09-27](#024---2026-09-27)
-  - [Changed](#changed-19)
-- [0.2.3 - 2026-09-27](#023---2026-09-27)
-  - [Changed](#changed-20)
-- [0.2.2 - 2026-09-26](#022---2026-09-26)
-  - [Changed](#changed-21)
-- [0.2.1 - 2026-09-26](#021---2026-09-26)
-  - [Fixed](#fixed-14)
-- [0.2.0 - 2026-09-26](#020---2026-09-26)
+- [0.3.1 - 2026-09-30](#031---2026-09-30)
+  - [Changed](#changed-18)
+- [0.3.0 - 2026-09-30](#030---2026-09-30)
   - [Added](#added-14)
+  - [Changed](#changed-19)
+  - [Fixed](#fixed-14)
+- [0.2.4 - 2026-09-27](#024---2026-09-27)
+  - [Changed](#changed-20)
+- [0.2.3 - 2026-09-27](#023---2026-09-27)
+  - [Changed](#changed-21)
+- [0.2.2 - 2026-09-26](#022---2026-09-26)
   - [Changed](#changed-22)
+- [0.2.1 - 2026-09-26](#021---2026-09-26)
   - [Fixed](#fixed-15)
-- [0.1.5 - 2026-09-24](#015---2026-09-24)
+- [0.2.0 - 2026-09-26](#020---2026-09-26)
   - [Added](#added-15)
+  - [Changed](#changed-23)
+  - [Fixed](#fixed-16)
+- [0.1.5 - 2026-09-24](#015---2026-09-24)
+  - [Added](#added-16)
   - [Removed](#removed-2)
 - [0.1.4 - 2026-09-24](#014---2026-09-24)
-  - [Added](#added-16)
-  - [Fixed](#fixed-16)
-- [0.1.3 - 2026-09-24](#013---2026-09-24)
-  - [Changed](#changed-23)
-- [0.1.2 - 2026-09-24](#012---2026-09-24)
-  - [Changed](#changed-24)
-  - [Removed](#removed-3)
-  - [Fixed](#fixed-17)
-- [0.1.1 - 2026-09-24](#011---2026-09-24)
   - [Added](#added-17)
+  - [Fixed](#fixed-17)
+- [0.1.3 - 2026-09-24](#013---2026-09-24)
+  - [Changed](#changed-24)
+- [0.1.2 - 2026-09-24](#012---2026-09-24)
   - [Changed](#changed-25)
-- [0.1.0 - 2026-09-24](#010---2026-09-24)
+  - [Removed](#removed-3)
+  - [Fixed](#fixed-18)
+- [0.1.1 - 2026-09-24](#011---2026-09-24)
   - [Added](#added-18)
   - [Changed](#changed-26)
-  - [Fixed](#fixed-18)
+- [0.1.0 - 2026-09-24](#010---2026-09-24)
+  - [Added](#added-19)
+  - [Changed](#changed-27)
+  - [Fixed](#fixed-19)
 
 ## Unreleased
 
-- Give Apple metadata policy mutations named cases and exact diagnostics, retaining unique field
-  substitutions and read-only assertions so unrelated configuration failures cannot mask
-  regressions.
-- Share platform-aware symlink fixtures across unit and integration suites, removing duplicate setup
-  and broad error skips; assert exact Apple escape diagnostics and unchanged inside/outside bytes.
-- Separate OpenStep grammar tests from Apple metadata policy tests and parameterize supported values
-  independently, preserving every parser assertion and documentation without duplicated test bodies.
-- Isolate shared Apple metadata failures from individual CLI scenarios, replacing repeated checks
-  and substring assertions with exact ordered rule findings, output-channel and read-only checks.
-- Index referenced Xcode configurations once per selection, preserving requested order, native
-  settings identities and rejection of ambiguous selected names without rejecting unused duplicates.
-- Cache failed Apple metadata reads and parses once per path/adapter within each validation run,
-  retaining independent rule findings and refreshing repaired inputs on subsequent runs.
-- Reject unquoted OpenStep structural delimiters as scalar values or dictionary keys, preserving
-  quoted punctuation and preventing malformed Xcode project syntax from being accepted.
-- Cover empty Apple metadata policies and assertion-free rules in focused configuration suites,
-  preserving checker/parser separation, unique mutations and read-only loader contracts.
-- Validate boundary imports and symbols with one compiled native identifier pattern per policy load
-  and direct tuple iteration, preserving Python dotted names, Swift identifiers and diagnostic
-  order.
+## [0.15.0] - 2026-11-04
+
+### Added
+
 - Add opt-in `check-apple-metadata` for typed XML/binary plist expectations and explicit Xcode
-  target/configuration contracts, with root confinement and value-redacted diagnostics. This does
-  not evaluate resolved build settings, inspect signatures or validate schemes/test plans.
+  target/project configuration contracts, with confined paths, value-redacted diagnostics and
+  text/JSON reports through direct invocation or explicit `check-all` profiles.
+
+### Changed
+
+- Reuse decoded Apple metadata and failed reads/parses within each validation run; index Xcode
+  configurations once while preserving selection order, native settings identities and independent
+  rule findings. Compile native boundary identifier patterns once per policy load without changing
+  Python dotted-name or Swift identifier rules.
+- Consolidate class-based Apple metadata suites with named parameterized cases, exact ordered
+  diagnostics, unique policy mutations, isolated parser/configuration responsibilities and read-only
+  assertions; share platform-aware symlink fixtures across unit and integration tests.
+
+### Fixed
+
+- Reject unquoted OpenStep structural delimiters as scalar values or dictionary keys while retaining
+  quoted punctuation; verify empty policies, assertion-free rules, ambiguous configuration names,
+  symlink escapes and fresh reads of repaired inputs on subsequent validation runs.
 
 ## [0.14.0] - 2026-10-31
 
