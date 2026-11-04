@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Cache failed Apple metadata reads and parses once per path/adapter within each validation run,
+  retaining independent rule findings and refreshing repaired inputs on subsequent runs.
 - Reject unquoted OpenStep structural delimiters as scalar values or dictionary keys, preserving
   quoted punctuation and preventing malformed Xcode project syntax from being accepted.
 - Cover empty Apple metadata policies and assertion-free rules in focused configuration suites,
