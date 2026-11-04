@@ -134,6 +134,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Give Apple metadata policy mutations named cases and exact diagnostics, retaining unique field
+  substitutions and read-only assertions so unrelated configuration failures cannot mask
+  regressions.
 - Share platform-aware symlink fixtures across unit and integration suites, removing duplicate setup
   and broad error skips; assert exact Apple escape diagnostics and unchanged inside/outside bytes.
 - Separate OpenStep grammar tests from Apple metadata policy tests and parameterize supported values
