@@ -9,6 +9,7 @@ from collections.abc import Callable
 
 from .checks import (
     actions,
+    apple_metadata,
     automation,
     changelog,
     dependencies,
@@ -26,6 +27,7 @@ from .checks import (
     test_results,
 )
 from .config import ConfigurationError, load_config
+from .config.apple_metadata import load_apple_metadata_config
 from .config.automation import load_automation_config
 from .config.files import load_headers_config, load_required_files_config
 from .config.guardrails import load_guardrails_config
@@ -85,6 +87,33 @@ def _actions(
     if directory is None:
         directory = args.root.resolve() / '.github'
     return actions.validate(directory.resolve()), 'remote actions are immutably pinned'
+
+
+def _apple_metadata(
+    args: argparse.Namespace,
+) -> tuple[list[str], str]:
+    """
+    Load opt-in Apple contracts and return redacted offline findings.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed consumer root.
+
+    Returns
+    -------
+    tuple[list[str], str]
+        Independent rule failures and success-only message.
+
+    Raises
+    ------
+    ConfigurationError
+        The explicit Apple metadata policy is missing or invalid.
+    OSError, UnicodeError
+        Consumer configuration cannot be read or decoded.
+    """
+    rules = load_apple_metadata_config(args.root)
+    return apple_metadata.validate(args.root, rules), 'configured Apple metadata passed'
 
 
 def _automation(
@@ -603,6 +632,7 @@ def _test_results(
 
 # Registry of native command handlers.
 NATIVE_HANDLERS: dict[str, Command] = {
+    'check-apple-metadata': _apple_metadata,
     'check-test-results': _test_results,
     'check-swift-boundaries': _swift_boundaries,
     'check-python-boundaries': _python_boundaries,

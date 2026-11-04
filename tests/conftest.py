@@ -19,6 +19,7 @@ pytest_plugins = (
     'tests.support.python_boundaries',
     'tests.support.toolchains',
     'tests.support.source_checks',
+    'tests.support.symlinks',
     'tests.support.artifacts',
     'tests.support.hosted',
     'tests.support.guardrails',

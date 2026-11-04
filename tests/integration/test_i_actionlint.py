@@ -13,11 +13,11 @@
 Public CLI integration for actionlint's disposable compatibility view.
 """
 
-import errno
 import shlex
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -50,6 +50,7 @@ class TestActionlintCommandLine:
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
         aliased_temp: bool,
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
         Preserve both streams, validator status, and source self references.
@@ -68,22 +69,14 @@ class TestActionlintCommandLine:
             Restore the temporary-directory base after the scenario.
         aliased_temp : bool
             Whether temporary views use a symlinked base directory.
+        symlink : collections.abc.Callable[[pathlib.Path, pathlib.Path], None]
+            Shared creator skipping only unsupported platform operations.
         """
         if aliased_temp:
             real = tmp_path.parent / f'{tmp_path.name}-temp'
             real.mkdir()
             alias = tmp_path.parent / f'{tmp_path.name}-alias'
-            try:
-                alias.symlink_to(real, target_is_directory=True)
-            except OSError as error:
-                if error.errno not in {
-                    errno.EACCES,
-                    errno.EPERM,
-                    errno.ENOSYS,
-                    errno.ENOTSUP,
-                }:
-                    raise
-                pytest.skip(f'Directory symlinks unavailable: {error}')
+            symlink(alias, real)
             monkeypatch.setattr(tempfile, 'tempdir', str(alias))
         write_file(
             'actions/test/action.yml',

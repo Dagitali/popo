@@ -20,7 +20,7 @@ guide].
 The format is based on [Keep a Changelog], and this project follows [Semantic Versioning].
 
 - [Unreleased](#unreleased)
-- [0.14.0 - 2026-10-31](#0140---2026-10-31)
+- [\[0.14.0\] - 2026-10-31](#0140---2026-10-31)
   - [Added](#added)
   - [Changed](#changed)
   - [Fixed](#fixed)
@@ -133,6 +133,30 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
   - [Fixed](#fixed-18)
 
 ## Unreleased
+
+- Give Apple metadata policy mutations named cases and exact diagnostics, retaining unique field
+  substitutions and read-only assertions so unrelated configuration failures cannot mask
+  regressions.
+- Share platform-aware symlink fixtures across unit and integration suites, removing duplicate setup
+  and broad error skips; assert exact Apple escape diagnostics and unchanged inside/outside bytes.
+- Separate OpenStep grammar tests from Apple metadata policy tests and parameterize supported values
+  independently, preserving every parser assertion and documentation without duplicated test bodies.
+- Isolate shared Apple metadata failures from individual CLI scenarios, replacing repeated checks
+  and substring assertions with exact ordered rule findings, output-channel and read-only checks.
+- Index referenced Xcode configurations once per selection, preserving requested order, native
+  settings identities and rejection of ambiguous selected names without rejecting unused duplicates.
+- Cache failed Apple metadata reads and parses once per path/adapter within each validation run,
+  retaining independent rule findings and refreshing repaired inputs on subsequent runs.
+- Reject unquoted OpenStep structural delimiters as scalar values or dictionary keys, preserving
+  quoted punctuation and preventing malformed Xcode project syntax from being accepted.
+- Cover empty Apple metadata policies and assertion-free rules in focused configuration suites,
+  preserving checker/parser separation, unique mutations and read-only loader contracts.
+- Validate boundary imports and symbols with one compiled native identifier pattern per policy load
+  and direct tuple iteration, preserving Python dotted names, Swift identifiers and diagnostic
+  order.
+- Add opt-in `check-apple-metadata` for typed XML/binary plist expectations and explicit Xcode
+  target/configuration contracts, with root confinement and value-redacted diagnostics. This does
+  not evaluate resolved build settings, inspect signatures or validate schemes/test plans.
 
 ## [0.14.0] - 2026-10-31
 

@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.conftest` module.
+:mod:`tests.support.symlinks` module.
 
-Fixtures used by multiple unit test modules.
+Share platform-aware symlink creation across test layers.
 """
 
 import errno

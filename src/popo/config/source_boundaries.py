@@ -6,6 +6,7 @@ Load shared consumer layers and directional import/symbol restrictions.
 
 import re
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 
 from ._common import (
@@ -108,6 +109,11 @@ def load_boundaries_config(
     items = table.get('layers')
     if not isinstance(items, list) or not items:
         raise ConfigurationError(f'{domain}.layers must be a nonempty array')
+    identifier = re.compile(
+        r'[A-Za-z_]\w*'
+        + (r'(?:\.[A-Za-z_]\w*)*' if domain == 'python-boundaries' else ''),
+        re.ASCII,
+    )
     layers = []
     for item in items:
         layer = require_table(item, name=f'{domain} layer')
@@ -129,14 +135,7 @@ def load_boundaries_config(
         )
         symbols = read_strings(layer.get('forbidden-symbols', []), 'forbidden-symbols')
         if any(
-            not re.fullmatch(
-                r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*'
-                if domain == 'python-boundaries'
-                else r'[A-Za-z_]\w*',
-                symbol,
-                re.ASCII,
-            )
-            for symbol in (*symbols, *(imports or ()))
+            not identifier.fullmatch(symbol) for symbol in chain(symbols, imports or ())
         ):
             raise ConfigurationError('Boundary imports and symbols must be identifiers')
         layers.append(
