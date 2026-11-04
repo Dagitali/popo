@@ -6,6 +6,7 @@ Exercise public Apple checks, profile dispatch and private read-only findings.
 
 import json
 import plistlib
+from collections.abc import Callable
 from pathlib import Path
 from typing import Self
 from unittest.mock import patch
@@ -262,6 +263,7 @@ class TestAppleMetadataCLI:
         apple_project: Path,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
+        symlink: Callable[[Path, Path], None],
     ) -> None:
         """
         Reject external symlink inputs without reporting their targets.
@@ -274,19 +276,23 @@ class TestAppleMetadataCLI:
             Disposable root used to derive an outside sibling file.
         capsys : pytest.CaptureFixture[str]
             Captured command diagnostics.
+        symlink : collections.abc.Callable[[pathlib.Path, pathlib.Path], None]
+            Shared creator preserving unexpected fixture failures.
         """
         outside = tmp_path.parent / (tmp_path.name + '-PRIVATE.plist')
         outside.write_bytes(plistlib.dumps(INFO))
         info = apple_project / 'Info.plist'
         info.unlink()
         try:
-            info.symlink_to(outside)
-        except OSError:
-            outside.unlink()
-            pytest.skip('symlinks unavailable on this host')
-        try:
+            symlink(info, outside)
+            before = snapshot_files(apple_project)
+            external = outside.read_bytes()
             assert main(['check-apple-metadata', '--root', str(apple_project)]) == 1
-            assert 'PRIVATE' not in capsys.readouterr().out
+            output = capsys.readouterr()
+            assert output.err == ''
+            assert output.out == f'FAIL: privacy: {FAILURE_DETAIL}\n'
+            assert snapshot_files(apple_project) == before
+            assert outside.read_bytes() == external
         finally:
             outside.unlink()
 
