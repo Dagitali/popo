@@ -13,6 +13,10 @@ Maintainer Notes
 
 # Architecture
 
+The unreleased Apple metadata boundary uses `config/apple_metadata.py` for explicit consumer
+contracts and `checks/apple_metadata.py` for read-only plist/Xcode validation. The private
+`checks/_openstep.py` reader parses an explicit subset without evaluating build settings.
+
 Popo is a read-only repository-policy CLI. It inspects a consumer-selected directory and reports
 findings; the consumer owns its files, policy values, CI integration, and any remediation.
 

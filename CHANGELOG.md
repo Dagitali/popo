@@ -134,6 +134,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Add opt-in `check-apple-metadata` for typed XML/binary plist expectations and explicit Xcode
+  target/configuration contracts, with root confinement and value-redacted diagnostics. This does
+  not evaluate resolved build settings, inspect signatures or validate schemes/test plans.
+
 ## [0.14.0] - 2026-10-31
 
 ### Added
