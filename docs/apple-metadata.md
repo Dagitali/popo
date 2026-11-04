@@ -98,9 +98,10 @@ argument errors follow the normal usage status of two.
 ## Limits and Adoption
 
 The OpenStep reader supports explicit dictionaries, arrays, comments and JSON-compatible quoted
-strings. It is not an Xcode build-settings evaluator. No variable expansion, inherited settings,
-xcconfig resolution, SDK conditions or computed deployment values are evaluated. Unsupported syntax
-fails rather than establishing a configuration's resolved build settings.
+strings. Structural delimiters used as scalar values or dictionary keys must be quoted. It is not an
+Xcode build-settings evaluator. No variable expansion, inherited settings, xcconfig resolution, SDK
+conditions or computed deployment values are evaluated. Unsupported syntax fails rather than
+establishing a configuration's resolved build settings.
 
 Source declarations do not establish actual signed capabilities or legal export-compliance status. A
 consumer may explicitly select an already-built plist, but signatures, provisioning and archive
