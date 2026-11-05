@@ -43,10 +43,10 @@ class TestInstalledAppleRelease:
         format_ : str
             Human-readable or independent JSON field report.
         """
-        (tmp_path / 'pyproject.toml').write_text(POLICY)
+        (tmp_path / 'pyproject.toml').write_text(POLICY, encoding='utf-8')
         project = tmp_path / 'Example.xcodeproj/project.pbxproj'
         project.parent.mkdir()
-        project.write_text(PROJECT)
+        project.write_text(PROJECT, encoding='utf-8')
         arguments = (
             'apple-release-identity',
             '--root',
@@ -57,6 +57,7 @@ class TestInstalledAppleRelease:
         before = snapshot_files(tmp_path)
         result = installation.run(*arguments, '--tag', 'v1.2.0', module=module)
         assert result.returncode == 0, result.stdout + result.stderr
+        assert result.stderr == ''
         if format_ == 'json':
             assert json.loads(result.stdout) == {
                 'schema_version': 1,
@@ -69,7 +70,9 @@ class TestInstalledAppleRelease:
         result = installation.run(*arguments, '--tag', 'PRIVATE', module=module)
         assert result.returncode == 1
         assert result.stdout == ''
-        assert 'PRIVATE' not in result.stderr
+        assert result.stderr == (
+            'error: apple-release-identity: invalid configuration or release metadata\n'
+        )
         assert snapshot_files(tmp_path) == before
 
 
