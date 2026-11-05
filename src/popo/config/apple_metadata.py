@@ -7,6 +7,7 @@ Load opt-in, consumer-owned Apple property-list and Xcode setting contracts.
 import math
 import re
 from dataclasses import dataclass, field
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -235,8 +236,7 @@ def load_apple_metadata_config(
         required = _strings(rule.get('required-anywhere', []))
         patterns = _strings(rule.get('absent-patterns', []))
         try:
-            for pattern in patterns:
-                re.compile(pattern)
+            compiled_patterns = tuple(re.compile(pattern) for pattern in patterns)
         except re.error:
             raise ConfigurationError('apple-metadata: invalid key pattern') from None
         absent = _strings(rule.get('absent', []))
@@ -248,11 +248,13 @@ def load_apple_metadata_config(
         target = rule.get('target', '')
         if not isinstance(target, str):
             raise ConfigurationError('apple-metadata: target must be a string')
-        positive = set(expected) | set(optional) | set(consistent) | set(required)
+        positive = set(expected).union(optional, consistent, required)
         if (
             not expected.keys().isdisjoint(optional)
             or not positive.isdisjoint(absent)
-            or any(re.search(pattern, key) for pattern in patterns for key in positive)
+            or any(
+                pattern.search(key) for pattern in compiled_patterns for key in positive
+            )
         ):
             raise ConfigurationError('apple-metadata: contradictory key requirements')
         if kind == 'plist' and rule.keys() & {
@@ -271,7 +273,7 @@ def load_apple_metadata_config(
             or (scope == 'all-configurations' and 'configurations' in rule)
             or any(
                 not isinstance(item, str)
-                for item in (*expected.values(), *optional.values())
+                for item in chain(expected.values(), optional.values())
             )
         ):
             raise ConfigurationError(
