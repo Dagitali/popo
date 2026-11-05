@@ -47,7 +47,7 @@ def configuration_settings(
     objects = mapping(project['objects'])
     if target:
         targets = [
-            mapping(item)
+            item
             for item in objects.values()
             if isinstance(item, dict)
             and item.get('isa') == 'PBXNativeTarget'
