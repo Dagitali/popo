@@ -138,6 +138,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Verify exact installed Apple release failure diagnostics and empty success stderr across both
+  entry points and report formats, using explicit UTF-8 consumer fixtures.
 - Require exact Apple release unit-test diagnostics for structural selection and numeric-format
   failures, with named structural cases that cannot pass through unrelated validation errors.
 - Exercise Apple release CLI failures in text and JSON modes, asserting exact selection/escape
