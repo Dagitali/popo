@@ -6,7 +6,7 @@ Load opt-in, consumer-owned Apple property-list and Xcode setting contracts.
 
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +38,14 @@ class AppleRule:
         Exact configuration names selected within that target.
     consistent : tuple[str, ...]
         Nonempty string settings required to agree across selected configs.
+    optional_expected : dict[str, Any]
+        Exact values checked only where a key is explicitly present.
+    required_anywhere : tuple[str, ...]
+        Keys required in at least one selected mapping.
+    absent_patterns : tuple[str, ...]
+        Regular expressions searched against explicit top-level key names.
+    all_configurations : bool
+        Inspect every declared configuration, including unreferenced objects.
     """
 
     identity: str
@@ -48,6 +56,47 @@ class AppleRule:
     target: str
     configurations: tuple[str, ...]
     consistent: tuple[str, ...]
+    optional_expected: dict[str, Any] = field(default_factory=dict)
+    required_anywhere: tuple[str, ...] = ()
+    absent_patterns: tuple[str, ...] = ()
+    all_configurations: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class AppleCoverage:
+    """
+    Require discovered files to have explicit property-list rule coverage.
+
+    Attributes
+    ----------
+    identity : str
+        Non-sensitive diagnostic identifier shared with the rule namespace.
+    include : tuple[str, ...]
+        Root-confined discovery patterns whose union must match files.
+    rule_ids : tuple[str, ...]
+        Explicit plist rules allowed to cover those literal discovered paths.
+    """
+
+    identity: str
+    include: tuple[str, ...]
+    rule_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AppleMetadataConfig:
+    """
+    Keep literal expectations separate from discovered-file coverage.
+
+    Attributes
+    ----------
+    rules : tuple[AppleRule, ...]
+        Source metadata rules in consumer declaration order.
+    coverage : tuple[AppleCoverage, ...]
+        Optional discovery requirements in consumer declaration order.
+    """
+
+    rules: tuple[AppleRule, ...]
+    coverage: tuple[AppleCoverage, ...]
 
 
 # !SECTION
@@ -121,7 +170,7 @@ def _value(
 
 def load_apple_metadata_config(
     root: Path,
-) -> tuple[AppleRule, ...]:
+) -> AppleMetadataConfig:
     """
     Load a nonempty set of explicit, root-confined Apple metadata rules.
 
@@ -132,8 +181,8 @@ def load_apple_metadata_config(
 
     Returns
     -------
-    tuple[AppleRule, ...]
-        Strictly validated rules; input files are not opened here.
+    AppleMetadataConfig
+        Strictly validated rules and coverage; inputs are not opened here.
 
     Raises
     ------
@@ -144,7 +193,7 @@ def load_apple_metadata_config(
     """
     table = require_table(read_popo(root).get('apple-metadata'), name='apple-metadata')
     rules = table.get('rules')
-    if table.keys() != {'rules'} or not isinstance(rules, list) or not rules:
+    if table.keys() - {'rules', 'coverage'} or not isinstance(rules, list) or not rules:
         raise ConfigurationError('apple-metadata: requires nonempty rules')
     result = []
     identities = set()
@@ -160,6 +209,9 @@ def load_apple_metadata_config(
             'configurations',
             'consistent',
             'scope',
+            'optional-expected',
+            'required-anywhere',
+            'absent-patterns',
         }:
             raise ConfigurationError('apple-metadata: unknown rule setting')
         identity, path, kind = (rule.get(key) for key in ('id', 'path', 'kind'))
@@ -177,17 +229,30 @@ def load_apple_metadata_config(
         expected = rule.get('expected', {})
         if not isinstance(expected, dict) or not _value(expected):
             raise ConfigurationError('apple-metadata: unsupported expected values')
+        optional = rule.get('optional-expected', {})
+        if not isinstance(optional, dict) or not _value(optional):
+            raise ConfigurationError('apple-metadata: unsupported optional values')
+        required = _strings(rule.get('required-anywhere', []))
+        patterns = _strings(rule.get('absent-patterns', []))
+        try:
+            for pattern in patterns:
+                re.compile(pattern)
+        except re.error:
+            raise ConfigurationError('apple-metadata: invalid key pattern') from None
         absent = _strings(rule.get('absent', []))
         consistent = _strings(rule.get('consistent', []))
         configurations = _strings(rule.get('configurations', []))
         scope = rule.get('scope', 'target')
-        if scope not in ('target', 'project'):
+        if scope not in ('target', 'project', 'all-configurations'):
             raise ConfigurationError('apple-metadata: invalid xcode scope')
         target = rule.get('target', '')
         if not isinstance(target, str):
             raise ConfigurationError('apple-metadata: target must be a string')
-        if not expected.keys().isdisjoint(absent) or not set(consistent).isdisjoint(
-            absent,
+        positive = set(expected) | set(optional) | set(consistent) | set(required)
+        if (
+            not expected.keys().isdisjoint(optional)
+            or not positive.isdisjoint(absent)
+            or any(re.search(pattern, key) for pattern in patterns for key in positive)
         ):
             raise ConfigurationError('apple-metadata: contradictory key requirements')
         if kind == 'plist' and rule.keys() & {
@@ -201,14 +266,18 @@ def load_apple_metadata_config(
             )
         if kind == 'xcode' and (
             (scope == 'target' and not target.strip())
-            or (scope == 'project' and 'target' in rule)
-            or not configurations
-            or any(not isinstance(item, str) for item in expected.values())
+            or (scope != 'target' and 'target' in rule)
+            or (scope != 'all-configurations' and not configurations)
+            or (scope == 'all-configurations' and 'configurations' in rule)
+            or any(
+                not isinstance(item, str)
+                for item in (*expected.values(), *optional.values())
+            )
         ):
             raise ConfigurationError(
                 'apple-metadata: xcode needs target, configurations and string values',
             )
-        if not expected and not absent and not consistent:
+        if not any((expected, optional, absent, consistent, required, patterns)):
             raise ConfigurationError('apple-metadata: empty rule requirements')
         result.append(
             AppleRule(
@@ -220,9 +289,46 @@ def load_apple_metadata_config(
                 target,
                 configurations,
                 consistent,
+                optional,
+                required,
+                patterns,
+                scope == 'all-configurations',
             ),
         )
-    return tuple(result)
+    coverage = table.get('coverage', [])
+    if not isinstance(coverage, list):
+        raise ConfigurationError('apple-metadata: coverage must be a list')
+    discovered = []
+    plist_ids = {item.identity for item in result if item.kind == 'plist'}
+    for raw in coverage:
+        item = require_table(raw, name='apple-metadata coverage')
+        if item.keys() != {'id', 'include', 'rule-ids'}:
+            raise ConfigurationError('apple-metadata: invalid coverage settings')
+        identity = item['id']
+        if (
+            not isinstance(identity, str)
+            or not re.fullmatch(r'[a-z][a-z0-9-]*', identity)
+            or identity in identities
+        ):
+            raise ConfigurationError('apple-metadata: invalid or duplicate coverage id')
+        identities.add(identity)
+        include = _strings(item['include'])
+        rule_ids = _strings(item['rule-ids'])
+        if not include or not rule_ids or not set(rule_ids) <= plist_ids:
+            raise ConfigurationError(
+                'apple-metadata: coverage needs patterns and plist rules',
+            )
+        for pattern in include:
+            read_literal_path(pattern, 'apple-metadata')
+            if '**' in pattern or any(
+                char in str(Path(pattern).parent) for char in '*?['
+            ):
+                raise ConfigurationError(
+                    'apple-metadata: coverage needs literal directories '
+                    'and filename globs',
+                )
+        discovered.append(AppleCoverage(identity, include, rule_ids))
+    return AppleMetadataConfig(tuple(result), tuple(discovered))
 
 
 # !SECTION
