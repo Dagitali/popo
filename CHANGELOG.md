@@ -138,6 +138,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Exercise Apple release CLI failures in text and JSON modes, asserting exact selection/escape
+  diagnostics, output channels and unchanged consumer/external bytes with explicit UTF-8 fixtures.
 - Parameterize Apple release policy mutations with named cases, unique replacements and exact
   diagnostics; verify failed and successful policy loading leaves fixture files unchanged.
 - Avoid temporary intersection sets in Apple metadata policy checks and redundant native-target
