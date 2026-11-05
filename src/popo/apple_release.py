@@ -75,7 +75,7 @@ def identity(
         exact=True,
         product_type=config.product_type,
     )
-    versions, builds = set(), set()
+    identities: set[tuple[str, str]] = set()
     for item in settings:
         version = item.get('MARKETING_VERSION')
         build = item.get('CURRENT_PROJECT_VERSION')
@@ -90,15 +90,14 @@ def identity(
             or int(build) <= 0
         ):
             raise ValueError('invalid build number')
-        versions.add(version)
-        builds.add(build)
-    if len(versions) != 1 or len(builds) != 1:
+        identities.add((version, build))
+    if len(identities) != 1:
         raise ValueError('inconsistent release identity')
-    version = versions.pop()
+    version, build = identities.pop()
     normalized = version + '.0' if version.count('.') == 1 else version
     if tag is not None and tag != config.tag_prefix + normalized:
         raise ValueError('release tag mismatch')
-    return ReleaseIdentity(normalized, int(builds.pop()))
+    return ReleaseIdentity(normalized, int(build))
 
 
 def read_identity(
