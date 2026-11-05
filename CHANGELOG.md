@@ -138,6 +138,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Parameterize Apple release policy mutations with named cases, unique replacements and exact
+  diagnostics; verify failed and successful policy loading leaves fixture files unchanged.
 - Avoid temporary intersection sets in Apple metadata policy checks and redundant native-target
   mapping validation, preserving diagnostic order, target ambiguity and read-only behavior.
 - Track Apple release identity as version/build pairs instead of parallel sets, preserving literal
