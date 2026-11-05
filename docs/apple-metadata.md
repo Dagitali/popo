@@ -17,7 +17,7 @@ platform credentials. Checks read files and never modify them.
 
 - [Usage](#usage)
 - [Contracts](#contracts)
-- [Unreleased Metadata Extensions](#unreleased-metadata-extensions)
+- [Metadata Extensions](#metadata-extensions)
 - [Selection and Diagnostics](#selection-and-diagnostics)
 - [Limits and Adoption](#limits-and-adoption)
 
@@ -85,10 +85,10 @@ nonblank string values agreeing across the selected configurations. It does not 
 version syntax or build-number format. Multiple rules can describe differing configuration variants;
 additional unselected configurations are allowed.
 
-## Unreleased Metadata Extensions
+## Metadata Extensions
 
-The following additions are implemented after v0.16.0 and are not available in that release. Keep
-consumer production checks until a released immutable dependency includes them.
+The following additions are available in v0.17.0. Pin an immutable released dependency and validate
+consumer adoption before replacing existing production checks.
 
 ```toml
 [[tool.popo.apple-metadata.rules]]
