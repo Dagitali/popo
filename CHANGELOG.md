@@ -138,6 +138,11 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Add standalone `apple-release-identity` reporting with exact native target/configuration
+  selection, agreed numeric version/build normalization, explicit tag matching and value-redacted
+  failures. Share literal-path policy and Xcode configuration resolution with Apple metadata checks;
+  existing metadata selection and diagnostics remain compatible.
+
 ## [0.15.0] - 2026-11-04
 
 ### Added

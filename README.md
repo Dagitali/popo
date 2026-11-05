@@ -78,6 +78,8 @@ configured; see the [release policy].
 
 ## Features
 
+- Unreleased [Apple release identity](docs/apple-release-identity.md) reporting with exact target/
+  configuration selection, numeric normalization and optional explicit tag comparison;
 - Opt-in [Apple metadata checks](docs/apple-metadata.md) (added in v0.15.0) for typed plist
   expectations and explicit Xcode target/configuration settings, rejecting malformed project syntax
   without native tools or value disclosure; shared input reads, including failures, are cached

@@ -13,6 +13,10 @@ Maintainer Notes
 
 # Architecture
 
+The unreleased `apple_release.py` command validates selected native release fields through
+`config/apple_release.py`. Apple metadata and release identity share `checks/_xcode.py` reference
+resolution and the existing OpenStep reader; consumers use public CLI reports rather than internals.
+
 The unreleased Apple metadata boundary uses `config/apple_metadata.py` for explicit consumer
 contracts and `checks/apple_metadata.py` for read-only plist/Xcode validation. The private
 `checks/_openstep.py` reader parses an explicit subset without evaluating build settings.
