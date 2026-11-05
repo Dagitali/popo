@@ -2,6 +2,8 @@
 :mod:`tests.integration.test_i_apple_metadata` module.
 
 Exercise public Apple checks, profile dispatch and private read-only findings.
+
+Exercise complete source settings and explicit discovery through public CLI.
 """
 
 import json
@@ -21,6 +23,26 @@ from tests.support.files import snapshot_files
 
 
 FAILURE_DETAIL = 'metadata missing, invalid or violates policy'
+DISCOVERY_POLICY = """[tool.popo]
+checks = ["check-apple-metadata"]
+[[tool.popo.apple-metadata.rules]]
+id = "deployment"
+kind = "xcode"
+scope = "all-configurations"
+path = "Example.xcodeproj/project.pbxproj"
+required-anywhere = ["DEPLOYMENT"]
+optional-expected = {DEPLOYMENT = "27.0"}
+[[tool.popo.apple-metadata.rules]]
+id = "local"
+kind = "plist"
+path = "Config/Local.plist"
+absent-patterns = ["(?i)icloud", "aps-environment"]
+optional-expected = {Enabled = false}
+[[tool.popo.apple-metadata.coverage]]
+id = "local-scope"
+include = ["Config/Local*.plist"]
+rule-ids = ["local"]
+"""
 
 
 # !SECTION
@@ -51,6 +73,36 @@ def apple_project_fixture(
     project = tmp_path / 'Example.xcodeproj/project.pbxproj'
     project.parent.mkdir()
     project.write_text(PROJECT, encoding='utf-8')
+    return tmp_path
+
+
+@pytest.fixture(name='metadata_root')
+def metadata_root_fixture(
+    tmp_path: Path,
+) -> Path:
+    """
+    Create complete opt-in policy and native metadata without Apple tools.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Disposable consumer repository.
+
+    Returns
+    -------
+    pathlib.Path
+        Root with one optional declaration and one explicitly covered plist.
+    """
+    (tmp_path / 'pyproject.toml').write_text(DISCOVERY_POLICY, encoding='utf-8')
+    project = tmp_path / 'Example.xcodeproj/project.pbxproj'
+    project.parent.mkdir()
+    project.write_text(
+        PROJECT.replace('MARKETING_VERSION = 1.2.0;', 'DEPLOYMENT = 27.0;', 1),
+        encoding='utf-8',
+    )
+    folder = tmp_path / 'Config'
+    folder.mkdir()
+    (folder / 'Local.plist').write_bytes(plistlib.dumps({'Enabled': False}))
     return tmp_path
 
 
@@ -295,6 +347,176 @@ class TestAppleMetadataCLI:
             assert outside.read_bytes() == external
         finally:
             outside.unlink()
+
+
+class TestAppleMetadataDiscoveryCLI:
+    """Keep discovery and all-configuration checks private and read-only."""
+
+    @pytest.mark.parametrize(
+        ('mutation', 'identities'),
+        (
+            ('baseline', ()),
+            ('optional-absent', ()),
+            ('optional-wrong-type', ('local',)),
+            ('optional-wrong-value', ('local',)),
+            ('case-insensitive-key', ('local',)),
+            ('substring-key', ('local',)),
+            ('push-key', ('local',)),
+            ('uncovered', ('local-scope',)),
+            ('directory-match', ('local-scope',)),
+            ('empty-discovery', ('local', 'local-scope')),
+            ('missing-directory', ('local', 'local-scope')),
+            ('wrong-deployment', ('deployment',)),
+            ('absent-everywhere', ('deployment',)),
+            ('unreferenced-override', ('deployment',)),
+            ('no-configurations', ('deployment',)),
+            ('malformed-settings', ('deployment',)),
+        ),
+    )
+    def test_public_checks_preserve_scope_and_continue_after_failures(
+        self: Self,
+        metadata_root: Path,
+        capsys: pytest.CaptureFixture[str],
+        mutation: str,
+        identities: tuple[str, ...],
+    ) -> None:
+        """
+        Validate all declarations, typed optional values and covered filenames.
+
+        Parameters
+        ----------
+        metadata_root : pathlib.Path
+            Independent metadata and complete consumer policy.
+        capsys : pytest.CaptureFixture[str]
+            Captured public JSON report.
+        mutation : str
+            Named source mutation or passing baseline.
+        identities : tuple[str, ...]
+            Expected failing rule IDs in declaration order.
+        """
+        info = metadata_root / 'Config/Local.plist'
+        project = metadata_root / 'Example.xcodeproj/project.pbxproj'
+        if mutation.startswith('optional-'):
+            value = {
+                'optional-absent': {},
+                'optional-wrong-type': {'Enabled': 0},
+                'optional-wrong-value': {'Enabled': True},
+            }[mutation]
+            info.write_bytes(plistlib.dumps(value))
+        elif mutation.endswith('-key'):
+            key = {
+                'case-insensitive-key': 'com.example.ICLOUD.PRIVATE',
+                'substring-key': 'prefixicloudsuffix',
+                'push-key': 'com.example.aps-environment.PRIVATE',
+            }[mutation]
+            info.write_bytes(plistlib.dumps({key: 'PRIVATE'}))
+        elif mutation == 'uncovered':
+            (info.parent / 'LocalFuture.plist').write_bytes(plistlib.dumps({}))
+        elif mutation == 'directory-match':
+            (info.parent / 'LocalDirectory.plist').mkdir()
+        elif mutation in ('empty-discovery', 'missing-directory'):
+            info.unlink()
+            if mutation == 'missing-directory':
+                info.parent.rmdir()
+        elif mutation != 'baseline':
+            before, after = {
+                'wrong-deployment': ('DEPLOYMENT = 27.0', 'DEPLOYMENT = PRIVATE'),
+                'absent-everywhere': ('DEPLOYMENT = 27.0;', ''),
+                'unreferenced-override': (
+                    'objects = {',
+                    'objects = { Extra = { isa = XCBuildConfiguration; '
+                    'buildSettings = { DEPLOYMENT = PRIVATE; }; };',
+                ),
+                'no-configurations': ('isa = XCBuildConfiguration', 'isa = Other'),
+                'malformed-settings': ('buildSettings = {', 'missing = {'),
+            }[mutation]
+            project.write_text(
+                project.read_text(encoding='utf-8').replace(before, after),
+                encoding='utf-8',
+            )
+        original = snapshot_files(metadata_root)
+        with patch('subprocess.run', side_effect=AssertionError('no native tools')):
+            status = main(
+                ['check-all', '--root', str(metadata_root), '--format', 'json'],
+            )
+        output = capsys.readouterr()
+        assert status == bool(identities)
+        assert output.err == ''
+        report = json.loads(output.out)
+        assert 'PRIVATE' not in output.out
+        assert all(identity in output.out for identity in identities)
+        assert len(report['checks'][0]['diagnostics']) == len(identities)
+        assert snapshot_files(metadata_root) == original
+
+    def test_unreadable_discovery_fails_privately(
+        self: Self,
+        metadata_root: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        Report directory read failure without leaking the underlying error.
+
+        Parameters
+        ----------
+        metadata_root : pathlib.Path
+            Otherwise passing consumer metadata.
+        capsys : pytest.CaptureFixture[str]
+            Captured text diagnostic.
+        """
+        with patch('os.scandir', side_effect=PermissionError('PRIVATE')):
+            status = main(['check-apple-metadata', '--root', str(metadata_root)])
+        assert status == 1
+        assert capsys.readouterr().out == (
+            'FAIL: local-scope: metadata discovery or coverage failed\n'
+        )
+
+    @pytest.mark.parametrize('directory', (False, True))
+    def test_unconfined_symlinks_fail_before_discovery_or_read(
+        self: Self,
+        metadata_root: Path,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        symlink: Callable[[Path, Path], None],
+        directory: bool,
+    ) -> None:
+        """
+        Reject escaped selected files and literal discovery directories.
+
+        Parameters
+        ----------
+        metadata_root : pathlib.Path
+            Consumer with explicit filename coverage.
+        tmp_path : pathlib.Path
+            Disposable root used to select an outside sibling.
+        capsys : pytest.CaptureFixture[str]
+            Captured public findings.
+        symlink : collections.abc.Callable[[Path, Path], None]
+            Platform-aware symlink creator.
+        directory : bool
+            Replace the parent directory instead of the selected plist.
+        """
+        outside = tmp_path.parent / (tmp_path.name + '-outside')
+        outside.mkdir()
+        data = plistlib.dumps({'Enabled': False})
+        (outside / 'Local.plist').write_bytes(data)
+        info = metadata_root / 'Config/Local.plist'
+        info.unlink()
+        link = info
+        if directory:
+            info.parent.rmdir()
+            link = info.parent
+        try:
+            symlink(link, outside if directory else outside / 'Local.plist')
+            status = main(['check-apple-metadata', '--root', str(metadata_root)])
+            output = capsys.readouterr().out
+            assert status == 1
+            assert 'FAIL: local:' in output and 'FAIL: local-scope:' in output
+            assert str(outside) not in output
+            assert (outside / 'Local.plist').read_bytes() == data
+        finally:
+            link.unlink(missing_ok=True)
+            (outside / 'Local.plist').unlink()
+            outside.rmdir()
 
 
 # !SECTION
