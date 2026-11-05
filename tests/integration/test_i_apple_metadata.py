@@ -435,7 +435,7 @@ class TestAppleMetadataDiscoveryCLI:
                 encoding='utf-8',
             )
         original = snapshot_files(metadata_root)
-        with patch('subprocess.run', side_effect=AssertionError('no native tools')):
+        with patch('subprocess.Popen', side_effect=AssertionError('no native tools')):
             status = main(
                 ['check-all', '--root', str(metadata_root), '--format', 'json'],
             )
@@ -444,8 +444,24 @@ class TestAppleMetadataDiscoveryCLI:
         assert output.err == ''
         report = json.loads(output.out)
         assert 'PRIVATE' not in output.out
-        assert all(identity in output.out for identity in identities)
-        assert len(report['checks'][0]['diagnostics']) == len(identities)
+        assert report['command'] == 'check-all'
+        assert report['passed'] is (not identities)
+        assert len(report['checks']) == 1
+        check = report['checks'][0]
+        assert check['check'] == 'check-apple-metadata'
+        assert check['passed'] is (not identities)
+        assert check['diagnostics'] == [
+            {
+                'severity': 'error',
+                'message': f'{identity}: '
+                + (
+                    'metadata discovery or coverage failed'
+                    if identity == 'local-scope'
+                    else FAILURE_DETAIL
+                ),
+            }
+            for identity in identities
+        ]
         assert snapshot_files(metadata_root) == original
 
     def test_unreadable_discovery_fails_privately(
