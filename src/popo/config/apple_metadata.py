@@ -186,7 +186,9 @@ def load_apple_metadata_config(
         target = rule.get('target', '')
         if not isinstance(target, str):
             raise ConfigurationError('apple-metadata: target must be a string')
-        if set(expected) & set(absent) or set(consistent) & set(absent):
+        if not expected.keys().isdisjoint(absent) or not set(consistent).isdisjoint(
+            absent,
+        ):
             raise ConfigurationError('apple-metadata: contradictory key requirements')
         if kind == 'plist' and rule.keys() & {
             'target',
