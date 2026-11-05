@@ -79,6 +79,7 @@ documentation format; do not copy generated output from another project.
 
 ## Guides
 
+- [Apple release identity](apple-release-identity.md): Unreleased native release fields and tag checks.
 - [Apple metadata](apple-metadata.md): Unreleased typed plist and explicit Xcode settings checks.
 - [Repository safety]: Opt-in offline workflow trust boundaries and npm root consistency.
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
