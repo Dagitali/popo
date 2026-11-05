@@ -7,10 +7,10 @@ Load opt-in, consumer-owned Apple property-list and Xcode setting contracts.
 import math
 import re
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
-from ._common import ConfigurationError, read_popo, require_table
+from ._common import ConfigurationError, read_literal_path, read_popo, require_table
 
 # SECTION: DATA CLASSES
 
@@ -171,15 +171,7 @@ def load_apple_metadata_config(
         if identity in identities:
             raise ConfigurationError('apple-metadata: duplicate rule id')
         identities.add(identity)
-        if (
-            not isinstance(path, str)
-            or not path.strip()
-            or PurePosixPath(path).is_absolute()
-            or any(part in ('.', '..', '') for part in path.split('/'))
-            or '\\' in path
-            or any(ord(char) < 32 for char in path)
-        ):
-            raise ConfigurationError('apple-metadata: requires a confined literal path')
+        path = read_literal_path(path, 'apple-metadata')
         if not isinstance(kind, str) or kind not in ('plist', 'xcode'):
             raise ConfigurationError('apple-metadata: kind must be plist or xcode')
         expected = rule.get('expected', {})
