@@ -12,9 +12,9 @@ Maintainer Notes
 
 # Apple Release Identity
 
-This **unreleased** command validates and reports one explicitly selected native release identity.
-It is unavailable in v0.15.0. The command reads consumer policy and one Xcode project, never invokes
-Git or Apple tools, and never writes files.
+Added in v0.16.0, this command validates and reports one explicitly selected native release
+identity. It reads consumer policy and one Xcode project, never invokes Git or Apple tools, and
+never writes files.
 
 - [Usage](#usage)
 - [Configuration](#configuration)

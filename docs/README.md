@@ -43,7 +43,7 @@ branch-protection and release policies.
 
 | Need | Document |
 | --- | --- |
-| Summarize exported LLVM/Xcode coverage (unreleased) | [Coverage summaries] |
+| Summarize exported LLVM/Xcode coverage (v0.14.0) | [Coverage summaries] |
 | Install and run the CLI | [Project overview] |
 | Try a check and diagnose a failure | [First repository tutorial] |
 | Configure a consumer repository | [Configuration reference] |
@@ -79,8 +79,8 @@ documentation format; do not copy generated output from another project.
 
 ## Guides
 
-- [Apple release identity](apple-release-identity.md): Unreleased native release fields and tag checks.
-- [Apple metadata](apple-metadata.md): Unreleased typed plist and explicit Xcode settings checks.
+- [Apple release identity](apple-release-identity.md): Native release fields and tag checks (v0.16.0).
+- [Apple metadata](apple-metadata.md): Typed plist and explicit Xcode settings checks (v0.15.0).
 - [Repository safety]: Opt-in offline workflow trust boundaries and npm root consistency.
 - [First repository tutorial]: A consumer's first successful check, deliberate failure, and repair.
 - [Configuration reference]: Policy sources, check selection, profiles, output formats, domain
