@@ -17,6 +17,7 @@ platform credentials. Checks read files and never modify them.
 
 - [Usage](#usage)
 - [Contracts](#contracts)
+- [Metadata Extensions](#metadata-extensions)
 - [Selection and Diagnostics](#selection-and-diagnostics)
 - [Limits and Adoption](#limits-and-adoption)
 
@@ -83,6 +84,68 @@ Each scope resolves named `XCBuildConfiguration` objects through its own configu
 nonblank string values agreeing across the selected configurations. It does not validate semantic
 version syntax or build-number format. Multiple rules can describe differing configuration variants;
 additional unselected configurations are allowed.
+
+## Metadata Extensions
+
+The following additions are available in v0.17.0. Pin an immutable released dependency and validate
+consumer adoption before replacing existing production checks.
+
+```toml
+[[tool.popo.apple-metadata.rules]]
+id = "deployment-overrides"
+kind = "xcode"
+scope = "all-configurations"
+path = "Example.xcodeproj/project.pbxproj"
+required-anywhere = ["IPHONEOS_DEPLOYMENT_TARGET", "MACOSX_DEPLOYMENT_TARGET"]
+optional-expected = {IPHONEOS_DEPLOYMENT_TARGET = "27.0", MACOSX_DEPLOYMENT_TARGET = "27.0"}
+
+[[tool.popo.apple-metadata.rules]]
+id = "local-capabilities"
+kind = "plist"
+path = "Config/Local.entitlements"
+absent-patterns = ["(?i)icloud", "aps-environment"]
+
+[[tool.popo.apple-metadata.coverage]]
+id = "local-template-scope"
+include = ["Config/Local*.entitlements"]
+rule-ids = ["local-capabilities"]
+```
+
+`optional-expected` uses the same recursive, type-sensitive comparison as `expected`, but missing
+keys are allowed. It does not establish that a key exists anywhere. `required-anywhere` separately
+requires each listed key in at least one selected mapping; presence alone does not imply a type or
+nonblank value. Combine the fields to enforce a baseline on every explicit declaration while
+allowing individual configurations to omit an override. Xcode expectations remain literal strings.
+Overlapping required/optional expectations, forbidden positive keys and invalid expressions fail
+configuration loading.
+
+`scope = "all-configurations"` inspects every declared `XCBuildConfiguration` object, including
+project, test and unreferenced configurations. It requires at least one configuration and valid
+build-setting dictionaries. It forbids both `target` and `configurations`, even empty declarations.
+This does not traverse target relationships, evaluate inheritance or prove the project can build.
+The existing target and project scopes retain their named-selection behavior.
+
+`absent-patterns` contains Python regular expressions searched against explicit top-level key names.
+Matching is case-sensitive unless the expression requests otherwise, such as `(?i)`. Patterns do not
+inspect values or recursively inspect nested dictionaries. Existing literal `absent` checks remain
+available. Findings never include matched keys, values, patterns or parser exception text.
+
+Each `coverage` entry requires a unique non-sensitive `id`, nonempty `include` and nonempty
+`rule-ids` referencing existing plist rules. Discovery uses case-sensitive filename globs within
+literal directories: `Config/Local*.entitlements` is supported; wildcard directories and `**`
+recursion are rejected. Discovery includes hidden, ignored and untracked matches and does not invoke
+Git. Every selected directory must be readable; the union must contain at least one match. Matching
+directories, broken links, escaping symlinks and uncovered filenames fail. Confined file symlinks
+may pass when their lexical path has explicit rule coverage. Multiple patterns are unioned, so
+repeated matches do not create duplicate findings.
+
+Coverage compares literal paths with the selected plist rules; it does not infer that any rule has a
+particular semantic strength. Consumers own the referenced rule IDs and expectations. For example,
+adding another local template requires its own plist rule and its ID in the coverage list. Each
+metadata rule still validates independently: path coverage does not excuse a malformed plist or a
+policy violation. Discovery failures report the coverage ID after all metadata rule findings, using
+the normal text/JSON schema. Inputs remain read-only; no atomic snapshot or race-free filesystem
+validation is claimed.
 
 ## Selection and Diagnostics
 
