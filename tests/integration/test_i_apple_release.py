@@ -17,6 +17,15 @@ from popo.cli import main
 from tests.support.apple_release import POLICY, PROJECT
 from tests.support.files import snapshot_files
 
+# SECTION: CONSTANTS
+
+
+FAILURE = 'error: apple-release-identity: invalid configuration or release metadata\n'
+
+
+# !SECTION
+
+
 # SECTION: FIXTURES
 
 
@@ -37,10 +46,10 @@ def release_root_fixture(
     pathlib.Path
         Independent release configuration and project.
     """
-    (tmp_path / 'pyproject.toml').write_text(POLICY)
+    (tmp_path / 'pyproject.toml').write_text(POLICY, encoding='utf-8')
     project = tmp_path / 'Example.xcodeproj/project.pbxproj'
     project.parent.mkdir()
-    project.write_text(PROJECT)
+    project.write_text(PROJECT, encoding='utf-8')
     return tmp_path
 
 
@@ -53,6 +62,7 @@ def release_root_fixture(
 class TestAppleReleaseCLI:
     """Require complete reports without native tools, Git state or mutation."""
 
+    @pytest.mark.parametrize('format_', ('text', 'json'))
     @pytest.mark.parametrize(
         'case',
         (
@@ -69,6 +79,7 @@ class TestAppleReleaseCLI:
         release_root: Path,
         capsys: pytest.CaptureFixture[str],
         case: str,
+        format_: str,
     ) -> None:
         """
         Reject incomplete evidence without partial reports or native values.
@@ -81,6 +92,8 @@ class TestAppleReleaseCLI:
             Captured public command output.
         case : str
             Input, configuration or explicit tag failure.
+        format_ : str
+            Requested report format, neither of which permits partial output.
         """
         project = release_root / 'Example.xcodeproj/project.pbxproj'
         arguments = [
@@ -88,28 +101,28 @@ class TestAppleReleaseCLI:
             '--root',
             str(release_root),
             '--format',
-            'json',
+            format_,
         ]
         if case == 'missing':
             project.unlink()
         elif case == 'utf8':
             project.write_bytes(b'\xffPRIVATE')
         elif case == 'malformed':
-            project.write_text('{ PRIVATE')
+            project.write_text('{ PRIVATE', encoding='utf-8')
         elif case == 'schema':
-            project.write_text('PRIVATE')
+            project.write_text('PRIVATE', encoding='utf-8')
         elif case == 'policy':
-            (release_root / 'pyproject.toml').write_text('PRIVATE malformed')
+            (release_root / 'pyproject.toml').write_text(
+                'PRIVATE malformed',
+                encoding='utf-8',
+            )
         else:
             arguments += ['--tag', 'PRIVATE wrong tag']
         before = snapshot_files(release_root)
         assert main(arguments) == 1
         output = capsys.readouterr()
         assert output.out == ''
-        assert output.err == (
-            'error: apple-release-identity: invalid configuration or release metadata\n'
-        )
-        assert 'PRIVATE' not in output.err
+        assert output.err == FAILURE
         assert snapshot_files(release_root) == before
 
     @pytest.mark.parametrize('format_', ('text', 'json'))
@@ -144,6 +157,7 @@ class TestAppleReleaseCLI:
                 'PRODUCT_BUNDLE_IDENTIFIER =',
                 'PRIVATE_SETTING =',
             ),
+            encoding='utf-8',
         )
         monkeypatch.setenv('GITHUB_REF_NAME', 'PRIVATE wrong tag')
         runner = Mock(side_effect=AssertionError('Unexpected tool'))
@@ -190,9 +204,16 @@ class TestAppleReleaseCLI:
         """
         (release_root / 'pyproject.toml').write_text(
             '[tool.popo]\nchecks=["apple-release-identity"]\n' + POLICY,
+            encoding='utf-8',
         )
+        before = snapshot_files(release_root)
         assert main(['check-all', '--root', str(release_root)]) == 1
-        assert 'unknown' in capsys.readouterr().out
+        output = capsys.readouterr()
+        assert output.out == (
+            'FAIL: configuration: unknown offline checks: apple-release-identity\n'
+        )
+        assert output.err == ''
+        assert snapshot_files(release_root) == before
 
     def test_symlink_cannot_escape_consumer_root(
         self: Self,
@@ -217,15 +238,18 @@ class TestAppleReleaseCLI:
         """
         project = release_root / 'Example.xcodeproj/project.pbxproj'
         outside = tmp_path.parent / (tmp_path.name + '-PRIVATE-project')
-        outside.write_text(PROJECT)
+        outside.write_text(PROJECT, encoding='utf-8')
         project.unlink()
         try:
             symlink(project, outside)
+            before = snapshot_files(release_root)
+            outside_before = outside.read_bytes()
             assert main(['apple-release-identity', '--root', str(release_root)]) == 1
             output = capsys.readouterr()
             assert output.out == ''
-            assert 'PRIVATE' not in output.err
-            assert outside.read_text() == PROJECT
+            assert output.err == FAILURE
+            assert snapshot_files(release_root) == before
+            assert outside.read_bytes() == outside_before
         finally:
             outside.unlink()
 
