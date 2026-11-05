@@ -19,7 +19,9 @@ corresponds to `[tool.popo.files]`. The selected source is authoritative: settin
 and malformed standalone policy never falls back to Python metadata. Python package metadata remains
 in `pyproject.toml`; standalone policy does not replace the inputs of Python-specific validators.
 
-`source-inventory` uses CLI arguments and committed Git objects without loading consumer policy.
+`source-inventory` uses CLI arguments and committed Git objects without loading consumer policy. The
+[Apple release identity](apple-release-identity.md) command (added in v0.16.0) instead loads explicit
+`apple-release` policy and emits version/build fields outside native check-result aggregation.
 
 Select the root with `--root`; otherwise it uses the working directory. Relative configured paths
 are resolved against that root. See the [configuration example] for a Python starting point and the

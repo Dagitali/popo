@@ -12,7 +12,7 @@ from typing import cast
 
 import yaml
 
-from . import __version__, coverage, inventory
+from . import __version__, apple_release, coverage, inventory
 from ._commands import NATIVE_HANDLERS, Command
 from .checks import actionlint, hosted
 from .config import ConfigurationError
@@ -46,6 +46,46 @@ def _add_root(
         default=Path.cwd(),
         help='Repository root (default: current directory)',
     )
+
+
+def _apple_release_identity(
+    args: argparse.Namespace,
+) -> int:
+    """
+    Emit selected release fields only after complete offline validation.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Consumer root, optional explicit tag and text/JSON format.
+
+    Returns
+    -------
+    int
+        Zero with a complete report, or one with empty stdout and redacted
+        stderr. Policy/parser errors never disclose native values or paths.
+    """
+    try:
+        result = apple_release.read_identity(args.root, args.tag)
+    except (OSError, ValueError, KeyError, TypeError, RecursionError, OverflowError):
+        print(
+            'error: apple-release-identity: invalid configuration or release metadata',
+            file=sys.stderr,
+        )
+        return 1
+    if args.format == 'json':
+        print(
+            json.dumps(
+                {
+                    'schema_version': 1,
+                    'version': result.version,
+                    'build': result.build,
+                },
+            ),
+        )
+    else:
+        print(f'Release identity: {result.version} / build {result.build}')
+    return 0
 
 
 def _coverage_summary(
@@ -386,6 +426,13 @@ def create_parser() -> argparse.ArgumentParser:
     parsers['check-actionlint'].add_argument('paths', nargs='*')
     parsers['check-release-changelog'].add_argument('release')
     parsers['check-release-changelog'].add_argument('--changelog', type=Path)
+    release = commands.add_parser(
+        'apple-release-identity',
+        help='Validate and report one explicitly selected Apple release identity',
+    )
+    _add_root(release)
+    release.add_argument('--tag', help='Explicit tag to match; never inferred')
+    release.add_argument('--format', choices=('text', 'json'), default='text')
     summary = commands.add_parser(
         'coverage-summary',
         help='Normalize an exported LLVM or Xcode coverage report',
@@ -443,12 +490,16 @@ def main(
     the external linter's streams and exact returned exit status.
     source-inventory emits committed evidence, not check-result JSON. Failures
     print only diagnostics to stderr; generation is excluded from profiles.
+    apple-release-identity emits selected version/build fields and is excluded
+    from check profiles. It reads no Git state and invokes no native tools.
     coverage-summary emits aggregate Markdown or JSON to stdout and redacted
     failures to stderr. It is excluded from check profiles and runs no tools.
     audit-github-settings is an explicit network operation, excluded from
     check-all. It prints sanitized text or JSON findings to standard output.
     """
     args = create_parser().parse_args(argv)
+    if args.command == 'apple-release-identity':
+        return _apple_release_identity(args)
     if args.command == 'coverage-summary':
         return _coverage_summary(args)
     if args.command == 'source-inventory':
