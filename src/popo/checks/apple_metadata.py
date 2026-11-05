@@ -183,6 +183,9 @@ def validate(
             if document is None:
                 raise ValueError('metadata read or parse previously failed')
             mappings = [document] if rule.kind == 'plist' else _settings(document, rule)
+            forbidden_keys = tuple(
+                re.compile(pattern).search for pattern in rule.absent_patterns
+            )
             for mapping in mappings:
                 if any(
                     key not in mapping or not _same(mapping[key], value)
@@ -194,11 +197,7 @@ def validate(
                     for key, value in rule.optional_expected.items()
                 ):
                     raise ValueError('optional metadata differs')
-                if any(
-                    re.search(pattern, key)
-                    for key in mapping
-                    for pattern in rule.absent_patterns
-                ):
+                if any(search(key) for key in mapping for search in forbidden_keys):
                     raise ValueError('forbidden key pattern present')
                 if any(key in mapping for key in rule.absent):
                     raise ValueError('forbidden metadata present')
