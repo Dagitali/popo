@@ -141,6 +141,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Reuse compiled Apple metadata key patterns during policy contradiction checks, combine positive
+  key sets directly and stream expected values without tuple copies, preserving validation order.
 - Compile Apple metadata forbidden-key patterns once per rule and reuse their substring searches
   across selected mappings, preserving matching semantics, key order and redacted diagnostics.
 - Extend Apple metadata checks with all-configuration scope, typed optional expectations,
