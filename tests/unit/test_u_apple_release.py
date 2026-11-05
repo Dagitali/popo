@@ -61,15 +61,28 @@ class TestAppleReleaseIdentity:
     """Keep release-specific format and agreement matrices in Popo."""
 
     @pytest.mark.parametrize(
-        'case',
+        'case,message',
         (
-            'extra',
-            'missing',
-            'repeated-reference',
-            'duplicate-name',
-            'unnamed',
-            'ambiguous-target',
-            'wrong-product',
+            *(
+                pytest.param(case, 'configuration set differs', id=case)
+                for case in (
+                    'extra',
+                    'missing',
+                    'repeated-reference',
+                    'duplicate-name',
+                    'unnamed',
+                )
+            ),
+            pytest.param(
+                'ambiguous-target',
+                'expected one native target',
+                id='ambiguous-target',
+            ),
+            pytest.param(
+                'wrong-product',
+                'unexpected product type',
+                id='wrong-product',
+            ),
         ),
     )
     def test_exact_owner_and_configuration_set(
@@ -77,6 +90,7 @@ class TestAppleReleaseIdentity:
         release_project: dict[str, Any],
         release_config: AppleReleaseConfig,
         case: str,
+        message: str,
     ) -> None:
         """
         Reject non-exact selections even when all release values agree.
@@ -89,6 +103,8 @@ class TestAppleReleaseIdentity:
             Expected target and complete configuration names.
         case : str
             Structural mutation violating the release selection contract.
+        message : str
+            Exact diagnostic for the intended selection failure.
         """
         objects = release_project['objects']
         references = objects['L']['buildConfigurations']
@@ -107,8 +123,9 @@ class TestAppleReleaseIdentity:
             objects['X'] = deepcopy(objects['T'])
         else:
             objects['T']['productType'] = 'com.apple.product-type.bundle.unit-test'
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as raised:
             identity(release_project, release_config)
+        assert str(raised.value) == message
 
     @pytest.mark.parametrize(
         'field,value',
@@ -153,8 +170,14 @@ class TestAppleReleaseIdentity:
             Invalid native setting value.
         """
         release_project['objects']['D']['buildSettings'][field] = value
-        with pytest.raises(ValueError):
+        message = (
+            'invalid marketing version'
+            if field == 'MARKETING_VERSION'
+            else 'invalid build number'
+        )
+        with pytest.raises(ValueError) as raised:
             identity(release_project, release_config)
+        assert str(raised.value) == message
 
     def test_other_targets_do_not_contribute_identity(
         self: Self,
