@@ -138,6 +138,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Avoid temporary intersection sets in Apple metadata policy checks and redundant native-target
+  mapping validation, preserving diagnostic order, target ambiguity and read-only behavior.
+- Track Apple release identity as version/build pairs instead of parallel sets, preserving literal
+  agreement, validation order, normalization and explicit tag matching.
 - Add standalone `apple-release-identity` reporting with exact native target/configuration
   selection, agreed numeric version/build normalization, explicit tag matching and value-redacted
   failures. Share literal-path policy and Xcode configuration resolution with Apple metadata checks;
