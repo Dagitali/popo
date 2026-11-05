@@ -40,11 +40,29 @@ class TestInstalledAppleMetadata:
         module : bool
             Use the installed module rather than console entry point.
         """
-        (tmp_path / 'pyproject.toml').write_text(POLICY)
+        extensions = """
+[[tool.popo.apple-metadata.rules]]
+id = "all-settings"
+kind = "xcode"
+scope = "all-configurations"
+path = "Example.xcodeproj/project.pbxproj"
+required-anywhere = ["MARKETING_VERSION"]
+optional-expected = {MARKETING_VERSION = "1.2.0"}
+[[tool.popo.apple-metadata.rules]]
+id = "forbidden-pattern"
+kind = "plist"
+path = "Info.plist"
+absent-patterns = ["(?i)unexpected"]
+[[tool.popo.apple-metadata.coverage]]
+id = "info-coverage"
+include = ["Info*.plist"]
+rule-ids = ["privacy"]
+"""
+        (tmp_path / 'pyproject.toml').write_text(POLICY + extensions, encoding='utf-8')
         (tmp_path / 'Info.plist').write_bytes(plistlib.dumps(INFO))
         project = tmp_path / 'Example.xcodeproj/project.pbxproj'
         project.parent.mkdir()
-        project.write_text(PROJECT)
+        project.write_text(PROJECT, encoding='utf-8')
         before = snapshot_files(tmp_path)
         arguments = (
             'check-apple-metadata',
@@ -58,7 +76,9 @@ class TestInstalledAppleMetadata:
         assert json.loads(result.stdout)['checks'][0]['check'] == 'check-apple-metadata'
         assert snapshot_files(tmp_path) == before
         (tmp_path / 'Info.plist').write_bytes(
-            plistlib.dumps(INFO | {'PrivateKey': 'PRIVATE'}),
+            plistlib.dumps(
+                INFO | {'PrivateKey': 'PRIVATE', 'UnExPeCtEdKey': 'PRIVATE'},
+            ),
         )
         before = snapshot_files(tmp_path)
         result = installation.run(*arguments, module=module)

@@ -112,8 +112,11 @@ def _apple_metadata(
     OSError, UnicodeError
         Consumer configuration cannot be read or decoded.
     """
-    rules = load_apple_metadata_config(args.root)
-    return apple_metadata.validate(args.root, rules), 'configured Apple metadata passed'
+    policy = load_apple_metadata_config(args.root)
+    return (
+        apple_metadata.validate(args.root, policy.rules, policy.coverage),
+        'configured Apple metadata passed',
+    )
 
 
 def _automation(

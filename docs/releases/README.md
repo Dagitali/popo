@@ -19,6 +19,7 @@ scope, compatibility, validation, rollback, and follow-up details where applicab
 Use the [changelog] for concise change history, the [release playbook] for preparation, and the
 [release policy] for validation and publication safeguards.
 
+- [0.17 Series](#017-series)
 - [0.16 Series](#016-series)
 - [0.15 Series](#015-series)
 - [0.14 Series](#014-series)
@@ -40,6 +41,11 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
   - [Evidence Boundaries](#evidence-boundaries)
   - [Release Operations](#release-operations)
 - [Maintaining the Archive](#maintaining-the-archive)
+
+## 0.17 Series
+
+- [v0.17.0] — 2026-11-05: Apple metadata all-configuration scope, optional expectations, key
+  patterns and discovered-file coverage, with streamlined validation and consolidated suites.
 
 ## 0.16 Series
 
@@ -221,6 +227,7 @@ prepared.
 [v0.14.0]: v0.14.0.md
 [v0.15.0]: v0.15.0.md
 [v0.16.0]: v0.16.0.md
+[v0.17.0]: v0.17.0.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md
