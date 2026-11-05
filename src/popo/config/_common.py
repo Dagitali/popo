@@ -6,7 +6,7 @@ Shared configuration errors, TOML reading, and value validation.
 
 import tomllib
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import cast
 
 # SECTION: ERRORS
@@ -89,6 +89,43 @@ def parse_iso_date(
     if parsed.isoformat() != value:
         raise ValueError('expected canonical YYYY-MM-DD date')
     return parsed
+
+
+def read_literal_path(
+    value: object,
+    label: str,
+) -> str:
+    """
+    Validate a literal repository-relative POSIX input filename.
+
+    Parameters
+    ----------
+    value : object
+        Untrusted configured filename; glob characters are literal.
+    label : str
+        Non-sensitive setting label used in diagnostics.
+
+    Returns
+    -------
+    str
+        Original lexical path without unsafe or ambiguous components.
+
+    Raises
+    ------
+    ConfigurationError
+        The value is not a nonblank confined POSIX path. Symlink containment
+        is checked separately when reading inputs.
+    """
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or PurePosixPath(value).is_absolute()
+        or any(part in ('.', '..', '') for part in value.split('/'))
+        or '\\' in value
+        or any(ord(char) < 32 for char in value)
+    ):
+        raise ConfigurationError(f'{label}: requires a confined literal path')
+    return value
 
 
 def read_patterns(
