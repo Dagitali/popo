@@ -83,7 +83,8 @@ configured; see the [release policy].
 - Opt-in [Apple metadata checks](docs/apple-metadata.md) (added in v0.15.0) for typed plist
   expectations and explicit Xcode target/configuration settings, rejecting malformed project syntax
   without native tools or value disclosure; shared input reads, including failures, are cached
-  within each check;
+  within each check. Unreleased extensions cover all declared configurations, typed optional
+  expectations, forbidden key patterns and explicit discovered-file rule coverage;
 - Read-only LLVM/Xcode [coverage summaries], with explicit source selections, memory-efficient
   duplicate aggregation and aggregate Markdown/JSON output; generation does not run tests or impose
   percentage gates (added in v0.14.0);

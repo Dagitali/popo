@@ -141,6 +141,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Extend Apple metadata checks with all-configuration scope, typed optional expectations,
+  required-anywhere keys, forbidden key patterns and explicit discovered-file rule coverage. Keep
+  directory discovery confined, nonrecursive, read-only and failure-redacted.
+
 ## [0.16.0] - 2026-11-05
 
 ### Added
