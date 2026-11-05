@@ -141,6 +141,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Compile Apple metadata forbidden-key patterns once per rule and reuse their substring searches
+  across selected mappings, preserving matching semantics, key order and redacted diagnostics.
 - Extend Apple metadata checks with all-configuration scope, typed optional expectations,
   required-anywhere keys, forbidden key patterns and explicit discovered-file rule coverage. Keep
   directory discovery confined, nonrecursive, read-only and failure-redacted.
