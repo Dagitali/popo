@@ -4,6 +4,7 @@
 Protect local hook interpreter selection and filename handling.
 """
 
+import re
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -116,10 +117,59 @@ class TestLocalHooks:
         ignored = set(project_metadata['tool']['autopep8']['ignore'])
         assert {'E203', 'E226', 'E24', 'W50', 'W690'} <= ignored
         assert not any(arg.startswith('--ignore') for arg in hook['args'])
+        assert not any(arg.startswith('--max-line-length') for arg in hook['args'])
         assert (
-            f'--max-line-length={project_metadata['tool']['ruff']['line-length']}'
-            in hook['args']
+            project_metadata['tool']['autopep8']['max_line_length']
+            == project_metadata['tool']['ruff']['line-length']
         )
+
+    @pytest.mark.parametrize(
+        ('filename', 'selected'),
+        (
+            ('tests/unit/test_u_example.py', True),
+            ('tests/integration/test_i_example.py', True),
+            ('tests/e2e/test_e_example.py', True),
+            ('tests/meta/test_m_example.py', True),
+            ('tests/test_example.py', True),
+            ('Tests/test_example.py', True),
+            ('packages/example/tests/test_example.py', True),
+            ('tests/support/helpers.py', False),
+            ('tests/unit/support/helpers.py', False),
+            ('Tests/fixtures.py', False),
+            ('packages/example/tests/fixtures.py', False),
+            ('src/example.py', False),
+            ('tests/data.json', False),
+        ),
+    )
+    def test_python_test_filename_selection(
+        self,
+        hook_config: dict[str, Any],
+        filename: str,
+        selected: bool,
+    ) -> None:
+        """
+        Select Python test trees independently of repository nesting or layers.
+
+        Parameters
+        ----------
+        hook_config : dict[str, typing.Any]
+            Parsed pre-commit configuration.
+        filename : str
+            Repository-relative test, helper or unrelated candidate.
+        selected : bool
+            Whether the naming hook should inspect the candidate.
+        """
+        hook = next(
+            hook
+            for repo in hook_config['repos']
+            for hook in repo['hooks']
+            if hook['id'] == 'name-tests-test'
+        )
+        matches = bool(re.search(hook['files'], filename)) and not re.search(
+            hook['exclude'],
+            filename,
+        )
+        assert bool(matches) is selected
 
     @pytest.mark.parametrize(
         ('hook_id', 'entry'),
@@ -166,7 +216,7 @@ class TestLocalHooks:
     @pytest.mark.parametrize(
         ('hook_id', 'entry', 'stage'),
         [
-            ('popo-self-check', 'make self-check', 'pre-commit'),
+            ('make-check-pre-commit', 'make check-pre-commit', 'pre-commit'),
             ('make-check-pre-push', 'make check-pre-push', 'pre-push'),
         ],
         ids=['self-check', 'pre-push'],
@@ -199,6 +249,8 @@ class TestLocalHooks:
         assert hook['always_run'] is True
         assert hook.get('stages', hook_config['default_stages']) == [stage]
         assert 'pre-push' in hook_config['default_install_hook_types']
+        if stage == 'pre-commit':
+            assert hook['alias'] == 'popo-self-check'
 
 
 # !SECTION

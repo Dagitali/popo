@@ -20,12 +20,12 @@
 #   practical.
 #
 # Maintainer Notes
-# - Keep hook revisions compatible with the Python versions supported by
-#   `pyproject.toml`.
-# - Local system hooks delegate interpreter selection to Make; install
-#   development tools before using them, as documented in CONTRIBUTING.md.
-# - Keep protected-branch and commit-message hooks aligned with repository
-#policy;
+# - Keep hook revisions compatible with the Python target in `pyproject.toml`.
+# - Repository policy hooks delegate interpreter selection to Make; install
+#   the development environment documented in CONTRIBUTING.md before using them.
+# - Common hook definitions can be shared; repository policy stays in tool
+#   configuration and Make targets. Preserve explicit native/security rules.
+# - Keep branch and commit-message hooks aligned with repository policy;
 #   hosted PR routing is configurable rather than implicitly GitFlow.
 # - Prefer targeted hook exclusions over broad disables when generated or
 #   nonstandard files need special handling.
@@ -51,7 +51,7 @@ default_language_version:
 default_stages:
   - pre-commit
 
-# Some configs are only available after v4.0.0.
+# Require the configuration capabilities used by these hooks.
 minimum_pre_commit_version: '4.0.0'
 
 # Check for issues or automatically fix issues.
@@ -87,8 +87,9 @@ repos:
       - id: check-docstring-first
       # - id: check-executables-have-shebangs
       #   exclude_types: [batch]
-      # - id: check-json
+      - id: check-json
       - id: check-merge-conflict
+        args: [--assume-in-merge]
       - id: check-shebang-scripts-are-executable
       # - id: check-symlinks
       - id: check-toml
@@ -107,7 +108,9 @@ repos:
       - id: mixed-line-ending
       - id: name-tests-test
         args: [--pytest-test-first]
-        files: ^tests/(unit|integration|e2e|meta)/.*\.py$
+        files: (^|/)[Tt]ests/.*\.py$
+        # Shared helpers and fixtures are support modules, not test modules.
+        exclude: (^|/)support/|(^|/)fixtures\.py$
       - id: no-commit-to-branch
         args: [--branch, develop, --branch, main]
       # - id: pretty-format-json
@@ -154,9 +157,9 @@ repos:
       # Run the linter
       - id: ruff-check
         # Ruff will:
-        # - enforce E/F/W/B/I/UP as configured in pyproject.toml
-        # - sort imports (isort-like)
-        # - apply pyupgrade-like rules for the configured Python target
+        # - enforce explicitly selected lint rules
+        # - apply configured import-ordering and modernization fixes
+        # - respect the configured Python target
         args: [--fix, --exit-non-zero-on-fix]
 
       # Run the formatter.
@@ -169,7 +172,6 @@ repos:
       - id: autopep8
         args:
           - --in-place
-          - --max-line-length=88
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -183,25 +185,30 @@ repos:
           - --install-types
           - --non-interactive
 
-  ### Local Project Gates ###
-
   - repo: local
     hooks:
       - id: ruff-check
         name: Ruff lint
         entry: python -m ruff check
         language: python
-        additional_dependencies: ['ruff>=0.16.9,<0.18']
+        additional_dependencies: &ruff_dependencies ['ruff>=0.16.9,<0.18']
         types_or: [python, pyi]
       - id: ruff-format
         name: Ruff format check
         entry: python -m ruff format --check
         language: python
-        additional_dependencies: ['ruff>=0.16.9,<0.18']
+        additional_dependencies: *ruff_dependencies
         types_or: [python, pyi]
-      - id: popo-self-check
-        name: Run popo repository checks
-        entry: make self-check
+
+  ### Repository ###
+
+  - repo: local
+    hooks:
+      # Repository-specific selection belongs behind this common interface.
+      - id: make-check-pre-commit
+        alias: popo-self-check
+        name: Run repository checks
+        entry: make check-pre-commit
         language: system
         pass_filenames: false
         always_run: true
