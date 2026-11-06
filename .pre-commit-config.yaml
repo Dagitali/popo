@@ -20,12 +20,12 @@
 #   practical.
 #
 # Maintainer Notes
-# - Keep hook revisions compatible with the Python versions supported by
-#   `pyproject.toml`.
-# - Local system hooks delegate interpreter selection to Make; install
-#   development tools before using them, as documented in CONTRIBUTING.md.
-# - Keep protected-branch and commit-message hooks aligned with repository
-#policy;
+# - Keep hook revisions compatible with the Python target in `pyproject.toml`.
+# - Repository policy hooks delegate interpreter selection to Make; install
+#   the development environment documented in CONTRIBUTING.md before using them.
+# - Common hook definitions can be shared; repository policy stays in tool
+#   configuration and Make targets. Preserve explicit native/security rules.
+# - Keep branch and commit-message hooks aligned with repository policy;
 #   hosted PR routing is configurable rather than implicitly GitFlow.
 # - Prefer targeted hook exclusions over broad disables when generated or
 #   nonstandard files need special handling.
@@ -51,7 +51,7 @@ default_language_version:
 default_stages:
   - pre-commit
 
-# Some configs are only available after v4.0.0.
+# Require the configuration capabilities used by these hooks.
 minimum_pre_commit_version: '4.0.0'
 
 # Check for issues or automatically fix issues.
@@ -154,9 +154,9 @@ repos:
       # Run the linter
       - id: ruff-check
         # Ruff will:
-        # - enforce E/F/W/B/I/UP as configured in pyproject.toml
-        # - sort imports (isort-like)
-        # - apply pyupgrade-like rules for the configured Python target
+        # - enforce explicitly selected lint rules
+        # - apply configured import-ordering and modernization fixes
+        # - respect the configured Python target
         args: [--fix, --exit-non-zero-on-fix]
 
       # Run the formatter.
@@ -183,8 +183,6 @@ repos:
           - --install-types
           - --non-interactive
 
-  ### Local Project Gates ###
-
   - repo: local
     hooks:
       - id: ruff-check
@@ -199,9 +197,16 @@ repos:
         language: python
         additional_dependencies: ['ruff>=0.16.9,<0.18']
         types_or: [python, pyi]
-      - id: popo-self-check
-        name: Run popo repository checks
-        entry: make self-check
+
+  ### Repository ###
+
+  - repo: local
+    hooks:
+      # Repository-specific selection belongs behind this common interface.
+      - id: make-check-pre-commit
+        alias: popo-self-check
+        name: Run repository checks
+        entry: make check-pre-commit
         language: system
         pass_filenames: false
         always_run: true
