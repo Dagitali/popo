@@ -210,6 +210,9 @@ hooks use a pre-commit-managed Python environment and retain filename-based chec
 range matches the development extra in `pyproject.toml`. The first hook run downloads the upstream
 hook environment. Run all hooks manually with `python -m pre_commit run --all-files`.
 
+Shared hygiene hooks validate JSON syntax and duplicate keys and reject conflict markers even
+outside an active merge. These checks inspect selected files without rewriting them.
+
 Common hook definitions can eventually live in a versioned shared repository's
 `.pre-commit-hooks.yaml`; consumer configurations would select those hooks and revisions. Keep
 repository-specific branch restrictions, file filters, tool constraints and native/security policy

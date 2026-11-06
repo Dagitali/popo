@@ -144,6 +144,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Align shared pre-commit hygiene with JSON syntax/duplicate-key validation and conflict-marker
+  detection outside active merges, preserving existing project-specific gates and policies.
 - Move autopep8 line-length policy from hook arguments into pyproject.toml, keeping shared hook
   definitions independent of repository formatting choices while preserving Ruff compatibility.
 - Generalize pre-commit Python test selection to nested test trees while excluding shared support
