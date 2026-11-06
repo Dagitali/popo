@@ -144,6 +144,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Generalize pre-commit Python test selection to nested test trees while excluding shared support
+  modules, and share local Ruff dependency constraints through one YAML anchor.
 - Generalize the pre-commit repository gate behind `make check-pre-commit`, preserving self-check
   behavior and the previous hook alias; separate shared Python hooks from repository gates and
   document future shared-hook packaging while retaining consumer-specific policy.
