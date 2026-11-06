@@ -139,6 +139,7 @@ markers = [
 ]
 
 [tool.autopep8]
+max_line_length = 88
 # Preserve autopep8 defaults and let Ruff own complex-slice spacing (E203).
 ignore = ["E203", "E226", "E24", "W50", "W690"]
 

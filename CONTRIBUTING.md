@@ -189,7 +189,9 @@ are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markd
 check both lint and formatting.
 
 Ruff owns Python formatting. The compatibility autopep8 hook reads `[tool.autopep8]` in
-`pyproject.toml`, which ignores `E203` so it does not undo Ruff's complex-slice spacing.
+`pyproject.toml` for its line length and ignores `E203` so it does not undo Ruff's complex-slice
+spacing. Hook arguments contain execution options; repository formatting policy stays in tool
+configuration. Keep the autopep8 and Ruff line-length settings aligned.
 
 Override `PYTHON` to select an interpreter; tool commands such as `RUFF` and `PYTEST` are also
 overridable. Pass focused pytest options with `TEST_ARGS`, for example:
@@ -201,11 +203,22 @@ make test TEST_ARGS='-k changelog'
 Ordinary checks do not create environments or implicitly install development dependencies; only
 explicit setup targets do so.
 
-Run `make hooks` to opt into pre-commit hooks. The Popo hook uses `make self-check`, including
-Make's interpreter selection and source-path handling. The Ruff hooks use a pre-commit-managed
-Python environment and retain filename-based checks. Their dependency range matches the development
-extra in `pyproject.toml`. The first hook run downloads the upstream hook environment. Run all hooks
-manually with `python -m pre_commit run --all-files`.
+Run `make hooks` to opt into pre-commit hooks. The generic `make-check-pre-commit` hook calls `make
+check-pre-commit`, which delegates to `make self-check` and retains Make's interpreter selection and
+source-path handling. The former `popo-self-check` hook name remains a runnable alias. The Ruff
+hooks use a pre-commit-managed Python environment and retain filename-based checks. Their dependency
+range matches the development extra in `pyproject.toml`. The first hook run downloads the upstream
+hook environment. Run all hooks manually with `python -m pre_commit run --all-files`.
+
+Shared hygiene hooks validate JSON syntax and duplicate keys and reject conflict markers even
+outside an active merge. These checks inspect selected files without rewriting them.
+
+Common hook definitions can eventually live in a versioned shared repository's
+`.pre-commit-hooks.yaml`; consumer configurations would select those hooks and revisions. Keep
+repository-specific branch restrictions, file filters, tool constraints and native/security policy
+in consumer configuration and Make targets. Popo's generic Make interface retains its own policy
+selection rather than adopting another consumer's application checks. The current hooks remain
+local; no shared repository or hook distribution is introduced by this interface change.
 
 The pre-push stage runs `make check-pre-push`, which delegates to the full local `make check` gate
 without building distributions or installing tools. Run it directly, or exercise the hook with

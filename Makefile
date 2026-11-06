@@ -163,10 +163,12 @@ show-venv: ## Print managed-environment and interpreter locations
 
 ##@ Quality
 
-.PHONY: check check-pre-push self-check fix fmt format format-check lint typecheck
+.PHONY: check check-pre-commit check-pre-push self-check fix fmt format format-check lint typecheck
 .PHONY: dependency-policy github-actions-pins python-policy release-changelog
 
 check: lint typecheck test self-check ## Run the default local quality gate
+
+check-pre-commit: self-check ## Run the local pre-commit repository checks
 
 check-pre-push: check ## Run the local pre-push checks
 

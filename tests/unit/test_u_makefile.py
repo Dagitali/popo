@@ -150,7 +150,12 @@ class TestMakefile:
 
     @pytest.mark.parametrize(
         ('alias', 'target'),
-        [('fmt', 'format'), ('build', 'dist'), ('check-pre-push', 'check')],
+        [
+            ('fmt', 'format'),
+            ('build', 'dist'),
+            ('check-pre-commit', 'self-check'),
+            ('check-pre-push', 'check'),
+        ],
     )
     def test_aliases_preserve_commands(
         self,

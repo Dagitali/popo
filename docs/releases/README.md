@@ -44,6 +44,9 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.17 Series
 
+- [v0.17.1] — 2026-11-06: Generic Make hook interface, reusable Python hook configuration and
+  stronger JSON/conflict-marker hygiene, with existing consumer policies preserved.
+
 - [v0.17.0] — 2026-11-05: Apple metadata all-configuration scope, optional expectations, key
   patterns and discovered-file coverage, with streamlined validation and consolidated suites.
 
@@ -228,6 +231,7 @@ prepared.
 [v0.15.0]: v0.15.0.md
 [v0.16.0]: v0.16.0.md
 [v0.17.0]: v0.17.0.md
+[v0.17.1]: v0.17.1.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md
