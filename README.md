@@ -391,12 +391,12 @@ make check
 ```
 
 Run `make check` for lint, types, regression tests, and repository-policy checks. Use `make hooks`
-to install optional hooks. Their shared `make check-pre-commit` interface runs repository policy;
-pre-push runs the full quality gate. Python naming hooks cover nested test trees while excluding
-shared support modules; hygiene hooks validate JSON and detect leftover conflict markers. Use `make
-check-release` to also build and test the wheel and source distribution in clean environments. See
-the [contributing guide] for Windows paths, environment overrides, network requirements, and other
-setup and focused-check targets.
+to install optional hooks. Since v0.17.1, their shared `make check-pre-commit` interface runs
+repository policy; pre-push runs the full quality gate. Python naming hooks cover nested test trees
+while excluding shared support modules; hygiene hooks validate JSON and detect leftover conflict
+markers. Use `make check-release` to also build and test the wheel and source distribution in clean
+environments. See the [contributing guide] for Windows paths, environment overrides, network
+requirements, and other setup and focused-check targets.
 
 ## Support Popo
 
