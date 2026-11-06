@@ -166,7 +166,7 @@ class TestLocalHooks:
     @pytest.mark.parametrize(
         ('hook_id', 'entry', 'stage'),
         [
-            ('popo-self-check', 'make self-check', 'pre-commit'),
+            ('make-check-pre-commit', 'make check-pre-commit', 'pre-commit'),
             ('make-check-pre-push', 'make check-pre-push', 'pre-push'),
         ],
         ids=['self-check', 'pre-push'],
@@ -199,6 +199,8 @@ class TestLocalHooks:
         assert hook['always_run'] is True
         assert hook.get('stages', hook_config['default_stages']) == [stage]
         assert 'pre-push' in hook_config['default_install_hook_types']
+        if stage == 'pre-commit':
+            assert hook['alias'] == 'popo-self-check'
 
 
 # !SECTION
