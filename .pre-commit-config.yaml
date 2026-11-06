@@ -171,7 +171,6 @@ repos:
       - id: autopep8
         args:
           - --in-place
-          - --max-line-length=88
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
