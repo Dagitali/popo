@@ -87,8 +87,9 @@ repos:
       - id: check-docstring-first
       # - id: check-executables-have-shebangs
       #   exclude_types: [batch]
-      # - id: check-json
+      - id: check-json
       - id: check-merge-conflict
+        args: [--assume-in-merge]
       - id: check-shebang-scripts-are-executable
       # - id: check-symlinks
       - id: check-toml
