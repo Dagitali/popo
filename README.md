@@ -391,7 +391,8 @@ make check
 ```
 
 Run `make check` for lint, types, regression tests, and repository-policy checks. Use `make hooks`
-to install optional pre-commit hooks and `make check-release` to also build and test the wheel and
+to install optional hooks. Their shared `make check-pre-commit` interface runs repository policy;
+pre-push runs the full quality gate. Use `make check-release` to also build and test the wheel and
 source distribution in clean environments. See the [contributing guide] for Windows paths,
 environment overrides, network requirements, and other setup and focused-check targets.
 

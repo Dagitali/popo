@@ -144,6 +144,10 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Generalize the pre-commit repository gate behind `make check-pre-commit`, preserving self-check
+  behavior and the previous hook alias; separate shared Python hooks from repository gates and
+  document future shared-hook packaging while retaining consumer-specific policy.
+
 ## [0.17.0] - 2026-11-05
 
 ### Added
