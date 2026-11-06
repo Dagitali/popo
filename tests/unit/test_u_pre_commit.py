@@ -117,9 +117,10 @@ class TestLocalHooks:
         ignored = set(project_metadata['tool']['autopep8']['ignore'])
         assert {'E203', 'E226', 'E24', 'W50', 'W690'} <= ignored
         assert not any(arg.startswith('--ignore') for arg in hook['args'])
+        assert not any(arg.startswith('--max-line-length') for arg in hook['args'])
         assert (
-            f'--max-line-length={project_metadata['tool']['ruff']['line-length']}'
-            in hook['args']
+            project_metadata['tool']['autopep8']['max_line_length']
+            == project_metadata['tool']['ruff']['line-length']
         )
 
     @pytest.mark.parametrize(
