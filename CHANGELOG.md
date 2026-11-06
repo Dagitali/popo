@@ -144,6 +144,8 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Move autopep8 line-length policy from hook arguments into pyproject.toml, keeping shared hook
+  definitions independent of repository formatting choices while preserving Ruff compatibility.
 - Generalize pre-commit Python test selection to nested test trees while excluding shared support
   modules, and share local Ruff dependency constraints through one YAML anchor.
 - Generalize the pre-commit repository gate behind `make check-pre-commit`, preserving self-check

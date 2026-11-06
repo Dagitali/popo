@@ -189,7 +189,9 @@ are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markd
 check both lint and formatting.
 
 Ruff owns Python formatting. The compatibility autopep8 hook reads `[tool.autopep8]` in
-`pyproject.toml`, which ignores `E203` so it does not undo Ruff's complex-slice spacing.
+`pyproject.toml` for its line length and ignores `E203` so it does not undo Ruff's complex-slice
+spacing. Hook arguments contain execution options; repository formatting policy stays in tool
+configuration. Keep the autopep8 and Ruff line-length settings aligned.
 
 Override `PYTHON` to select an interpreter; tool commands such as `RUFF` and `PYTEST` are also
 overridable. Pass focused pytest options with `TEST_ARGS`, for example:
