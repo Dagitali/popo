@@ -107,7 +107,9 @@ repos:
       - id: mixed-line-ending
       - id: name-tests-test
         args: [--pytest-test-first]
-        files: ^tests/(unit|integration|e2e|meta)/.*\.py$
+        files: (^|/)[Tt]ests/.*\.py$
+        # Shared helpers and fixtures are support modules, not test modules.
+        exclude: (^|/)support/|(^|/)fixtures\.py$
       - id: no-commit-to-branch
         args: [--branch, develop, --branch, main]
       # - id: pretty-format-json
@@ -189,13 +191,13 @@ repos:
         name: Ruff lint
         entry: python -m ruff check
         language: python
-        additional_dependencies: ['ruff>=0.16.9,<0.18']
+        additional_dependencies: &ruff_dependencies ['ruff>=0.16.9,<0.18']
         types_or: [python, pyi]
       - id: ruff-format
         name: Ruff format check
         entry: python -m ruff format --check
         language: python
-        additional_dependencies: ['ruff>=0.16.9,<0.18']
+        additional_dependencies: *ruff_dependencies
         types_or: [python, pyi]
 
   ### Repository ###
