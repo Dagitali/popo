@@ -188,6 +188,13 @@ are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markd
 `fix` applies Ruff fixes, while `fmt` aliases the existing `format` target. `lint` continues to
 check both lint and formatting.
 
+Tool tables in `pyproject.toml` are ordered alphabetically. Reusable pytest and Ruff defaults remain
+separate from package-specific coverage, typing and build settings. Pytest requires 9.1 or later;
+the development extra already requires >=9.1.1. Test paths, import paths, artifact opt-ins, markers,
+strict typing and lint exceptions remain repository policy. A future shared configuration repository
+should provide reusable defaults or templates while preserving each consumer's package metadata and
+native policy; the entire Python-package configuration is not an application template.
+
 Ruff owns Python formatting. The compatibility autopep8 hook reads `[tool.autopep8]` in
 `pyproject.toml` for its line length and ignores `E203` so it does not undo Ruff's complex-slice
 spacing. Hook arguments contain execution options; repository formatting policy stays in tool

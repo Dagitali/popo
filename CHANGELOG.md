@@ -147,6 +147,9 @@ The format is based on [Keep a Changelog], and this project follows [Semantic Ve
 
 ## Unreleased
 
+- Group reusable pytest/Ruff defaults separately from package and consumer policy in pyproject.toml,
+  aligning the pytest minimum with 9.1 while preserving discovery, typing, coverage and lint rules.
+
 ## [0.17.1] - 2026-11-06
 
 ### Changed
