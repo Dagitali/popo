@@ -314,7 +314,9 @@ creates a release.
 1. Review changes since the previous tag, including pending changes intended for the candidate. Keep
    dependency pins and metadata lower bounds synchronized; do not disable their CI check.
 2. Move candidate changes from `Unreleased` into a dated `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD`
-   changelog section, leaving `Unreleased` available for subsequent changes.
+   changelog section, leaving `Unreleased` available for subsequent changes. Keep version headings
+   unlinked: retain their brackets for release validation, but put per-version document links only
+   in the release archive rather than adding version reference definitions to `CHANGELOG.md`.
 3. Create `docs/releases/vMAJOR.MINOR.PATCH.md` from the [release notes template] and update the
    [release archive]. Mark the record planned until the release is finalized, and identify any
    compatibility changes and outstanding validation. The PR release-record gate requires the
