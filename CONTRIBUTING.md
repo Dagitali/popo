@@ -188,6 +188,13 @@ are `python-policy`, `dependency-policy`, `github-actions-pins`, and `docs-markd
 `fix` applies Ruff fixes, while `fmt` aliases the existing `format` target. `lint` continues to
 check both lint and formatting.
 
+Tool tables in `pyproject.toml` are ordered alphabetically. Reusable pytest and Ruff defaults remain
+separate from package-specific coverage, typing and build settings. Pytest requires 9.1 or later;
+the development extra already requires >=9.1.1. Test paths, import paths, artifact opt-ins, markers,
+strict typing and lint exceptions remain repository policy. A future shared configuration repository
+should provide reusable defaults or templates while preserving each consumer's package metadata and
+native policy; the entire Python-package configuration is not an application template.
+
 Ruff owns Python formatting. The compatibility autopep8 hook reads `[tool.autopep8]` in
 `pyproject.toml` for its line length and ignores `E203` so it does not undo Ruff's complex-slice
 spacing. Hook arguments contain execution options; repository formatting policy stays in tool
@@ -307,7 +314,9 @@ creates a release.
 1. Review changes since the previous tag, including pending changes intended for the candidate. Keep
    dependency pins and metadata lower bounds synchronized; do not disable their CI check.
 2. Move candidate changes from `Unreleased` into a dated `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD`
-   changelog section, leaving `Unreleased` available for subsequent changes.
+   changelog section, leaving `Unreleased` available for subsequent changes. Keep version headings
+   unlinked: retain their brackets for release validation, but put per-version document links only
+   in the release archive rather than adding version reference definitions to `CHANGELOG.md`.
 3. Create `docs/releases/vMAJOR.MINOR.PATCH.md` from the [release notes template] and update the
    [release archive]. Mark the record planned until the release is finalized, and identify any
    compatibility changes and outstanding validation. The PR release-record gate requires the
