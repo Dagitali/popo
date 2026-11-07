@@ -13,6 +13,8 @@
 #
 # Maintainer Notes
 # - Treat this file as the canonical source for packaging metadata.
+# - Reusable tool defaults may be shared; package metadata, discovery paths
+#   and native consumer policy must remain explicit per repository.
 # - Derive package versions from annotated Git release tags through
 #   setuptools-scm; do not add a second version source.
 # - Keep consumer repository policy separate from this project's own checks.
@@ -86,6 +88,28 @@ Homepage = "https://github.com/Dagitali/popo"
 Issues = "https://github.com/Dagitali/popo/issues"
 Repository = "https://github.com/Dagitali/popo"
 
+[tool.autopep8]
+max_line_length = 88
+# Preserve autopep8 defaults and let Ruff own complex-slice spacing (E203).
+ignore = ["E203", "E226", "E24", "W50", "W690"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+skip_empty = true
+
+# Python-package tooling: source layout and measurement are consumer-specific.
+[tool.coverage.run]
+branch = true
+source = ["popo"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["popo"]
+mypy_path = "src"
+
+# Repository policy: these tables configure Popo's own checks.
 [tool.popo.dependencies]
 # These settings check this repository, not repositories consuming the CLI.
 metadata = "pyproject.toml"
@@ -102,29 +126,16 @@ ruff-target-version = "py313"
 mypy-python-version = "3.13"
 workflow-directory = ".github/workflows"
 
-[tool.coverage.run]
-branch = true
-source = ["popo"]
-
-[tool.coverage.report]
-show_missing = true
-skip_covered = true
-skip_empty = true
-
-[tool.mypy]
-python_version = "3.13"
-strict = true
-packages = ["popo"]
-mypy_path = "src"
-
+# Shared Python tooling defaults; discovery and policy remain repository-owned.
 [tool.pytest]
-minversion = "9.0"
+minversion = "9.1"
 addopts = [
   "-ra",
   "--import-mode=importlib",
   "--strict-config",
   "--strict-markers",
 ]
+# Repository-specific discovery and artifact-layer boundaries.
 testpaths = ["tests/unit", "tests/integration"]
 # Source tests do not depend on an editable-install .pth file being processed.
 pythonpath = ["src"]
@@ -138,11 +149,6 @@ markers = [
   "e2e: installed package workflows through the public CLI",
 ]
 
-[tool.autopep8]
-max_line_length = 88
-# Preserve autopep8 defaults and let Ruff own complex-slice spacing (E203).
-ignore = ["E203", "E226", "E24", "W50", "W690"]
-
 [tool.ruff]
 target-version = "py313"
 line-length = 88
@@ -154,6 +160,7 @@ nested-string-quote-style = "preferred"
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "UP", "W"]
 
+# Distribution-only settings; native application consumers do not need these.
 [tool.setuptools.package-data]
 popo = ["py.typed"]
 
