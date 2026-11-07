@@ -390,6 +390,10 @@ python -m pip install -e '.[dev]'
 make check
 ```
 
+Since v0.17.2, tool tables in `pyproject.toml` are alphabetized and pytest requires 9.1 or later.
+Reusable pytest/Ruff defaults remain separate from repository-specific metadata, discovery and
+policy.
+
 Run `make check` for lint, types, regression tests, and repository-policy checks. Use `make hooks`
 to install optional hooks. Since v0.17.1, their shared `make check-pre-commit` interface runs
 repository policy; pre-push runs the full quality gate. Python naming hooks cover nested test trees

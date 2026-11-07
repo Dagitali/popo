@@ -44,6 +44,9 @@ Use the [changelog] for concise change history, the [release playbook] for prepa
 
 ## 0.17 Series
 
+- [v0.17.2] — 2026-11-07: Alphabetical tool configuration, aligned pytest minimum and documented
+  shared-default boundaries, preserving packaging and consumer policies.
+
 - [v0.17.1] — 2026-11-06: Generic Make hook interface, reusable Python hook configuration and
   stronger JSON/conflict-marker hygiene, with existing consumer policies preserved.
 
@@ -232,6 +235,7 @@ prepared.
 [v0.16.0]: v0.16.0.md
 [v0.17.0]: v0.17.0.md
 [v0.17.1]: v0.17.1.md
+[v0.17.2]: v0.17.2.md
 [v0.2.0]: v0.2.0.md
 [v0.2.1]: v0.2.1.md
 [v0.2.2]: v0.2.2.md
